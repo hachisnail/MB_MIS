@@ -2,7 +2,6 @@ import { User, UserSession } from "../models/authModels.js";
 import bcrypt from "bcryptjs";
 import sessionStore from "../configs/sessionStore.js";
 
-
 export async function login(req, res) {
   const { username, password } = req.body;
 
@@ -17,7 +16,7 @@ export async function login(req, res) {
     const isValid = await bcrypt.compare(password, user.password);
     if (!isValid) return res.status(401).json({ message: "Invalid credentials" });
 
-    // Step 1: Find the latest active session
+    // Step 1: Destroy any existing online session
     const existingSession = await UserSession.findOne({
       where: {
         userId: user.id,
@@ -26,7 +25,6 @@ export async function login(req, res) {
       order: [['loginAt', 'DESC']],
     });
 
-    // Step 2: If found, destroy that session and update it as logged out
     if (existingSession) {
       await sessionStore.destroy(existingSession.sessionId);
       await existingSession.update({
@@ -35,30 +33,16 @@ export async function login(req, res) {
       });
     }
 
-    // Step 3: Create new session
-    req.session.userId = user.id;
+    // Step 2: Regenerate the session to prevent session fixation
+    req.session.regenerate(async (err) => {
+      if (err) {
+        console.error("Session regeneration error:", err);
+        return res.status(500).json({ message: "Session error" });
+      }
 
-    // ✅ FIX: Store full user info in session for requireRole()
-    req.session.user = {
-      id: user.id,
-      username: user.username,
-      fname: user.fname,
-      lname: user.lname,
-      email: user.email,
-      roleId: user.roleId,
-      position: user.position, // needed for requireRole()
-    };
-
-    await UserSession.create({
-      userId: user.id,
-      sessionId: req.session.id,
-      loginAt: new Date(),
-      isOnline: true,
-    });
-
-    return res.json({
-      message: "Login successful",
-      user: {
+      // Step 3: Assign session data
+      req.session.userId = user.id;
+      req.session.user = {
         id: user.id,
         username: user.username,
         fname: user.fname,
@@ -66,13 +50,27 @@ export async function login(req, res) {
         email: user.email,
         roleId: user.roleId,
         position: user.position,
-      },
+      };
+
+      // Step 4: Save session tracking
+      await UserSession.create({
+        userId: user.id,
+        sessionId: req.session.id,
+        loginAt: new Date(),
+        isOnline: true,
+      });
+
+      return res.json({
+        message: "Login successful",
+        user: req.session.user,
+      });
     });
   } catch (error) {
     console.error(error);
     return res.status(500).json({ message: "Server error" });
   }
 }
+
 
 
 export async function logout(req, res) {

@@ -29,7 +29,7 @@ const NoMatch = () => {
 
         <span className='text-3xl font-semibold'>Are you lost?</span>
         <div className='flex items-center gap-x-2'>
-          <span>go back </span>
+          <span>go back to </span>
           <NavLink to={isAdmin ? "/admin/dashboard" : "/"}>
             <span className='hover:text-gray-500 underline'>
               {isAdmin ? "dashboard." : "home."}

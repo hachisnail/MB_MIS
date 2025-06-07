@@ -55,15 +55,17 @@ const AdminLayout = () => {
 
       <div className="flex w-full h-full">
         <AdminNav isOpen={isSidebarOpen} />
-        <main className="w-full h-full bg-gray-300 flex flex-col items-center justify-center gap-y-2">
-          <div className="w-full h-fit flex items-center justify-between px-4 py-2 bg-white shadow-md">
+        <main className="w-full h-full bg-gray-300 flex flex-col items-center justify-start gap-y-2">
             {!isDashboard && (
-              <div className="w-fit h-fit flex flex-col">
-                <span className="text-2xl 3xl:text-5xl font-semibold">{pageTitle}</span>
+          <div className="w-full h-fit flex items-center justify-between px-4 py-2 bg-white shadow-md">
+
+              <div className="w-fit h-fit flex flex-col gap-y-1">
+                <span className="text-4xl font-semibold">{pageTitle}</span>
                 <Breadcrumb />
               </div>
-            )}
           </div>
+
+            )}
           <Outlet />
         </main>
       </div>

@@ -19,7 +19,7 @@ const AdminHeader = ({ onClose, onOpen, isSidebarOpen }) => {
   return (
     <header className="select-none relative z-50 w-full h-17 bg-[#1C1B19] drop-shadow-sm">
       <div className="flex w-full h-full items-center px-2   gap-x-2">
-        <div className="w-12 h-fit flex justify-center">
+        <div className="w-15 h-fit flex justify-center">
             {isSidebarOpen ? (
             <svg
                 onClick={onClose}

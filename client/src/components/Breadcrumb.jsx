@@ -27,7 +27,7 @@ const Breadcrumb = () => {
   }).filter(Boolean);
 
   return (
-    <div className="flex items-center gap-x-2 text-sm 3xl:text-2xl text-gray-600">
+    <div className="flex items-center gap-x-2 text-xl text-gray-600">
       {crumbs.map((crumb, index) => (
         <div className="flex items-center gap-x-2" key={crumb.path}>
           {index !== 0 && <span className="font-semibold">/</span>}

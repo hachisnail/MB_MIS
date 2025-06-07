@@ -44,17 +44,17 @@ const AdminNav = ({ isOpen }) => {
       className={`
         h-full bg-[#1C1B19] flex flex-col items-center justify-between py-7
         transition-all duration-300 ease-in-out select-none
-        ${isOpen ? "w-52 3xl:w-65" : "w-16"}
+        ${isOpen ? "w-65" : "w-20"}
       `}
     >
       <div className="w-full p-2 border-b border-gray-700 flex flex-col  gap-y-2">
         <div className="flex h-20 items-center gap-x-2">
-          <div className="min-w-10 min-h-10 3xl:min-w-15 3xl:min-h-15 rounded-full bg-white flex items-center justify-center">
+          <div className="min-w-15 min-h-15 rounded-full bg-white flex items-center justify-center">
             <div
-              className="min-w-8.5 min-h-8.5 3xl:min-w-13 3xl:min-h-13 rounded-full border-1 flex items-center justify-center"
+              className="min-w-13.5 min-h-13.5 rounded-full border-1 flex items-center justify-center"
               style={{ backgroundColor: bgColor }}
             >
-              <span className="text-xl 3xl:text-2xl font-semibold flex text-center items-center">
+              <span className="text-3xl font-semibold flex text-center items-center">
                 {firstInitial}
                 {lastInitial}
               </span>
@@ -65,15 +65,15 @@ const AdminNav = ({ isOpen }) => {
             className={`transition-all duration-300 ease-in-out transform ${isOpen ? "flex opacity-100 translate-y-0" : "hidden opacity-0 -translate-y-2"
               } flex-col`}
           >
-            <span className="text-white text-sm text-center 3xl:text-2xl font-semibold">
+            <span className="text-white text-center text-2xl font-semibold">
               {user.fname}
             </span>
 
-            <span className="text-white text-xs text-center 3xl:text-2xl font-semibold">
+            <span className="text-white text-center text-2xl font-semibold">
               {user.lname}
             </span>
 
-            <span className="text-[8px] lg:text-sm text-gray-500">{user.position}</span>
+            <span className="text-[8px] text-xl text-gray-500">{user.position}</span>
           </div>
 
         </div>
@@ -86,12 +86,12 @@ const AdminNav = ({ isOpen }) => {
           <span className="text-white text-xs lg:text-xl font-semibold">{user.fname} {user.lname}</span>
         </div> */}
       </div>
-      <div className="w-full h-full mt-4 3xl:mt-10">
-        <div className="flex-1 w-full  flex flex-col items-center px-3 gap-y-1 text-sm 3xl:text-xl 3xl:gap-y-2 font-semibold">
+      <div className="w-full h-full mt-10">
+        <div className="flex-1 w-full  flex flex-col items-center px-3 text-xl gap-y-2 font-semibold">
           <NavLink
             to="/admin/dashboard"
             className={({ isActive }) => `
-              rounded w-full h-10 3xl:h-15 flex items-center gap-x-2 hover:border-1
+              rounded w-full h-15 flex items-center gap-x-2 hover:border-1
               ${isOpen ? "pl-0 sm:pl-4 " : "justify-center"}
               ${isActive
                 ? "bg-[#FEF7FF] text-black stroke-black"
@@ -121,7 +121,7 @@ const AdminNav = ({ isOpen }) => {
           <NavLink
             to="/admin/appointment"
             className={({ isActive }) => `
-              rounded w-full h-10 3xl:h-15 flex items-center gap-x-2 hover:border-1
+              rounded w-full h-15 flex items-center gap-x-2 hover:border-1
               ${isOpen ? "pl-0 sm:pl-4" : "justify-center"}
               ${isActive
                 ? "bg-[#FEF7FF] text-black stroke-black"
@@ -156,7 +156,7 @@ const AdminNav = ({ isOpen }) => {
           <NavLink
             to="/admin/inventory"
             className={({ isActive }) => `
-              rounded w-full h-10 3xl:h-15 flex items-center gap-x-2 hover:border-1
+              rounded w-full h-15 flex items-center gap-x-2 hover:border-1
               ${isOpen ? "pl-0 sm:pl-4" : "justify-center"}
               ${isActive
                 ? "bg-[#FEF7FF] text-black stroke-black"
@@ -190,7 +190,7 @@ const AdminNav = ({ isOpen }) => {
           <NavLink
             to="/admin/acquisition"
             className={({ isActive }) => `
-              rounded w-full h-10 3xl:h-15 flex items-center gap-x-2 hover:border-1
+              rounded w-full h-15 flex items-center gap-x-2 hover:border-1
               ${isOpen ? "pl-0 sm:pl-4" : "justify-center"}
               ${isActive
                 ? "bg-[#FEF7FF] text-black stroke-black"
@@ -221,7 +221,7 @@ const AdminNav = ({ isOpen }) => {
           <NavLink
             to="/admin/schedule"
             className={({ isActive }) => `
-              rounded w-full h-10 3xl:h-15 flex items-center gap-x-2 hover:border-1
+              rounded w-full h-10 h-15 flex items-center gap-x-2 hover:border-1
               ${isOpen ? "pl-0 sm:pl-4" : "justify-center"}
               ${isActive
                 ? "bg-[#FEF7FF] text-black stroke-black"
@@ -263,7 +263,7 @@ const AdminNav = ({ isOpen }) => {
           <NavLink
             to="/admin/article"
             className={({ isActive }) => `
-              rounded w-full h-10 3xl:h-15 flex items-center gap-x-2 hover:border-1
+              rounded w-full h-10 h-15 flex items-center gap-x-2 hover:border-1
               ${isOpen ? "pl-0 sm:pl-4" : "justify-center"}
               ${isActive
                 ? "bg-[#FEF7FF] text-black stroke-black"
@@ -298,12 +298,12 @@ const AdminNav = ({ isOpen }) => {
         </div>
 
         {user.roleId == "1" ? (<>
-          <div className="pt-4 3xl:pt-10 flex-1 w-full mt-4 border-t-1 border-gray-700 flex flex-col items-center px-3 gap-y-1 text-sm 3xl:text-xl 3xl:gap-y-2 font-semibold">
+          <div className="pt-10 flex-1 w-full mt-4 border-t-1 border-gray-700 flex flex-col items-center px-3 text-xl gap-y-2 font-semibold">
 
             <NavLink
               to="/admin/user"
               className={({ isActive }) => `
-              rounded w-full h-10 3xl:h-15 flex items-center gap-x-2 hover:border-1
+              rounded w-full h-15 flex items-center gap-x-2 hover:border-1
               ${isOpen ? "pl-0 sm:pl-4" : "justify-center"}
               ${isActive
                   ? "bg-[#FEF7FF] text-black stroke-black"
@@ -340,7 +340,7 @@ const AdminNav = ({ isOpen }) => {
             <NavLink
               to="/admin/logs"
               className={({ isActive }) => `
-                rounded w-full h-10 3xl:h-15 flex items-center gap-x-2 hover:border-1
+                rounded w-full h-15 flex items-center gap-x-2 hover:border-1
                 ${isOpen ? "pl-0 sm:pl-4" : "justify-center"}
                 ${isActive
                   ? "bg-[#FEF7FF] text-black stroke-black"

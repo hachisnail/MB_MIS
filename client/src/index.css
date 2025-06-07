@@ -1,1 +1,173 @@
+@import url('https://fonts.googleapis.com/css2?family=Hina+Mincho&display=swap');
 @import "tailwindcss";
+/* @import '../node_modules/modern-normalize/modern-normalize.css'; */
+
+
+
+
+html {
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+}
+
+
+/* Hide scrollbar but keep scrolling */
+::-webkit-scrollbar {
+    display: none;
+}
+
+
+body {
+    -ms-overflow-style: none;
+    /* For IE & Edge */
+    scrollbar-width: none;
+    /* For Firefox */
+}
+
+/* animation for header */
+@keyframes slideInRight {
+    0% {
+        transform: translateX(15%);
+    }
+
+    100% {
+        transform: translateX(0%);
+    }
+}
+
+.animate-slide-in-right {
+    animation: slideInRight 0.8s ease forwards;
+}
+
+@-moz-document url-prefix() {
+    html {
+        font-size: 10px !important;
+    }
+}
+
+@supports (-webkit-touch-callout: none) {
+    html {
+        font-size: 10px !important;
+    }
+}
+
+
+@theme {
+    --breakpoint-3xl: 1800px;
+    --font-hina: "Hina Mincho", "serif";
+}
+
+
+input:-webkit-autofill {
+    transition: background-color 9999s ease-in-out 0s;
+    -webkit-text-fill-color: #ffffff !important;
+}
+
+/* 2 block text on article */
+.editor-content-preview h1 {
+    font-size: 2em;
+    font-weight: bold;
+    margin-bottom: 0.5em;
+}
+
+.editor-content-preview h2 {
+    font-size: 1.5em;
+    font-weight: bold;
+    margin-bottom: 0.5em;
+}
+
+.editor-content-preview h3 {
+    font-size: 1.3em;
+    font-weight: bold;
+    margin-bottom: 0.5em;
+}
+
+.editor-content-preview h4 {
+    font-size: 1.2em;
+    font-weight: bold;
+    margin-bottom: 0.5em;
+}
+
+.editor-content-preview h5 {
+    font-size: 1.1em;
+    font-weight: bold;
+    margin-bottom: 0.5em;
+}
+
+/* Text alignment styles */
+.editor-content-preview [data-text-align="center"] {
+    text-align: center;
+}
+
+.editor-content-preview [data-text-align="right"] {
+    text-align: right;
+}
+
+.editor-content-preview [data-text-align="left"] {
+    text-align: left;
+}
+
+.editor-content-preview [data-text-align="justify"] {
+    text-align: justify;
+}
+
+.two-column-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin: 1rem 0;
+    border: 1px dashed #ccc;
+    padding: 1rem;
+}
+
+.two-column-block .column-left,
+.two-column-block .column-right {
+    border: 1px solid #ccc;
+    padding: 0.5rem;
+    min-height: 100px;
+    overflow-wrap: break-word;
+    word-break: break-word;
+    white-space: pre-wrap;
+}
+
+
+
+.ProseMirror p {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    word-break: break-word;
+}
+
+.ProseMirror .column-block {
+    width: 100%;
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
+    gap: 24px;
+    padding: 8px 0;
+}
+
+.ProseMirror .column {
+    overflow: auto;
+    border: 1px gray dashed;
+    border-radius: 8px;
+    padding: 8px;
+    margin: -8px;
+}
+
+/* GoCapsule Extension Css */
+.editor-content-preview .column-block {
+    display: flex;
+    /* Arrange columns side-by-side */
+    gap: 1.5rem;
+    /* Spacing between columns */
+}
+
+.editor-content-preview .column {
+    flex: 1;
+    /* Make each column flexible */
+    min-width: 0;
+    /* Necessary to prevent overflow in flex layout */
+    padding: 0 0.75rem;
+    /* Optional: column padding */
+}

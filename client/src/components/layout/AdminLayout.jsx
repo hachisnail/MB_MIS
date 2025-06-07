@@ -1,5 +1,5 @@
 import AdminHeader from "../headers/AdminHeader";
-import AdminNav from "../navbar/adminNav";
+import AdminNav from "../navbar/AdminNav";
 import { Outlet, useLocation } from "react-router-dom";
 import Breadcrumb from "../Breadcrumb";
 import { useState } from "react";
@@ -11,37 +11,37 @@ const AdminLayout = () => {
   const currentPage = location.pathname.split("/").filter(Boolean).pop();
   const isDashboard = currentPage === "dashboard";
   let pageTitle = '';
-  switch (currentPage){
+  switch (currentPage) {
     case "inventory":
       pageTitle = 'Inventory of Artifact';
-    break
+      break
     case "acquisition":
       pageTitle = 'Donations/Acquisitions/Lending Management';
-    break
+      break
     case "logs":
       pageTitle = 'Logging';
-    break
+      break
     case "view":
       pageTitle = 'View Artifacts';
-    break
+      break
     case "user":
       pageTitle = 'User Management';
-    break
+      break
     case "appointment":
       pageTitle = 'Appointments Management';
-    break
+      break
     case "schedule":
       pageTitle = 'Schedules Management';
-    break
+      break
     case "article":
       pageTitle = 'Articles Management';
-    break
+      break
 
 
 
     default:
       pageTitle = 'Sandbox/Unasigned';
-    break;
+      break;
 
   }
 
@@ -55,14 +55,15 @@ const AdminLayout = () => {
 
       <div className="flex w-full h-full">
         <AdminNav isOpen={isSidebarOpen} />
-        <main className="w-full h-full bg-gray-300 flex flex-col p-2 gap-y-2">
-          {!isDashboard && (
-            <div className="w-fit h-fit flex flex-col">
-              <span className="text-2xl font-semibold">{pageTitle}</span>
-              <Breadcrumb />
-            </div>
-          )}
-
+        <main className="w-full h-full bg-gray-300 flex flex-col items-center justify-center gap-y-2">
+          <div className="w-full h-fit flex items-center justify-between px-4 py-2 bg-white shadow-md">
+            {!isDashboard && (
+              <div className="w-fit h-fit flex flex-col">
+                <span className="text-2xl 3xl:text-5xl font-semibold">{pageTitle}</span>
+                <Breadcrumb />
+              </div>
+            )}
+          </div>
           <Outlet />
         </main>
       </div>

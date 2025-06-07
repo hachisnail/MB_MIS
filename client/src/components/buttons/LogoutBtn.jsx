@@ -14,7 +14,7 @@ const LogoutButton = ({ isOpen }) => {
   return (
     <button
       onClick={handleLogout}
-      className={`${isOpen ? ('px-4') : ('')}  py-2 bg-gray-600 w-full text-white 3xl:text-2xl rounded hover:bg-gray-700 cursor-pointer flex gap-x-2 items-center justify-center`}
+      className={`${isOpen ? ('px-4') : ('')}  py-2 bg-gray-600 w-full text-white text-2xl rounded hover:bg-gray-700 cursor-pointer flex gap-x-2 items-center justify-center`}
     >
 
 

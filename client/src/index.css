@@ -61,7 +61,7 @@ body {
 
 input:-webkit-autofill {
     transition: background-color 9999s ease-in-out 0s;
-    -webkit-text-fill-color: #ffffff !important;
+    -webkit-text-fill-color: #000000 !important;
 }
 
 /* 2 block text on article */

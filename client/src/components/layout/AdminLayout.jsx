@@ -16,17 +16,29 @@ const AdminLayout = () => {
       pageTitle = 'Inventory of Artifact';
     break
     case "acquisition":
-      pageTitle = 'Donations Acquisitions and Lending Management';
+      pageTitle = 'Donations/Acquisitions/Lending Management';
     break
     case "logs":
       pageTitle = 'Logging';
     break
     case "view":
-      pageTitle = 'View Artifact';
+      pageTitle = 'View Artifacts';
     break
     case "user":
       pageTitle = 'User Management';
     break
+    case "appointment":
+      pageTitle = 'Appointments Management';
+    break
+    case "schedule":
+      pageTitle = 'Schedules Management';
+    break
+    case "article":
+      pageTitle = 'Articles Management';
+    break
+
+
+
     default:
       pageTitle = 'Sandbox/Unasigned';
     break;

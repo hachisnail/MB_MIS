@@ -1,14 +1,12 @@
 import React from 'react'
-import Breadcrumb from '../Breadcrumb'
-const viewArtifacts = () => {
+
+const Appointments = () => {
   return (
     <div className='w-[80rem] h-[41rem] overflow-scroll'>
-
-      
 
       
     </div>
   )
 }
 
-export default viewArtifacts
+export default Appointments

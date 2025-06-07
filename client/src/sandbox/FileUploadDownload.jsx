@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import ReactDOM from "react-dom";
-import axios from "axios";
+import axiosClient from "../lib/axiosClient";
 import { useNavigate } from "react-router-dom";
 
 const ContextMenu = ({ x, y, onPreview, onDownload, onClose }) => {
@@ -61,7 +61,7 @@ const FileUploadDownload = () => {
   const [file, setFile] = useState(null);
   const [category, setCategory] = useState("uncategorized");
   const [uploadedFile, setUploadedFile] = useState(null);
-  const [categoryFiles, setCategoryFiles] = useState([]); // [{ category: "name", files: [] }]
+  const [categoryFiles, setCategoryFiles] = useState([]);
   const [error, setError] = useState("");
   const navigate = useNavigate();
 
@@ -90,10 +90,7 @@ const FileUploadDownload = () => {
 
   const fetchFiles = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/api/list", {
-        withCredentials: true,
-      });
-      // Expecting res.data.categories to be array of { category: string, files: array }
+      const res = await axiosClient.get("/list");
       setCategoryFiles(res.data.categories);
       setError("");
     } catch (err) {
@@ -118,9 +115,8 @@ const FileUploadDownload = () => {
     formData.append("category", category);
 
     try {
-      const res = await axios.post(`http://localhost:5000/api/upload`, formData, {
-        withCredentials: true,
-        headers: { "Content-Type": "multipart/form-data" },
+      const res = await axiosClient.post("/upload", formData, {
+        headers: { "Content-Type": "multipart/form-data" }, // override default json
       });
       setUploadedFile(res.data);
       setError("");
@@ -192,7 +188,8 @@ const FileUploadDownload = () => {
   };
 
   return (
-    <div className="max-w-full max-h-full relative p-4">
+    <div className='w-[80rem] h-[41rem] overflow-y-scroll'>
+
       <form onSubmit={handleUpload} className="mb-4 space-y-2">
         <select
           value={category}

@@ -1,5 +1,5 @@
 import express from "express";
-import { requireAuth } from "../middlewares/authMiddlewares.js";
+import { requireAuth, requireRole } from "../middlewares/authMiddlewares.js";
 import { upload } from "../middlewares/multerMiddleware.js";
 import { handleUpload, handleDownload, listFiles } from "../controllers/fileController.js";
 

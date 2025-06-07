@@ -11,12 +11,15 @@ import NoMatch from "./pages/NoMatch";
 import RequireRole from "./lib/requiredRole";
 import Acquisition from "./pages/admin/Acquisition";
 import ViewArtifacts from "./components/pages/viewArtifacts";
+import Schedule from "./pages/admin/Schedule";
+import Article from "./pages/admin/Article";
 
 // sandbox
 import FileUploadDownload from "./sandbox/fileUploadDownload";
 import FilePreviewer from "./sandbox/FilePreviewer";
 
 import AdminLayout from "./components/layout/AdminLayout";
+import Appointments from "./pages/admin/Appointments";
 
 const RequireAuth = () => {
   const { user } = useAuth();
@@ -42,14 +45,25 @@ const Router = () => {
           <Route path="dashboard" element={<Dashboard />} />
             
           <Route path="inventory" element={<Inventory />} />
+          {/* sample nested view */}
           <Route path="inventory/view" element={<ViewArtifacts />} />
 
 
-
           <Route path="acquisition" element={<Acquisition />} />
+          <Route path="schedule" element={<Schedule />} />
+          <Route path="article" element={<Article />} />
+          <Route path="schedule" element={<Schedule />} />
+          <Route path="appointment" element={<Appointments />} />
 
+
+
+
+          {/* sandbox for testing */}
           <Route path="sandbox" element={<FileUploadDownload />} />
           <Route path="sandbox/preview/:category/:filename" element={<FilePreviewer />} />
+
+
+          {/* sandbox for end */}
 
 
           {/* Admin-only subroutes */}

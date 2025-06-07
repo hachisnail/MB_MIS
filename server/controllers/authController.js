@@ -28,7 +28,7 @@ export async function login(req, res) {
 
     // Step 2: If found, destroy that session and update it as logged out
     if (existingSession) {
-      await sessionStore.destroy(existingSession.sessionId); // removes from DB
+      await sessionStore.destroy(existingSession.sessionId);
       await existingSession.update({
         isOnline: false,
         logoutAt: new Date(),
@@ -37,6 +37,17 @@ export async function login(req, res) {
 
     // Step 3: Create new session
     req.session.userId = user.id;
+
+    // ✅ FIX: Store full user info in session for requireRole()
+    req.session.user = {
+      id: user.id,
+      username: user.username,
+      fname: user.fname,
+      lname: user.lname,
+      email: user.email,
+      roleId: user.roleId,
+      position: user.position, // needed for requireRole()
+    };
 
     await UserSession.create({
       userId: user.id,
@@ -62,6 +73,7 @@ export async function login(req, res) {
     return res.status(500).json({ message: "Server error" });
   }
 }
+
 
 export async function logout(req, res) {
   try {

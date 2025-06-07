@@ -19,7 +19,7 @@ const AdminHeader = ({ onClose, onOpen, isSidebarOpen }) => {
   return (
     <header className="select-none relative z-50 w-full h-17 bg-[#1C1B19] drop-shadow-sm">
       <div className="flex w-full h-full items-center px-2   gap-x-2">
-        <div className="w-15 h-fit flex justify-center">
+        <div className="w-18 h-fit flex justify-center">
             {isSidebarOpen ? (
             <svg
                 onClick={onClose}
@@ -57,12 +57,12 @@ const AdminHeader = ({ onClose, onOpen, isSidebarOpen }) => {
             )}
         </div>
 
-        <div className="w-70 h-10 flex gap-x-2 items-center">
+        <div className="w-90 h-10 flex gap-x-3 items-center">
             {/* <img src={Logo} className="h-10 w-auto" alt="Museo Bulawan Logo" /> */}
             <div className="w-[1px] h-9 rounded-md bg-white">
             
             </div>
-           
+                <img src={Logo} alt="Museo Bulawan Logo"  className="w-9 h-auto select-none"/>
                 <span className=" text-white text-2xl font-semibold">Museo Bulawan MIS</span>
 
         </div>

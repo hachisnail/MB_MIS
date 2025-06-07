@@ -7,26 +7,25 @@ import { useEffect } from "react";
 import Router from "./router";
 
 function App() {
+  useEffect(() => {
+    // fonts override
+    const userAgent = navigator.userAgent;
 
+    const isOpera = userAgent.includes("OPR") || userAgent.includes("Opera");
 
-   useEffect(() => {
-        const userAgent = navigator.userAgent;
+    const isBrave = typeof navigator.brave !== "undefined";
 
-        const isOpera = userAgent.includes("OPR") || userAgent.includes("Opera");
-
-        const isBrave = typeof navigator.brave !== 'undefined';
-
-        if (isOpera) {
-          document.documentElement.style.fontSize = "10px";
-        } else if (isBrave) {
-          document.documentElement.style.fontSize = "10px";
-        } else {
-          const isChromium = !!window.chrome || userAgent.includes("Chromium");
-          if (isChromium) {
-            document.documentElement.style.fontSize = "10px";
-          }
-        }
-      }, []);
+    if (isOpera) {
+      document.documentElement.style.fontSize = "10px";
+    } else if (isBrave) {
+      document.documentElement.style.fontSize = "10px";
+    } else {
+      const isChromium = !!window.chrome || userAgent.includes("Chromium");
+      if (isChromium) {
+        document.documentElement.style.fontSize = "10px";
+      }
+    }
+  }, []);
 
   return (
     <AuthProvider>
@@ -39,7 +38,11 @@ function AppContent() {
   const { loading } = useAuth();
 
   if (loading) {
-    return <div>Loading...</div>; // or your spinner
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-black border-opacity-75"></div>
+      </div>
+    );
   }
 
   return (

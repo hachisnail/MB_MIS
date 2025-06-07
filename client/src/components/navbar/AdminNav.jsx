@@ -62,8 +62,11 @@ const AdminNav = ({ isOpen }) => {
           </div>
 
           <div
-            className={`transition-all duration-300 ease-in-out transform ${isOpen ? "flex opacity-100 translate-y-0" : "hidden opacity-0 -translate-y-2"
-              } flex-col`}
+            className={`transition-all duration-300 ease-in-out transform ${
+              isOpen
+                ? "flex opacity-100 translate-y-0"
+                : "hidden opacity-0 -translate-y-2"
+            } flex-col`}
           >
             <span className="text-white text-center text-2xl font-semibold">
               {user.fname}
@@ -73,9 +76,10 @@ const AdminNav = ({ isOpen }) => {
               {user.lname}
             </span>
 
-            <span className="text-[8px] text-xl text-gray-500">{user.position}</span>
+            <span className="text-[8px] text-xl text-gray-500">
+              {user.position}
+            </span>
           </div>
-
         </div>
         {/* <div
           className={`flex flex-col  transition-opacity duration-300 ${
@@ -93,9 +97,10 @@ const AdminNav = ({ isOpen }) => {
             className={({ isActive }) => `
               rounded w-full h-15 flex items-center gap-x-2 hover:border-1
               ${isOpen ? "pl-0 sm:pl-4 " : "justify-center"}
-              ${isActive
-                ? "bg-[#FEF7FF] text-black stroke-black"
-                : "bg-transparent text-white stroke-white"
+              ${
+                isActive
+                  ? "bg-[#FEF7FF] text-black stroke-black"
+                  : "bg-transparent text-white stroke-white"
               }
           `}
           >
@@ -123,9 +128,10 @@ const AdminNav = ({ isOpen }) => {
             className={({ isActive }) => `
               rounded w-full h-15 flex items-center gap-x-2 hover:border-1
               ${isOpen ? "pl-0 sm:pl-4" : "justify-center"}
-              ${isActive
-                ? "bg-[#FEF7FF] text-black stroke-black"
-                : "bg-transparent text-white stroke-white"
+              ${
+                isActive
+                  ? "bg-[#FEF7FF] text-black stroke-black"
+                  : "bg-transparent text-white stroke-white"
               }
           `}
           >
@@ -151,81 +157,15 @@ const AdminNav = ({ isOpen }) => {
             {isOpen && <span>Appointment</span>}
           </NavLink>
 
-
-
-          <NavLink
-            to="/admin/inventory"
-            className={({ isActive }) => `
-              rounded w-full h-15 flex items-center gap-x-2 hover:border-1
-              ${isOpen ? "pl-0 sm:pl-4" : "justify-center"}
-              ${isActive
-                ? "bg-[#FEF7FF] text-black stroke-black"
-                : "bg-transparent text-white stroke-white"
-              }
-          `}
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="32"
-              height="32"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="icon"
-            >
-              <path d="M9 5h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2h-2" />
-              <path d="M9 3m0 2a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v0a2 2 0 0 1 -2 2h-2a2 2 0 0 1 -2 -2z" />
-              <path d="M9 17v-4" />
-              <path d="M12 17v-1" />
-              <path d="M15 17v-2" />
-              <path d="M12 17v-1" />
-            </svg>
-            {isOpen && <span>Inventory</span>}
-          </NavLink>
-
-
-          <NavLink
-            to="/admin/acquisition"
-            className={({ isActive }) => `
-              rounded w-full h-15 flex items-center gap-x-2 hover:border-1
-              ${isOpen ? "pl-0 sm:pl-4" : "justify-center"}
-              ${isActive
-                ? "bg-[#FEF7FF] text-black stroke-black"
-                : "bg-transparent text-white stroke-white"
-              }
-          `}
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="32"
-              height="32"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="icon"
-            >
-              <path d="M9 5h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2h-2" />
-              <path d="M9 3m0 2a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v0a2 2 0 0 1 -2 2h-2a2 2 0 0 1 -2 -2z" />
-              <path d="M10 14h4" />
-              <path d="M12 12v4" />
-            </svg>
-            {isOpen && <span>Acquisition</span>}
-          </NavLink>
-
           <NavLink
             to="/admin/schedule"
             className={({ isActive }) => `
               rounded w-full h-10 h-15 flex items-center gap-x-2 hover:border-1
               ${isOpen ? "pl-0 sm:pl-4" : "justify-center"}
-              ${isActive
-                ? "bg-[#FEF7FF] text-black stroke-black"
-                : "bg-transparent text-white stroke-white"
+              ${
+                isActive
+                  ? "bg-[#FEF7FF] text-black stroke-black"
+                  : "bg-transparent text-white stroke-white"
               }
           `}
           >
@@ -256,7 +196,71 @@ const AdminNav = ({ isOpen }) => {
             {isOpen && <span>Schedule</span>}
           </NavLink>
 
+                    <NavLink
+            to="/admin/acquisition"
+            className={({ isActive }) => `
+              rounded w-full h-15 flex items-center gap-x-2 hover:border-1
+              ${isOpen ? "pl-0 sm:pl-4" : "justify-center"}
+              ${
+                isActive
+                  ? "bg-[#FEF7FF] text-black stroke-black"
+                  : "bg-transparent text-white stroke-white"
+              }
+          `}
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="32"
+              height="32"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="icon"
+            >
+              <path d="M9 5h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2h-2" />
+              <path d="M9 3m0 2a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v0a2 2 0 0 1 -2 2h-2a2 2 0 0 1 -2 -2z" />
+              <path d="M10 14h4" />
+              <path d="M12 12v4" />
+            </svg>
+            {isOpen && <span>Acquisition</span>}
+          </NavLink>
 
+          <NavLink
+            to="/admin/inventory"
+            className={({ isActive }) => `
+              rounded w-full h-15 flex items-center gap-x-2 hover:border-1
+              ${isOpen ? "pl-0 sm:pl-4" : "justify-center"}
+              ${
+                isActive
+                  ? "bg-[#FEF7FF] text-black stroke-black"
+                  : "bg-transparent text-white stroke-white"
+              }
+          `}
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="32"
+              height="32"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="icon"
+            >
+              <path d="M9 5h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2h-2" />
+              <path d="M9 3m0 2a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v0a2 2 0 0 1 -2 2h-2a2 2 0 0 1 -2 -2z" />
+              <path d="M9 17v-4" />
+              <path d="M12 17v-1" />
+              <path d="M15 17v-2" />
+              <path d="M12 17v-1" />
+            </svg>
+            {isOpen && <span>Inventory</span>}
+          </NavLink>
 
 
 
@@ -265,9 +269,10 @@ const AdminNav = ({ isOpen }) => {
             className={({ isActive }) => `
               rounded w-full h-10 h-15 flex items-center gap-x-2 hover:border-1
               ${isOpen ? "pl-0 sm:pl-4" : "justify-center"}
-              ${isActive
-                ? "bg-[#FEF7FF] text-black stroke-black"
-                : "bg-transparent text-white stroke-white"
+              ${
+                isActive
+                  ? "bg-[#FEF7FF] text-black stroke-black"
+                  : "bg-transparent text-white stroke-white"
               }
           `}
           >
@@ -290,91 +295,82 @@ const AdminNav = ({ isOpen }) => {
             </svg>
             {isOpen && <span>Article</span>}
           </NavLink>
-
-
-
-
-
         </div>
 
-        {user.roleId == "1" ? (<>
-          <div className="pt-10 flex-1 w-full mt-4 border-t-1 border-gray-700 flex flex-col items-center px-3 text-xl gap-y-2 font-semibold">
-
-            <NavLink
-              to="/admin/user"
-              className={({ isActive }) => `
+        {user.roleId == "1" ? (
+          <>
+            <div className="pt-10 flex-1 w-full mt-4 border-t-1 border-gray-700 flex flex-col items-center px-3 text-xl gap-y-2 font-semibold">
+              <NavLink
+                to="/admin/user"
+                className={({ isActive }) => `
               rounded w-full h-15 flex items-center gap-x-2 hover:border-1
               ${isOpen ? "pl-0 sm:pl-4" : "justify-center"}
-              ${isActive
+              ${
+                isActive
                   ? "bg-[#FEF7FF] text-black stroke-black"
                   : "bg-transparent text-white stroke-white"
-                }
+              }
           `}
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="32"
-                height="32"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="icon"
               >
-                <path d="M9 7m-4 0a4 4 0 1 0 8 0a4 4 0 1 0 -8 0" />
-                <path d="M3 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2" />
-                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                <path d="M21 21v-2a4 4 0 0 0 -3 -3.85" />
-              </svg>
-              {isOpen && <span>User</span>}
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="32"
+                  height="32"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="icon"
+                >
+                  <path d="M9 7m-4 0a4 4 0 1 0 8 0a4 4 0 1 0 -8 0" />
+                  <path d="M3 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2" />
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                  <path d="M21 21v-2a4 4 0 0 0 -3 -3.85" />
+                </svg>
+                {isOpen && <span>User</span>}
+              </NavLink>
 
-
-
-
-
-            </NavLink>
-
-
-            <NavLink
-              to="/admin/logs"
-              className={({ isActive }) => `
+              <NavLink
+                to="/admin/logs"
+                className={({ isActive }) => `
                 rounded w-full h-15 flex items-center gap-x-2 hover:border-1
                 ${isOpen ? "pl-0 sm:pl-4" : "justify-center"}
-                ${isActive
-                  ? "bg-[#FEF7FF] text-black stroke-black"
-                  : "bg-transparent text-white stroke-white"
+                ${
+                  isActive
+                    ? "bg-[#FEF7FF] text-black stroke-black"
+                    : "bg-transparent text-white stroke-white"
                 }
             `}
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="32"
-                height="32"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="icon"
               >
-                <path d="M4 12h.01" />
-                <path d="M4 6h.01" />
-                <path d="M4 18h.01" />
-                <path d="M8 18h2" />
-                <path d="M8 12h2" />
-                <path d="M8 6h2" />
-                <path d="M14 6h6" />
-                <path d="M14 12h6" />
-                <path d="M14 18h6" />
-              </svg>
-              {isOpen && <span>Logs</span>}
-            </NavLink>
-          </div>
-        </>) : null}
-
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="32"
+                  height="32"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="icon"
+                >
+                  <path d="M4 12h.01" />
+                  <path d="M4 6h.01" />
+                  <path d="M4 18h.01" />
+                  <path d="M8 18h2" />
+                  <path d="M8 12h2" />
+                  <path d="M8 6h2" />
+                  <path d="M14 6h6" />
+                  <path d="M14 12h6" />
+                  <path d="M14 18h6" />
+                </svg>
+                {isOpen && <span>Logs</span>}
+              </NavLink>
+            </div>
+          </>
+        ) : null}
       </div>
       {/* Footer */}
       <div className=" mt-4 w-full flex justify-center px-2">
@@ -385,5 +381,3 @@ const AdminNav = ({ isOpen }) => {
 };
 
 export default AdminNav;
-
-

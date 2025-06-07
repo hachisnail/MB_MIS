@@ -57,6 +57,7 @@ body {
     --font-hina: "Hina Mincho", "serif";
 }
 
+@custom-variant 1_5 (@media (max-height: 960px));
 
 input:-webkit-autofill {
     transition: background-color 9999s ease-in-out 0s;

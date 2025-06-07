@@ -44,7 +44,7 @@ const AdminNav = ({ isOpen }) => {
       className={`
         h-full bg-[#1C1B19] flex flex-col items-center justify-between py-7
         transition-all duration-300 ease-in-out select-none
-        ${isOpen ? "w-65" : "w-20"}
+        ${isOpen ? "w-65" : "w-23"}
       `}
     >
       <div className="w-full p-2 border-b border-gray-700 flex flex-col  gap-y-2">
@@ -377,7 +377,7 @@ const AdminNav = ({ isOpen }) => {
 
       </div>
       {/* Footer */}
-      <div className="w-full flex justify-center px-2">
+      <div className=" mt-4 w-full flex justify-center px-2">
         <LogoutButton isOpen={isOpen} />
       </div>
     </div>

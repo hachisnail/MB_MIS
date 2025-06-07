@@ -5,7 +5,8 @@ const Logs = () => {
     
 
   return (
-    <div className=' w-[137rem] h-[69rem] 3xl:w-[175rem] 3xl:h-[88rem] overflow-scroll'>
+    <div className="w-full h-full max-w-[137rem] max-h-[69rem] 3xl:max-w-[175rem] 3xl:max-h-[88rem] overflow-scroll">
+
 
       
     </div>

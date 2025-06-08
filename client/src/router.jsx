@@ -1,25 +1,33 @@
 import { Routes, Route, Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "./context/authContext";
+import Unauthorized from "./pages/Unauthorized";
+
+// landing pages
 import Home from "./pages/Home";
 import Login from "./pages/Login";
+
+
+// admin pages
 import Dashboard from "./pages/admin/Dashboard";
 import Logs from "./pages/admin/Logs";
 import User from "./pages/admin/User";
 import Inventory from "./pages/admin/Inventory";
-import Unauthorized from "./pages/Unauthorized";
 import NoMatch from "./pages/NoMatch";
 import RequireRole from "./lib/requiredRole";
 import Acquisition from "./pages/admin/Acquisition";
 import ViewArtifacts from "./components/pages/viewArtifacts";
 import Schedule from "./pages/admin/Schedule";
 import Article from "./pages/admin/Article";
+import Appointments from "./pages/admin/Appointments";
+
 
 // sandbox
 import FileUploadDownload from "./sandbox/fileUploadDownload";
 import FilePreviewer from "./sandbox/FilePreviewer";
+import ModalsTest from "./sandbox/ModalsTest"
+
 
 import AdminLayout from "./components/layout/AdminLayout";
-import Appointments from "./pages/admin/Appointments";
 
 const RequireAuth = () => {
   const { user } = useAuth();
@@ -61,7 +69,7 @@ const Router = () => {
           {/* sandbox for testing */}
           <Route path="sandbox" element={<FileUploadDownload />} />
           <Route path="sandbox/preview/:category/:filename" element={<FilePreviewer />} />
-
+          <Route path="sandbox/modal" element={<ModalsTest />} />
 
           {/* sandbox for end */}
 

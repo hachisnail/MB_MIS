@@ -59,22 +59,22 @@ const Login = () => {
       <div className="w-full flex my-auto select-none justify-center">
         <form
           onSubmit={handleSubmit}
-          className="  px-8 pt-8 pb-4 rounded-lg shadow-2xl w-full max-w-sm"
+          className="  px-8 pt-8 pb-6 rounded-lg shadow-2xl w-full max-w-xl"
         >
           {/* <h2 className="text-2xl font-semibold mb-6 text-center text-white">Login</h2> */}
           <div className="mb-7 w-full h-fit flex flex-col items-center gap-y-1">
             <div className="flex w-fit items-center gap-x-1">
-              <img src={Logo} alt="Museo Bulawan Logo" className="w-7 h-auto" />
-              <span className=" text-xl font-semibold">MIS</span>
+              <img src={Logo} alt="Museo Bulawan Logo" className="w-11 h-auto" />
+              <span className=" text-4xl font-semibold">MIS</span>
             </div>
             <div className="flex flex-col">
-              <span className="text-4xl font-semibold">Welcome back</span>
-              <span className="text-sm text-center text-gray-500">Please enter your details to sign in</span>
+              <span className="text-7xl font-semibold">Welcome back</span>
+              <span className="text-2xl text-center text-gray-500">Please enter your details to sign in</span>
             </div>
           </div> 
 
-          <div className="mb-2">
-            <label htmlFor="username" className="block text-xs mb-1">Your username</label>
+          <div className="mb-4">
+            <label htmlFor="username" className="block text-xl mb-2">Your username</label>
             <input
               id="username"
               type="text"
@@ -87,8 +87,8 @@ const Login = () => {
             />
           </div>
 
-          <div className="mb-2">
-            <label htmlFor="password" className="block text-xs mb-1">Password</label>
+          <div className="mb-4">
+            <label htmlFor="password" className="block text-xl mb-2">Password</label>
             <input
               id="password"
               type="password"
@@ -100,22 +100,22 @@ const Login = () => {
               required
             />
           </div>
-          <div className="mb-2 w-full flex justify-end">
+          <div className="mb-4 w-full flex justify-end">
             <NavLink to="/forgot-password">
-              <span className="font-semibold text-sm hover:text-gray-600">Forgot password</span>
+              <span className="font-semibold text-xl hover:text-gray-600">Forgot password</span>
             </NavLink>
           </div>
 
           <button
             type="submit"
             disabled={isloading}
-            className="cursor-pointer w-full bg-black hover:bg-gray-500 text-white py-2 rounded-lg transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="cursor-pointer w-full bg-black hover:bg-gray-500 text-white py-2 text-2xl rounded-lg transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isloading ? "Logging in..." : "Login"}
           </button>
 
-          <div className="mt-1 w-full h-6 flex items-center">
-            {error && <span className="text-red-400 w-full text-sm text-center">{error}</span>}
+          <div className="mt-2 w-full h-6 flex items-center">
+            {error && <span className="text-red-400 w-full text-xl text-center">{error}</span>}
           </div>
 
         </form>

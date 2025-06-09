@@ -1,5 +1,6 @@
 import { DataTypes } from "sequelize";
 import { mainDb, logsDb } from "../configs/databases.js";
+import { addDbChangeHooks } from "../hooks/emitDbChangeHooks.js";
 
 // Role Model
 const Role = mainDb.define("Role", {
@@ -115,5 +116,10 @@ User.belongsTo(Role, { foreignKey: "roleId" });
 
 User.hasMany(UserSession, { foreignKey: "userId" });
 UserSession.belongsTo(User, { foreignKey: "userId" });
+
+
+addDbChangeHooks(Role, "Role");
+addDbChangeHooks(User, "User");
+addDbChangeHooks(UserSession, "UserSession");
 
 export { mainDb, Role, User, UserSession };

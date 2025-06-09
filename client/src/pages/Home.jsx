@@ -4,8 +4,14 @@ import { NavLink } from 'react-router-dom'
 const Home = () => {
   return (
     <div className='w-screen min-h-screen flex flex-col'>
+      <div className='w-full h-fit flex justify-center'>
+            <span className='text-4xl'>Home</span>
+        </div>
       <NavLink className="w-fit" to="/login">
         <span className='text-2xl font-semibold hover:text-gray-600'>login</span>
+      </NavLink>
+      <NavLink className="w-fit" to="/catalogs">
+        <span className='text-2xl font-semibold hover:text-gray-600'>Catalogs</span>
       </NavLink>
     </div>
   )

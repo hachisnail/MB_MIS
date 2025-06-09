@@ -3,15 +3,16 @@ import session from "express-session";
 import dotenv from "dotenv";
 import cors from "cors";
 import http from "http";
-import { WebSocketServer } from "ws";
 import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs";
 
 import { mainDb } from "./models/authModels.js";
 import sessionStore from "./configs/sessionStore.js";
-import authRoutes from "./routes/auth.js"
+import authRoutes from "./routes/auth.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
+
+import { initializeSocket } from "./configs/socketServer.js";
 
 dotenv.config();
 
@@ -24,7 +25,6 @@ if (!fs.existsSync(UPLOAD_BASE_DIR)) {
 }
 
 const app = express();
-
 
 app.use(cors({
   origin: process.env.CLIENT_URL,
@@ -55,25 +55,9 @@ app.use("/assets", express.static(path.join(UPLOAD_BASE_DIR, "assets")));
 app.use("/api", uploadRoutes);
 app.use("/api/auth", authRoutes);
 
-// WebSocket server
 const server = http.createServer(app);
-const wss = new WebSocketServer({ server });
 
-wss.on("connection", (ws) => {
-  console.log("WebSocket client connected");
-
-  ws.on("close", () => {
-    console.log("WebSocket client disconnected");
-  });
-});
-
-export const broadcastRefresh = () => {
-  wss.clients.forEach((client) => {
-    if (client.readyState === client.OPEN) {
-      client.send(JSON.stringify({ type: "REFRESH_DATA" }));
-    }
-  });
-};
+const io = initializeSocket(server, process.env.CLIENT_URL);
 
 const PORT = process.env.PORT;
 
@@ -81,7 +65,7 @@ const PORT = process.env.PORT;
   try {
     await mainDb.authenticate();
     await sessionStore.sync();
-    await mainDb.sync(); 
+    await mainDb.sync({force: true});
     server.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
     });
@@ -89,3 +73,5 @@ const PORT = process.env.PORT;
     console.error("Unable to connect to DB:", err);
   }
 })();
+
+export { io };

@@ -1,14 +1,19 @@
 import { useAuth } from "../../context/authContext";
 import { NavLink } from "react-router-dom";
+import { useRouterFlags } from "../../context/routerFlagProvider";
 
 import LogoutButton from "../buttons/LogoutBtn";
 
 const AdminNav = ({ isOpen }) => {
   const { user } = useAuth();
+  const { flags, loading } = useRouterFlags();
+
+
   const firstInitial = user.fname.charAt(0).toUpperCase();
   const lastInitial = user.lname.charAt(0).toUpperCase();
-  // let position = user.position;
-  //  console.log(position);
+
+
+
 
   const colorMap = {
     A: "#FF6666",
@@ -116,30 +121,32 @@ const AdminNav = ({ isOpen }) => {
         </div>
         <div className="w-full h-full mt-10">
           <div className="flex-1 w-full  flex flex-col items-center px-3 text-xl gap-y-2 font-semibold">
-            <NavItem
-              title="Dashboard"
-              to="/admin/dashboard"
-              label="Dashboard"
-              icon={
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="32"
-                  height="32"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="icon"
-                >
-                  <path d="M5 12l-2 0l9 -9l9 9l-2 0" />
-                  <path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-7" />
-                  <path d="M9 21v-6a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v6" />
-                </svg>
-              }
-            />
-
+            {flags["dashboard"] && (
+              <NavItem
+                title="Dashboard"
+                to="/admin/dashboard"
+                label="Dashboard"
+                icon={
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="32"
+                    height="32"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="icon"
+                  >
+                    <path d="M5 12l-2 0l9 -9l9 9l-2 0" />
+                    <path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-7" />
+                    <path d="M9 21v-6a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v6" />
+                  </svg>
+                }
+              />
+            )}
+            {flags["appointment"] && (
             <NavItem
               title="Appointment"
               to="/admin/appointment"
@@ -166,6 +173,10 @@ const AdminNav = ({ isOpen }) => {
                 </svg>
               }
             />
+            )}
+
+
+            {flags["schedule"] && (
 
             <NavItem
               title="Schedeule"
@@ -198,6 +209,11 @@ const AdminNav = ({ isOpen }) => {
                 </svg>
               }
             />
+            )}
+
+
+
+          {flags["acquisition"] && (
 
             <NavItem
               title="Acquisition"
@@ -223,6 +239,9 @@ const AdminNav = ({ isOpen }) => {
                 </svg>
               }
             />
+            )}
+
+          {flags["inventory"] && (
 
             <NavItem
               title="Inventory"
@@ -250,6 +269,9 @@ const AdminNav = ({ isOpen }) => {
                 </svg>
               }
             />
+            )}
+
+            {flags["article"] && (
 
             <NavItem
               title="Article"
@@ -275,11 +297,16 @@ const AdminNav = ({ isOpen }) => {
                 </svg>
               }
             />
+            )}
+
           </div>
 
           {user.roleId == "1" ? (
             <>
               <div className="pt-10 flex-1 w-full mt-4 border-t-1 border-gray-700 flex flex-col items-center px-3 text-xl gap-y-2 font-semibold">
+                
+                {flags["user"] && (
+
                 <NavItem
                   title="User"
                   to="/admin/user"
@@ -304,6 +331,9 @@ const AdminNav = ({ isOpen }) => {
                     </svg>
                   }
                 />
+                )}
+
+                {flags["logs"] && (
 
                 <NavItem
                   title="Logs"
@@ -334,6 +364,7 @@ const AdminNav = ({ isOpen }) => {
                     </svg>
                   }
                 />
+                )}
               </div>
             </>
           ) : null}

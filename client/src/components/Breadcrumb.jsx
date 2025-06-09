@@ -4,7 +4,13 @@ const Breadcrumb = () => {
   const location = useLocation();
   let currentLink = "";
 
+
   const pathSegments = location.pathname.split("/").filter(crumb => crumb !== "");
+  // console.log(location.pathname);
+const theme = ["/admin/user", "/admin/logs"].includes(location.pathname)
+  ? "text-gray-400"
+  : "text-gray-700";
+
 
   const crumbs = pathSegments.map((crumb, index) => {
     currentLink += `/${crumb}`;
@@ -31,7 +37,7 @@ const Breadcrumb = () => {
       {crumbs.map((crumb, index) => (
         <div className="flex items-center gap-x-2" key={crumb.path}>
           {index !== 0 && <span className="font-semibold">/</span>}
-          <NavLink to={crumb.path} className="text-gray-700 hover:underline">
+          <NavLink to={crumb.path} className={` ${theme} hover:underline`}>
             <span>{crumb.label}</span>
           </NavLink>
         </div>

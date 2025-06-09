@@ -85,7 +85,7 @@ export const ContextMenu = ({ children, menuItems }) => {
         leaveTo="opacity-0 scale-95"
       >
         <div
-          className="fixed z-50 bg-white rounded-sm shadow-lg ring-1 ring-black ring-opacity-5"
+          className="fixed z-50 bg-white rounded-sm shadow-lg ring-1 ring-gray-800 ring-opacity-5"
           style={{
             top: `${position.y}px`,
             left: `${position.x}px`,

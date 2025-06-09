@@ -242,13 +242,20 @@ const FileUploadDownload = () => {
           </div>
         </div>
       ))}
-
+      <div className="w-fit h-fit flex gap-x-5">
       <NavLink to="modal">
         <TooltipButton
           buttonText="Modals Samples"
           tooltipText="Click to open modals usage demo"
         />
       </NavLink>
+      <NavLink to="router-flag">
+        <TooltipButton
+          buttonText="Router Flags"
+          tooltipText="This will disable pages on the website likely to controll content displayed"
+        />
+      </NavLink>
+      </div>
     </div>
   );
 };

@@ -81,7 +81,10 @@ export async function logout(req, res) {
 
     await UserSession.update(
       { logoutAt: new Date(), isOnline: false },
-      { where: { sessionId: req.session.id } }
+      {
+        where: { sessionId: req.session.id },
+        individualHooks: true, 
+      }
     );
 
     req.session.destroy((err) => {

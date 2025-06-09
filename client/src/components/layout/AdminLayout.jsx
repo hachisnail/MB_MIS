@@ -32,6 +32,10 @@ const AdminLayout = () => {
       pageTitle = 'User Management';
       theme = "bg-[#151515] text-white";
       break;
+    case "add-user":
+      pageTitle = 'Invite A New User';
+      theme = "bg-[#151515] text-white";
+      break;
     case "appointment":
       pageTitle = 'Appointments Management';
       break;
@@ -47,7 +51,7 @@ const AdminLayout = () => {
   }
 
   return (
-    <div className="h-screen w-screen grid grid-rows-[auto_1fr] ">
+    <div className="h-screen w-screen grid grid-rows-[auto_1fr] overflow-hidden">
       {/* Header */}
       <AdminHeader
         onOpen={() => setSidebarOpen(true)}
@@ -56,12 +60,12 @@ const AdminLayout = () => {
       />
 
       {/* Sidebar + Main Content */}
-      <div className="grid grid-cols-[auto_1fr] h-full ">
+      <div className="grid grid-cols-[auto_1fr] min-h-full overflow-hidden">
         {/* Sidebar */}
         <AdminNav isOpen={isSidebarOpen} />
 
         {/* Main Content */}
-        <main className={`h-full w-full flex flex-col overflow-visible  overflow-x-scroll overflow-y-scroll ${theme} p-4`}>
+        <main className={`h-full w-full flex flex-col overflow-hidden overflow-x-scroll overflow-y-scroll ${theme} p-4`}>
           {!isDashboard && (
             <div className={`w-full mb-4 ${theme}`}>
               <div className="flex flex-col gap-y-1">

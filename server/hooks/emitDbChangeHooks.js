@@ -27,7 +27,21 @@ export function emitDbChange(modelName, action, instance) {
  * @param {string} modelName
  */
 export function addDbChangeHooks(model, modelName) {
-  model.afterCreate(instance => emitDbChange(modelName, "create", instance));
-  model.afterUpdate(instance => emitDbChange(modelName, "update", instance));
-  model.afterDestroy(instance => emitDbChange(modelName, "delete", instance));
+  model.afterCreate((instance, options) => {
+    emitDbChange(modelName, "create", instance);
+  });
+
+  model.afterUpdate((instance, options) => {
+    // Only emit if any field was actually changed
+    const changed = instance.changed();
+    if (changed && changed.length > 0) {
+      emitDbChange(modelName, "update", instance);
+    } else {
+      console.log(`[Socket Emit] Skipped emit: No changes detected for "${modelName}"`);
+    }
+  });
+
+  model.afterDestroy((instance, options) => {
+    emitDbChange(modelName, "delete", instance);
+  });
 }

@@ -14,7 +14,7 @@ class SocketClient {
     });
 
     this.socket.on("dbChange", (payload) => {
-      // console.log("dbchange");
+      console.log(payload);
       this.handleDbChange(payload);
     });
   }

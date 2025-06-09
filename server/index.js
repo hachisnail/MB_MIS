@@ -65,7 +65,9 @@ const PORT = process.env.PORT;
   try {
     await mainDb.authenticate();
     await sessionStore.sync();
-    await mainDb.sync({force: true});
+    // await mainDb.sync({force: true}); use this only if you dont have a db take note entries will be dropped on existing db.
+    await mainDb.sync();
+
     server.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
     });

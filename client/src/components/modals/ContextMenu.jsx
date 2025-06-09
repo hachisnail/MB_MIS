@@ -7,7 +7,7 @@ const MENU_ITEM_HEIGHT = 36;
 // Simple unique ID generator (not cryptographically safe, but enough)
 const generateId = () => Math.random().toString(36).substr(2, 9);
 
-export const ContextMenu = ({ children, menuItems }) => {
+export const ContextMenu = ({ children, menuItems, theme = "light" }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const idRef = useRef(generateId());
@@ -85,7 +85,11 @@ export const ContextMenu = ({ children, menuItems }) => {
         leaveTo="opacity-0 scale-95"
       >
         <div
-          className="fixed z-50 bg-white rounded-sm shadow-lg ring-1 ring-gray-800 ring-opacity-5"
+          className={`fixed z-50 rounded-sm shadow-lg ring-1 ring-opacity-5
+            ${theme === "dark"
+              ? "bg-[#151515] ring-[#373737]"
+              : "bg-white ring-gray-800"}
+          `}
           style={{
             top: `${position.y}px`,
             left: `${position.x}px`,
@@ -102,9 +106,13 @@ export const ContextMenu = ({ children, menuItems }) => {
                 }
               }}
               disabled={disabled}
-              className={`w-full text-left px-4 py-2 text-sm cursor-pointer ${
+              className={`w-full text-left font-semibold text-lg px-4 py-2  cursor-pointer ${
                 disabled
-                  ? "text-gray-400 cursor-not-allowed"
+                  ? theme === "dark"
+                    ? "text-gray-500 cursor-not-allowed"
+                    : "text-gray-400 cursor-not-allowed"
+                  : theme === "dark"
+                  ? "text-gray-200 hover:bg-gray-700 hover:text-white"
                   : "text-gray-800 hover:bg-gray-600 hover:text-white"
               }`}
               style={{ height: MENU_ITEM_HEIGHT }}

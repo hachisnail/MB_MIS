@@ -41,7 +41,7 @@ export default function TooltipButton({
             if (onClick) onClick(e);
             setIsOpen(false);
           }}
-          className={`px-4 py-2 ${buttonColor} ${hoverColor} ${textColor} rounded focus:outline-none focus:ring-2 focus:ring-gray-400 cursor-pointer`}
+          className={`px-4 py-2 ${buttonColor} ${hoverColor} ${textColor} text-xl rounded focus:outline-none focus:ring-2 focus:ring-gray-400 cursor-pointer`}
           aria-describedby="tooltip"
         >
           {buttonText}

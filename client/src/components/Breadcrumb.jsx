@@ -4,33 +4,39 @@ const Breadcrumb = () => {
   const location = useLocation();
   let currentLink = "";
 
-
-  const pathSegments = location.pathname.split("/").filter(crumb => crumb !== "");
+  const pathSegments = location.pathname
+    .split("/")
+    .filter((crumb) => crumb !== "");
   // console.log(location.pathname);
-const theme = ["/admin/user", "/admin/logs"].includes(location.pathname)
-  ? "text-gray-400"
-  : "text-gray-700";
+  const theme = ["/admin/user", "/admin/logs", "/admin/user/add-user"].includes(
+    location.pathname
+  )
+    ? "text-gray-400"
+    : "text-gray-700";
 
+  const crumbs = pathSegments
+    .map((crumb, index) => {
+      currentLink += `/${crumb}`;
 
-  const crumbs = pathSegments.map((crumb, index) => {
-    currentLink += `/${crumb}`;
+      if (["admin", "preview", "files", "pictures"].includes(crumb))
+        return null;
 
-    if (["admin", "preview", "files", "pictures"].includes(crumb)) return null;
+      const decoded = decodeURIComponent(crumb);
 
-    const decoded = decodeURIComponent(crumb);
+      const label = decoded
+        .replace(/-/g, " ") // Replace hyphens with spaces
+        .replace(/\s+/g, " ") // Normalize whitespace
+        .trim()
+        .split(" ") // Split into words
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1)) // Capitalize each word
+        .join(" ");
 
-    const label = decoded
-      .replace(/-/g, " ")
-      .replace(/\s+/g, " ")
-      .trim();
-
-    const formatted = label.charAt(0).toUpperCase() + label.slice(1);
-
-    return {
-      path: currentLink,
-      label: formatted,
-    };
-  }).filter(Boolean);
+      return {
+        path: currentLink,
+        label,
+      };
+    })
+    .filter(Boolean);
 
   return (
     <div className="flex items-center gap-x-2 text-xl text-gray-600">

@@ -13,6 +13,7 @@ import Catalogue from "./pages/Catalogue";
 import Dashboard from "./pages/admin/Dashboard";
 import Logs from "./pages/admin/Logs";
 import User from "./pages/admin/User";
+import CreateUser from "./components/pages/createUsers";
 import Inventory from "./pages/admin/Inventory";
 import NoMatch from "./pages/NoMatch";
 import RequireRole from "./lib/requiredRole";
@@ -86,6 +87,8 @@ const Router = () => {
           <Route element={<RequireRole role="Admin" />}>
           {flags['logs'] && <Route path="logs" element={<Logs />} />}
           {flags['user'] && <Route path="user" element={<User />} />}
+          {flags['user'] && <Route path="user/add-user" element={<CreateUser />} />}
+
           </Route>
 
 

@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1:3306
--- Generation Time: Jun 07, 2025 at 06:15 PM
+-- Generation Time: Jun 14, 2025 at 03:33 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -20,6 +20,52 @@ SET time_zone = "+00:00";
 --
 -- Database: `museo_bulawan_mis`
 --
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `invitations`
+--
+
+CREATE TABLE `invitations` (
+  `id` int(11) NOT NULL,
+  `email` varchar(255) NOT NULL,
+  `first_name` varchar(255) NOT NULL,
+  `last_name` varchar(255) NOT NULL,
+  `contact_number` varchar(20) DEFAULT NULL,
+  `token` varchar(255) NOT NULL,
+  `expiresAt` datetime NOT NULL,
+  `isUsed` tinyint(1) DEFAULT 0,
+  `roleId` int(11) NOT NULL,
+  `position` enum('Staff','ContentManager','Viewer','Reviewer','Admin') DEFAULT NULL,
+  `createdAt` datetime NOT NULL DEFAULT current_timestamp(),
+  `updatedAt` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `role` varchar(50) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `invitations`
+--
+
+INSERT INTO `invitations` (`id`, `email`, `first_name`, `last_name`, `contact_number`, `token`, `expiresAt`, `isUsed`, `roleId`, `position`, `createdAt`, `updatedAt`, `role`) VALUES
+(3, 'jeff.jefferson.jt@gmail.com', 'Test', 'Sins', '09123245678', '53a35676-a3ea-49ac-80dc-bb84864df53f', '2025-06-18 02:23:25', 1, 0, NULL, '2025-06-11 02:23:25', '2025-06-11 03:26:51', 'Admin'),
+(5, 'jeffersontalagtag06@gmail.com', 'Jeffereson ', 'Talagtag', '09054163430', '8aecf2ae-878b-4453-b95f-87a2136f96c8', '2025-06-20 06:55:23', 1, 0, NULL, '2025-06-13 02:57:20', '2025-06-14 13:27:20', 'Admin');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `logs`
+--
+
+CREATE TABLE `logs` (
+  `id` int(11) NOT NULL,
+  `action` enum('create','update','delete','soft_delete') NOT NULL,
+  `model` varchar(50) NOT NULL,
+  `modelId` int(11) NOT NULL,
+  `details` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`details`)),
+  `userId` int(11) NOT NULL,
+  `createdAt` datetime NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -45,6 +91,38 @@ INSERT INTO `roles` (`id`, `name`) VALUES
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `router_flags`
+--
+
+CREATE TABLE `router_flags` (
+  `id` int(11) NOT NULL,
+  `route_key` varchar(255) NOT NULL,
+  `is_enabled` tinyint(1) DEFAULT 0,
+  `createdAt` datetime NOT NULL,
+  `updatedAt` datetime NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `router_flags`
+--
+
+INSERT INTO `router_flags` (`id`, `route_key`, `is_enabled`, `createdAt`, `updatedAt`) VALUES
+(1, 'login', 1, '2025-06-09 12:52:19', '2025-06-09 12:52:19'),
+(2, 'catalogs', 0, '2025-06-09 12:52:19', '2025-06-09 04:52:33'),
+(3, 'home', 1, '2025-06-09 12:52:19', '2025-06-09 12:52:19'),
+(4, 'dashboard', 1, '2025-06-09 12:52:19', '2025-06-09 14:45:00'),
+(5, 'inventory', 1, '2025-06-09 12:52:19', '2025-06-09 14:36:47'),
+(6, 'acquisition', 1, '2025-06-09 12:52:19', '2025-06-09 12:52:19'),
+(7, 'schedule', 1, '2025-06-09 12:52:19', '2025-06-09 12:52:19'),
+(8, 'article', 1, '2025-06-09 12:52:19', '2025-06-09 12:52:19'),
+(9, 'appointment', 1, '2025-06-09 12:52:19', '2025-06-10 10:33:52'),
+(10, 'sandbox', 1, '2025-06-09 12:52:19', '2025-06-09 12:52:19'),
+(11, 'logs', 1, '2025-06-09 12:52:19', '2025-06-09 14:59:23'),
+(12, 'user', 1, '2025-06-09 12:52:19', '2025-06-09 14:59:27');
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `sessions`
 --
 
@@ -61,7 +139,7 @@ CREATE TABLE `sessions` (
 --
 
 INSERT INTO `sessions` (`sid`, `expires`, `data`, `createdAt`, `updatedAt`) VALUES
-('VAQ7u8dE31kWXvli0EwUsecyfCGVqfNb', '2025-06-08 16:06:14', '{\"cookie\":{\"originalMaxAge\":86400000,\"expires\":\"2025-06-08T15:59:53.781Z\",\"secure\":false,\"httpOnly\":true,\"path\":\"/\",\"sameSite\":\"lax\"},\"userId\":1,\"user\":{\"id\":1,\"username\":\"jefferson06\",\"fname\":\"Jefferson\",\"lname\":\"Talagtag\",\"email\":\"jeffersontalagtag06@gmail.com\",\"roleId\":1,\"position\":\"ContentManager\"}}', '2025-06-07 15:59:53', '2025-06-07 16:06:14');
+('2uoO2Q2AkavYl22syYK4tcUuzXyHjCiC', '2025-06-15 13:32:36', '{\"cookie\":{\"originalMaxAge\":86400000,\"expires\":\"2025-06-15T13:28:11.372Z\",\"secure\":false,\"httpOnly\":true,\"path\":\"/\",\"sameSite\":\"lax\"},\"userId\":6,\"user\":{\"id\":6,\"username\":\"hachisnail\",\"fname\":\"Jeffereson \",\"lname\":\"Talagtag\",\"email\":\"jeffersontalagtag06@gmail.com\",\"roleId\":1,\"position\":\"System Administrator\"}}', '2025-06-14 13:28:11', '2025-06-14 13:32:36');
 
 -- --------------------------------------------------------
 
@@ -74,22 +152,24 @@ CREATE TABLE `users` (
   `username` varchar(50) NOT NULL,
   `password` varchar(255) NOT NULL,
   `fname` varchar(50) DEFAULT NULL,
+  `lname` varchar(50) DEFAULT NULL,
   `email` varchar(100) NOT NULL,
   `contact` varchar(20) DEFAULT NULL,
   `roleId` int(11) DEFAULT NULL,
-  `position` enum('Staff','ContentManager','Viewer','Reviewer','Admin') DEFAULT 'Staff',
+  `position` char(50) DEFAULT NULL,
   `createdAt` datetime NOT NULL,
-  `updatedAt` datetime NOT NULL,
-  `lname` varchar(50) DEFAULT NULL
+  `updatedAt` datetime NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `users`
 --
 
-INSERT INTO `users` (`id`, `username`, `password`, `fname`, `email`, `contact`, `roleId`, `position`, `createdAt`, `updatedAt`, `lname`) VALUES
-(1, 'jefferson06', '$2a$10$HGZGUkRMt/qdhLp.wzE6j.eW9ajXk127zo5PL26MU9GHpVUY/tGA6', 'Jefferson', 'jeffersontalagtag06@gmail.com', '09054173430', 1, 'ContentManager', '2025-05-22 01:21:29', '2025-05-22 01:22:56', 'Talagtag'),
-(2, 'renz', '$2a$10$HGZGUkRMt/qdhLp.wzE6j.eW9ajXk127zo5PL26MU9GHpVUY/tGA6', 'Renz', 'labayanrenz@gmail.com', NULL, 3, 'Staff', '2025-05-22 02:45:01', '2025-05-22 02:45:01', 'Labayan');
+INSERT INTO `users` (`id`, `username`, `password`, `fname`, `lname`, `email`, `contact`, `roleId`, `position`, `createdAt`, `updatedAt`) VALUES
+(2, 'renz', '$2a$10$HGZGUkRMt/qdhLp.wzE6j.eW9ajXk127zo5PL26MU9GHpVUY/tGA6', 'Renz', 'Labayan', 'labayanrenz@gmail.com', NULL, 1, 'Staff', '2025-05-22 02:45:01', '2025-05-22 02:45:01'),
+(3, 'jeff', '$2b$10$6jk2DAgyX5RR/aczH3dH..AqTNY9Q310L/shTQ4eQPmqLWMGQBvjq', 'Test', 'Sins', 'jeff.jefferson.jt@gmail.com', '09123245678', 1, 'Tester', '2025-06-11 03:26:51', '2025-06-11 03:26:51'),
+(4, 'test', '$2b$10$QtC90.XBzFvttptxDAGUmu2vWrVim32o8lzpgwr7PE8I1YZLEMqtO', 'Johnny', 'Sins', 'jeffersontalagtag06@yahoo.com', '09054163430', NULL, 'Tester', '2025-06-11 03:30:33', '2025-06-11 03:30:33'),
+(6, 'hachisnail', '$2b$10$8g6DrNf6AqIKT7lbXKDZt..rHshc0exefPrLO46JNza2dmgixYsVW', 'Jeffereson', 'Talagtag', 'jeffersontalagtag06@gmail.com', '09054163430', 1, 'System Administrator', '2025-06-14 13:27:20', '2025-06-14 13:27:20');
 
 -- --------------------------------------------------------
 
@@ -111,146 +191,63 @@ CREATE TABLE `user_sessions` (
 --
 
 INSERT INTO `user_sessions` (`id`, `userId`, `sessionId`, `loginAt`, `logoutAt`, `isOnline`) VALUES
-(9, 1, '_C1ZnNaPnsU8DweOYFay93mbydRbOKGj', '2025-05-21 18:25:01', '2025-05-21 18:25:27', 0),
-(10, 1, 'Pc1-_uKTYNPntFeQZOmHmT9n89wMRvx-', '2025-05-21 18:25:53', '2025-05-21 18:27:43', 0),
-(12, 1, 'GojPvk8lkcckEKT0Xo8ig3GgYjuMwKx3', '2025-05-21 18:31:27', '2025-05-21 18:33:03', 0),
-(14, 1, 'nDppfZqL2BsCHi0kp1NBz4kBu2mmvpsE', '2025-05-21 18:33:41', '2025-05-21 18:33:54', 0),
-(15, 1, '5Iag0sSO45sExD3W2sd-6twAQFTWgWpV', '2025-05-21 18:33:54', '2025-05-21 18:42:15', 0),
-(16, 2, 'zXfVbcD6lr4fHJFZF6FTrVRD-BJr1n1K', '2025-05-21 18:45:11', '2025-05-21 18:45:41', 0),
-(17, 1, '8rn4W-uyTchlIIGvI17YBJ8k_0IwInGj', '2025-05-21 18:48:05', '2025-05-21 18:49:59', 0),
-(18, 1, '0lpjeNIhLgSU0twSuAnEpZV4onGpgcuC', '2025-05-21 18:49:59', '2025-05-21 18:50:34', 0),
-(19, 2, '3DSUZBdYAASO4Qhj2efyhzTIqFX3CmpP', '2025-05-21 18:50:17', '2025-05-21 18:50:53', 0),
-(20, 1, 'OnwEo9IW0Rg5U6UxoPj8xvU6ijoWyebD', '2025-05-22 04:53:05', '2025-05-22 05:47:14', 0),
-(21, 1, 'DSjxFGhkZOxvLXVbAcVmZvYH_24mVSl-', '2025-05-22 05:47:33', '2025-05-22 05:48:00', 0),
-(22, 1, 'tjPowWleiBBG9ky7iojfMBTchWv99KjO', '2025-05-22 05:48:02', '2025-05-22 05:49:27', 0),
-(23, 1, 'rs0lUh-gF8dP3rcCj2hDDQVXyZPlwtme', '2025-05-22 05:49:30', '2025-05-22 05:50:32', 0),
-(24, 1, 'yGtakW8V_zymtE-gzXcXKg53bikrIYz5', '2025-05-22 05:50:35', '2025-05-22 05:53:33', 0),
-(25, 1, 'qUtFlU54PGCVAQgT0Ih1I9Nv2ibW9TtS', '2025-05-22 05:53:35', '2025-05-22 05:56:09', 0),
-(26, 1, 'ZYnwxZCtirY7IRYw-7IOoNJ9Wtuw3xdH', '2025-05-22 05:56:16', '2025-05-22 05:57:55', 0),
-(27, 1, 'x0QJlzjiKFSwbbtnM3QcoRrXg3Eu6pKX', '2025-05-22 05:57:57', '2025-05-22 05:59:07', 0),
-(28, 1, 'y61r8_a360V3BIpikGjzVa_C0LNV8ab9', '2025-05-22 05:59:13', '2025-05-22 06:18:17', 0),
-(29, 1, 'BMgOm4WjvM1aZGRhVKe9W8J8MBG5YUCe', '2025-05-22 06:18:19', '2025-05-22 06:32:33', 0),
-(30, 1, 'icgwe9N4EtZF0ZXDkoY18LVdSqvVYq6L', '2025-05-22 06:32:35', '2025-05-22 07:19:23', 0),
-(31, 2, '8-NdmCj7S5UgwhtreB_1fxu5OlQkpVfI', '2025-05-22 07:19:26', '2025-05-22 07:19:31', 0),
-(32, 2, 'vvFS1BZ0fjVeOPteusxChf3h7IehrhSG', '2025-05-22 07:19:34', '2025-05-22 07:19:35', 0),
-(33, 1, 'bLxvE9xl_znjH8sHloGdLMPJ-vJNPKZ0', '2025-05-22 07:19:36', '2025-05-22 07:27:12', 0),
-(34, 2, 'PcFAEAQnyg33fUEkYadJ6DgsFhWaqmji', '2025-05-22 07:27:15', '2025-05-22 07:34:56', 0),
-(36, 1, 'T9eiuvOy23F2KlALl5ieWZq3rLesRAPv', '2025-05-22 07:35:13', '2025-05-22 07:50:17', 0),
-(37, 2, 'JpNCuOEmUTpt6tlkTKLd9Jm57O4aclxc', '2025-05-22 07:50:20', '2025-05-22 08:33:34', 0),
-(38, 1, 'wNzfgqEcUEUj8OW32gGniwDJ3T8Pteq1', '2025-05-22 08:37:02', '2025-05-22 08:49:23', 0),
-(39, 1, 'bwxMvU-r0YpDqjuFkQP_V4wiJyymvgco', '2025-05-22 13:04:07', '2025-05-22 13:31:49', 0),
-(40, 2, 'VtpoD02wB-YArT3rrluCCyWWf_AxNBo3', '2025-05-22 13:31:52', '2025-05-22 14:10:17', 0),
-(41, 1, 'datFsv_lTBzVCXz7Tidu4zKgEsGq1bSc', '2025-05-22 14:10:28', '2025-05-22 17:49:54', 0),
-(43, 1, 'DlGpsaS1vK3PYA7mcIcOrECUTGptsFz3', '2025-05-22 17:49:57', '2025-05-22 17:56:10', 0),
-(44, 1, 'D2oSSIHJaGAmV3zq-YToKJkui51oRsH_', '2025-05-22 17:56:13', '2025-05-22 17:56:52', 0),
-(45, 1, 'KnVd2GrN-9Id1H0qG9PZaCN-UajjGxYr', '2025-05-22 17:56:55', '2025-05-23 09:53:31', 0),
-(46, 2, 't3o1iia2O0GAgBABy5y0K5Nhl_QdmyEx', '2025-05-23 09:53:34', '2025-05-23 09:55:07', 0),
-(47, 1, 'm56oUUqtIIPOhEZwPAbbl4QZ93kBVz6n', '2025-05-23 09:55:09', '2025-06-03 00:07:25', 0),
-(48, 1, '3aE9p6jOUuOsSFrhNW_THOT5xlLQeQV4', '2025-06-03 00:07:25', '2025-06-03 00:11:18', 0),
-(50, 2, 'smB_sFmJKLFhRYnN--5P_SCI2utL5nOZ', '2025-06-03 00:11:43', '2025-06-03 00:12:14', 0),
-(51, 1, 'WR2HqNLGI8z96Nhi3E0oRkXdHsgVUCpu', '2025-06-03 00:12:36', '2025-06-03 00:20:05', 0),
-(53, 1, 'dwsY8h69I3jHhBWTLgbdjKxuzYpKx8f0', '2025-06-03 00:20:07', '2025-06-03 09:44:56', 0),
-(55, 1, 'T6MJi5noPpvg_JpZu_kU9gqGW8xJdU7s', '2025-06-03 09:44:59', '2025-06-03 09:45:39', 0),
-(56, 1, 'XOqpPQ1Fe8rqlSZv1NskQthajq0ViDDW', '2025-06-03 10:59:27', '2025-06-03 10:59:30', 0),
-(57, 1, 'yTRUlJfRPK8B7Od0UX94HCbEd4LJNDKw', '2025-06-03 10:59:58', '2025-06-03 11:00:13', 0),
-(58, 1, 'XOGvn2nvJUpfpP-UMYI5Q9ya2qQ81vfP', '2025-06-03 11:31:34', '2025-06-03 11:31:38', 0),
-(59, 2, 'URUP6RcU-EecYoujA3_S7w2TueLY6Qt_', '2025-06-03 11:31:43', '2025-06-03 11:31:45', 0),
-(60, 1, 'cjmcotDshCdz4ZuWE0DtfIe02U4pAn2Y', '2025-06-03 11:39:40', '2025-06-03 11:39:46', 0),
-(61, 1, 'mNH7x0eA609NTdrRi4BtLpSRj63u10hX', '2025-06-03 11:45:33', '2025-06-03 11:45:43', 0),
-(62, 2, 'gAnCUxun4E4zqKISGP-KVF8Qu_vXn2XB', '2025-06-03 12:32:07', '2025-06-03 12:32:08', 0),
-(63, 1, 'YQAdW5q6PciIwPCy6DuEhcGty0RkGLcN', '2025-06-04 02:17:03', '2025-06-04 11:32:06', 0),
-(70, 1, 'sf_2Ed2sZlI-AETrteS38rfaCQYG-MBY', '2025-06-04 11:33:31', '2025-06-04 11:33:55', 0),
-(71, 1, 'JL8i5_vsEaUsG9lDOtGT2ZFSpNh6Hku4', '2025-06-04 14:15:20', '2025-06-05 01:40:03', 0),
-(73, 1, 'BUjW8Gj2juPGr8iWp6sNclybG5pn-IeH', '2025-06-05 01:40:06', '2025-06-05 01:58:50', 0),
-(74, 1, 'fhWkv0uK4PrPHheW6S_Wx5WU0tv9qN-l', '2025-06-05 01:58:50', '2025-06-05 03:08:51', 0),
-(75, 1, '0HmgZjmXWJ_DTz2w8aLIXsxLkz0JMGnM', '2025-06-05 03:08:56', '2025-06-05 03:45:20', 0),
-(77, 1, 'AdJYSppcNA3h6-6pMnEmla9lj70eGWmH', '2025-06-05 03:45:22', '2025-06-05 07:10:39', 0),
-(79, 1, '08ltS3-pGkh3DJ5CvXrGMyVTOJqMMSpB', '2025-06-05 07:10:41', '2025-06-05 07:10:47', 0),
-(80, 1, 'RALrxut4jy4wRXOipg8hYDLzo5_gHd5x', '2025-06-05 07:10:56', '2025-06-07 13:02:24', 0),
-(81, 1, 'mnMMlgBSOr19DVg7USevkyN8j00B2NLU', '2025-06-07 13:02:24', '2025-06-07 13:03:34', 0),
-(83, 1, 'mIpVbW-sGsg2oh4noRZvyDR8zCa1QFM7', '2025-06-07 13:03:35', '2025-06-07 13:04:52', 0),
-(84, 1, 'Vy3nfXmX1NJTFsnMZ2gzF0psR9nF8nVV', '2025-06-07 13:04:55', '2025-06-07 13:05:01', 0),
-(85, 2, 'Kb0ZJqyIGVz65g1D6ctpo5A1Au2M0p1i', '2025-06-07 13:05:04', '2025-06-07 13:05:07', 0),
-(86, 1, 'NPS0yUkBrTz5btx1knAhsDc8VYmWfbiq', '2025-06-07 13:05:09', '2025-06-07 13:20:57', 0),
-(88, 1, 'yb-KYCndhk4aj8dNN0GmK-g-r8rN0zvi', '2025-06-07 13:20:59', '2025-06-07 13:21:13', 0),
-(89, 1, 'j-GueasPsK7-oUVlooCKySTzH0EXyPcV', '2025-06-07 13:21:21', '2025-06-07 15:15:44', 0),
-(91, 1, 'pcaG34MdJrWC23nBJHhEWjhx752__1Hm', '2025-06-07 15:15:47', '2025-06-07 15:35:43', 0),
-(92, 1, 'Auy9DcK3wS2R1j_-gQ0NcOZkZXJ4G45N', '2025-06-07 15:36:00', '2025-06-07 15:48:28', 0),
-(93, 1, 'eGNBQtl3Wl7Csejd8ce9LgWU5q7D4j9v', '2025-06-07 15:48:37', '2025-06-07 15:59:47', 0),
-(94, 1, 'VAQ7u8dE31kWXvli0EwUsecyfCGVqfNb', '2025-06-07 15:59:53', NULL, 1);
+(4, 2, 'J3FYIlZXQkVGMXzUI6xHy8oCrCd4x7yE', '2025-06-09 14:20:58', '2025-06-09 14:21:17', 0),
+(5, 2, 'TsUvVXRmLJG5M_rhGUJFkzYYXtMMIYRi', '2025-06-09 14:22:01', '2025-06-09 14:23:02', 0),
+(6, 2, 'yWVAk-Nj_3HMAqYdyLjfghvcCApIEyhW', '2025-06-09 14:24:03', '2025-06-09 14:24:13', 0),
+(7, 2, 'lFSA7uoASCr7yFuph5tYijzOxkmxBdIa', '2025-06-09 14:33:36', '2025-06-09 14:33:46', 0),
+(8, 2, 'wjiFttlxyoyfT4AdHtc8v9E9rdRjnnM5', '2025-06-09 14:34:31', '2025-06-09 14:44:00', 0),
+(9, 2, 'MaucYuHhhPiXftssZH6vzHQF3ZNlP7oX', '2025-06-09 14:44:11', '2025-06-09 14:44:42', 0),
+(10, 2, '3gzRnKHZX4gTuJnK5TMTB_ubeAfg-CH-', '2025-06-09 14:44:42', '2025-06-09 14:45:08', 0),
+(11, 2, 'hGSn8XFFPu_oDTnget1M2wokYfzrKxjo', '2025-06-09 14:46:10', '2025-06-09 14:47:43', 0),
+(13, 2, 'QQf7xobuZm-HpCqvJQRDIf9uJmEZuW4-', '2025-06-09 14:48:32', '2025-06-09 14:48:38', 0),
+(14, 2, 'z2vZunRBo9RPZMN9sUdtgqQZln_Mk2sT', '2025-06-09 14:48:45', '2025-06-09 14:50:51', 0),
+(16, 2, 'JfbofVNIEqNuW4fG1_dfvAyDOVigQh4G', '2025-06-09 14:50:56', '2025-06-09 14:51:00', 0),
+(17, 2, 'l7GuwRj1_7nZbP5XN0EytcO03CSAu6JR', '2025-06-09 14:51:08', '2025-06-09 14:53:41', 0),
+(18, 2, 'zypVBxZrKhkuTZwoCNIdSWghV0GBgVSo', '2025-06-09 14:53:47', '2025-06-09 14:54:29', 0),
+(19, 2, 'g7JAL4Tci0Id4asbodRSmpR70d-1iAxz', '2025-06-09 14:54:40', '2025-06-09 14:54:42', 0),
+(20, 2, '-CPLJH7YPW1gbn2yU2UxxW1Dy9ZmRzkr', '2025-06-09 14:54:48', '2025-06-09 14:58:24', 0),
+(21, 2, 'lvAT7aEZn1ZsaM1yJlxgCZ3lsFKhQt7k', '2025-06-09 14:58:28', '2025-06-09 14:59:05', 0),
+(22, 2, '2llr5Zz8JtF5hmqh1UMGWiIGtgJ9a17y', '2025-06-09 14:59:11', '2025-06-09 15:00:18', 0),
+(23, 2, 'nWTtGbHy2vINmicJp5hP1Y5irznYklkP', '2025-06-09 16:06:32', '2025-06-09 16:06:36', 0),
+(25, 2, 'Ke8E1_HBNqSnUsMmHzsmmuiAzEqj1QLz', '2025-06-09 16:07:27', '2025-06-09 16:07:33', 0),
+(29, 2, 'pDf1_AiAddeaIP3uJN8KmwlsC_sts79G', '2025-06-10 10:04:12', '2025-06-10 10:04:23', 0),
+(34, 2, 'ldV1a1FV5T9JUhQuNe-v-issuusuvAg7', '2025-06-13 02:56:14', '2025-06-14 13:24:31', 0),
+(35, 2, '-JZSxSGleLIZ8Ks4P6OyMgYvEUpIRTdQ', '2025-06-14 13:24:31', '2025-06-14 13:25:43', 0),
+(36, 6, 'xdCmxaPYNf0OyixO6LTVpIYXR3_dzodh', '2025-06-14 13:27:28', '2025-06-14 13:28:06', 0),
+(37, 6, '2uoO2Q2AkavYl22syYK4tcUuzXyHjCiC', '2025-06-14 13:28:11', NULL, 1);
 
 --
 -- Indexes for dumped tables
 --
 
 --
+-- Indexes for table `invitations`
+--
+ALTER TABLE `invitations`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `token` (`token`);
+
+--
+-- Indexes for table `logs`
+--
+ALTER TABLE `logs`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `userId` (`userId`);
+
+--
 -- Indexes for table `roles`
 --
 ALTER TABLE `roles`
   ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `name` (`name`),
-  ADD UNIQUE KEY `name_2` (`name`),
-  ADD UNIQUE KEY `name_3` (`name`),
-  ADD UNIQUE KEY `name_4` (`name`),
-  ADD UNIQUE KEY `name_5` (`name`),
-  ADD UNIQUE KEY `name_6` (`name`),
-  ADD UNIQUE KEY `name_7` (`name`),
-  ADD UNIQUE KEY `name_8` (`name`),
-  ADD UNIQUE KEY `name_9` (`name`),
-  ADD UNIQUE KEY `name_10` (`name`),
-  ADD UNIQUE KEY `name_11` (`name`),
-  ADD UNIQUE KEY `name_12` (`name`),
-  ADD UNIQUE KEY `name_13` (`name`),
-  ADD UNIQUE KEY `name_14` (`name`),
-  ADD UNIQUE KEY `name_15` (`name`),
-  ADD UNIQUE KEY `name_16` (`name`),
-  ADD UNIQUE KEY `name_17` (`name`),
-  ADD UNIQUE KEY `name_18` (`name`),
-  ADD UNIQUE KEY `name_19` (`name`),
-  ADD UNIQUE KEY `name_20` (`name`),
-  ADD UNIQUE KEY `name_21` (`name`),
-  ADD UNIQUE KEY `name_22` (`name`),
-  ADD UNIQUE KEY `name_23` (`name`),
-  ADD UNIQUE KEY `name_24` (`name`),
-  ADD UNIQUE KEY `name_25` (`name`),
-  ADD UNIQUE KEY `name_26` (`name`),
-  ADD UNIQUE KEY `name_27` (`name`),
-  ADD UNIQUE KEY `name_28` (`name`),
-  ADD UNIQUE KEY `name_29` (`name`),
-  ADD UNIQUE KEY `name_30` (`name`),
-  ADD UNIQUE KEY `name_31` (`name`),
-  ADD UNIQUE KEY `name_32` (`name`),
-  ADD UNIQUE KEY `name_33` (`name`),
-  ADD UNIQUE KEY `name_34` (`name`),
-  ADD UNIQUE KEY `name_35` (`name`),
-  ADD UNIQUE KEY `name_36` (`name`),
-  ADD UNIQUE KEY `name_37` (`name`),
-  ADD UNIQUE KEY `name_38` (`name`),
-  ADD UNIQUE KEY `name_39` (`name`),
-  ADD UNIQUE KEY `name_40` (`name`),
-  ADD UNIQUE KEY `name_41` (`name`),
-  ADD UNIQUE KEY `name_42` (`name`),
-  ADD UNIQUE KEY `name_43` (`name`),
-  ADD UNIQUE KEY `name_44` (`name`),
-  ADD UNIQUE KEY `name_45` (`name`),
-  ADD UNIQUE KEY `name_46` (`name`),
-  ADD UNIQUE KEY `name_47` (`name`),
-  ADD UNIQUE KEY `name_48` (`name`),
-  ADD UNIQUE KEY `name_49` (`name`),
-  ADD UNIQUE KEY `name_50` (`name`),
-  ADD UNIQUE KEY `name_51` (`name`),
-  ADD UNIQUE KEY `name_52` (`name`),
-  ADD UNIQUE KEY `name_53` (`name`),
-  ADD UNIQUE KEY `name_54` (`name`),
-  ADD UNIQUE KEY `name_55` (`name`),
-  ADD UNIQUE KEY `name_56` (`name`),
-  ADD UNIQUE KEY `name_57` (`name`),
-  ADD UNIQUE KEY `name_58` (`name`),
-  ADD UNIQUE KEY `name_59` (`name`),
-  ADD UNIQUE KEY `name_60` (`name`),
-  ADD UNIQUE KEY `name_61` (`name`),
-  ADD UNIQUE KEY `name_62` (`name`),
-  ADD UNIQUE KEY `name_63` (`name`);
+  ADD UNIQUE KEY `name` (`name`);
+
+--
+-- Indexes for table `router_flags`
+--
+ALTER TABLE `router_flags`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `route_key` (`route_key`),
+  ADD UNIQUE KEY `router_flags_route_key` (`route_key`);
 
 --
 -- Indexes for table `sessions`
@@ -265,64 +262,6 @@ ALTER TABLE `users`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `username` (`username`),
   ADD UNIQUE KEY `email` (`email`),
-  ADD UNIQUE KEY `username_2` (`username`),
-  ADD UNIQUE KEY `email_2` (`email`),
-  ADD UNIQUE KEY `username_3` (`username`),
-  ADD UNIQUE KEY `email_3` (`email`),
-  ADD UNIQUE KEY `username_4` (`username`),
-  ADD UNIQUE KEY `email_4` (`email`),
-  ADD UNIQUE KEY `username_5` (`username`),
-  ADD UNIQUE KEY `email_5` (`email`),
-  ADD UNIQUE KEY `username_6` (`username`),
-  ADD UNIQUE KEY `email_6` (`email`),
-  ADD UNIQUE KEY `username_7` (`username`),
-  ADD UNIQUE KEY `email_7` (`email`),
-  ADD UNIQUE KEY `username_8` (`username`),
-  ADD UNIQUE KEY `email_8` (`email`),
-  ADD UNIQUE KEY `username_9` (`username`),
-  ADD UNIQUE KEY `email_9` (`email`),
-  ADD UNIQUE KEY `username_10` (`username`),
-  ADD UNIQUE KEY `email_10` (`email`),
-  ADD UNIQUE KEY `username_11` (`username`),
-  ADD UNIQUE KEY `email_11` (`email`),
-  ADD UNIQUE KEY `username_12` (`username`),
-  ADD UNIQUE KEY `email_12` (`email`),
-  ADD UNIQUE KEY `username_13` (`username`),
-  ADD UNIQUE KEY `email_13` (`email`),
-  ADD UNIQUE KEY `username_14` (`username`),
-  ADD UNIQUE KEY `email_14` (`email`),
-  ADD UNIQUE KEY `username_15` (`username`),
-  ADD UNIQUE KEY `email_15` (`email`),
-  ADD UNIQUE KEY `username_16` (`username`),
-  ADD UNIQUE KEY `email_16` (`email`),
-  ADD UNIQUE KEY `username_17` (`username`),
-  ADD UNIQUE KEY `email_17` (`email`),
-  ADD UNIQUE KEY `username_18` (`username`),
-  ADD UNIQUE KEY `email_18` (`email`),
-  ADD UNIQUE KEY `username_19` (`username`),
-  ADD UNIQUE KEY `email_19` (`email`),
-  ADD UNIQUE KEY `username_20` (`username`),
-  ADD UNIQUE KEY `email_20` (`email`),
-  ADD UNIQUE KEY `username_21` (`username`),
-  ADD UNIQUE KEY `email_21` (`email`),
-  ADD UNIQUE KEY `username_22` (`username`),
-  ADD UNIQUE KEY `email_22` (`email`),
-  ADD UNIQUE KEY `username_23` (`username`),
-  ADD UNIQUE KEY `email_23` (`email`),
-  ADD UNIQUE KEY `username_24` (`username`),
-  ADD UNIQUE KEY `email_24` (`email`),
-  ADD UNIQUE KEY `username_25` (`username`),
-  ADD UNIQUE KEY `email_25` (`email`),
-  ADD UNIQUE KEY `username_26` (`username`),
-  ADD UNIQUE KEY `email_26` (`email`),
-  ADD UNIQUE KEY `username_27` (`username`),
-  ADD UNIQUE KEY `email_27` (`email`),
-  ADD UNIQUE KEY `username_28` (`username`),
-  ADD UNIQUE KEY `email_28` (`email`),
-  ADD UNIQUE KEY `username_29` (`username`),
-  ADD UNIQUE KEY `email_29` (`email`),
-  ADD UNIQUE KEY `username_30` (`username`),
-  ADD UNIQUE KEY `email_30` (`email`),
   ADD KEY `roleId` (`roleId`);
 
 --
@@ -331,64 +270,6 @@ ALTER TABLE `users`
 ALTER TABLE `user_sessions`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `sessionId` (`sessionId`),
-  ADD UNIQUE KEY `sessionId_2` (`sessionId`),
-  ADD UNIQUE KEY `sessionId_3` (`sessionId`),
-  ADD UNIQUE KEY `sessionId_4` (`sessionId`),
-  ADD UNIQUE KEY `sessionId_5` (`sessionId`),
-  ADD UNIQUE KEY `sessionId_6` (`sessionId`),
-  ADD UNIQUE KEY `sessionId_7` (`sessionId`),
-  ADD UNIQUE KEY `sessionId_8` (`sessionId`),
-  ADD UNIQUE KEY `sessionId_9` (`sessionId`),
-  ADD UNIQUE KEY `sessionId_10` (`sessionId`),
-  ADD UNIQUE KEY `sessionId_11` (`sessionId`),
-  ADD UNIQUE KEY `sessionId_12` (`sessionId`),
-  ADD UNIQUE KEY `sessionId_13` (`sessionId`),
-  ADD UNIQUE KEY `sessionId_14` (`sessionId`),
-  ADD UNIQUE KEY `sessionId_15` (`sessionId`),
-  ADD UNIQUE KEY `sessionId_16` (`sessionId`),
-  ADD UNIQUE KEY `sessionId_17` (`sessionId`),
-  ADD UNIQUE KEY `sessionId_18` (`sessionId`),
-  ADD UNIQUE KEY `sessionId_19` (`sessionId`),
-  ADD UNIQUE KEY `sessionId_20` (`sessionId`),
-  ADD UNIQUE KEY `sessionId_21` (`sessionId`),
-  ADD UNIQUE KEY `sessionId_22` (`sessionId`),
-  ADD UNIQUE KEY `sessionId_23` (`sessionId`),
-  ADD UNIQUE KEY `sessionId_24` (`sessionId`),
-  ADD UNIQUE KEY `sessionId_25` (`sessionId`),
-  ADD UNIQUE KEY `sessionId_26` (`sessionId`),
-  ADD UNIQUE KEY `sessionId_27` (`sessionId`),
-  ADD UNIQUE KEY `sessionId_28` (`sessionId`),
-  ADD UNIQUE KEY `sessionId_29` (`sessionId`),
-  ADD UNIQUE KEY `sessionId_30` (`sessionId`),
-  ADD UNIQUE KEY `sessionId_31` (`sessionId`),
-  ADD UNIQUE KEY `sessionId_32` (`sessionId`),
-  ADD UNIQUE KEY `sessionId_33` (`sessionId`),
-  ADD UNIQUE KEY `sessionId_34` (`sessionId`),
-  ADD UNIQUE KEY `sessionId_35` (`sessionId`),
-  ADD UNIQUE KEY `sessionId_36` (`sessionId`),
-  ADD UNIQUE KEY `sessionId_37` (`sessionId`),
-  ADD UNIQUE KEY `sessionId_38` (`sessionId`),
-  ADD UNIQUE KEY `sessionId_39` (`sessionId`),
-  ADD UNIQUE KEY `sessionId_40` (`sessionId`),
-  ADD UNIQUE KEY `sessionId_41` (`sessionId`),
-  ADD UNIQUE KEY `sessionId_42` (`sessionId`),
-  ADD UNIQUE KEY `sessionId_43` (`sessionId`),
-  ADD UNIQUE KEY `sessionId_44` (`sessionId`),
-  ADD UNIQUE KEY `sessionId_45` (`sessionId`),
-  ADD UNIQUE KEY `sessionId_46` (`sessionId`),
-  ADD UNIQUE KEY `sessionId_47` (`sessionId`),
-  ADD UNIQUE KEY `sessionId_48` (`sessionId`),
-  ADD UNIQUE KEY `sessionId_49` (`sessionId`),
-  ADD UNIQUE KEY `sessionId_50` (`sessionId`),
-  ADD UNIQUE KEY `sessionId_51` (`sessionId`),
-  ADD UNIQUE KEY `sessionId_52` (`sessionId`),
-  ADD UNIQUE KEY `sessionId_53` (`sessionId`),
-  ADD UNIQUE KEY `sessionId_54` (`sessionId`),
-  ADD UNIQUE KEY `sessionId_55` (`sessionId`),
-  ADD UNIQUE KEY `sessionId_56` (`sessionId`),
-  ADD UNIQUE KEY `sessionId_57` (`sessionId`),
-  ADD UNIQUE KEY `sessionId_58` (`sessionId`),
-  ADD UNIQUE KEY `sessionId_59` (`sessionId`),
   ADD KEY `userId` (`userId`);
 
 --
@@ -396,26 +277,50 @@ ALTER TABLE `user_sessions`
 --
 
 --
+-- AUTO_INCREMENT for table `invitations`
+--
+ALTER TABLE `invitations`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+
+--
+-- AUTO_INCREMENT for table `logs`
+--
+ALTER TABLE `logs`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=38;
+
+--
 -- AUTO_INCREMENT for table `roles`
 --
 ALTER TABLE `roles`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+
+--
+-- AUTO_INCREMENT for table `router_flags`
+--
+ALTER TABLE `router_flags`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
 
 --
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT for table `user_sessions`
 --
 ALTER TABLE `user_sessions`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=95;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=38;
 
 --
 -- Constraints for dumped tables
 --
+
+--
+-- Constraints for table `logs`
+--
+ALTER TABLE `logs`
+  ADD CONSTRAINT `logs_ibfk_1` FOREIGN KEY (`userId`) REFERENCES `users` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `users`

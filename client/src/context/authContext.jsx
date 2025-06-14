@@ -23,7 +23,7 @@ export function AuthProvider({ children }) {
       await axiosClient.post("/auth/logout");
       setUser(null);
     } catch (err) {
-      console.error("Logout failed:", err);
+      console.error("Logout failed");
     }
   };
 

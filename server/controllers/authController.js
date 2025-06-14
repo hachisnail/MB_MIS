@@ -1,6 +1,7 @@
-import { User, UserSession } from "../models/authModels.js";
+import { mainDb, User, UserSession } from "../models/authModels.js";
 import bcrypt from "bcryptjs";
 import sessionStore from "../configs/sessionStore.js";
+import { Invitation } from "../models/invitationModels.js";
 
 export async function login(req, res) {
   const { username, password } = req.body;
@@ -116,3 +117,34 @@ export async function getCurrentUser(req, res) {
     return res.status(500).json({ message: "Server error" });
   }
 }
+
+
+export const validateToken = async (req, res) => {
+  try {
+    const { token } = req.params;
+    const invitation = await Invitation.findOne({
+      where: { 
+        token,
+        isUsed: false,
+        expiresAt: { [mainDb.Sequelize.Op.gt]: new Date() }
+      }
+    });
+    
+    if (!invitation) {
+      return res.json({ valid: false });
+    }
+    
+    res.json({ 
+      valid: true,
+      invitation: {
+        email: invitation.email,
+        first_name: invitation.first_name,
+        last_name: invitation.last_name,
+        role: invitation.role
+      }
+    });
+  } catch (error) {
+    console.error('Token validation error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};

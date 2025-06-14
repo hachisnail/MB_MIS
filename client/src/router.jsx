@@ -8,6 +8,11 @@ import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Catalogue from "./pages/Catalogue";
 
+import CompleteRegistrationPage from "./components/pages/CompleteRegistrationPage";
+import RegistrationSuccess from "./components/pages/RegistrationSuccessPage";
+
+import ElectionResultParser from "./pages/ElectionRParser";
+
 
 // admin pages
 import Dashboard from "./pages/admin/Dashboard";
@@ -22,6 +27,7 @@ import ViewArtifacts from "./components/pages/viewArtifacts";
 import Schedule from "./pages/admin/Schedule";
 import Article from "./pages/admin/Article";
 import Appointments from "./pages/admin/Appointments";
+import UserView from "./components/pages/ViewUser";
 
 
 // sandbox
@@ -51,6 +57,13 @@ const Router = () => {
       {flags['catalogs'] && <Route path="/catalogs" element={<Catalogue />} />}
       {flags['home'] && <Route path="/" element={<Home />} />}
 
+      <Route path="/complete-registration/:token" element={<CompleteRegistrationPage />} />
+      <Route path="/registration-success" element={<RegistrationSuccess />} />
+      <Route path="/parser" element={<ElectionResultParser />} />
+
+
+      
+
 
       {/* Protected routes */}
       <Route path="/admin" element={<RequireAuth />}>
@@ -68,7 +81,7 @@ const Router = () => {
           {flags['appointment'] && <Route path="appointment" element={<Appointments />} />}
           
 
-
+      
 
 
 
@@ -87,6 +100,7 @@ const Router = () => {
           <Route element={<RequireRole role="Admin" />}>
           {flags['logs'] && <Route path="logs" element={<Logs />} />}
           {flags['user'] && <Route path="user" element={<User />} />}
+          {flags['user'] && <Route path="user/:user" element={<UserView />} />}
           {flags['user'] && <Route path="user/add-user" element={<CreateUser />} />}
 
           </Route>

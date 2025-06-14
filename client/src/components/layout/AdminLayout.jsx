@@ -1,6 +1,6 @@
 import AdminHeader from "../headers/AdminHeader";
 import AdminNav from "../navbar/adminNav";
-import { Outlet, useLocation } from "react-router-dom";
+import { Outlet, useLocation, matchPath } from "react-router-dom";
 import Breadcrumb from "../Breadcrumb";
 import { useState } from "react";
 
@@ -8,47 +8,19 @@ const AdminLayout = () => {
   const [isSidebarOpen, setSidebarOpen] = useState(true);
   const location = useLocation();
 
-  const currentPage = location.pathname.split("/").filter(Boolean).pop();
-  const isDashboard = currentPage === "dashboard";
+  const themedRoutes = [
+    { path: "/admin/logs", theme: "bg-[#151515] text-white" },
+    { path: "/admin/user", theme: "bg-[#151515] text-white" },
+    { path: "/admin/user/:user", theme: "bg-[#151515] text-white" },
+    { path: "/admin/add-user", theme: "bg-[#151515] text-white" },
+  ];
 
-  let pageTitle = '';
-  let theme = '';
+  const matchedTheme = themedRoutes.find(({ path }) =>
+    matchPath({ path, end: true }, location.pathname)
+  );
 
-  switch (currentPage) {
-    case "inventory":
-      pageTitle = 'Inventory of Artifact';
-      break;
-    case "acquisition":
-      pageTitle = 'Donations/Acquisitions/Lending Management';
-      break;
-    case "logs":
-      pageTitle = 'Logging';
-      theme = "bg-[#151515] text-white";
-      break;
-    case "view":
-      pageTitle = 'View Artifacts';
-      break;
-    case "user":
-      pageTitle = 'User Management';
-      theme = "bg-[#151515] text-white";
-      break;
-    case "add-user":
-      pageTitle = 'Invite A New User';
-      theme = "bg-[#151515] text-white";
-      break;
-    case "appointment":
-      pageTitle = 'Appointments Management';
-      break;
-    case "schedule":
-      pageTitle = 'Schedules Management';
-      break;
-    case "article":
-      pageTitle = 'Articles Management';
-      break;
-    default:
-      pageTitle = 'Sandbox/Unassigned';
-      break;
-  }
+  const theme = matchedTheme?.theme || "";
+  const isDashboard = location.pathname === "/admin/dashboard";
 
   return (
     <div className="h-screen w-screen grid grid-rows-[auto_1fr] overflow-hidden">
@@ -69,7 +41,6 @@ const AdminLayout = () => {
           {!isDashboard && (
             <div className={`w-full mb-4 ${theme}`}>
               <div className="flex flex-col gap-y-1">
-                <span className="text-4xl font-semibold">{pageTitle}</span>
                 <Breadcrumb />
               </div>
             </div>

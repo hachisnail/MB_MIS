@@ -10,8 +10,8 @@ export default function PopupModal({
   theme = "light",
 }) {
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={title} type={type}>
-      <p
+    <Modal isOpen={isOpen} onClose={onClose} title={title} type={type} theme={theme}>
+      <div
         className={
           theme === "dark"
             ? "text-sm text-gray-300 mb-6"
@@ -19,7 +19,7 @@ export default function PopupModal({
         }
       >
         {message}
-      </p>
+      </div>
       <div className="flex justify-end">
         <button
           onClick={onClose}

@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "./context/authContext";
 import Unauthorized from "./pages/Unauthorized";
+import ServerDown from "./pages/ServerDown";
 import { useRouterFlags  } from "./context/routerFlagProvider";
 
 // landing pages
@@ -111,7 +112,12 @@ const Router = () => {
 
       {/* Catch-all & unauthorized */}
       <Route path="/unauthorized" element={<Unauthorized />} />
-      <Route path="*" element={<NoMatch />} />
+
+      {flags['down'] && <Route path="*" element={<ServerDown />} />}
+
+      {flags['home'] && <Route path="*" element={<NoMatch />} />}
+
+      
     </Routes>
   );
 };

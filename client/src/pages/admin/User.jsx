@@ -322,8 +322,9 @@ const User = () => {
               users.map((users) => {
                 const id = users.id;
                 const username = users.username;
-                const fname = users.fname;
-                const lname = users.lname;
+                const fname = users.fname.replace(/\s+/g, '');
+                const lname = users.lname.replace(/\s+/g, '');
+
                 const email = users.email;
                 // const position = users.position;
                 const rolePermissions = {
@@ -350,7 +351,7 @@ const User = () => {
                 const menuItems = [
                   {
                     label: "Open",
-                    onClick: () => handleOpen(fname+" "+lname),
+                    onClick: () => handleOpen(fname+" "+lname), 
                   },
                   {
                     label: "Modify",

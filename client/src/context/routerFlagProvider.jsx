@@ -20,8 +20,15 @@ export const RouterFlagProvider = ({ children }) => {
         flagMap[flag.route_key] = flag.is_enabled;
       });
       setFlags(flagMap);
+          
+
     } catch (error) {
       console.error("Failed to fetch router flags", error);
+      const flagMap = { down: true };
+      setFlags(flagMap);
+
+    }
+    finally{
     }
     setLoading(false);
   };

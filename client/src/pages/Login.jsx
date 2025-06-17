@@ -63,10 +63,16 @@ const Login = () => {
         >
           {/* <h2 className="text-2xl font-semibold mb-6 text-center text-white">Login</h2> */}
           <div className="mb-7 w-full h-fit flex flex-col items-center gap-y-1">
-            <div className="flex w-fit items-center gap-x-1">
-              <img src={Logo} alt="Museo Bulawan Logo" className="w-11 h-auto" />
-              <span className=" text-4xl font-semibold">MIS</span>
-            </div>
+            <div className="flex gap-x-2 items-center">
+                      <img src={Logo} className="w-15" alt="Museo Bulawan Logo" />
+                      <i className="w-1 h-12 rounded-4xl bg-gray-500"></i>
+                      <div className="flex flex-col justify-center">
+                        <span className="text-2xl font-bold">Museo Bulawan</span>
+                        <span className="text-xs text-gray-600 font-semibold leading-3">
+                          Management Information System
+                        </span>
+                      </div>
+                    </div>
             <div className="flex flex-col">
               <span className="text-7xl font-semibold">Welcome back</span>
               <span className="text-2xl text-center text-gray-500">Please enter your details to sign in</span>

@@ -3,7 +3,7 @@ import { useLocation, NavLink, matchPath } from "react-router-dom";
 const routeMeta = [
   { path: "/admin/inventory", title: "Inventory of Artifact" },
   { path: "/admin/acquisition", title: "Donations/Acquisitions/Lending Management" },
-  { path: "/admin/logs", title: "Logging", theme: "text-gray-400" },
+  { path: "/admin/logs", title: "Activities", theme: "text-gray-400" },
   { path: "/admin/view", title: "View Artifacts" },
   { path: "/admin/user", title: "User Management", theme: "text-gray-400" },
   { path: "/admin/user/:user", title: "View User", theme: "text-gray-400" },

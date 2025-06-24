@@ -4,7 +4,10 @@ import { useAuth } from "../context/authContext";
 import Logo from "../assets/LOGO.png";
 
 const Login = () => {
-  const [credentials, setCredentials] = useState({ username: "", password: "" });
+  const [credentials, setCredentials] = useState({
+    username: "",
+    password: "",
+  });
   const [error, setError] = useState("");
   const [isloading, setIsLoading] = useState(false);
   const navigate = useNavigate();
@@ -20,10 +23,10 @@ const Login = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
-    setIsLoading(true); 
+    setIsLoading(true);
 
     const success = await login(credentials);
-    setIsLoading(false); 
+    setIsLoading(false);
 
     if (success) {
       navigate("/admin/dashboard");
@@ -31,7 +34,6 @@ const Login = () => {
       setError("Invalid username or password!");
     }
   };
-
 
   return (
     <div className="flex  flex-col min-h-screen ">
@@ -64,23 +66,27 @@ const Login = () => {
           {/* <h2 className="text-2xl font-semibold mb-6 text-center text-white">Login</h2> */}
           <div className="mb-7 w-full h-fit flex flex-col items-center gap-y-1">
             <div className="flex gap-x-2 items-center">
-                      <img src={Logo} className="w-15" alt="Museo Bulawan Logo" />
-                      <i className="w-1 h-12 rounded-4xl bg-gray-500"></i>
-                      <div className="flex flex-col justify-center">
-                        <span className="text-2xl font-bold">Museo Bulawan</span>
-                        <span className="text-xs text-gray-600 font-semibold leading-3">
-                          Management Information System
-                        </span>
-                      </div>
-                    </div>
+              <img src={Logo} className="w-15" alt="Museo Bulawan Logo" />
+              <i className="w-1 h-12 rounded-4xl bg-gray-500"></i>
+              <div className="flex flex-col justify-center">
+                <span className="text-2xl font-bold">Museo Bulawan</span>
+                <span className="text-xs text-gray-600 font-semibold leading-3">
+                  Management Information System
+                </span>
+              </div>
+            </div>
             <div className="flex flex-col">
               <span className="text-7xl font-semibold">Welcome back</span>
-              <span className="text-2xl text-center text-gray-500">Please enter your details to sign in</span>
+              <span className="text-2xl text-center text-gray-500">
+                Please enter your details to sign in
+              </span>
             </div>
-          </div> 
+          </div>
 
           <div className="mb-4">
-            <label htmlFor="username" className="block text-xl mb-2">Your username</label>
+            <label htmlFor="username" className="block text-xl mb-2">
+              Your username
+            </label>
             <input
               id="username"
               type="text"
@@ -94,7 +100,9 @@ const Login = () => {
           </div>
 
           <div className="mb-4">
-            <label htmlFor="password" className="block text-xl mb-2">Password</label>
+            <label htmlFor="password" className="block text-xl mb-2">
+              Password
+            </label>
             <input
               id="password"
               type="password"
@@ -108,7 +116,9 @@ const Login = () => {
           </div>
           <div className="mb-4 w-full flex justify-end">
             <NavLink to="/forgot-password">
-              <span className="font-semibold text-xl hover:text-gray-600">Forgot password</span>
+              <span className="font-semibold text-xl hover:text-gray-600">
+                Forgot password
+              </span>
             </NavLink>
           </div>
 
@@ -121,9 +131,12 @@ const Login = () => {
           </button>
 
           <div className="mt-2 w-full h-6 flex items-center">
-            {error && <span className="text-red-400 w-full text-xl text-center">{error}</span>}
+            {error && (
+              <span className="text-red-400 w-full text-xl text-center">
+                {error}
+              </span>
+            )}
           </div>
-
         </form>
       </div>
     </div>

@@ -1,4 +1,3 @@
-// src/services/api.js
 import axiosClient from "../lib/axiosClient";
 
 export const authAPI = {

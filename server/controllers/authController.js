@@ -2,6 +2,7 @@ import { mainDb, User, UserSession } from "../models/authModels.js";
 import bcrypt from "bcryptjs";
 import sessionStore from "../configs/sessionStore.js";
 import { Invitation } from "../models/invitationModels.js";
+import { createLog } from "../services/logService.js";
 
 export async function login(req, res) {
   const { username, password } = req.body;
@@ -17,31 +18,25 @@ export async function login(req, res) {
     const isValid = await bcrypt.compare(password, user.password);
     if (!isValid) return res.status(401).json({ message: "Invalid credentials" });
 
-    // Step 1: Destroy any existing online session
+    // Get pre-login state
+    const beforeState = { isOnline: false };
+
     const existingSession = await UserSession.findOne({
-      where: {
-        userId: user.id,
-        isOnline: true,
-      },
+      where: { userId: user.id, isOnline: true },
       order: [['loginAt', 'DESC']],
     });
 
     if (existingSession) {
       await sessionStore.destroy(existingSession.sessionId);
-      await existingSession.update({
-        isOnline: false,
-        logoutAt: new Date(),
-      });
+      await existingSession.update({ isOnline: false, logoutAt: new Date() });
     }
 
-    // Step 2: Regenerate the session to prevent session fixation
     req.session.regenerate(async (err) => {
       if (err) {
         console.error("Session regeneration error:", err);
         return res.status(500).json({ message: "Session error" });
       }
 
-      // Step 3: Assign session data
       req.session.userId = user.id;
       req.session.user = {
         id: user.id,
@@ -53,13 +48,19 @@ export async function login(req, res) {
         position: user.position,
       };
 
-      // Step 4: Save session tracking
       await UserSession.create({
         userId: user.id,
         sessionId: req.session.id,
         loginAt: new Date(),
         isOnline: true,
       });
+
+      // Logging login
+      const description = "User login";
+      const details = `User logged in from IP: ${req.ip}, UA: ${req.get('User-Agent')}`;
+      const afterState = { isOnline: true };
+
+      await createLog("update", "User", description, user.id, beforeState, afterState, details);
 
       return res.json({
         message: "Login successful",
@@ -73,20 +74,29 @@ export async function login(req, res) {
 }
 
 
-
 export async function logout(req, res) {
   try {
-    if (!req.session.userId) {
+    const userId = req.session.userId;
+    if (!userId) {
       return res.status(400).json({ message: "No user session" });
     }
+
+    const beforeState = { isOnline: true };
+    const afterState = { isOnline: false };
 
     await UserSession.update(
       { logoutAt: new Date(), isOnline: false },
       {
         where: { sessionId: req.session.id },
-        individualHooks: true, 
+        individualHooks: true,
       }
     );
+
+    // Logging logout
+    const description = "User logout";
+    const details = `User logged out from IP: ${req.ip}, UA: ${req.get('User-Agent')}`;
+
+    await createLog("update", "User", description, userId, beforeState, afterState, details);
 
     req.session.destroy((err) => {
       if (err) {
@@ -101,6 +111,7 @@ export async function logout(req, res) {
     return res.status(500).json({ message: "Server error" });
   }
 }
+
 
 export async function getCurrentUser(req, res) {
   if (!req.session.userId) {
@@ -123,28 +134,28 @@ export const validateToken = async (req, res) => {
   try {
     const { token } = req.params;
     const invitation = await Invitation.findOne({
-      where: { 
+      where: {
         token,
         isUsed: false,
-        expiresAt: { [mainDb.Sequelize.Op.gt]: new Date() }
-      }
+        expiresAt: { [mainDb.Sequelize.Op.gt]: new Date() },
+      },
     });
-    
+
     if (!invitation) {
       return res.json({ valid: false });
     }
-    
-    res.json({ 
+
+    res.json({
       valid: true,
       invitation: {
         email: invitation.email,
         first_name: invitation.first_name,
         last_name: invitation.last_name,
-        role: invitation.role
-      }
+        role: invitation.role,
+      },
     });
   } catch (error) {
-    console.error('Token validation error:', error);
-    res.status(500).json({ message: 'Server error' });
+    console.error("Token validation error:", error);
+    res.status(500).json({ message: "Server error" });
   }
 };

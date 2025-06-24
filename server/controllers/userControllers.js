@@ -1,15 +1,19 @@
+import { Op } from "sequelize";
 import { User, UserSession } from "../models/authModels.js";
 
 export const displayUsers = async (req, res) => {
   try {
     const users = await User.findAll({
+      where: {
+        id: { [Op.ne]: 1 }, 
+      },
       attributes: ["id", "fname", "lname", "email", "contact", "roleId"],
       include: [
         {
           model: UserSession,
           attributes: ["id", "loginAt", "logoutAt", "isOnline"],
-          required: false, 
-        }
+          required: false,
+        },
       ],
     });
 
@@ -19,7 +23,6 @@ export const displayUsers = async (req, res) => {
     res.status(500).json({ message: "Error fetching users with sessions" });
   }
 };
-
 
 export const displayUser = async (req, res) => {
   const fullName = decodeURIComponent(req.params.fullName);
@@ -31,6 +34,7 @@ export const displayUser = async (req, res) => {
       where: {
         fname,
         lname,
+        id: { [Op.ne]: 1 }, // Exclude system account
       },
       attributes: ["id", "username", "fname", "lname", "email", "contact", "position", "roleId"],
       include: [
@@ -38,7 +42,7 @@ export const displayUser = async (req, res) => {
           model: UserSession,
           attributes: ["id", "loginAt", "logoutAt", "isOnline"],
           required: false,
-        }
+        },
       ],
     });
 
@@ -48,5 +52,3 @@ export const displayUser = async (req, res) => {
     res.status(500).json({ message: "Error fetching users with sessions" });
   }
 };
-
-

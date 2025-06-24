@@ -6,7 +6,11 @@ import { mainDb } from '../models/authModels.js';
 import bcrypt from 'bcryptjs';
 import { createLog } from '../services/logService.js';
 
-
+// Utility function to get the username from userId
+const getUsername = async (userId) => {
+  const user = await User.findByPk(userId);
+  return user ? user.username : 'System';
+};
 
 export const sendInvitation = async (req, res, next) => {
   try {
@@ -55,7 +59,7 @@ export const sendInvitation = async (req, res, next) => {
     const frontendBaseUrl = process.env.CLIENT_URL || 'http://localhost:5173';
     const registrationUrl = `${frontendBaseUrl}/complete-registration/${token}`;
 
-    const emailHtml = `...`; // Same styled email as before
+    const emailHtml = `...`; // Compose your styled HTML email content here
 
     await sendEmail({
       from: '"Museo Bulawan" <museobulawanmis@gmail.com>',
@@ -64,9 +68,10 @@ export const sendInvitation = async (req, res, next) => {
       html: emailHtml
     });
 
-    await createLog('create', 'Invitation', `Created invitation for ${email}`, req.session?.userId || 1, null, invitation.dataValues, {
+    const actor = await getUsername(req.session?.userId || 1);
+    await createLog('create', 'Invitation', `${actor} created an invitation for ${email}`, req.session?.userId || 1, null, invitation.dataValues, {
       new: invitation.dataValues,
-      message: `Invitation created for ${email}`
+      message: `${actor} has created an invitation for ${email}.`
     });
 
     res.status(201).json({
@@ -128,9 +133,10 @@ export const completeRegistration = async (req, res, next) => {
     invitation.isUsed = true;
     await invitation.save();
 
-    await createLog('update', 'User', `Completed registration for ${newUser.email}`, newUser.id, null, newUser.dataValues, {
+    const actor = newUser.username;
+    await createLog('update', 'User', `${actor} completed registration with email ${newUser.email}`, newUser.id, null, newUser.dataValues, {
       new: newUser.dataValues,
-      message: `User ${newUser.email} has successfully completed registration.`
+      message: `${actor} has successfully completed their registration.`
     });
 
     res.status(200).json({ message: 'Registration completed successfully' });
@@ -162,13 +168,12 @@ export const resendInvitation = async (req, res, next) => {
     });
 
     await invitation.save();
-
     const newState = invitation.toJSON();
 
     const frontendBaseUrl = process.env.CLIENT_URL || 'http://localhost:5173';
     const registrationUrl = `${frontendBaseUrl}/complete-registration/${invitation.token}`;
 
-    const emailHtml = `...`; // Same styled email as before
+    const emailHtml = `...`; // Compose your styled email HTML here
 
     await sendEmail({
       from: '"Museo Bulawan" <museobulawanmis@gmail.com>',
@@ -177,10 +182,11 @@ export const resendInvitation = async (req, res, next) => {
       html: emailHtml
     });
 
-    await createLog('update', 'Invitation', `Resent invitation to ${invitation.email}`, req.session?.userId || 1, previousState, newState, {
+    const actor = await getUsername(req.session?.userId || 1);
+    await createLog('update', 'Invitation', `${actor} resent an invitation to ${invitation.email}`, req.session?.userId || 1, previousState, newState, {
       previous: previousState,
       new: newState,
-      message: `Invitation for ${invitation.email} was resent`
+      message: `${actor} has resent an invitation to ${invitation.email}.`
     });
 
     res.status(200).json({ message: 'Invitation resent successfully' });
@@ -201,9 +207,10 @@ export const revokeInvitation = async (req, res, next) => {
     const previousState = invitation.toJSON();
     await invitation.destroy();
 
-    await createLog('delete', 'Invitation', `Revoked invitation for ${invitation.email}`, req.session?.userId || 1, previousState, null, {
+    const actor = await getUsername(req.session?.userId || 1);
+    await createLog('delete', 'Invitation', `${actor} revoked an invitation for ${invitation.email}`, req.session?.userId || 1, previousState, null, {
       previous: previousState,
-      message: `Invitation for ${invitation.email} permanently revoked`
+      message: `${actor} has permanently revoked the invitation for ${invitation.email}.`
     });
 
     res.status(200).json({ message: 'Invitation permanently deleted' });
@@ -227,8 +234,6 @@ const formatInvitation = (inv) => ({
   updatedAt: inv.updatedAt
 });
 
-
-
 export const getPendingInvitations = async (req, res) => {
   try {
     const invitations = await Invitation.findAll({
@@ -244,112 +249,3 @@ export const getPendingInvitations = async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 };
-
-
-
-// export const resendInvitation = async (req, res, next) => {
-//   try {
-//     const { id } = req.params;
-
-//     // Find invitation by ID
-//     const invitation = await Invitation.findByPk(id);
-//     if (!invitation) {
-//       return res.status(404).json({ message: 'Invitation not found' });
-//     }
-
-//     // Check if already used
-//     if (invitation.isUsed) {
-//       return res.status(400).json({ message: 'Invitation has already been used' });
-//     }
-
-//     const previousState = invitation.toJSON();
-
-//     // Generate new expiry date (7 days from now)
-//     const newExpiryDate = new Date();
-//     newExpiryDate.setDate(newExpiryDate.getDate() + 7);
-
-//     // Force update of token and expiry
-//     invitation.set({
-//       token: uuidv4(),
-//       expiresAt: newExpiryDate,
-//     });
-
-//     await invitation.save();
-
-//     const newState = invitation.toJSON();
-
-//     // Log details for audit
-//     req.logDetails = {
-//       previous: previousState,
-//       new: newState,
-//       message: `Invitation for ${invitation.email} was resent`,
-//     };
-//     res.locals.newRecordId = invitation.id;
-
-//     // Build registration link
-//     const frontendBaseUrl = process.env.CLIENT_URL || 'http://localhost:5173';
-//     const registrationUrl = `${frontendBaseUrl}/complete-registration/${invitation.token}`;
-
-//     // HTML email content
-//     const emailHtml = `
-//       <div style="font-family: 'Segoe UI', sans-serif; padding: 20px; background-color: #f9f9f9; color: #333;">
-//         <div style="max-width: 600px; margin: auto; background: #fff; border-radius: 10px; padding: 30px; box-shadow: 0 5px 15px rgba(0,0,0,0.1);">
-//           <h2 style="color: #6F3FFF;">Reminder: Invitation to Museo Bulawan</h2>
-//           <p>Hello <strong>${invitation.first_name}</strong>,</p>
-//           <p>This is a friendly reminder that you have been invited to join <strong>Museo Bulawan</strong> as a <strong>${invitation.role}</strong>.</p>
-//           <p>Please click the button below to complete your registration:</p>
-//           <a href="${registrationUrl}" style="display: inline-block; padding: 12px 20px; background-color: #6F3FFF; color: white; text-decoration: none; border-radius: 5px; margin-top: 10px;">Complete Registration</a>
-//           <p style="margin-top: 30px; font-size: 14px; color: #777;">This invitation will now expire on <strong>${invitation.expiresAt.toDateString()}</strong>.</p>
-//         </div>
-//       </div>
-//     `;
-
-//     // Send email
-//     await sendEmail({
-//       from: '"Museo Bulawan" <museobulawanmis@gmail.com>',
-//       to: invitation.email,
-//       subject: 'Invitation Reminder',
-//       html: emailHtml
-//     });
-
-//     // Final response
-//     res.status(200).json({ message: 'Invitation resent successfully' });
-
-//     // Optional: Proceed to logger middleware
-//     next();
-//   } catch (error) {
-//     console.error('Resend Invitation Error:', error);
-//     res.status(500).json({ message: 'Server error', error: error.message });
-//   }
-// };
-
-
-
-// export const revokeInvitation = async (req, res, next) => {
-//   try {
-//     const { id } = req.params;
-
-//     const invitation = await Invitation.findByPk(id);
-//     if (!invitation) {
-//       return res.status(404).json({ message: 'Invitation not found' });
-//     }
-
-//     const previousState = invitation.toJSON();
-
-//     await invitation.destroy(); // Hard delete
-
-//     req.logDetails = {
-//       previous: previousState,
-//       message: `Invitation for ${invitation.email} permanently revoked`,
-//     };
-
-//     res.locals.newRecordId = id;
-
-//     res.status(200).json({ message: 'Invitation permanently deleted' });
-//     next();
-//   } catch (error) {
-//     console.error('Revoke Invitation Error:', error);
-//     res.status(500).json({ message: 'Server error', error: error.message });
-//   }
-// };
-

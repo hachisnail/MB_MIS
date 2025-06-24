@@ -18,7 +18,6 @@ export async function login(req, res) {
     const isValid = await bcrypt.compare(password, user.password);
     if (!isValid) return res.status(401).json({ message: "Invalid credentials" });
 
-    // Get pre-login state
     const beforeState = { isOnline: false };
 
     const existingSession = await UserSession.findOne({
@@ -55,12 +54,13 @@ export async function login(req, res) {
         isOnline: true,
       });
 
-      // Logging login
-      const description = "User login";
-      const details = `User logged in from IP: ${req.ip}, UA: ${req.get('User-Agent')}`;
+      // Descriptive log
+      const fullName = `${user.fname} ${user.lname}`;
+      const description = `${fullName} (${user.username}) logged in`;
+      const details = `IP: ${req.ip}, User-Agent: ${req.get("User-Agent")}`;
       const afterState = { isOnline: true };
 
-      await createLog("update", "User", description, user.id, beforeState, afterState, details);
+      await createLog("login", "User", description, user.id, beforeState, afterState, details);
 
       return res.json({
         message: "Login successful",
@@ -73,7 +73,6 @@ export async function login(req, res) {
   }
 }
 
-
 export async function logout(req, res) {
   try {
     const userId = req.session.userId;
@@ -81,6 +80,7 @@ export async function logout(req, res) {
       return res.status(400).json({ message: "No user session" });
     }
 
+    const user = await User.findByPk(userId);
     const beforeState = { isOnline: true };
     const afterState = { isOnline: false };
 
@@ -92,11 +92,12 @@ export async function logout(req, res) {
       }
     );
 
-    // Logging logout
-    const description = "User logout";
-    const details = `User logged out from IP: ${req.ip}, UA: ${req.get('User-Agent')}`;
+    const fullName = `${user?.fname ?? "Unknown"} ${user?.lname ?? ""}`.trim();
+    const username = user?.username ?? "Unknown";
+    const description = `${fullName} (${username}) logged out`;
+    const details = `IP: ${req.ip}, User-Agent: ${req.get("User-Agent")}`;
 
-    await createLog("update", "User", description, userId, beforeState, afterState, details);
+    await createLog("logout", "User", description, userId, beforeState, afterState, details);
 
     req.session.destroy((err) => {
       if (err) {
@@ -111,7 +112,6 @@ export async function logout(req, res) {
     return res.status(500).json({ message: "Server error" });
   }
 }
-
 
 export async function getCurrentUser(req, res) {
   if (!req.session.userId) {
@@ -128,7 +128,6 @@ export async function getCurrentUser(req, res) {
     return res.status(500).json({ message: "Server error" });
   }
 }
-
 
 export const validateToken = async (req, res) => {
   try {

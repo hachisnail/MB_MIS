@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1:3306
--- Generation Time: Jun 14, 2025 at 03:33 PM
+-- Generation Time: Jun 24, 2025 at 04:31 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -54,22 +54,6 @@ INSERT INTO `invitations` (`id`, `email`, `first_name`, `last_name`, `contact_nu
 -- --------------------------------------------------------
 
 --
--- Table structure for table `logs`
---
-
-CREATE TABLE `logs` (
-  `id` int(11) NOT NULL,
-  `action` enum('create','update','delete','soft_delete') NOT NULL,
-  `model` varchar(50) NOT NULL,
-  `modelId` int(11) NOT NULL,
-  `details` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`details`)),
-  `userId` int(11) NOT NULL,
-  `createdAt` datetime NOT NULL DEFAULT current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- --------------------------------------------------------
-
---
 -- Table structure for table `roles`
 --
 
@@ -107,18 +91,19 @@ CREATE TABLE `router_flags` (
 --
 
 INSERT INTO `router_flags` (`id`, `route_key`, `is_enabled`, `createdAt`, `updatedAt`) VALUES
-(1, 'login', 1, '2025-06-09 12:52:19', '2025-06-09 12:52:19'),
+(1, 'login', 1, '2025-06-09 12:52:19', '2025-06-24 00:29:49'),
 (2, 'catalogs', 0, '2025-06-09 12:52:19', '2025-06-09 04:52:33'),
 (3, 'home', 1, '2025-06-09 12:52:19', '2025-06-09 12:52:19'),
 (4, 'dashboard', 1, '2025-06-09 12:52:19', '2025-06-09 14:45:00'),
-(5, 'inventory', 1, '2025-06-09 12:52:19', '2025-06-09 14:36:47'),
+(5, 'inventory', 1, '2025-06-09 12:52:19', '2025-06-14 13:35:48'),
 (6, 'acquisition', 1, '2025-06-09 12:52:19', '2025-06-09 12:52:19'),
-(7, 'schedule', 1, '2025-06-09 12:52:19', '2025-06-09 12:52:19'),
+(7, 'schedule', 1, '2025-06-09 12:52:19', '2025-06-24 01:38:01'),
 (8, 'article', 1, '2025-06-09 12:52:19', '2025-06-09 12:52:19'),
 (9, 'appointment', 1, '2025-06-09 12:52:19', '2025-06-10 10:33:52'),
-(10, 'sandbox', 1, '2025-06-09 12:52:19', '2025-06-09 12:52:19'),
+(10, 'sandbox', 1, '2025-06-09 12:52:19', '2025-06-24 00:29:53'),
 (11, 'logs', 1, '2025-06-09 12:52:19', '2025-06-09 14:59:23'),
-(12, 'user', 1, '2025-06-09 12:52:19', '2025-06-09 14:59:27');
+(12, 'user', 1, '2025-06-09 12:52:19', '2025-06-09 14:59:27'),
+(13, 'down', 0, '0000-00-00 00:00:00', '0000-00-00 00:00:00');
 
 -- --------------------------------------------------------
 
@@ -139,7 +124,7 @@ CREATE TABLE `sessions` (
 --
 
 INSERT INTO `sessions` (`sid`, `expires`, `data`, `createdAt`, `updatedAt`) VALUES
-('2uoO2Q2AkavYl22syYK4tcUuzXyHjCiC', '2025-06-15 13:32:36', '{\"cookie\":{\"originalMaxAge\":86400000,\"expires\":\"2025-06-15T13:28:11.372Z\",\"secure\":false,\"httpOnly\":true,\"path\":\"/\",\"sameSite\":\"lax\"},\"userId\":6,\"user\":{\"id\":6,\"username\":\"hachisnail\",\"fname\":\"Jeffereson \",\"lname\":\"Talagtag\",\"email\":\"jeffersontalagtag06@gmail.com\",\"roleId\":1,\"position\":\"System Administrator\"}}', '2025-06-14 13:28:11', '2025-06-14 13:32:36');
+('e2DuNe9wdnoSAlyki3ZJXeXfG0eha9Dz', '2025-06-25 02:30:32', '{\"cookie\":{\"originalMaxAge\":86400000,\"expires\":\"2025-06-25T02:25:51.530Z\",\"secure\":false,\"httpOnly\":true,\"path\":\"/\",\"sameSite\":\"lax\"},\"userId\":6,\"user\":{\"id\":6,\"username\":\"hachisnail\",\"fname\":\"Jeffereson \",\"lname\":\"Talagtag\",\"email\":\"jeffersontalagtag06@gmail.com\",\"roleId\":1,\"position\":\"System Administrator\"}}', '2025-06-24 02:25:51', '2025-06-24 02:30:32');
 
 -- --------------------------------------------------------
 
@@ -166,55 +151,11 @@ CREATE TABLE `users` (
 --
 
 INSERT INTO `users` (`id`, `username`, `password`, `fname`, `lname`, `email`, `contact`, `roleId`, `position`, `createdAt`, `updatedAt`) VALUES
+(1, 'system', '$2a$10$X2eQbE6n3fOQgTmkEoO8VOra9NxYFiW0X3ExL1cOARfV5acFPv2Py', 'System', 'Account', 'system@yourapp.com', '', 1, 'System', '2025-06-24 09:22:06', '2025-06-24 09:22:06'),
 (2, 'renz', '$2a$10$HGZGUkRMt/qdhLp.wzE6j.eW9ajXk127zo5PL26MU9GHpVUY/tGA6', 'Renz', 'Labayan', 'labayanrenz@gmail.com', NULL, 1, 'Staff', '2025-05-22 02:45:01', '2025-05-22 02:45:01'),
 (3, 'jeff', '$2b$10$6jk2DAgyX5RR/aczH3dH..AqTNY9Q310L/shTQ4eQPmqLWMGQBvjq', 'Test', 'Sins', 'jeff.jefferson.jt@gmail.com', '09123245678', 1, 'Tester', '2025-06-11 03:26:51', '2025-06-11 03:26:51'),
 (4, 'test', '$2b$10$QtC90.XBzFvttptxDAGUmu2vWrVim32o8lzpgwr7PE8I1YZLEMqtO', 'Johnny', 'Sins', 'jeffersontalagtag06@yahoo.com', '09054163430', NULL, 'Tester', '2025-06-11 03:30:33', '2025-06-11 03:30:33'),
-(6, 'hachisnail', '$2b$10$8g6DrNf6AqIKT7lbXKDZt..rHshc0exefPrLO46JNza2dmgixYsVW', 'Jeffereson', 'Talagtag', 'jeffersontalagtag06@gmail.com', '09054163430', 1, 'System Administrator', '2025-06-14 13:27:20', '2025-06-14 13:27:20');
-
--- --------------------------------------------------------
-
---
--- Table structure for table `user_sessions`
---
-
-CREATE TABLE `user_sessions` (
-  `id` int(11) NOT NULL,
-  `userId` int(11) NOT NULL,
-  `sessionId` varchar(255) NOT NULL,
-  `loginAt` datetime NOT NULL DEFAULT current_timestamp(),
-  `logoutAt` datetime DEFAULT NULL,
-  `isOnline` tinyint(1) DEFAULT 1
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `user_sessions`
---
-
-INSERT INTO `user_sessions` (`id`, `userId`, `sessionId`, `loginAt`, `logoutAt`, `isOnline`) VALUES
-(4, 2, 'J3FYIlZXQkVGMXzUI6xHy8oCrCd4x7yE', '2025-06-09 14:20:58', '2025-06-09 14:21:17', 0),
-(5, 2, 'TsUvVXRmLJG5M_rhGUJFkzYYXtMMIYRi', '2025-06-09 14:22:01', '2025-06-09 14:23:02', 0),
-(6, 2, 'yWVAk-Nj_3HMAqYdyLjfghvcCApIEyhW', '2025-06-09 14:24:03', '2025-06-09 14:24:13', 0),
-(7, 2, 'lFSA7uoASCr7yFuph5tYijzOxkmxBdIa', '2025-06-09 14:33:36', '2025-06-09 14:33:46', 0),
-(8, 2, 'wjiFttlxyoyfT4AdHtc8v9E9rdRjnnM5', '2025-06-09 14:34:31', '2025-06-09 14:44:00', 0),
-(9, 2, 'MaucYuHhhPiXftssZH6vzHQF3ZNlP7oX', '2025-06-09 14:44:11', '2025-06-09 14:44:42', 0),
-(10, 2, '3gzRnKHZX4gTuJnK5TMTB_ubeAfg-CH-', '2025-06-09 14:44:42', '2025-06-09 14:45:08', 0),
-(11, 2, 'hGSn8XFFPu_oDTnget1M2wokYfzrKxjo', '2025-06-09 14:46:10', '2025-06-09 14:47:43', 0),
-(13, 2, 'QQf7xobuZm-HpCqvJQRDIf9uJmEZuW4-', '2025-06-09 14:48:32', '2025-06-09 14:48:38', 0),
-(14, 2, 'z2vZunRBo9RPZMN9sUdtgqQZln_Mk2sT', '2025-06-09 14:48:45', '2025-06-09 14:50:51', 0),
-(16, 2, 'JfbofVNIEqNuW4fG1_dfvAyDOVigQh4G', '2025-06-09 14:50:56', '2025-06-09 14:51:00', 0),
-(17, 2, 'l7GuwRj1_7nZbP5XN0EytcO03CSAu6JR', '2025-06-09 14:51:08', '2025-06-09 14:53:41', 0),
-(18, 2, 'zypVBxZrKhkuTZwoCNIdSWghV0GBgVSo', '2025-06-09 14:53:47', '2025-06-09 14:54:29', 0),
-(19, 2, 'g7JAL4Tci0Id4asbodRSmpR70d-1iAxz', '2025-06-09 14:54:40', '2025-06-09 14:54:42', 0),
-(20, 2, '-CPLJH7YPW1gbn2yU2UxxW1Dy9ZmRzkr', '2025-06-09 14:54:48', '2025-06-09 14:58:24', 0),
-(21, 2, 'lvAT7aEZn1ZsaM1yJlxgCZ3lsFKhQt7k', '2025-06-09 14:58:28', '2025-06-09 14:59:05', 0),
-(22, 2, '2llr5Zz8JtF5hmqh1UMGWiIGtgJ9a17y', '2025-06-09 14:59:11', '2025-06-09 15:00:18', 0),
-(23, 2, 'nWTtGbHy2vINmicJp5hP1Y5irznYklkP', '2025-06-09 16:06:32', '2025-06-09 16:06:36', 0),
-(25, 2, 'Ke8E1_HBNqSnUsMmHzsmmuiAzEqj1QLz', '2025-06-09 16:07:27', '2025-06-09 16:07:33', 0),
-(29, 2, 'pDf1_AiAddeaIP3uJN8KmwlsC_sts79G', '2025-06-10 10:04:12', '2025-06-10 10:04:23', 0),
-(34, 2, 'ldV1a1FV5T9JUhQuNe-v-issuusuvAg7', '2025-06-13 02:56:14', '2025-06-14 13:24:31', 0),
-(35, 2, '-JZSxSGleLIZ8Ks4P6OyMgYvEUpIRTdQ', '2025-06-14 13:24:31', '2025-06-14 13:25:43', 0),
-(36, 6, 'xdCmxaPYNf0OyixO6LTVpIYXR3_dzodh', '2025-06-14 13:27:28', '2025-06-14 13:28:06', 0),
-(37, 6, '2uoO2Q2AkavYl22syYK4tcUuzXyHjCiC', '2025-06-14 13:28:11', NULL, 1);
+(6, 'hachisnail', '$2b$10$8g6DrNf6AqIKT7lbXKDZt..rHshc0exefPrLO46JNza2dmgixYsVW', 'Jeffereson ', 'Talagtag', 'jeffersontalagtag06@gmail.com', '09054163430', 1, 'System Administrator', '2025-06-14 13:27:20', '2025-06-14 13:27:20');
 
 --
 -- Indexes for dumped tables
@@ -226,13 +167,6 @@ INSERT INTO `user_sessions` (`id`, `userId`, `sessionId`, `loginAt`, `logoutAt`,
 ALTER TABLE `invitations`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `token` (`token`);
-
---
--- Indexes for table `logs`
---
-ALTER TABLE `logs`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `userId` (`userId`);
 
 --
 -- Indexes for table `roles`
@@ -265,14 +199,6 @@ ALTER TABLE `users`
   ADD KEY `roleId` (`roleId`);
 
 --
--- Indexes for table `user_sessions`
---
-ALTER TABLE `user_sessions`
-  ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `sessionId` (`sessionId`),
-  ADD KEY `userId` (`userId`);
-
---
 -- AUTO_INCREMENT for dumped tables
 --
 
@@ -280,13 +206,7 @@ ALTER TABLE `user_sessions`
 -- AUTO_INCREMENT for table `invitations`
 --
 ALTER TABLE `invitations`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
-
---
--- AUTO_INCREMENT for table `logs`
---
-ALTER TABLE `logs`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=38;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
 
 --
 -- AUTO_INCREMENT for table `roles`
@@ -298,7 +218,7 @@ ALTER TABLE `roles`
 -- AUTO_INCREMENT for table `router_flags`
 --
 ALTER TABLE `router_flags`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
 
 --
 -- AUTO_INCREMENT for table `users`
@@ -307,32 +227,14 @@ ALTER TABLE `users`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
--- AUTO_INCREMENT for table `user_sessions`
---
-ALTER TABLE `user_sessions`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=38;
-
---
 -- Constraints for dumped tables
 --
-
---
--- Constraints for table `logs`
---
-ALTER TABLE `logs`
-  ADD CONSTRAINT `logs_ibfk_1` FOREIGN KEY (`userId`) REFERENCES `users` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `users`
 --
 ALTER TABLE `users`
   ADD CONSTRAINT `users_ibfk_1` FOREIGN KEY (`roleId`) REFERENCES `roles` (`id`) ON DELETE SET NULL ON UPDATE CASCADE;
-
---
--- Constraints for table `user_sessions`
---
-ALTER TABLE `user_sessions`
-  ADD CONSTRAINT `user_sessions_ibfk_1` FOREIGN KEY (`userId`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

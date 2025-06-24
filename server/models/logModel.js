@@ -1,9 +1,9 @@
 import { DataTypes } from "sequelize";
-import { mainDb } from "../configs/databases.js";
+import { logsDb } from "../configs/databases.js";
 import { addDbChangeHooks } from "../hooks/emitDbChangeHooks.js";
 import { User } from "./authModels.js";
 
-const Log = mainDb.define('Log', {
+const Log = logsDb.define('Log', {
   id: {
     type: DataTypes.INTEGER,
     primaryKey: true,

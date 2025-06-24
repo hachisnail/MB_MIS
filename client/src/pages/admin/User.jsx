@@ -84,7 +84,7 @@ const User = () => {
         withCredentials: true,
       });
       setUsers(response.data);
-      // console.log(response.data);
+      console.log(response.data);
     } catch (err) {
       // setFlagsError("Failed to ferch users!");
     } finally {
@@ -98,7 +98,7 @@ const User = () => {
       .get(`/auth/invitations`, { withCredentials: true })
       .then((response) => {
         setPendingInvitations(response.data || []);
-        console.log(response.data);
+        // console.log(response.data);
       })
       .catch((error) => {
         console.error(
@@ -318,99 +318,97 @@ const User = () => {
 
           <div className="w-full h-full overflow-x-scroll flex flex-col min-w-fit max-h-[38rem] bg-[#1C1B19] border-[#373737] border-1 rounded-md">
             {/* Upper right panel */}
-            {users.length > 0 ? (
-              users.map((users) => {
-                const id = users.id;
-                const username = users.username;
-                const fname = users.fname.replace(/\s+/g, '');
-                const lname = users.lname.replace(/\s+/g, '');
+{users.length > 0 ? (
+  users.map((users) => {
+    const id = users.id;
+    const username = users.username;
+    const fname = users.fname.replace(/\s+/g, '');
+    const lname = users.lname.replace(/\s+/g, '');
+    const email = users.email;
 
-                const email = users.email;
-                // const position = users.position;
-                const rolePermissions = {
-                  1: "Admin",
-                  2: "Content Manager",
-                  3: "Viewer",
-                  4: "Reviewer",
-                };
+    const rolePermissions = {
+      1: "Admin",
+      2: "Content Manager",
+      3: "Viewer",
+      4: "Reviewer",
+    };
 
-                const isActive = users.UserSessions.length
-                  ? users.UserSessions.reduce((latest, session) =>
-                      new Date(session.loginAt) > new Date(latest.loginAt)
-                        ? session
-                        : latest
-                    ).isOnline === true
-                  : false;
+    const sessions = users.sessions || [];
+    const isActive = sessions.length
+      ? sessions.reduce((latest, session) =>
+          new Date(session.loginAt) > new Date(latest.loginAt)
+            ? session
+            : latest
+        ).isOnline === true
+      : false;
 
-                const initials = `${users.fname.charAt(0)}${users.lname.charAt(
-                  0
-                )}`;
-                const firstInitial = initials.charAt(0);
-                const bgColor = colorMap[firstInitial] || "#FFFFFF";
+    const initials = `${users.fname.charAt(0)}${users.lname.charAt(0)}`;
+    const firstInitial = initials.charAt(0);
+    const bgColor = colorMap[firstInitial] || "#FFFFFF";
 
-                const menuItems = [
-                  {
-                    label: "Open",
-                    onClick: () => handleOpen(fname+" "+lname), 
-                  },
-                  {
-                    label: "Modify",
-                    onClick: () =>
-                      alert("Modify the some of the details of " + username),
-                  },
-                  {
-                    label: "Close",
-                  },
-                ];
+    const menuItems = [
+      {
+        label: "Open",
+        onClick: () => handleOpen(fname + " " + lname),
+      },
+      {
+        label: "Modify",
+        onClick: () =>
+          alert("Modify the some of the details of " + username),
+      },
+      {
+        label: "Close",
+      },
+    ];
 
-                return (
-                  <ContextMenu key={id} menuItems={menuItems} theme="dark">
-                    <div
-                      className="w-full min-w-100 h-20 border-b-1 hover:bg-gray-900 rounded-sm border-[#373737] flex items-center px-4 justify-between"
-                      key={id}
-                    >
-                      <div className="w-fit h-fit flex items-center gap-x-4">
-                        <div
-                          className={`rounded-full w-8 h-8  ${
-                            isActive ? "bg-green-600" : "bg-amber-50"
-                          }`}
-                        ></div>
-                        <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center">
-                          <div
-                            className="select-none w-11 h-11  rounded-full flex items-center justify-center"
-                            style={{ backgroundColor: bgColor }}
-                          >
-                            <span
-                              title={`${fname} ${lname}`}
-                              className=" text-xl  font-semibold text-black"
-                            >
-                              {initials}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="w-fit h-full flex flex-col justify-center">
-                          <span className="text-sm lg:text-xl font-semibold">
-                            {`${fname} ${lname}`.toUpperCase()}
-                          </span>
-
-                          <span className="text-[6px] lg:text-sm text-[#9C9C9C] font-semibold">
-                            {email}
-                          </span>
-                        </div>
-                      </div>
-
-                      <span className="text-xs lg:text-md lg:text-xl bg-[#3A3A3A] font-semibold border-1 border-[#A6A6A6] rounded-md text-center w-20 lg:w-40 py-1">
-                        {rolePermissions[users.roleId] || "Not Available"}
-                      </span>
-                    </div>
-                  </ContextMenu>
-                );
-              })
-            ) : (
-              <div className="w-full h-full flex items-center justify-center py-6">
-                <span className="text-[#9C9C9C] text-xl">No users!</span>
+    return (
+      <ContextMenu key={id} menuItems={menuItems} theme="dark">
+        <div
+          className="w-full min-w-100 h-20 border-b-1 hover:bg-gray-900 rounded-sm border-[#373737] flex items-center px-4 justify-between"
+          key={id}
+        >
+          <div className="w-fit h-fit flex items-center gap-x-4">
+            <div
+              className={`rounded-full w-8 h-8  ${
+                isActive ? "bg-green-600" : "bg-amber-50"
+              }`}
+            ></div>
+            <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center">
+              <div
+                className="select-none w-11 h-11  rounded-full flex items-center justify-center"
+                style={{ backgroundColor: bgColor }}
+              >
+                <span
+                  title={`${fname} ${lname}`}
+                  className=" text-xl  font-semibold text-black"
+                >
+                  {initials}
+                </span>
               </div>
-            )}
+            </div>
+            <div className="w-fit h-full flex flex-col justify-center">
+              <span className="text-sm lg:text-xl font-semibold">
+                {`${fname} ${lname}`.toUpperCase()}
+              </span>
+              <span className="text-[6px] lg:text-sm text-[#9C9C9C] font-semibold">
+                {email}
+              </span>
+            </div>
+          </div>
+
+          <span className="text-xs lg:text-md lg:text-xl bg-[#3A3A3A] font-semibold border-1 border-[#A6A6A6] rounded-md text-center w-20 lg:w-40 py-1">
+            {rolePermissions[users.roleId] || "Not Available"}
+          </span>
+        </div>
+      </ContextMenu>
+    );
+  })
+) : (
+  <div className="w-full h-full flex items-center justify-center py-6">
+    <span className="text-[#9C9C9C] text-xl">No users!</span>
+  </div>
+)}
+
           </div>
         </div>
         <div className="w-full min-h-[32rem] py-5 overflow-y-scroll flex-col xl:flex-row border-t-1 items-center border-[#373737] flex">

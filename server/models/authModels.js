@@ -73,7 +73,7 @@ const User = mainDb.define("User", {
 });
 
 // UserSession Model
-const UserSession = mainDb.define("UserSession", {
+const UserSession = logsDb.define("UserSession", {
   id: {
     type: DataTypes.INTEGER,
     primaryKey: true,

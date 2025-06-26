@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate, NavLink } from "react-router-dom";
 import { useAuth } from "../context/authContext";
 import Logo from "../assets/LOGO.png";
@@ -11,7 +11,14 @@ const Login = () => {
   const [error, setError] = useState("");
   const [isloading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const {user, login } = useAuth();
+  
+
+  useEffect(() => {
+  if (user) {
+    navigate("/admin/dashboard", { replace: true });
+  }
+}, [user]);
 
   const handleChange = (e) => {
     setCredentials({

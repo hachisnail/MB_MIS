@@ -3,23 +3,19 @@ import { User } from "../models/authModels.js";
 
 export const fetchLogs = async (req, res, next) => {
   try {
-    // Step 1: Fetch logs
     const logs = await Log.findAll({
       order: [['createdAt', 'DESC']],
-      raw: true, // Flatten output
+      raw: true, 
     });
 
-    // Step 2: Extract unique userIds from logs
     const userIds = [...new Set(logs.map(log => log.userId))];
 
-    // Step 3: Fetch users from mainDb
     const users = await User.findAll({
       where: { id: userIds },
-      attributes: ['id', 'username', 'fname', 'lname', 'email', 'position'],
+      attributes: ['id', 'username', 'fname', 'lname', 'email', 'roleId'],
       raw: true,
     });
 
-    // Step 4: Map user info into logs
     const userMap = Object.fromEntries(users.map(user => [user.id, user]));
 
     const enrichedLogs = logs.map(log => ({
@@ -33,3 +29,43 @@ export const fetchLogs = async (req, res, next) => {
     res.status(500).json({ message: "Failed to fetch logs" });
   }
 };
+
+
+export const fetchLog = async (req, res, next) => {
+  try {
+    const decoded = decodeURIComponent(req.params.log); // Already decoded string
+    const [idStr, action, timestamp] = decoded.split(' ');
+    const id = parseInt(idStr, 10);
+
+    if (isNaN(id)) {
+      return res.status(400).json({ message: "Invalid log ID" });
+    }
+
+    const log = await Log.findOne({
+      where: { id },
+      raw: true,
+    });
+
+    if (!log) {
+      return res.status(404).json({ message: "Log not found" });
+    }
+
+    const user = await User.findOne({
+      where: { id: log.userId },
+      attributes: ['id', 'username', 'fname', 'lname', 'email', 'roleId'],
+      raw: true,
+    });
+
+    const enrichedLog = {
+      ...log,
+      user: user || null,
+      metadata: { action, timestamp }, // Optional: include for context
+    };
+
+    res.json(enrichedLog);
+  } catch (error) {
+    console.error("Failed to fetch specific log:", error);
+    res.status(500).json({ message: "Failed to fetch log" });
+  }
+};
+

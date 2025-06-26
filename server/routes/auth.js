@@ -4,7 +4,7 @@ import {login, logout, getCurrentUser, validateToken} from '../controllers/authC
 import { getFlags, setFlag } from '../controllers/routerFlagController.js';
 import {displayUsers, displayUser} from "../controllers/userControllers.js"
 import { sendInvitation, completeRegistration, resendInvitation, revokeInvitation, getPendingInvitations } from "../controllers/invitiationController.js";
-import { fetchLogs } from "../controllers/logController.js";
+import { fetchLogs, fetchLog } from "../controllers/logController.js";
 
 const router = express.Router();
 
@@ -32,6 +32,8 @@ router.get("/users", displayUsers);
 router.get("/user/:fullName", displayUser);
 
 router.get("/logs", fetchLogs);
+router.get("/logs/:logId", fetchLog);
+
 
 
 export default router;

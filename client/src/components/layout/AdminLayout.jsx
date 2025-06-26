@@ -10,6 +10,7 @@ const AdminLayout = () => {
 
   const themedRoutes = [
     { path: "/admin/logs", theme: "bg-[#151515] text-white" },
+    { path: "/admin/logs/:log", theme: "bg-[#151515] text-white" },
     { path: "/admin/user", theme: "bg-[#151515] text-white" },
     { path: "/admin/user/:user", theme: "bg-[#151515] text-white" },
     { path: "/admin/add-user", theme: "bg-[#151515] text-white" },

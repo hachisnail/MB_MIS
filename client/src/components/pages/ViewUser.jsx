@@ -15,8 +15,9 @@ const ViewUser = () => {
   const socketRef = useRef(null);
 
   const pathSegments = location.pathname.split("/").filter(Boolean);
-  const fullName = decodeURIComponent(pathSegments[pathSegments.length - 1]);
-
+  const codedFullName = decodeURIComponent(pathSegments[pathSegments.length - 1]);
+  const fullName = atob(codedFullName);
+  
   const fetchSessions = async () => {
     try {
       const response = await axiosClient.get(`/auth/user/${fullName}`);

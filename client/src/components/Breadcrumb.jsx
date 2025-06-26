@@ -4,6 +4,7 @@ const routeMeta = [
   { path: "/admin/inventory", title: "Inventory of Artifact" },
   { path: "/admin/acquisition", title: "Donations/Acquisitions/Lending Management" },
   { path: "/admin/logs", title: "Activities", theme: "text-gray-400" },
+  { path: "/admin/logs/:log", title: "Activity", theme: "text-gray-400" },
   { path: "/admin/view", title: "View Artifacts" },
   { path: "/admin/user", title: "User Management", theme: "text-gray-400" },
   { path: "/admin/user/:user", title: "View User", theme: "text-gray-400" },
@@ -12,6 +13,28 @@ const routeMeta = [
   { path: "/admin/schedule", title: "Schedules Management" },
   { path: "/admin/article", title: "Articles Management" },
 ];
+
+function safeDecodeBase64(str) {
+  if (typeof str !== "string" || str.length < 8 || str.length % 4 !== 0) return str;
+
+  const base64Regex = /^[A-Za-z0-9+/]+={0,2}$/;
+  if (!base64Regex.test(str)) return str;
+
+  try {
+    const decoded = atob(str);
+
+    if (btoa(decoded) === str) {
+      if (/^[\x20-\x7E\s]+$/.test(decoded)) {
+        return decoded;
+      }
+    }
+
+    return str;
+  } catch {
+    return str;
+  }
+}
+
 
 const Breadcrumb = () => {
   const location = useLocation();
@@ -30,7 +53,10 @@ const Breadcrumb = () => {
       currentLink += `/${segment}`;
       if (["admin", "preview", "files", "pictures"].includes(segment)) return null;
 
-      const label = decodeURIComponent(segment)
+      const raw = decodeURIComponent(segment);
+      const decoded = safeDecodeBase64(raw);
+
+      const label = decoded
         .replace(/-/g, " ")
         .replace(/\s+/g, " ")
         .trim()

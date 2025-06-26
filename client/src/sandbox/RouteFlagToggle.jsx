@@ -75,11 +75,10 @@ function RouteFlagToggle() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto mt-8 p-6 bg-gray-50 rounded-lg shadow-md min-h-[40rem]">
+    <div className="max-w-7xl mx-auto mt-8 p-6 bg-gray-300 rounded-lg shadow-md min-h-[40rem]">
       <h2 className="text-3xl font-semibold mb-6 text-gray-800">
         Toggle Route Flags
       </h2>
-
       {flagsLoading ? (
         <p className="text-gray-600">Loading flags...</p>
       ) : flagsError ? (
@@ -88,9 +87,10 @@ function RouteFlagToggle() {
         <p className="text-gray-600">No flags available.</p>
       ) : (
         <>
+        <div className="h-7 mb-6">
           {message && (
             <p
-              className={`mb-6 h-10 text-lg font-medium ${
+              className={` text-lg font-medium ${
                 message.startsWith("Error")
                   ? "text-red-600"
                   : "text-green-600"
@@ -99,6 +99,7 @@ function RouteFlagToggle() {
               {message}
             </p>
           )}
+          </div>
 
           {/* Flex container for cards */}
           <div className="flex flex-wrap gap-6">
@@ -109,7 +110,7 @@ function RouteFlagToggle() {
               >
                 <div>
                   <p className="text-lg font-semibold text-gray-900 truncate">
-                    {route_key}
+                    {route_key.toUpperCase()}
                   </p>
                   <p
                     className={`mt-2 text-sm font-medium ${

@@ -143,7 +143,8 @@ const User = () => {
   };
 
   const handleOpen = (user) => {
-    navigate(`${user}`);
+    const coded = btoa(user);
+    navigate(`${coded}`);
   };
 
   const handleResend = async (id) => {

@@ -18,11 +18,18 @@ export async function login(req, res) {
     const isValid = await bcrypt.compare(password, user.password);
     if (!isValid) return res.status(401).json({ message: "Invalid credentials" });
 
+    // 🛡 Prevent re-login in same session
+    if (req.session.userId && req.session.userId !== user.id) {
+      return res.status(400).json({
+        message: "A user is already logged in from this session.",
+      });
+    }
+
     const beforeState = { isOnline: false };
 
     const existingSession = await UserSession.findOne({
       where: { userId: user.id, isOnline: true },
-      order: [['loginAt', 'DESC']],
+      order: [["loginAt", "DESC"]],
     });
 
     if (existingSession) {
@@ -54,13 +61,20 @@ export async function login(req, res) {
         isOnline: true,
       });
 
-      // Descriptive log
       const fullName = `${user.fname} ${user.lname}`;
       const description = `${fullName} (${user.username}) logged in`;
       const details = `IP: ${req.ip}, User-Agent: ${req.get("User-Agent")}`;
       const afterState = { isOnline: true };
 
-      await createLog("login", "User", description, user.id, beforeState, afterState, details);
+      await createLog(
+        "login",
+        "User",
+        description,
+        user.id,
+        beforeState,
+        afterState,
+        details
+      );
 
       return res.json({
         message: "Login successful",
@@ -72,6 +86,7 @@ export async function login(req, res) {
     return res.status(500).json({ message: "Server error" });
   }
 }
+
 
 export async function logout(req, res) {
   try {

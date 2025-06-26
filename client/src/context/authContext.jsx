@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from "react";
-import axiosClient from "../lib/axiosClient"; // adjust path as needed
+import axiosClient from "../lib/axiosClient";
 
 const AuthContext = createContext(null);
 
@@ -22,6 +22,7 @@ export function AuthProvider({ children }) {
     try {
       await axiosClient.post("/auth/logout");
       setUser(null);
+      localStorage.setItem("logout-event", Date.now());
     } catch (err) {
       console.error("Logout failed");
     }
@@ -40,6 +41,18 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     fetchCurrentUser();
+
+    const handleStorage = (event) => {
+      if (event.key === "logout-event") {
+        setUser(null); 
+      }
+    };
+
+    window.addEventListener("storage", handleStorage);
+
+    return () => {
+      window.removeEventListener("storage", handleStorage);
+    };
   }, []);
 
   return (

@@ -28,7 +28,7 @@ export const displayUsers = async (req, res) => {
 
     const enrichedUsers = users.map(user => ({
       ...user.toJSON(),
-      sessions: sessionsByUser[user.id] || [], // ✅ match frontend key
+      sessions: sessionsByUser[user.id] || [], 
     }));
 
     res.json(enrichedUsers);

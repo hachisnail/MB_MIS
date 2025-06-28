@@ -9,7 +9,7 @@ import {
   LoadingSpinner,
   rolePermissions,
 } from "../list/commons";
-import ViewUserItem from "../list/ViewUserlist";
+import {ViewUserItem, ViewUserSessionItem} from "../list/ViewUserlist";
 
 const ViewUser = () => {
   const [userData, setUserData] = useState(null);
@@ -63,7 +63,6 @@ const ViewUser = () => {
   const user = useMemo(() => userData, [userData]);
   const sessions = useMemo(() => user?.sessions || [], [user]);
 
-  const renderRole = (roleId) => rolePermissions[String(roleId)] || "Unknown";
 
   const handleDetails = (message) => {
     setPopupMessage(message);
@@ -80,82 +79,83 @@ const ViewUser = () => {
             ) : (
               <>
                 {!user ? (<EmptyMessage message="N/A"/>):(
-                  <>
-                    <div className="w-[50rem] border-b border-[#373737] min-h-fit pb-10 text-xl flex items-center gap-x-4">
-                      <div className="min-w-50 min-h-50 border-4 rounded-lg">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          width="32"
-                          height="32"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          strokeWidth="1"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          className="stroke-white w-full h-auto"
-                        >
-                          <path d="M9 7m-4 0a4 4 0 1 0 8 0a4 4 0 1 0 -8 0" />
-                          <path d="M3 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2" />
-                          <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                          <path d="M21 21v-2a4 4 0 0 0 -3 -3.85" />
-                        </svg>
-                      </div>
+                  // <>
+                  //   <div className="w-[50rem] border-b border-[#373737] min-h-fit pb-10 text-xl flex items-center gap-x-4">
+                  //     <div className="min-w-50 min-h-50 border-4 rounded-lg">
+                  //       <svg
+                  //         xmlns="http://www.w3.org/2000/svg"
+                  //         width="32"
+                  //         height="32"
+                  //         viewBox="0 0 24 24"
+                  //         fill="none"
+                  //         strokeWidth="1"
+                  //         strokeLinecap="round"
+                  //         strokeLinejoin="round"
+                  //         className="stroke-white w-full h-auto"
+                  //       >
+                  //         <path d="M9 7m-4 0a4 4 0 1 0 8 0a4 4 0 1 0 -8 0" />
+                  //         <path d="M3 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2" />
+                  //         <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                  //         <path d="M21 21v-2a4 4 0 0 0 -3 -3.85" />
+                  //       </svg>
+                  //     </div>
 
-                      <div className="w-full h-full flex flex-col justify-center">
-                        <span className="mt-5 w-fit text-4xl font-semibold">
-                          #{user.username}
-                        </span>
-                        <div className="flex w-full h-fit gap-x-2">
-                          <span className="text-6xl font-semibold">
-                            {user.fname} {user.lname}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
+                  //     <div className="w-full h-full flex flex-col justify-center">
+                  //       <span className="mt-5 w-fit text-4xl font-semibold">
+                  //         #{user.username}
+                  //       </span>
+                  //       <div className="flex w-full h-fit gap-x-2">
+                  //         <span className="text-6xl font-semibold">
+                  //           {user.fname} {user.lname}
+                  //         </span>
+                  //       </div>
+                  //     </div>
+                  //   </div>
 
-                    <div className="w-[50rem] border-b gap-y-4 pb-10 border-[#373737] min-h-fit flex flex-col">
-                      <div className="flex flex-col">
-                        <span className="text-[#949494] text-lg">Position</span>
-                        <span className="text-3xl font-semibold">
-                          {user.position || "N/A"}
-                        </span>
-                      </div>
+                  //   <div className="w-[50rem] border-b gap-y-4 pb-10 border-[#373737] min-h-fit flex flex-col">
+                  //     <div className="flex flex-col">
+                  //       <span className="text-[#949494] text-lg">Position</span>
+                  //       <span className="text-3xl font-semibold">
+                  //         {user.position || "N/A"}
+                  //       </span>
+                  //     </div>
 
-                      <div className="flex flex-col">
-                        <span className="text-[#949494] text-lg">Email</span>
-                        <span className="text-3xl font-semibold">
-                          {user.email || "N/A"}
-                        </span>
-                      </div>
+                  //     <div className="flex flex-col">
+                  //       <span className="text-[#949494] text-lg">Email</span>
+                  //       <span className="text-3xl font-semibold">
+                  //         {user.email || "N/A"}
+                  //       </span>
+                  //     </div>
 
-                      <div className="flex flex-col">
-                        <span className="text-[#949494] text-lg">Contact</span>
-                        <span className="text-3xl font-semibold">
-                          {user.contact || "N/A"}
-                        </span>
-                      </div>
+                  //     <div className="flex flex-col">
+                  //       <span className="text-[#949494] text-lg">Contact</span>
+                  //       <span className="text-3xl font-semibold">
+                  //         {user.contact || "N/A"}
+                  //       </span>
+                  //     </div>
 
-                      <div className="flex flex-col">
-                        <span className="text-[#949494] text-lg">Role</span>
-                        <span className="text-3xl font-semibold">
-                          {renderRole(user.roleId)}
-                        </span>
-                      </div>
-                    </div>
+                  //     <div className="flex flex-col">
+                  //       <span className="text-[#949494] text-lg">Role</span>
+                  //       <span className="text-3xl font-semibold">
+                  //         {renderRole(user.roleId)}
+                  //       </span>
+                  //     </div>
+                  //   </div>
 
-                    <div className="w-[50rem] pb-10 min-h-fit flex flex-col">
-                      <div className="flex gap-y-3 flex-col">
-                        <span className="text-4xl font-semibold">
-                          Session Logs
-                        </span>
-                        <span className="w-[30rem] leading-tight text-xl text-[#9c9c9c]">
-                          The session log table records user login sessions,
-                          including last login timestamp, session start/end
-                          times, and duration.
-                        </span>
-                      </div>
-                    </div>
-                  </>
+                  //   <div className="w-[50rem] pb-10 min-h-fit flex flex-col">
+                  //     <div className="flex gap-y-3 flex-col">
+                  //       <span className="text-4xl font-semibold">
+                  //         Session Logs
+                  //       </span>
+                  //       <span className="w-[30rem] leading-tight text-xl text-[#9c9c9c]">
+                  //         The session log table records user login sessions,
+                  //         including last login timestamp, session start/end
+                  //         times, and duration.
+                  //       </span>
+                  //     </div>
+                  //   </div>
+                  // </>
+                  <ViewUserItem user={user}/>
                 )}
               </>
             )}
@@ -179,7 +179,7 @@ const ViewUser = () => {
                 sessions
                   .sort((a, b) => new Date(b.loginAt) - new Date(a.loginAt))
                   .map((session) => (
-                    <ViewUserItem
+                    <ViewUserSessionItem
                       key={session.id}
                       session={session}
                       onClick={handleDetails}

@@ -2,6 +2,7 @@
 import { createContext, useContext, useState, useEffect, useRef } from "react";
 import axiosClient from "../lib/axiosClient";
 import SocketClient from "../lib/socketClient";
+// import { useNavigate } from "react-router-dom";
 
 const AuthContext = createContext(null);
 
@@ -9,6 +10,8 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const socketRef = useRef(null);
+  // const navigate = useNavigate();
+  const [forcedLogoutReason, setForcedLogoutReason] = useState(null);
 
   const login = async (credentials) => {
     try {
@@ -55,24 +58,24 @@ export function AuthProvider({ children }) {
     return () => window.removeEventListener("storage", syncLogout);
   }, []);
 
-  useEffect(() => {
-    if (user) {
-      if (!socketRef.current) {
-        socketRef.current = new SocketClient(import.meta.env.VITE_SOCKET_URL);
+useEffect(() => {
+  if (user) {
+    if (!socketRef.current) {
+      socketRef.current = new SocketClient(import.meta.env.VITE_SOCKET_URL);
 
-        socketRef.current.socket.on("forceLogout", (data) => {
-          console.warn("Force logout received:", data?.reason);
-          logout();
-          window.location.reload();
-        });
-      }
-
-      socketRef.current.registerUser(user.id);
-    } else if (socketRef.current) {
-      socketRef.current.disconnect();
-      socketRef.current = null;
+      socketRef.current.socket.on("forceLogout", (data) => {
+        // console.warn("Force logout received:", data?.reason);
+        setForcedLogoutReason(data?.reason || "You have been logged out.");
+        logout();
+      });
     }
-  }, [user]);
+
+    socketRef.current.registerUser(user.id);
+  } else if (socketRef.current) {
+    socketRef.current.disconnect();
+    socketRef.current = null;
+  }
+}, [user]);
 
   return (
     <AuthContext.Provider
@@ -81,6 +84,7 @@ export function AuthProvider({ children }) {
         login,
         logout,
         loading,
+        forcedLogoutReason,
         socketClient: socketRef.current,
       }}
     >

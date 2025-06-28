@@ -14,10 +14,10 @@ export function emitDbChange(modelName, action, instance) {
       action,
       data: instance.toJSON(),
     };
-    console.log(`[Socket Emit] Emitting dbChange for model="${modelName}", action="${action}" with data:`, payload.data);
+    // console.log(`[Socket Emit] Emitting dbChange for model="${modelName}", action="${action}" with data:`, payload.data);
     io.emit("dbChange", payload);
   } catch (err) {
-    console.error(`Socket.io not initialized or error emitting for ${modelName}:`, err.message);
+    // console.error(`Socket.io not initialized or error emitting for ${modelName}:`, err.message);
   }
 }
 
@@ -37,7 +37,7 @@ export function addDbChangeHooks(model, modelName) {
     if (changed && changed.length > 0) {
       emitDbChange(modelName, "update", instance);
     } else {
-      console.log(`[Socket Emit] Skipped emit: No changes detected for "${modelName}"`);
+      // console.log(`[Socket Emit] Skipped emit: No changes detected for "${modelName}"`);
     }
   });
 

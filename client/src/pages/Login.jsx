@@ -11,13 +11,20 @@ const Login = () => {
   const [error, setError] = useState("");
   const [isloading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-  const { user, login } = useAuth();
+  const { user, login, forcedLogoutReason } = useAuth(); // ✅ include reason
 
   useEffect(() => {
     if (user) {
       navigate("/admin/dashboard", { replace: true });
     }
   }, [user]);
+
+  // ✅ Handle force logout message
+  useEffect(() => {
+    if (forcedLogoutReason) {
+      setError(forcedLogoutReason);
+    }
+  }, [forcedLogoutReason]);
 
   const handleChange = (e) => {
     setCredentials({
@@ -37,7 +44,7 @@ const Login = () => {
     if (success) {
       navigate("/admin/dashboard");
     } else {
-      setError(message); 
+      setError(message);
     }
   };
 

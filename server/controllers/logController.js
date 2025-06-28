@@ -33,9 +33,8 @@ export const fetchLogs = async (req, res, next) => {
 
 export const fetchLog = async (req, res, next) => {
   try {
-    const decoded = decodeURIComponent(req.params.log); // Already decoded string
-    const [idStr, action, timestamp] = decoded.split(' ');
-    const id = parseInt(idStr, 10);
+    const raw = decodeURIComponent(req.params.logId);
+    const id = parseInt(raw); 
 
     if (isNaN(id)) {
       return res.status(400).json({ message: "Invalid log ID" });
@@ -59,7 +58,6 @@ export const fetchLog = async (req, res, next) => {
     const enrichedLog = {
       ...log,
       user: user || null,
-      metadata: { action, timestamp }, // Optional: include for context
     };
 
     res.json(enrichedLog);

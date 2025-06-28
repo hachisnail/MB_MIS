@@ -11,13 +11,19 @@ export function initializeSocket(server, corsOrigin) {
     }
   });
 
-  io.on("connection", (socket) => {
-    console.log("A client connected", socket.id);
+io.on("connection", (socket) => {
+  console.log("Client connected:", socket.id);
 
-    socket.on("disconnect", () => {
-      console.log("Client disconnected", socket.id);
-    });
+  socket.on("registerUser", (userId) => {
+    socket.join(`user:${userId}`);
+    console.log(`Socket ${socket.id} joined room user:${userId}`);
   });
+
+  socket.on("disconnect", () => {
+    console.log("Client disconnected:", socket.id);
+  });
+});
+
 
   return io;
 }

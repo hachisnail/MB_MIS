@@ -2,9 +2,8 @@ import axiosClient from "../../lib/axiosClient";
 import { useState, useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import PopupModal from "../modals/PopupModal";
-import SocketClient from "../../lib/socketClient";
+import {useSocketClient} from "../../context/authContext" 
 
-const socketUrl = import.meta.env.VITE_SOCKET_URL;
 
 const ViewUser = () => {
   const [logs, setLogs] = useState([]);
@@ -12,7 +11,8 @@ const ViewUser = () => {
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
   const location = useLocation();
-  const socketRef = useRef(null);
+  const socket = useSocketClient();
+
 
   const pathSegments = location.pathname.split("/").filter(Boolean);
   const codedFullName = decodeURIComponent(pathSegments[pathSegments.length - 1]);
@@ -31,23 +31,24 @@ const ViewUser = () => {
     }
   };
 
-  useEffect(() => {
-    fetchSessions();
 
-    const socket = new SocketClient(socketUrl);
-    socketRef.current = socket;
-
-    const handleUserChange = (action, data) => {
+    useEffect(() => {
       fetchSessions();
-    };
+  
+      const handleUserChange = () => fetchSessions();
+  
+      if (socket) {
+        socket.onDbChange("UserSession", "*", handleUserChange);
+      }
+  
+      return () => {
+        if (socket) {
+          socket.offDbChange("UserSession", "*", handleUserChange);
+        }
+      };
+    }, [socket]);
 
-    socket.onDbChange("UserSession", "*", handleUserChange);
 
-    return () => {
-      socket.offDbChange("UserSession", "*", handleUserChange);
-      socket.disconnect();
-    };
-  }, []);
 
   const renderRole = (roleId) => {
     const mapping = {

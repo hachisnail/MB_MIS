@@ -1,11 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { NavLink } from "react-router-dom";
-import SocketClient from "../../lib/socketClient";
 import { SearchBar, CardDropdownPicker } from "../../features/Utilities";
 import axiosClient from "../../lib/axiosClient";
 import TimelineDatePicker from "../../features/TimelineDatePicker";
+import {useSocketClient} from "../../context/authContext" 
 
-const socketUrl = import.meta.env.VITE_SOCKET_URL;
 
 const Logs = () => {
   const [logs, setLogs] = useState([]);
@@ -14,7 +13,8 @@ const Logs = () => {
   const [selectedAction, setSelectedAction] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
 
-  const socketRef = useRef(null);
+  const socket = useSocketClient();
+
 
   const matchesFilter = (value, filter) => {
     return filter === "*" || filter === "" || value === filter || value === parseInt(filter);
@@ -31,24 +31,24 @@ const Logs = () => {
     }
   };
 
-  useEffect(() => {
-    fetchLogs();
 
-    const socket = new SocketClient(socketUrl);
-    socketRef.current = socket;
 
-    const handleUserChange = (action, data) => {
-      console.log(`Silent refresh triggered from socket: ${action}`, data);
+
+    useEffect(() => {
       fetchLogs();
-    };
-
-    socket.onDbChange("Log", "*", handleUserChange);
-
-    return () => {
-      socket.offDbChange("Log", "*", handleUserChange);
-      socket.disconnect();
-    };
-  }, []);
+  
+      const handleLogChange = () => fetchLogs();
+  
+      if (socket) {
+        socket.onDbChange("Log", "*", handleLogChange);
+      }
+  
+      return () => {
+        if (socket) {
+          socket.offDbChange("Log", "*", handleLogChange);
+        }
+      };
+    }, [socket]);
 
   const formatCreatedAt = (dateString) => {
     if (!dateString) return "N/A";

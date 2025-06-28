@@ -3,12 +3,13 @@ import StyledButton from "../../components/buttons/StyledButton";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useEffect, useState, useRef } from "react";
 import axiosClient from "../../lib/axiosClient";
-import SocketClient from "../../lib/socketClient";
+
 import ContextMenu from "../../components/modals/ContextMenu";
 import ConfirmationModal from "../../components/modals/ConfirmationModal";
 import PopupModal from "../../components/modals/PopupModal";
 
-const socketUrl = import.meta.env.VITE_SOCKET_URL;
+import {useSocketClient} from "../../context/authContext" 
+
 
 const User = () => {
   const [users, setUsers] = useState([]);
@@ -36,7 +37,8 @@ const User = () => {
   });
 
   const navigate = useNavigate();
-  const socketRef = useRef(null);
+  const socket = useSocketClient();
+
 
   const closeViewInvite = () => {
     setViewInvite({ isOpen: false, invite: null });
@@ -108,26 +110,44 @@ const User = () => {
       });
   };
 
-  useEffect(() => {
-    fetchUsers();
+  // useEffect(() => {
+  //   fetchUsers();
+  //   fetchPendingInvitations();
+
+  //   const socket = new SocketClient(socketUrl);
+  //   socketRef.current = socket;
+
+  //   const handleUserChange = (action, data) => {
+  //     console.log(`Silent refresh triggered from socket: ${action}`, data);
+  //     fetchPendingInvitations();
+  //     fetchUsers();
+  //   };
+
+  //   socket.onDbChange("UserSession", "*", handleUserChange);
+
+  //   return () => {
+  //     socket.offDbChange("UserSession", "*", handleUserChange);
+  //     socket.disconnect();
+  //   };
+  // }, []);
+
+      useEffect(() => {
+ fetchUsers();
     fetchPendingInvitations();
-
-    const socket = new SocketClient(socketUrl);
-    socketRef.current = socket;
-
-    const handleUserChange = (action, data) => {
-      console.log(`Silent refresh triggered from socket: ${action}`, data);
-      fetchPendingInvitations();
-      fetchUsers();
-    };
-
-    socket.onDbChange("UserSession", "*", handleUserChange);
-
-    return () => {
-      socket.offDbChange("UserSession", "*", handleUserChange);
-      socket.disconnect();
-    };
-  }, []);
+  
+      const handleUserChange = () => { fetchUsers();
+    fetchPendingInvitations(); };
+  
+      if (socket) {
+        socket.onDbChange("UserSession", "*", handleUserChange);
+      }
+  
+      return () => {
+        if (socket) {
+          socket.offDbChange("UserSession", "*", handleUserChange);
+        }
+      };
+    }, [socket]);
 
   const showPopup = (title, message, type = "info") => {
     setPopup({

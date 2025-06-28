@@ -1,3 +1,4 @@
+// lib/socketClient.jsx
 import { io } from "socket.io-client";
 
 class SocketClient {
@@ -14,11 +15,19 @@ class SocketClient {
     });
 
     this.socket.on("dbChange", (payload) => {
-      console.log(payload);
       this.handleDbChange(payload);
     });
   }
 
+  registerUser(userId) {
+    if (this.socket?.connected) {
+      this.socket.emit("registerUser", userId);
+    } else {
+      this.socket.on("connect", () => {
+        this.socket.emit("registerUser", userId);
+      });
+    }
+  }
 
   onDbChange(model, action, callback) {
     const key = this._getKey(model, action);
@@ -39,20 +48,19 @@ class SocketClient {
   }
 
   handleDbChange({ model, action, data }) {
-
     const exactKey = this._getKey(model, action);
-    if (this.listeners.has(exactKey)) {
-      for (const cb of this.listeners.get(exactKey)) {
-        cb(data);
-      }
-    }
-
     const wildcardKey = this._getKey(model, "*");
-    if (this.listeners.has(wildcardKey)) {
-      for (const cb of this.listeners.get(wildcardKey)) {
-        cb(action, data);
+
+    const notify = (key) => {
+      if (this.listeners.has(key)) {
+        for (const cb of this.listeners.get(key)) {
+          cb(action, data);
+        }
       }
-    }
+    };
+
+    notify(exactKey);
+    notify(wildcardKey);
   }
 
   _getKey(model, action) {

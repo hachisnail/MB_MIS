@@ -3,6 +3,8 @@ import bcrypt from "bcryptjs";
 import sessionStore from "../configs/sessionStore.js";
 import { Invitation } from "../models/invitationModels.js";
 import { createLog } from "../services/logService.js";
+import { getIO } from "../configs/socketServer.js";
+
 
 export async function login(req, res) {
   const { username, password } = req.body;
@@ -32,11 +34,39 @@ export async function login(req, res) {
       order: [["loginAt", "DESC"]],
     });
 
-    if (existingSession) {
-      return res.status(403).json({
-        message: "You are already logged in on another session.",
-      });
+if (existingSession) {
+  const io = getIO();
+
+  // Emit forceLogout to that user
+  io.to(`user:${user.id}`).emit("forceLogout", {
+    reason: "You have been logged in from another device.",
+  });
+
+  // ✅ Mark old session offline in the DB
+  await UserSession.update(
+    {
+      isOnline: false,
+      logoutAt: new Date(),
+    },
+    {
+      where: { id: existingSession.id },
+      individualHooks: true,
     }
+  );
+
+  // ✅ Destroy the old session from the session store
+  sessionStore.destroy(existingSession.sessionId, (err) => {
+    if (err) {
+      console.warn(`❌ Failed to destroy old session [${existingSession.sessionId}]:`, err);
+    } else {
+      console.log(`✅ Old session [${existingSession.sessionId}] destroyed successfully.`);
+    }
+  });
+
+  // Optional: Give it time to clean up before proceeding
+  await new Promise((resolve) => setTimeout(resolve, 300));
+}
+
 
     // ✅ Proceed with new session
     req.session.regenerate(async (err) => {

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import axiosClient from "../lib/axiosClient";
 import SocketClient from "../lib/socketClient";
 
-const socketUrl = import.meta.env.VITE_SOCKET_URL;
+import { useSocketClient } from "../context/authContext";
 
 function RouteFlagToggle() {
   const [availableFlags, setAvailableFlags] = useState([]);
@@ -11,7 +11,7 @@ function RouteFlagToggle() {
   const [updatingFlag, setUpdatingFlag] = useState(null);
   const [message, setMessage] = useState("");
 
-  const socketRef = useRef(null);
+const socket = useSocketClient();
   const skipNextSocketRefreshRef = useRef(false); // Prevent flicker from self-triggered socket event
 
   const fetchFlags = async () => {
@@ -25,25 +25,23 @@ function RouteFlagToggle() {
     }
   };
 
-  useEffect(() => {
-    fetchFlags();
 
-    const socket = new SocketClient(socketUrl);
-    socketRef.current = socket;
 
-    socket.onDbChange("RouterFlag", "*", (action, data) => {
-      if (skipNextSocketRefreshRef.current) {
-        skipNextSocketRefreshRef.current = false;
-        return;
-      }
-      console.log(`Silent refresh triggered from socket: ${action}`, data);
+      useEffect(() => {
       fetchFlags();
-    });
-
-    return () => {
-      socket.disconnect();
-    };
-  }, []);
+  
+      const handleFlagChange = () => fetchFlags();
+  
+      if (socket) {
+        socket.onDbChange("Log", "*", handleFlagChange);
+      }
+  
+      return () => {
+        if (socket) {
+          socket.offDbChange("Log", "*", handleFlagChange);
+        }
+      };
+    }, [socket]);
 
   const handleToggle = async (route_key, currentValue) => {
     setUpdatingFlag(route_key);

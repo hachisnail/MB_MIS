@@ -1,21 +1,24 @@
 import TooltipButton from "../../components/buttons/TooltipButton";
-import StyledButton from "../../components/buttons/StyledButton";
+// import StyledButton from "../../components/buttons/StyledButton";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useEffect, useState, useRef } from "react";
 import axiosClient from "../../lib/axiosClient";
 
-import ContextMenu from "../../components/modals/ContextMenu";
+// import ContextMenu from "../../components/modals/ContextMenu";
 import ConfirmationModal from "../../components/modals/ConfirmationModal";
 import PopupModal from "../../components/modals/PopupModal";
+import {UserItem, PendingInviteItem,} from "../../components/list/UsersInviteslist";
+import {LoadingSpinner,ErrorBox,EmptyMessage,} from "../../components/list/commons"
 
-import {useSocketClient} from "../../context/authContext" 
-
+import { useSocketClient } from "../../context/authContext";
 
 const User = () => {
   const [users, setUsers] = useState([]);
   const [pendingInvitations, setPendingInvitations] = useState([]);
-  const [inviteError, setInviteError] = useState([]);
-  const [Loading, setIsLoading] = useState(false);
+  const [inviteError, setInviteError] = useState(null);
+  const [userError, setUserError] = useState(null);
+  const [userLoading, setIsUserLoading] = useState(false);
+  const [inviteLoading, setIsInviteLoading] = useState(false);
 
   const [processingInviteId, setProcessingInviteId] = useState(null);
   const [processingAction, setProcessingAction] = useState(null); // 'resend' or 'revoke'
@@ -38,7 +41,6 @@ const User = () => {
 
   const navigate = useNavigate();
   const socket = useSocketClient();
-
 
   const closeViewInvite = () => {
     setViewInvite({ isOpen: false, invite: null });
@@ -81,73 +83,59 @@ const User = () => {
 
   const fetchUsers = async () => {
     try {
+      setIsUserLoading(true);
+      setUserError(null);
       const response = await axiosClient.get(`/auth/users`, {
         withCredentials: true,
       });
       setUsers(response.data);
       console.log(response.data);
-    } catch (err) {
+    } catch (error) {
       // setFlagsError("Failed to ferch users!");
+      setUserError("Failed to fetch users!\n" + error);
     } finally {
-      // setIsLoading(false);
+      setIsUserLoading(false);
     }
   };
 
   const fetchPendingInvitations = async () => {
-    setInviteError(null);
-    await axiosClient
-      .get(`/auth/invitations`, { withCredentials: true })
-      .then((response) => {
-        setPendingInvitations(response.data || []);
-        // console.log(response.data);
-      })
-      .catch((error) => {
-        console.error(
-          "Error fetching invitations:",
-          error.response?.data || error
-        );
-        setInviteError("Failed to load pending invitations");
+    try {
+      setIsInviteLoading(true);
+      setInviteError(null);
+      const response = await axiosClient.get(`/auth/invitations`, {
+        withCredentials: true,
       });
+      setPendingInvitations(response.data || []);
+    } catch (error) {
+      console.error(
+        "Error fetching invitations:",
+        error.response?.data || error
+      );
+      setInviteError("Failed to load pending invitations!\n" + error);
+    } finally {
+      setIsInviteLoading(false);
+    }
   };
 
-  // useEffect(() => {
-  //   fetchUsers();
-  //   fetchPendingInvitations();
-
-  //   const socket = new SocketClient(socketUrl);
-  //   socketRef.current = socket;
-
-  //   const handleUserChange = (action, data) => {
-  //     console.log(`Silent refresh triggered from socket: ${action}`, data);
-  //     fetchPendingInvitations();
-  //     fetchUsers();
-  //   };
-
-  //   socket.onDbChange("UserSession", "*", handleUserChange);
-
-  //   return () => {
-  //     socket.offDbChange("UserSession", "*", handleUserChange);
-  //     socket.disconnect();
-  //   };
-  // }, []);
-
-      useEffect(() => {
- fetchUsers();
+  useEffect(() => {
+    fetchUsers();
     fetchPendingInvitations();
-  
-      const handleUserChange = () => { fetchUsers();
-    fetchPendingInvitations(); };
-  
+
+    const handleUserChange = () => {
+      fetchUsers();
+      fetchPendingInvitations();
+    };
+
+    if (socket) {
+      socket.onDbChange("UserSession", "*", handleUserChange);
+    }
+
+    return () => {
       if (socket) {
-        socket.onDbChange("UserSession", "*", handleUserChange);
+        socket.offDbChange("UserSession", "*", handleUserChange);
       }
-  
-      return () => {
-        if (socket) {
-          socket.offDbChange("UserSession", "*", handleUserChange);
-        }
-      };
-    }, [socket]);
+    };
+  }, [socket]);
 
   const showPopup = (title, message, type = "info") => {
     setPopup({
@@ -352,98 +340,22 @@ const User = () => {
 
           <div className="w-full h-full overflow-x-scroll flex flex-col min-w-fit max-h-[38rem] bg-[#1C1B19] border-[#373737] border-1 rounded-md">
             {/* Upper right panel */}
-            {users.length > 0 ? (
-              users.map((users) => {
-                const id = users.id;
-                const username = users.username;
-                const fname = users.fname.replace(/\s+/g, "");
-                const lname = users.lname.replace(/\s+/g, "");
-                const email = users.email;
-
-                const rolePermissions = {
-                  1: "Admin",
-                  2: "Content Manager",
-                  3: "Viewer",
-                  4: "Reviewer",
-                };
-
-                const sessions = users.sessions || [];
-                const isActive = sessions.length
-                  ? sessions.reduce((latest, session) =>
-                      new Date(session.loginAt) > new Date(latest.loginAt)
-                        ? session
-                        : latest
-                    ).isOnline === true
-                  : false;
-
-                const initials = `${users.fname.charAt(0)}${users.lname.charAt(
-                  0
-                )}`;
-                const firstInitial = initials.charAt(0);
-                const bgColor = colorMap[firstInitial] || "#FFFFFF";
-
-                const menuItems = [
-                  {
-                    label: "Open",
-                    onClick: () => handleOpen(fname + " " + lname),
-                  },
-                  {
-                    label: "Modify",
-                    onClick: () =>
-                      alert("Modify the some of the details of " + username),
-                  },
-                  {
-                    label: "Close",
-                  },
-                ];
-
-                return (
-                  <ContextMenu key={id} menuItems={menuItems} theme="dark">
-                    <div
-                      className="w-full min-w-100 h-20 border-b-1 hover:bg-gray-900 rounded-sm border-[#373737] flex items-center px-4 justify-between"
-                      key={id}
-                    >
-                      <div className="w-fit h-fit flex items-center gap-x-4">
-                        <div
-                          className={`rounded-full w-8 h-8  ${
-                            isActive ? "bg-green-600" : "bg-amber-50"
-                          }`}
-                        ></div>
-                        <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center">
-                          <div
-                            className="select-none w-11 h-11  rounded-full flex items-center justify-center"
-                            style={{ backgroundColor: bgColor }}
-                          >
-                            <span
-                              title={`${fname} ${lname}`}
-                              className=" text-xl  font-semibold text-black"
-                            >
-                              {initials}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="w-fit h-full flex flex-col justify-center">
-                          <span className="text-sm lg:text-xl font-semibold">
-                            {`${fname} ${lname}`.toUpperCase()}
-                          </span>
-                          <span className="text-[6px] lg:text-sm text-[#9C9C9C] font-semibold">
-                            {email}
-                          </span>
-                        </div>
-                      </div>
-
-                      <span className="text-xs lg:text-md lg:text-xl bg-[#3A3A3A] font-semibold border-1 border-[#A6A6A6] rounded-md text-center w-20 lg:w-40 py-1">
-                        {rolePermissions[users.roleId] || "Not Available"}
-                      </span>
-                    </div>
-                  </ContextMenu>
-                );
-              })
+            {userLoading ? (
+              <LoadingSpinner />
+            ) : userError ? (
+              <ErrorBox message={userError} />
             ) : (
-              <div className="w-full h-full flex items-center justify-center py-6">
-                <span className="text-[#9C9C9C] text-xl">No users!</span>
-              </div>
+              <>
+                {users.length > 0 ? (
+                  users.map((user) => (
+                    <UserItem key={user.id} user={user} handleOpen={handleOpen} />
+                  ))
+                ) : (
+                  <EmptyMessage message="No users!" />
+                )}
+              </>
             )}
+
           </div>
         </div>
         <div className="w-full min-h-[32rem] py-5 overflow-y-scroll flex-col xl:flex-row border-t-1 items-center border-[#373737] flex">
@@ -456,99 +368,34 @@ const User = () => {
             </span>
           </div>
           <div className="w-full max-h-[35rem] min-w-fit flex flex-col h-full bg-[#1C1B19] border-[#373737] border-1 rounded-md">
-            {pendingInvitations.length > 0 ? (
-              pendingInvitations.map((pendingInvitations) => {
-                const id = pendingInvitations.id;
-                const fname = pendingInvitations.first_name;
-                const lname = pendingInvitations.last_name;
-                const initials = fname.charAt(0) + lname.charAt(0);
-                const firstInitial = fname.charAt(0);
-                const bgColor = colorMap[firstInitial] || "#FFFFFF";
-                const email = pendingInvitations.email;
-
-                return (
-                  <div
-                    className="w-full gap-x-4 min-w-100 h-20 border-b-1   rounded-sm border-[#373737] hover:bg-gray-900 flex items-center px-4 justify-between"
-                    key={id}
-                  >
-                    <div
-                      className="w-full cursor-pointer h-fit items-center flex gap-x-4"
-                      onClick={() =>
-                        setViewInvite({
-                          isOpen: true,
-                          invite: pendingInvitations,
-                        })
-                      }
-                    >
-                      <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center">
-                        <div
-                          className="select-none w-11 h-11  rounded-full flex items-center justify-center"
-                          style={{ backgroundColor: bgColor }}
-                        >
-                          <span
-                            title={`${fname} ${lname}`}
-                            className=" text-xl  font-semibold text-black"
-                          >
-                            {initials}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="w-fit h-full flex flex-col justify-center">
-                        <span className="text-sm lg:text-xl w-fit font-semibold ">
-                          {`${fname} ${lname}`.toUpperCase()}
-                        </span>
-
-                        <span className="text-[6px] lg:text-sm text-[#9C9C9C] font-semibold">
-                          {email}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="w-fit h-fit flex gap-x-4">
-                      <StyledButton
-                        onClick={() => {
-                          setSelectedInviteId(id);
-                          setShowConfirmResend(true);
-                        }}
-                        buttonColor="w-40 flex justify-center bg-gray-600 border-white border"
-                        hoverColor="hover:bg-gray-700"
-                        textColor="text-white"
-                        disabled={processingInviteId === id}
-                      >
-                        {processingInviteId === id &&
-                        processingAction === "resend" ? (
-                          <div className="w-7 h-7 mx-auto border-2 border-white border-t-transparent animate-spin rounded-full" />
-                        ) : (
-                          "Resend Invite"
-                        )}
-                      </StyledButton>
-
-                      <StyledButton
-                        onClick={() => {
-                          setSelectedInviteId(id);
-                          setShowConfirmRevoke(true);
-                        }}
-                        buttonColor="w-40 flex items-center border-red-300 border"
-                        hoverColor="hover:bg-red-600"
-                        textColor="text-red-300"
-                        disabled={processingInviteId === id}
-                      >
-                        {processingInviteId === id &&
-                        processingAction === "revoke" ? (
-                          <div className="w-7 h-7 mx-auto border-2 border-white border-t-transparent animate-spin rounded-full" />
-                        ) : (
-                          "Revoke Invite"
-                        )}
-                      </StyledButton>
-                    </div>
-                  </div>
-                );
-              })
+            {inviteLoading ? (
+              <LoadingSpinner />
+            ) : inviteError ? (
+              <ErrorBox message={inviteError} />
             ) : (
-              <div className="w-full h-full flex items-center justify-center py-6">
-                <span className="text-[#9C9C9C] text-xl">
-                  No pending invitiations!
-                </span>
-              </div>
+              <>
+                {pendingInvitations.length > 0 ? (
+                  pendingInvitations.map((invite) => (
+                    <PendingInviteItem
+                      key={invite.id}
+                      invite={invite}
+                      onResend={(id) => {
+                        setSelectedInviteId(id);
+                        setShowConfirmResend(true);
+                      }}
+                      onRevoke={(id) => {
+                        setSelectedInviteId(id);
+                        setShowConfirmRevoke(true);
+                      }}
+                      processingId={processingInviteId}
+                      action={processingAction}
+                      setViewInvite={setViewInvite}
+                    />
+                  ))
+                ) : (
+                  <EmptyMessage message="No pending invitations!" />
+                )}
+              </>
             )}
           </div>
         </div>

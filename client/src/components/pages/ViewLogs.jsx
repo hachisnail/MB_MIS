@@ -8,7 +8,7 @@ const ViewLogs = () => {
 
   const location = useLocation();
   const socket = useSocketClient();
-
+  const [logError, setLogError] =useState(null);
   const pathSegments = location.pathname.split("/").filter(Boolean);
   const encodedId = decodeURIComponent(pathSegments[pathSegments.length - 1]);
   const log = atob(encodedId);
@@ -16,12 +16,14 @@ const ViewLogs = () => {
   // console.log(logId)
   const fetchLog = async () => {
     try {
+      setLogError(null);
       const response = await axiosClient.get(`/auth/logs/${logId}`);
       console.log(response.data);
 
       setLogs(response.data);
     } catch (error) {
-      console.error("Error fetching sessions:", error);
+      // console.error("Error fetching sessions:", error);
+      setLogError("Error fetching logs:", error);
     }
   };
 

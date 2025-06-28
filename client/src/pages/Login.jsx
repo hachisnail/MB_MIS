@@ -11,14 +11,13 @@ const Login = () => {
   const [error, setError] = useState("");
   const [isloading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-  const {user, login } = useAuth();
-  
+  const { user, login } = useAuth();
 
   useEffect(() => {
-  if (user) {
-    navigate("/admin/dashboard", { replace: true });
-  }
-}, [user]);
+    if (user) {
+      navigate("/admin/dashboard", { replace: true });
+    }
+  }, [user]);
 
   const handleChange = (e) => {
     setCredentials({
@@ -32,13 +31,13 @@ const Login = () => {
     setError("");
     setIsLoading(true);
 
-    const success = await login(credentials);
+    const { success, message } = await login(credentials);
     setIsLoading(false);
 
     if (success) {
       navigate("/admin/dashboard");
     } else {
-      setError("Invalid username or password!");
+      setError(message); 
     }
   };
 

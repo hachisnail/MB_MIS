@@ -7,7 +7,7 @@ export default function ConfirmationModal({
   title = "Are you sure?",
   message = "",
   type = "question",
-  theme = "light", // users can set this when using <ConfirmationModal />
+  theme = "light", 
 }) {
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={title} type={type} theme={theme}>

@@ -28,11 +28,11 @@ router.delete('/invitation/:id/revoke', revokeInvitation);
 
 
 // user routes
-router.get("/users", displayUsers);
-router.get("/user/:fullName", displayUser);
+router.get("/users",requireAuth, displayUsers);
+router.get("/user/:fullName", requireAuth , displayUser);
 
-router.get("/logs", fetchLogs);
-router.get("/logs/:logId", fetchLog);
+router.get("/logs",requireAuth, fetchLogs);
+router.get("/logs/:logId", requireAuth , fetchLog);
 
 
 

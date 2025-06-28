@@ -1,4 +1,4 @@
-import React, { useState, Fragment } from "react";
+import { useState, Fragment } from "react";
 import { useAuth } from "../../context/authContext";
 import { useNavigate } from "react-router-dom";
 import { Transition } from "@headlessui/react";

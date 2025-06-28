@@ -33,10 +33,12 @@ export async function login(req, res) {
     });
 
     if (existingSession) {
-      await sessionStore.destroy(existingSession.sessionId);
-      await existingSession.update({ isOnline: false, logoutAt: new Date() });
+      return res.status(403).json({
+        message: "You are already logged in on another session.",
+      });
     }
 
+    // ✅ Proceed with new session
     req.session.regenerate(async (err) => {
       if (err) {
         console.error("Session regeneration error:", err);
@@ -84,8 +86,10 @@ export async function login(req, res) {
   } catch (error) {
     console.error(error);
     return res.status(500).json({ message: "Server error" });
+    
   }
 }
+
 
 
 export async function logout(req, res) {

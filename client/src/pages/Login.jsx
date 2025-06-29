@@ -19,7 +19,6 @@ const Login = () => {
     }
   }, [user]);
 
-  // ✅ Handle force logout message
   useEffect(() => {
     if (forcedLogoutReason) {
       setError(forcedLogoutReason);

@@ -12,8 +12,8 @@ router.post("/login", login);
 router.post("/logout", logout);
 router.get("/me", getCurrentUser);
 
-router.get('/router-flags', getFlags);
-router.post('/router-flags',requireAuth, setFlag);
+router.get('/router-flags', requireAuth, requireRole([1]),  getFlags);
+router.post('/router-flags',requireAuth,requireRole([1]), setFlag);
 
 router.post('/send-invitation', requireAuth, sendInvitation)
 router.post('/invitations', sendInvitation);
@@ -28,11 +28,12 @@ router.delete('/invitation/:id/revoke', revokeInvitation);
 
 
 // user routes
-router.get("/users",requireAuth, displayUsers);
-router.get("/user/:fullName", requireAuth , displayUser);
+router.get("/users",requireAuth, requireRole([1]),  displayUsers);
+router.get("/user/:fullName", requireAuth, requireRole([1]), displayUser);
 
-router.get("/logs",requireAuth, fetchLogs);
-router.get("/logs/:logId", requireAuth , fetchLog);
+//log routes
+router.get("/logs", requireAuth, requireRole([1]), fetchLogs);
+router.get("/logs/:logId", requireAuth, requireRole([1]), fetchLog);
 
 
 

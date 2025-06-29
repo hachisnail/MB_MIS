@@ -7,11 +7,15 @@ const routeMeta = [
   { path: "/admin/logs/:log", title: "Activity", theme: "text-gray-400" },
   { path: "/admin/view", title: "View Artifacts" },
   { path: "/admin/user", title: "User Management", theme: "text-gray-400" },
+  { path: "/admin/user/add-user", title: "Invite a New User", theme: "text-gray-400" },
   { path: "/admin/user/:user", title: "View User", theme: "text-gray-400" },
-  { path: "/admin/add-user", title: "Invite A New User", theme: "text-gray-400" },
+  { path: "/admin/config", title: "System Configuration", theme: "text-gray-400" },
+
+  
   { path: "/admin/appointment", title: "Appointments Management" },
   { path: "/admin/schedule", title: "Schedules Management" },
   { path: "/admin/article", title: "Articles Management" },
+  
 ];
 
 function safeDecodeBase64(str) {

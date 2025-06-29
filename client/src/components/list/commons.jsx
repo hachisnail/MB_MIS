@@ -37,12 +37,12 @@ export const roleColorMap = {
 };
 
 export const actionMap = {
-  create: "text-green-400",
-  update: "text-blue-400",
-  delete: "text-red-400",
-  "soft-delete": "text-yellow-400",
-  login: "text-emerald-400",
-  logout: "text-gray-400",
+  create: "bg-green-400",
+  update: "bg-blue-400",
+  delete: "bg-red-400",
+  "soft-delete": "bg-yellow-400",
+  login: "bg-emerald-400",
+  logout: "bg-gray-400",
 };
 
 export const rolePermissions = {

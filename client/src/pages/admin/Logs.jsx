@@ -163,7 +163,7 @@ const actionOptions = [
               (label) => (
                 <div
                   key={label}
-                  className="h-10 min-w-fit border-gray-600 flex pl-5 items-center border-r-1 col-span-1"
+                  className="h-10 min-w-fit flex pl-5 items-center col-span-1"
                 >
                   <span className="text-2xl">{label}</span>
                 </div>

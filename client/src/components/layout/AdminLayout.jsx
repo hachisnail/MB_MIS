@@ -14,6 +14,8 @@ const AdminLayout = () => {
     { path: "/admin/user", theme: "bg-[#151515] text-white" },
     { path: "/admin/user/:user", theme: "bg-[#151515] text-white" },
     { path: "/admin/add-user", theme: "bg-[#151515] text-white" },
+    { path: "/admin/config", theme: "bg-[#151515] text-white" },
+
   ];
 
   const matchedTheme = themedRoutes.find(({ path }) =>

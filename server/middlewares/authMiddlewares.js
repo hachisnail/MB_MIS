@@ -6,14 +6,14 @@ export function requireAuth(req, res, next) {
   }
 }
 
-export function requireRole(allowedRoles = []) {
+export function requireRole(allowedRoleIds = []) {
   return (req, res, next) => {
     const user = req.session.user;
     if (!user) {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    if (!allowedRoles.includes(user.position)) {
+    if (!allowedRoleIds.includes(user.roleId)) {
       return res.status(403).json({ message: "Forbidden. Insufficient permissions." });
     }
 

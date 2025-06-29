@@ -403,7 +403,7 @@ const CreateUsers = () => {
         <div className="w-full h-full overflow-y-scroll flex-col xl:flex-row py-5 items-center flex border-t-1 border-[#373737]">
           {/* Form section */}
           <form className="min-w-fit flex h-full p-2 gap-y-5 gap-x-10" onSubmit={(e) => e.preventDefault()}> {/* Prevent default browser form submission */}
-            <div className="w-[40rem] h-fit flex flex-col gap-y-10">
+            <div className="w-[40rem] h-fit flex flex-col gap-y-2">
               {/* Form header and description */}
               <div className="w-full h-fit flex flex-col gap-y-2">
                 <span className="w-fit text-2xl font-semibold">Form</span>
@@ -415,7 +415,7 @@ const CreateUsers = () => {
                   <strong>username</strong>, and <strong>password</strong>.
                 </span>
               </div>
-              <div className="w-[40rem] h-[1px] bg-[#373737] rounded"></div> {/* Separator line */}
+              <div className="w-[40rem] my-7 h-[1px] bg-[#373737] rounded"></div> {/* Separator line */}
 
               {/* First Name Input */}
               <div className="flex flex-col w-[40rem] gap-y-4">
@@ -425,6 +425,7 @@ const CreateUsers = () => {
                 >
                   First Name
                 </label>
+                <div className="w-full h-18 flex flex-col">
                 <input
                   id="firstname"
                   placeholder="Francisco"
@@ -442,6 +443,8 @@ const CreateUsers = () => {
                     {formErrors.firstName}
                   </span>
                 )}
+                </div>
+                
               </div>
 
               {/* Last Name Input */}
@@ -452,6 +455,8 @@ const CreateUsers = () => {
                 >
                   Last Name
                 </label>
+                <div className="w-full h-18 flex flex-col">
+
                 <input
                   id="lastname"
                   placeholder="Turko"
@@ -469,6 +474,7 @@ const CreateUsers = () => {
                     {formErrors.lastName}
                   </span>
                 )}
+                </div>
               </div>
 
               {/* Email Input */}
@@ -476,6 +482,8 @@ const CreateUsers = () => {
                 <label htmlFor="email" className="text-xl w-fit font-semibold">
                   Email
                 </label>
+                <div className="w-full h-18 flex flex-col">
+
                 <input
                   id="email"
                   placeholder="franciscoturko@gmail.com"
@@ -493,6 +501,7 @@ const CreateUsers = () => {
                     {formErrors.email}
                   </span>
                 )}
+                </div>
               </div>
 
               {/* Contact Number Input */}
@@ -503,6 +512,8 @@ const CreateUsers = () => {
                 >
                   Contact
                 </label>
+                <div className="w-full h-18 flex flex-col">
+
                 <input
                   id="contact"
                   type="text"
@@ -520,6 +531,7 @@ const CreateUsers = () => {
                     {formErrors.contact}
                   </span>
                 )}
+                </div>
               </div>
             </div>
 

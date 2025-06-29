@@ -151,6 +151,7 @@ const User = () => {
   };
 
   const handleOpen = (user) => {
+    // not in use
     const coded = btoa(user);
     navigate(`${coded}`);
   };

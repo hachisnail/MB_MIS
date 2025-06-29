@@ -121,7 +121,6 @@ const AdminNav = ({ isOpen }) => {
         </div>
         <div className="w-full h-full mt-10">
           <div className="flex-1 w-full  flex flex-col items-center px-3 text-xl gap-y-2 font-semibold">
-            {flags["dashboard"] && (
               <NavItem
                 title="Dashboard"
                 to="/admin/dashboard"
@@ -145,7 +144,6 @@ const AdminNav = ({ isOpen }) => {
                   </svg>
                 }
               />
-            )}
             {flags["appointment"] && (
             <NavItem
               title="Appointment"
@@ -365,6 +363,40 @@ const AdminNav = ({ isOpen }) => {
                   }
                 />
                 )}
+
+
+   
+
+                <NavItem
+                  title="Configuration"
+                  to="/admin/config"
+                  label="Configuration"
+                  icon={
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="32"
+                      height="32"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="icon"
+                    >
+                      <path d="M14 6m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" />
+                      <path d="M4 6l8 0" />
+                      <path d="M16 6l4 0" />
+                      <path d="M8 12m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" />
+                      <path d="M4 12l2 0" />
+                      <path d="M10 12l10 0" />
+                      <path d="M17 18m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" />
+                      <path d="M4 18l11 0" />
+                      <path d="M19 18l1 0" />
+                    </svg>
+                  }
+                />
+                
               </div>
             </>
           ) : null}

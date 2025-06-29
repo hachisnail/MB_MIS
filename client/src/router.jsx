@@ -29,6 +29,7 @@ import Schedule from "./pages/admin/Schedule";
 import Article from "./pages/admin/Article";
 import Appointments from "./pages/admin/Appointments";
 import UserView from "./components/pages/ViewUser";
+import Configuration from "./pages/admin/Configuration";
 
 // sandbox
 import FileUploadDownload from "./sandbox/fileUploadDownload";
@@ -70,9 +71,8 @@ const Router = () => {
         <Route element={<AdminLayout />}>
           <Route index element={<Navigate to="dashboard" replace />} />
 
-          {flags["dashboard"] && (
-            <Route path="dashboard" element={<Dashboard />} />
-          )}
+   
+          <Route path="dashboard" element={<Dashboard />} />
           {flags["inventory"] && (
             <Route path="inventory" element={<Inventory />} />
           )}
@@ -115,6 +115,8 @@ const Router = () => {
             {flags["user"] && (
               <Route path="user/:user" element={<UserView />} />
             )}
+             <Route path="config" element={<Configuration />} />
+
             {flags["user"] && (
               <Route path="user/add-user" element={<CreateUser />} />
             )}

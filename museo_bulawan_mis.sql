@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1:3306
--- Generation Time: Jun 24, 2025 at 04:31 AM
+-- Generation Time: Jun 29, 2025 at 11:40 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -94,16 +94,15 @@ INSERT INTO `router_flags` (`id`, `route_key`, `is_enabled`, `createdAt`, `updat
 (1, 'login', 1, '2025-06-09 12:52:19', '2025-06-24 00:29:49'),
 (2, 'catalogs', 0, '2025-06-09 12:52:19', '2025-06-09 04:52:33'),
 (3, 'home', 1, '2025-06-09 12:52:19', '2025-06-09 12:52:19'),
-(4, 'dashboard', 1, '2025-06-09 12:52:19', '2025-06-09 14:45:00'),
 (5, 'inventory', 1, '2025-06-09 12:52:19', '2025-06-14 13:35:48'),
-(6, 'acquisition', 1, '2025-06-09 12:52:19', '2025-06-09 12:52:19'),
+(6, 'acquisition', 1, '2025-06-09 12:52:19', '2025-06-26 04:35:37'),
 (7, 'schedule', 1, '2025-06-09 12:52:19', '2025-06-24 01:38:01'),
-(8, 'article', 1, '2025-06-09 12:52:19', '2025-06-09 12:52:19'),
-(9, 'appointment', 1, '2025-06-09 12:52:19', '2025-06-10 10:33:52'),
-(10, 'sandbox', 1, '2025-06-09 12:52:19', '2025-06-24 00:29:53'),
-(11, 'logs', 1, '2025-06-09 12:52:19', '2025-06-09 14:59:23'),
-(12, 'user', 1, '2025-06-09 12:52:19', '2025-06-09 14:59:27'),
-(13, 'down', 0, '0000-00-00 00:00:00', '0000-00-00 00:00:00');
+(8, 'article', 1, '2025-06-09 12:52:19', '2025-06-26 04:40:39'),
+(9, 'appointment', 1, '2025-06-09 12:52:19', '2025-06-28 16:09:04'),
+(10, 'sandbox', 1, '2025-06-09 12:52:19', '2025-06-26 04:36:03'),
+(11, 'logs', 1, '2025-06-09 12:52:19', '2025-06-27 01:39:10'),
+(12, 'user', 1, '2025-06-09 12:52:19', '2025-06-26 04:46:37'),
+(13, 'down', 0, '0000-00-00 00:00:00', '2025-06-26 06:18:20');
 
 -- --------------------------------------------------------
 
@@ -124,7 +123,7 @@ CREATE TABLE `sessions` (
 --
 
 INSERT INTO `sessions` (`sid`, `expires`, `data`, `createdAt`, `updatedAt`) VALUES
-('e2DuNe9wdnoSAlyki3ZJXeXfG0eha9Dz', '2025-06-25 02:30:32', '{\"cookie\":{\"originalMaxAge\":86400000,\"expires\":\"2025-06-25T02:25:51.530Z\",\"secure\":false,\"httpOnly\":true,\"path\":\"/\",\"sameSite\":\"lax\"},\"userId\":6,\"user\":{\"id\":6,\"username\":\"hachisnail\",\"fname\":\"Jeffereson \",\"lname\":\"Talagtag\",\"email\":\"jeffersontalagtag06@gmail.com\",\"roleId\":1,\"position\":\"System Administrator\"}}', '2025-06-24 02:25:51', '2025-06-24 02:30:32');
+('VQxVPKkBuBzbhdPvx8f7Syx3mzOa4Rj4', '2025-06-30 09:38:02', '{\"cookie\":{\"originalMaxAge\":86400000,\"expires\":\"2025-06-30T04:08:30.686Z\",\"secure\":false,\"httpOnly\":true,\"path\":\"/\",\"sameSite\":\"lax\"},\"userId\":6,\"user\":{\"id\":6,\"username\":\"hachisnail\",\"fname\":\"Jefferson \",\"lname\":\"Talagtag\",\"email\":\"jeffersontalagtag06@gmail.com\",\"roleId\":1,\"position\":\"System Administrator\"}}', '2025-06-29 04:08:30', '2025-06-29 09:38:02');
 
 -- --------------------------------------------------------
 
@@ -153,9 +152,9 @@ CREATE TABLE `users` (
 INSERT INTO `users` (`id`, `username`, `password`, `fname`, `lname`, `email`, `contact`, `roleId`, `position`, `createdAt`, `updatedAt`) VALUES
 (1, 'system', '$2a$10$X2eQbE6n3fOQgTmkEoO8VOra9NxYFiW0X3ExL1cOARfV5acFPv2Py', 'System', 'Account', 'system@yourapp.com', '', 1, 'System', '2025-06-24 09:22:06', '2025-06-24 09:22:06'),
 (2, 'renz', '$2a$10$HGZGUkRMt/qdhLp.wzE6j.eW9ajXk127zo5PL26MU9GHpVUY/tGA6', 'Renz', 'Labayan', 'labayanrenz@gmail.com', NULL, 1, 'Staff', '2025-05-22 02:45:01', '2025-05-22 02:45:01'),
-(3, 'jeff', '$2b$10$6jk2DAgyX5RR/aczH3dH..AqTNY9Q310L/shTQ4eQPmqLWMGQBvjq', 'Test', 'Sins', 'jeff.jefferson.jt@gmail.com', '09123245678', 1, 'Tester', '2025-06-11 03:26:51', '2025-06-11 03:26:51'),
+(3, 'jeff', '$2a$10$DG3E/ijj2AhdHgVjp6KwMujqExMLVeP5VwTHa7KJelSf5sMjwoB.a', 'Test', 'Sins', 'jeff.jefferson.jt@gmail.com', '09123245678', 4, 'Tester', '2025-06-11 03:26:51', '2025-06-11 03:26:51'),
 (4, 'test', '$2b$10$QtC90.XBzFvttptxDAGUmu2vWrVim32o8lzpgwr7PE8I1YZLEMqtO', 'Johnny', 'Sins', 'jeffersontalagtag06@yahoo.com', '09054163430', NULL, 'Tester', '2025-06-11 03:30:33', '2025-06-11 03:30:33'),
-(6, 'hachisnail', '$2b$10$8g6DrNf6AqIKT7lbXKDZt..rHshc0exefPrLO46JNza2dmgixYsVW', 'Jeffereson ', 'Talagtag', 'jeffersontalagtag06@gmail.com', '09054163430', 1, 'System Administrator', '2025-06-14 13:27:20', '2025-06-14 13:27:20');
+(6, 'hachisnail', '$2b$10$8g6DrNf6AqIKT7lbXKDZt..rHshc0exefPrLO46JNza2dmgixYsVW', 'Jefferson', 'Talagtag', 'jeffersontalagtag06@gmail.com', '09054163430', 1, 'System Administrator', '2025-06-14 13:27:20', '2025-06-14 13:27:20');
 
 --
 -- Indexes for dumped tables
@@ -206,7 +205,7 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT for table `invitations`
 --
 ALTER TABLE `invitations`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
 
 --
 -- AUTO_INCREMENT for table `roles`

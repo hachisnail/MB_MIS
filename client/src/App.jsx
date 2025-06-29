@@ -1,4 +1,3 @@
-// App.jsx
 import { BrowserRouter } from "react-router-dom";
 import { AuthProvider } from "./context/authContext";
 import { useAuth } from "./context/authContext";
@@ -25,6 +24,18 @@ function App() {
         document.documentElement.style.fontSize = "10px";
       }
     }
+  }, []);
+
+  useEffect(() => {
+    const disableRightClick = (e) => {
+      e.preventDefault();
+    };
+
+    document.addEventListener("contextmenu", disableRightClick);
+
+    return () => {
+      document.removeEventListener("contextmenu", disableRightClick);
+    };
   }, []);
 
   return (

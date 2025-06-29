@@ -10,6 +10,8 @@ import {
   ErrorBox,
   EmptyMessage,
 } from "../../components/list/commons";
+import { rolePermissions, actionLabels } from "../../components/list/commons";
+
 
 const Logs = () => {
   const [logs, setLogs] = useState([]);
@@ -46,6 +48,30 @@ const Logs = () => {
       setIsLoading(false);
     }
   };
+
+    const uniqueRoles = Array.from(
+    new Set(logs.map((log) => log.user?.roleId))
+  ).filter(Boolean);
+
+  const roleOptions = [
+    { value: "*", label: "Filter by role" },
+    ...uniqueRoles.map((roleId) => ({
+      value: String(roleId),
+      label: rolePermissions[roleId] || `Role ${roleId}`,
+    })),
+  ];
+
+  const uniqueActions = Array.from(
+  new Set(logs.map((log) => log.action))
+).filter(Boolean);
+
+const actionOptions = [
+  { value: "*", label: "Filter by action" },
+  ...uniqueActions.map((action) => ({
+    value: action,
+    label: actionLabels[action] || action,
+  })),
+];
 
   useEffect(() => {
     fetchLogs();
@@ -118,28 +144,14 @@ const Logs = () => {
             onChange={setSelectedRole}
             placeholder="Filter by role"
             theme="dark"
-            options={[
-              { value: "*", label: "Filter by role" },
-              { value: "1", label: "Admin" },
-              { value: "2", label: "Content Manager" },
-              { value: "3", label: "Viewer" },
-              { value: "4", label: "Reviewer" },
-            ]}
+            options={roleOptions}
           />
           <CardDropdownPicker
             value={selectedAction}
             onChange={setSelectedAction}
             placeholder="Filter by action"
             theme="dark"
-            options={[
-              { value: "*", label: "Filter by action" },
-              { value: "login", label: "Login" },
-              { value: "logout", label: "Logout" },
-              { value: "create", label: "Create" },
-              { value: "update", label: "Update" },
-              { value: "soft-delete", label: "Soft Delete" },
-              { value: "delete", label: "Delete" },
-            ]}
+            options={actionOptions}
           />
           <TimelineDatePicker onDateChange={handleDateFilter} theme="dark" />
         </div>

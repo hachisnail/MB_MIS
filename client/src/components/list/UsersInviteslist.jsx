@@ -1,5 +1,6 @@
 import StyledButton from "../buttons/StyledButton"
-import ContextMenu from "../modals/ContextMenu";
+// import ContextMenu from "../modals/ContextMenu";
+import { NavLink } from "react-router-dom";
 
 import { rolePermissions, colorMap } from "./commons";
 
@@ -24,20 +25,29 @@ export const UserItem = ({ user, handleOpen }) => {
       ).isOnline === true
     : false;
 
-  const menuItems = [
-    {
-      label: "Open",
-      onClick: () => handleOpen(fname + " " + lname),
-    },
-    {
-      label: "Modify",
-      onClick: () => alert("Modify the details of " + username),
-    },
-    { label: "Close" },
-  ];
+
+function encodeUserName(fname, lname) {
+  const cleanFname = fname.trim();
+  const cleanLname = lname.trim();
+  return btoa(`${cleanFname} ${cleanLname}`);
+}
+
+
+  // const menuItems = [
+  //   {
+  //     label: "Open",
+  //     onClick: () => handleOpen(fname + " " + lname),
+  //   },
+  //   {
+  //     label: "Modify",
+  //     onClick: () => alert("Modify the details of " + username),
+  //   },
+  //   { label: "Close" },
+  // ];
 
   return (
-    <ContextMenu key={id} menuItems={menuItems} theme="dark">
+    <NavLink to={`${encodeUserName(user.fname, user.lname)}`}>
+     {/* <ContextMenu key={id} menuItems={menuItems} theme="dark">  */}
       <div className="w-full min-w-100 h-20 border-b-1 hover:bg-gray-900 rounded-sm border-[#373737] flex items-center px-4 justify-between">
         <div className="w-fit h-fit flex items-center gap-x-4">
           <div
@@ -64,7 +74,8 @@ export const UserItem = ({ user, handleOpen }) => {
           {rolePermissions[user.roleId] || "Not Available"}
         </span>
       </div>
-    </ContextMenu>
+     {/* </ContextMenu>  */}
+    </NavLink>
   );
 };
 

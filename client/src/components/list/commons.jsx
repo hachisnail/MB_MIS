@@ -20,6 +20,15 @@ export const EmptyMessage = ({ message }) => (
   </div>
 );
 
+export const actionLabels = {
+  login: "Login",
+  logout: "Logout",
+  create: "Create",
+  update: "Update",
+  "soft-delete": "Soft Delete",
+  delete: "Delete",
+};
+
 export const roleColorMap = {
   1: "bg-[#6F3FFF]",
   2: "bg-blue-500",

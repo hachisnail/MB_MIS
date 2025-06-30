@@ -1,7 +1,12 @@
 import { useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import Logo from '../../assets/LOGO.png';
 
 const AdminHeader = ({ onClose, onOpen, isSidebarOpen }) => {
+  const location = useLocation();
+
+  const isPreview = location.pathname.includes("/preview/");
+
   useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth < 768 && isSidebarOpen) {
@@ -19,6 +24,8 @@ const AdminHeader = ({ onClose, onOpen, isSidebarOpen }) => {
   return (
     <header className="select-none relative z-50 w-full h-17 bg-[#1C1B19] drop-shadow-sm">
       <div className="flex w-full h-full items-center px-2   gap-x-2">
+          {!isPreview && (
+
         <div className="w-18 h-fit flex justify-center">
             {isSidebarOpen ? (
             <svg
@@ -56,6 +63,8 @@ const AdminHeader = ({ onClose, onOpen, isSidebarOpen }) => {
             </svg>
             )}
         </div>
+            )}
+
 
         <div className="w-90 h-10 flex gap-x-3 items-center">
             {/* <img src={Logo} className="h-10 w-auto" alt="Museo Bulawan Logo" /> */}

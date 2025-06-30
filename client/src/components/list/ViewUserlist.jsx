@@ -1,4 +1,4 @@
-import { rolePermissions, colorMap } from "./commons";
+import { rolePermissions, generateColorFromKey } from "./commons";
 
 export const ViewUserSessionItem = ({ session, onClick }) => {
   const formatFullDate = (date) =>
@@ -84,17 +84,17 @@ export const ViewUserSessionItem = ({ session, onClick }) => {
 
 export const ViewUserItem = ({ user }) => {
   const renderRole = (roleId) => rolePermissions[String(roleId)] || "N/A";
-  const userInitial = user.fname.charAt(0);
-  const bgColor = colorMap[userInitial] || "#FFFFFF";
+  const initials = user.fname.charAt(0) + user.lname.charAt(0);
+  const { bg, text } = generateColorFromKey(initials);
   return (
     <>
       <div className="w-[50rem] border-b border-[#373737] min-h-fit pb-10 text-xl flex items-center gap-x-4">
         <div className="min-w-50 min-h-50 rounded-full flex items-center justify-center bg-white">
           <div
-            className="select-none w-48 h-48 border-2 border-black rounded-full flex items-center justify-center"
-            style={{ backgroundColor: bgColor }}
+            className="select-none w-48 h-48  border-2 border-black rounded-full flex items-center justify-center"
+            style={{ backgroundColor: bg }}
           >
-            <span className="text-8xl font-semibold text-black">{`${user.fname.charAt(
+            <span className={`text-8xl font-semibold ${text}`}>{`${user.fname.charAt(
               0
             )}${user.lname.charAt(0)}`}</span>
           </div>

@@ -16,7 +16,7 @@ export default function TimelineDatePicker({
   const handleSelect = (date, close) => {
     setSelected(date);
     onDateChange?.(date ? format(date, "yyyy-MM-dd") : "");
-    close(); // close the calendar
+    close();
   };
 
   const clearDate = () => {

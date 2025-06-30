@@ -15,7 +15,6 @@ const AdminLayout = () => {
     { path: "/admin/user/:user", theme: "bg-[#151515] text-white" },
     { path: "/admin/add-user", theme: "bg-[#151515] text-white" },
     { path: "/admin/config", theme: "bg-[#151515] text-white" },
-
   ];
 
   const matchedTheme = themedRoutes.find(({ path }) =>
@@ -24,6 +23,8 @@ const AdminLayout = () => {
 
   const theme = matchedTheme?.theme || "";
   const isDashboard = location.pathname === "/admin/dashboard";
+
+  const isPreview = location.pathname.includes("/preview/");
 
   return (
     <div className="h-screen w-screen grid grid-rows-[auto_1fr] overflow-hidden">
@@ -35,22 +36,24 @@ const AdminLayout = () => {
       />
 
       {/* Sidebar + Main Content */}
-      <div className="grid grid-cols-[auto_1fr] min-h-full overflow-hidden">
-        {/* Sidebar */}
-        <AdminNav isOpen={isSidebarOpen} />
+<div className={`grid ${!isPreview ? "grid-cols-[auto_1fr]" : ""} min-h-full overflow-hidden`}>
+  {/* Sidebar should be shown unless in preview */}
+  {!isPreview && <AdminNav isOpen={isSidebarOpen} />}
 
-        {/* Main Content */}
-        <main className={`h-full w-full flex flex-col overflow-hidden overflow-x-scroll overflow-y-scroll ${theme} p-4`}>
-          {!isDashboard && (
-            <div className={`w-full mb-4 ${theme}`}>
-              <div className="flex flex-col gap-y-1">
-                <Breadcrumb />
-              </div>
-            </div>
-          )}
-          <Outlet />
-        </main>
+  {/* Main Content */}
+  <main className={`h-full w-full flex flex-col overflow-hidden overflow-x-scroll overflow-y-scroll ${theme} p-4`}>
+    {/* Breadcrumb is hidden only on dashboard and preview */}
+    {!isDashboard && !isPreview && (
+      <div className={`w-full mb-4 ${theme}`}>
+        <div className="flex flex-col gap-y-1">
+          <Breadcrumb />
+        </div>
       </div>
+    )}
+    <Outlet />
+  </main>
+</div>
+
     </div>
   );
 };

@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate, NavLink } from "react-router-dom";
+import { useNavigate, NavLink, Outlet } from "react-router-dom";
 import axiosClient from "../lib/axiosClient";
 import TooltipButton from "../components/buttons/TooltipButton";
 import ContextMenu from "../components/modals/ContextMenu";
 
 const FileUploadDownload = () => {
   const [file, setFile] = useState(null);
-  // const [category, setCategory] = useState("uncategorized");
+  const [category, setCategory] = useState("uncategorized");
   const [uploadedFile, setUploadedFile] = useState(null);
   const [categoryFiles, setCategoryFiles] = useState([]);
   const [error, setError] = useState("");
@@ -53,7 +53,8 @@ const FileUploadDownload = () => {
   };
 
   const handlePreview = (category, filename) => {
-    navigate(`preview/${category}/${filename}`);
+    const encoded = btoa(`${category}/${filename}`);
+    navigate(`/admin/preview/${encoded}`);
   };
 
   const handleDownload = (category, filename) => {
@@ -136,23 +137,11 @@ const FileUploadDownload = () => {
                 icon = (
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    className="w-20 h-20 text-yellow-600"
+                    className="w-10 h-10 text-yellow-600"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M3 4a1 1 0 011-1h16a1 1 0 011 1v16a1 1 0 01-1 1H4a1 1 0 01-1-1V4z"
-                    />
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M8 14l2-2 3 3 4-4"
-                    />
+                    <path d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V7.414A2 2 0 0017.414 6L13 1.586A2 2 0 0011.586 1H4zm8 0v4a1 1 0 001 1h4v9H4V5h8z" />
                   </svg>
                 );
               } else if (ext === "pdf") {
@@ -160,12 +149,11 @@ const FileUploadDownload = () => {
                 icon = (
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
+                    className="w-10 h-10 text-red-600"
                     fill="currentColor"
                     viewBox="0 0 24 24"
-                    className="w-20 h-20 text-red-600"
                   >
-                    <path d="M6 2a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6H6zM6 20V4h6v5h5v11H6z" />
-                    <path d="M9 12h6v2H9z" />
+                    <path d="M14 2H6a2 2 0 00-2 2v16c0 1.104.896 2 2 2h12a2 2 0 002-2V8l-6-6zM13 9V3.5L18.5 9H13zM8 13v-2h1.5a1.5 1.5 0 010 3H9v1H8v-2zm3.5-2H13a.5.5 0 110 1h-1v1h1a.5.5 0 110 1h-1.5v-3zm3.5 0h1a1 1 0 011 1v2a1 1 0 01-1 1h-1v-4z" />
                   </svg>
                 );
               } else if (["zip", "rar", "7z"].includes(ext)) {
@@ -173,16 +161,73 @@ const FileUploadDownload = () => {
                 icon = (
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
+                    className="w-10 h-10 text-green-600"
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
-                    className="w-20 h-20 text-green-600"
                   >
                     <path
                       strokeLinecap="round"
                       strokeLinejoin="round"
                       strokeWidth={2}
-                      d="M3 10h18M3 14h18M9 6h6M9 18h6"
+                      d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M4 12h16M4 8h16M4 4h16"
+                    />
+                  </svg>
+                );
+              } else if (["doc", "docx"].includes(ext)) {
+                bgColor = "bg-blue-100";
+                icon = (
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="w-10 h-10 text-blue-600"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 4h9l5 5v11a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2z"
+                    />
+                    <text x="8" y="16" className="text-xs fill-current">
+                      DOC
+                    </text>
+                  </svg>
+                );
+              } else if (["xls", "xlsx"].includes(ext)) {
+                bgColor = "bg-lime-100";
+                icon = (
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="w-10 h-10 text-lime-600"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M8 16l4-4m0 0l4-4m-4 4l4 4m-4-4l-4-4"
+                    />
+                  </svg>
+                );
+              } else if (["js", "json", "html", "css", "txt"].includes(ext)) {
+                bgColor = "bg-indigo-100";
+                icon = (
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="w-10 h-10 text-indigo-600"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M8 16l-2-2m0 0l2-2m-2 2h8"
                     />
                   </svg>
                 );
@@ -191,16 +236,16 @@ const FileUploadDownload = () => {
                 icon = (
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
+                    className="w-10 h-10 text-gray-600"
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
-                    className="w-20 h-20 text-gray-600"
                   >
                     <path
                       strokeLinecap="round"
                       strokeLinejoin="round"
                       strokeWidth={2}
-                      d="M7 7h10v10H7z"
+                      d="M12 4v16m8-8H4"
                     />
                   </svg>
                 );
@@ -234,7 +279,6 @@ const FileUploadDownload = () => {
                       {icon}
                     </div>
                     <p className="text-sm truncate mb-1">{file.filename}</p>
-
                   </div>
                 </ContextMenu>
               );
@@ -243,18 +287,18 @@ const FileUploadDownload = () => {
         </div>
       ))}
       <div className="w-fit h-fit flex gap-x-5">
-      <NavLink to="modal">
-        <TooltipButton
-          buttonText="Modals Samples"
-          tooltipText="Click to open modals usage demo"
-        />
-      </NavLink>
-      <NavLink to="router-flag">
-        <TooltipButton
-          buttonText="Router Flags"
-          tooltipText="This will disable pages on the website likely to controll content displayed"
-        />
-      </NavLink>
+        <NavLink to="modal">
+          <TooltipButton
+            buttonText="Modals Samples"
+            tooltipText="Click to open modals usage demo"
+          />
+        </NavLink>
+        <NavLink to="router-flag">
+          <TooltipButton
+            buttonText="Router Flags"
+            tooltipText="This will disable pages on the website likely to controll content displayed"
+          />
+        </NavLink>
       </div>
     </div>
   );

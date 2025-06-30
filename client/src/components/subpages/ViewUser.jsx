@@ -7,7 +7,6 @@ import {
   EmptyMessage,
   ErrorBox,
   LoadingSpinner,
-  rolePermissions,
 } from "../list/commons";
 import {ViewUserItem, ViewUserSessionItem} from "../list/ViewUserlist";
 
@@ -73,7 +72,7 @@ const ViewUser = () => {
     <>
       <div className="w-full h-full p-5 flex 1xl:h-[69rem] 2xl:max-h-[81rem] 3xl:max-h-[88rem]">
         <div className="flex flex-col lg:flex-row w-full h-full border-t border-[#373737] pt-5 overflow-scroll">
-          <div className="w-full h-full border-b border-[#373737] flex flex-col pt-4 px-10 gap-y-10">
+          <div className="w-full min-w-fit h-full border-b border-[#373737] flex flex-col pt-4 px-10 gap-y-10">
             {sessionError ? (
               <ErrorBox message={sessionError}/>
             ) : (

@@ -49,7 +49,9 @@ app.use(session({
 
 // Static file serving
 app.use("/uploads", express.static(UPLOAD_BASE_DIR));
-app.use("/assets", express.static(path.join(UPLOAD_BASE_DIR, "assets")));
+// console.log("Serving static files from:", path.join(UPLOAD_BASE_DIR, "assets"));
+
+// app.use("/assets", express.static(path.join(UPLOAD_BASE_DIR, "assets")));
 
 // API routes
 app.use("/api", uploadRoutes);

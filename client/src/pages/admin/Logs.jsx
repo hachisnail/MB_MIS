@@ -165,13 +165,13 @@ const actionOptions = [
                   key={label}
                   className="h-10 min-w-fit flex pl-5 items-center col-span-1"
                 >
-                  <span className="text-2xl">{label}</span>
+                  <span className="text-2xl font-semibold">{label}</span>
                 </div>
               )
             )}
           </div>
 
-          <div className="w-full h-[61rem] pt-2 border-t-1 border-gray-600 flex flex-col gap-y-2 overflow-scroll">
+          <div className="w-full h-[61rem]  border-t-1 border-gray-600 flex flex-col overflow-scroll">
             {isLoading ? (
               <LoadingSpinner />
             ) : errorLogs ? (

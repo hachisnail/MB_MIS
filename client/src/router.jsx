@@ -9,26 +9,26 @@ import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Catalogue from "./pages/Catalogue";
 
-import CompleteRegistrationPage from "./components/pages/CompleteRegistrationPage";
-import RegistrationSuccess from "./components/pages/RegistrationSuccessPage";
+import CompleteRegistrationPage from "./components/subpages/CompleteRegistrationPage";
+import RegistrationSuccess from "./components/subpages/RegistrationSuccessPage";
 
 import ElectionResultParser from "./pages/ElectionRParser";
 
 // admin pages
 import Dashboard from "./pages/admin/Dashboard";
 import Logs from "./pages/admin/Logs";
-import ViewLogs from "./components/pages/ViewLogs";
+import ViewLogs from "./components/subpages/ViewLogs";
 import User from "./pages/admin/User";
-import CreateUser from "./components/pages/createUsers";
+import CreateUser from "./components/subpages/createUsers";
 import Inventory from "./pages/admin/Inventory";
 import NoMatch from "./pages/NoMatch";
 import RequireRole from "./lib/requiredRole";
 import Acquisition from "./pages/admin/Acquisition";
-import ViewArtifacts from "./components/pages/ViewArtifacts";
+import ViewArtifacts from "./components/subpages/ViewArtifacts";
 import Schedule from "./pages/admin/Schedule";
 import Article from "./pages/admin/Article";
 import Appointments from "./pages/admin/Appointments";
-import UserView from "./components/pages/ViewUser";
+import UserView from "./components/subpages/ViewUser";
 import Configuration from "./pages/admin/Configuration";
 
 // sandbox
@@ -96,7 +96,7 @@ const Router = () => {
           )}
           {flags["sandbox"] && (
             <Route
-              path="sandbox/preview/:category/:filename"
+              path="preview/:encoded"
               element={<FilePreviewer />}
             />
           )}
@@ -110,10 +110,10 @@ const Router = () => {
           {/* Admin-only subroutes */}
           <Route element={<RequireRole role="Admin" />}>
             {flags["logs"] && <Route path="logs" element={<Logs />} />}
-            {flags["logs"] && <Route path="logs/:log" element={<ViewLogs />} />}
+            {flags["logs"] && <Route path="logs/:encoded" element={<ViewLogs />} />}
             {flags["user"] && <Route path="user" element={<User />} />}
             {flags["user"] && (
-              <Route path="user/:user" element={<UserView />} />
+              <Route path="user/:encoded" element={<UserView />} />
             )}
              <Route path="config" element={<Configuration />} />
 

@@ -1,37 +1,29 @@
-import StyledButton from "../buttons/StyledButton"
+import StyledButton from "../buttons/StyledButton";
 // import ContextMenu from "../modals/ContextMenu";
 import { NavLink } from "react-router-dom";
 
-import { rolePermissions, colorMap } from "./commons";
-
+import { rolePermissions, generateColorFromKey } from "./commons";
 
 export const UserItem = ({ user, handleOpen }) => {
-  const id = user.id;
-  const username = user.username;
   const fname = user.fname.replace(/\s+/g, "");
   const lname = user.lname.replace(/\s+/g, "");
   const email = user.email;
 
   const initials = `${user.fname.charAt(0)}${user.lname.charAt(0)}`;
-  const firstInitial = initials.charAt(0);
-  const bgColor = colorMap[firstInitial] || "#FFFFFF";
+  const { bg, text } = generateColorFromKey(initials);
 
   const sessions = user.sessions || [];
   const isActive = sessions.length
     ? sessions.reduce((latest, session) =>
-        new Date(session.loginAt) > new Date(latest.loginAt)
-          ? session
-          : latest
+        new Date(session.loginAt) > new Date(latest.loginAt) ? session : latest
       ).isOnline === true
     : false;
 
-
-function encodeUserName(fname, lname) {
-  const cleanFname = fname.trim();
-  const cleanLname = lname.trim();
-  return btoa(`${cleanFname} ${cleanLname}`);
-}
-
+  function encodeUserName(fname, lname) {
+    const cleanFname = fname.trim();
+    const cleanLname = lname.trim();
+    return btoa(`${cleanFname} ${cleanLname}`);
+  }
 
   // const menuItems = [
   //   {
@@ -47,18 +39,22 @@ function encodeUserName(fname, lname) {
 
   return (
     <NavLink to={`${encodeUserName(user.fname, user.lname)}`}>
-     {/* <ContextMenu key={id} menuItems={menuItems} theme="dark">  */}
+      {/* <ContextMenu key={id} menuItems={menuItems} theme="dark">  */}
       <div className="w-full min-w-100 h-20 border-b-1 hover:bg-gray-900 rounded-sm border-[#373737] flex items-center px-4 justify-between">
         <div className="w-fit h-fit flex items-center gap-x-4">
           <div
-            className={`rounded-full w-8 h-8 ${isActive ? "bg-green-600" : "bg-amber-50"}`}
+            className={`rounded-full w-8 h-8 ${
+              isActive ? "bg-green-600" : "bg-amber-50"
+            }`}
           ></div>
           <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center">
             <div
-              className="select-none w-11 h-11 rounded-full flex items-center justify-center"
-              style={{ backgroundColor: bgColor }}
+              className="select-none w-11 h-11 rounded-full border border-black flex items-center justify-center"
+              style={{ backgroundColor: bg }}
             >
-              <span className="text-xl font-semibold text-black">{initials}</span>
+              <span className={`text-xl font-semibold ${text}`}>
+                {initials}
+              </span>
             </div>
           </div>
           <div className="w-fit h-full flex flex-col justify-center">
@@ -70,16 +66,23 @@ function encodeUserName(fname, lname) {
             </span>
           </div>
         </div>
-        <span className="text-xs lg:text-md lg:text-xl bg-[#3A3A3A] font-semibold border-1 border-[#A6A6A6] rounded-md text-center w-20 lg:w-40 py-1">
+        <span className="text-xs lg:text-md lg:text-xl bg-[#3A3A3A] font-semibold border-1 border-[#A6A6A6] rounded-md text-center w-25 lg:w-46 py-1">
           {rolePermissions[user.roleId] || "Not Available"}
         </span>
       </div>
-     {/* </ContextMenu>  */}
+      {/* </ContextMenu>  */}
     </NavLink>
   );
 };
 
-export const PendingInviteItem = ({ invite, onResend, onRevoke, processingId, action, setViewInvite }) => {
+export const PendingInviteItem = ({
+  invite,
+  onResend,
+  onRevoke,
+  processingId,
+  action,
+  setViewInvite,
+}) => {
   const id = invite.id;
   const fname = invite.first_name;
   const lname = invite.last_name;
@@ -121,7 +124,11 @@ export const PendingInviteItem = ({ invite, onResend, onRevoke, processingId, ac
           textColor="text-white"
           disabled={processingId === id && action === "resend"}
         >
-          {processingId === id && action === "resend" ? <LoadingSpinner /> : "Resend Invite"}
+          {processingId === id && action === "resend" ? (
+            <LoadingSpinner />
+          ) : (
+            "Resend Invite"
+          )}
         </StyledButton>
         <StyledButton
           onClick={() => onRevoke(id)}
@@ -130,7 +137,11 @@ export const PendingInviteItem = ({ invite, onResend, onRevoke, processingId, ac
           textColor="text-red-300"
           disabled={processingId === id && action === "revoke"}
         >
-          {processingId === id && action === "revoke" ? <LoadingSpinner /> : "Revoke Invite"}
+          {processingId === id && action === "revoke" ? (
+            <LoadingSpinner />
+          ) : (
+            "Revoke Invite"
+          )}
         </StyledButton>
       </div>
     </div>

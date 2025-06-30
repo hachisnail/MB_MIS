@@ -8,6 +8,8 @@ export const LoadingSpinner = () => (
 
 export const ErrorBox = ({ message }) => (
   <div className="w-full h-full flex items-center justify-center">
+
+    
     <pre className="text-red-400 text-xl text-center whitespace-pre-line">
       {message}
     </pre>
@@ -52,31 +54,45 @@ export const rolePermissions = {
   4: "Reviewer",
 };
 
-export const colorMap = {
-  A: "#FF6666",
-  B: "#FF9933",
-  C: "#FFD700",
-  D: "#66CC66",
-  E: "#0099CC",
-  F: "#9933CC",
-  G: "#FF3399",
-  H: "#6666FF",
-  I: "#00CC99",
-  J: "#FF6600",
-  K: "#3399FF",
-  L: "#FF3366",
-  M: "#33CC33",
-  N: "#FFCC00",
-  O: "#336699",
-  P: "#990000",
-  Q: "#FF6699",
-  R: "#666600",
-  S: "#669900",
-  T: "#009999",
-  U: "#6600CC",
-  V: "#CC3300",
-  W: "#99CC00",
-  X: "#9966FF",
-  Y: "#FF0000",
-  Z: "#33CCCC",
-};
+
+export function generateColorFromKey(key) {
+  let hash = 0;
+  for (let i = 0; i < key.length; i++) {
+    hash = key.charCodeAt(i) + ((hash << 5) - hash);
+  }
+
+  const hueSteps = 12; 
+  const satSteps = [60, 70, 80];
+  const lightSteps = [40, 50, 60];
+
+  const safeHash = Math.abs(hash);
+
+  const hue = (safeHash % hueSteps) * (360 / hueSteps);
+  const sat = satSteps[safeHash % satSteps.length];
+  const light = lightSteps[(Math.floor(safeHash / 3)) % lightSteps.length];
+
+  function hslToRgb(h, s, l) {
+    s /= 100;
+    l /= 100;
+    const k = n => (n + h / 30) % 12;
+    const a = s * Math.min(l, 1 - l);
+    const f = n =>
+      l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+
+    return [Math.round(f(0) * 255), Math.round(f(8) * 255), Math.round(f(4) * 255)];
+  }
+
+  const [r, g, b] = hslToRgb(hue, sat, light);
+  const color = `#${[r, g, b]
+    .map(val => val.toString(16).padStart(2, "0"))
+    .join("")}`;
+
+  const luminance = 0.299 * r + 0.587 * g + 0.114 * b;
+  const text = luminance > 186 ? "text-black" : "text-white";
+
+  return {
+    rawColor: color,
+    bg: color,
+    text
+  };
+}

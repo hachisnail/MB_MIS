@@ -12,7 +12,7 @@ router.post("/login", login);
 router.post("/logout", logout);
 router.get("/me", getCurrentUser);
 
-router.get('/router-flags', requireAuth, requireRole([1]),  getFlags);
+router.get('/router-flags', getFlags);
 router.post('/router-flags',requireAuth,requireRole([1]), setFlag);
 
 router.post('/send-invitation', requireAuth, sendInvitation)

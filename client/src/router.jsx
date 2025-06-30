@@ -90,16 +90,18 @@ const Router = () => {
             <Route path="appointment" element={<Appointments />} />
           )}
 
-          {/* sandbox for testing */}
-          {flags["sandbox"] && (
-            <Route path="sandbox" element={<FileUploadDownload />} />
-          )}
-          {flags["sandbox"] && (
+          {flags["files"] && (
             <Route
               path="preview/:encoded"
               element={<FilePreviewer />}
             />
           )}
+
+          {/* sandbox for testing */}
+          {flags["sandbox"] && (
+            <Route path="sandbox" element={<FileUploadDownload />} />
+          )}
+
           {flags["sandbox"] && (
             <Route path="sandbox/modal" element={<ModalsTest />} />
           )}

@@ -1,13 +1,15 @@
-import { NavLink, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 const NoMatch = () => {
-  const location = useLocation();
-  const isAdmin = location.pathname.startsWith('/admin');
+  const navigate = useNavigate();
+
+  const handleGoBack = () => {
+    navigate(-1);
+  };
 
   return (
-    <div className='flex items-center h-screen w-screen justify-center '>
+    <div className='flex items-center h-screen w-screen justify-center'>
       <div className='flex items-center flex-col'>
-
         <svg
           xmlns="http://www.w3.org/2000/svg"
           width="32"
@@ -29,12 +31,13 @@ const NoMatch = () => {
 
         <span className='text-3xl font-semibold'>Are you lost?</span>
         <div className='flex items-center gap-x-2'>
-          <span>go back to </span>
-          <NavLink to={isAdmin ? "/admin/dashboard" : "/"}>
-            <span className='hover:text-gray-500 underline'>
-              {isAdmin ? "dashboard." : "home."}
-            </span>
-          </NavLink>
+          <span>go back to</span>
+          <button
+            onClick={handleGoBack}
+            className='hover:text-gray-500 underline'
+          >
+            previous page.
+          </button>
         </div>
       </div>
     </div>

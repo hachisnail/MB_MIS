@@ -4,6 +4,9 @@ import { rolePermissions, roleColorMap, actionMap } from "./commons";
 
 
 const LogItem = ({ log, formatCreatedAt }) => {
+  
+  const logRoleId = log.user.roleId ?? 'default';
+
   const encoded = btoa(
     `${log.id} ${log.action} ${formatCreatedAt(log.createdAt)}`
   );
@@ -17,10 +20,10 @@ const LogItem = ({ log, formatCreatedAt }) => {
           </span>
           <span
             className={` font-semibold text-xs w-27 text-center py-1  px-1 rounded-md ${
-              roleColorMap[log.user.roleId]
+              roleColorMap[logRoleId]
             }`}
           >
-            {rolePermissions[log.user.roleId]}
+            {rolePermissions[logRoleId]}
           </span>
         </div>
         <div className="col-span-1 flex items-center pl-5  border-gray-600">

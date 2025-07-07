@@ -19,7 +19,7 @@ export default function RequireRole({ role }) {
   const userRoleName = roleMap[user.roleId]; 
 
   if (userRoleName != role) {
-    return <Navigate to="/unauthorized" replace />;
+    return <Navigate to="/admin/unauthorized" replace />;
   }
 
   return <Outlet />;

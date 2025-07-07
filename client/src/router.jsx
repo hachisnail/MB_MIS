@@ -8,6 +8,8 @@ import { useRouterFlags } from "./context/routerFlagProvider";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Catalogue from "./pages/Catalogue";
+import RecoverAccount from "./pages/RecoverAccount";
+
 
 import CompleteRegistrationPage from "./components/subpages/CompleteRegistrationPage";
 import RegistrationSuccess from "./components/subpages/RegistrationSuccessPage";
@@ -19,7 +21,7 @@ import Dashboard from "./pages/admin/Dashboard";
 import Logs from "./pages/admin/Logs";
 import ViewLogs from "./components/subpages/ViewLogs";
 import User from "./pages/admin/User";
-import CreateUser from "./components/subpages/createUsers";
+import CreateUser from "./components/subpages/CreateUsers";
 import Inventory from "./pages/admin/Inventory";
 import NoMatch from "./pages/NoMatch";
 import RequireRole from "./lib/requiredRole";
@@ -33,7 +35,7 @@ import Configuration from "./pages/admin/Configuration";
 
 // sandbox
 import FileUploadDownload from "./sandbox/fileUploadDownload";
-import FilePreviewer from "./sandbox/FilePreviewer";
+import FilePreviewer from "./features/FilePreviewer";
 import ModalsTest from "./sandbox/ModalsTest";
 import RouteFlagToggle from "./sandbox/RouteFlagToggle";
 
@@ -55,6 +57,10 @@ const Router = () => {
 
       {flags["login"] && (
         <Route path="/login" element={<Login onLogin={login} />} />
+      )}
+  
+      {flags["login"] && (
+        <Route path="/forgot-password" element={<RecoverAccount/>} />
       )}
       {flags["catalogs"] && <Route path="/catalogs" element={<Catalogue />} />}
       {flags["home"] && <Route path="/" element={<Home />} />}
@@ -123,11 +129,13 @@ const Router = () => {
               <Route path="user/add-user" element={<CreateUser />} />
             )}
           </Route>
+
+          <Route path="unauthorized" element={<Unauthorized />} />
+
         </Route>
       </Route>
 
       {/* Catch-all & unauthorized */}
-      <Route path="/unauthorized" element={<Unauthorized />} />
 
       {flags["down"] && <Route path="*" element={<ServerDown />} />}
 

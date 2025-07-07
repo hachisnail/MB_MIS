@@ -12,18 +12,21 @@ router.post("/login", login);
 router.post("/logout", logout);
 router.get("/me", getCurrentUser);
 
+
 router.get('/router-flags', getFlags);
+
 router.post('/router-flags',requireAuth,requireRole([1]), setFlag);
 
-router.post('/send-invitation', requireAuth, sendInvitation)
-router.post('/invitations', sendInvitation);
+
+router.post('/send-invitation', requireAuth, requireRole([1]), sendInvitation)
+router.post('/invitations', requireRole([1]), sendInvitation);
 
 
 router.get('/validate-token/:token', validateToken);
 router.post('/complete-registration/:token', completeRegistration);
-router.get('/invitations', requireAuth, getPendingInvitations);
-router.post('/invitation/:id/resend', resendInvitation);
-router.delete('/invitation/:id/revoke', revokeInvitation);
+router.get('/invitations', requireAuth, requireRole([1]), getPendingInvitations);
+router.post('/invitation/:id/resend', requireRole([1]), resendInvitation);
+router.delete('/invitation/:id/revoke', requireRole([1]), revokeInvitation);
 
 
 

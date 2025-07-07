@@ -110,7 +110,7 @@ const FilePreviewer = () => {
             const json = XLSX.utils.sheet_to_json(sheet, { header: 1 });
             setExcelData(json);
           })
-          .catch(() => setError("⚠️ Failed to load Excel file."));
+          .catch(() => setError("Failed to load Excel file."));
       }
 
       if (["txt", "json", "js", "html", "css"].includes(ext)) {
@@ -120,7 +120,7 @@ const FilePreviewer = () => {
             return res.text();
           })
           .then(setFileContent)
-          .catch(() => setFileContent("⚠️ Error loading text content."));
+          .catch(() => setFileContent("Error loading text content."));
       }
 
       if (ext === "docx") {
@@ -130,7 +130,7 @@ const FilePreviewer = () => {
             if (docxContainerRef.current) {
               docxContainerRef.current.innerHTML = "";
               renderAsync(blob, docxContainerRef.current).catch(() => {
-                setError("⚠️ Could not render DOCX!");
+                setError("Could not render DOCX!");
               });
             }
           });
@@ -148,7 +148,7 @@ const FilePreviewer = () => {
         <img
           src={fileUrl}
           alt={filename}
-          className="h-[70rem] mx-auto rounded"
+          className="h-[69rem] mx-auto rounded"
         />
       );
     }
@@ -158,7 +158,7 @@ const FilePreviewer = () => {
         <iframe
           src={fileUrl}
           title="PDF Preview"
-          className="w-full h-[70rem] border rounded"
+          className="w-full h-[69rem] border rounded"
         />
       );
     }
@@ -167,14 +167,14 @@ const FilePreviewer = () => {
       return (
         <div
           ref={docxContainerRef}
-          className="prose h-[70rem] overflow-scroll max-w-full p-4 bg-white border rounded"
+          className="prose h-[69rem] overflow-scroll max-w-full p-4 bg-white border rounded"
         />
       );
     }
 
     if (["txt", "json", "js", "html", "css"].includes(fileType)) {
       return (
-        <pre className="bg-gray-100 text-sm p-4 rounded overflow-auto h-[71rem] whitespace-pre-wrap">
+        <pre className="bg-gray-100 text-sm p-4 rounded overflow-auto h-[69rem] whitespace-pre-wrap">
           {fileContent}
         </pre>
       );
@@ -182,7 +182,7 @@ const FilePreviewer = () => {
 
     if (["xlsx", "xls"].includes(fileType)) {
       return (
-        <div className="overflow-auto h-[70rem] border rounded p-2 bg-white text-sm">
+        <div className="overflow-auto h-[69rem] border rounded p-2 bg-white text-sm">
           <table className="w-full border-collapse">
             <tbody>
               {excelData.map((row, i) => (
@@ -239,8 +239,8 @@ const FilePreviewer = () => {
     : icons.unknown;
 
   return (
-    <div className="w-full px-5 min-w-fit h-full py-2  1xl:max-h-[69rem] 2xl:max-h-[81rem]  3xl:max-h-[88rem]">
-      <div className="flex items-center gap-3 mb-4 border-b pb-4">
+    <div className="w-full px-5 min-w-fit h-full py-5 1xl:max-h-[69rem] 2xl:max-h-[81rem]  3xl:max-h-[88rem]">
+      <div className="flex items-center  gap-3 mb-4 border-b pb-4">
         {fileIcon}
         <h1 className="text-2xl font-semibold break-all">{filename}</h1>
 
@@ -251,7 +251,7 @@ const FilePreviewer = () => {
               <TooltipButton
                 buttonText="Download"
                 tooltipText="Click to download file/document."
-                buttonColor="bg-[#6F3FFF]"
+                buttonColor="bg-blue-600"
                 hoverColor="hover:bg-blue-700"
                 textColor="text-white"
                 tooltipColor="bg-blue-800 text-white"

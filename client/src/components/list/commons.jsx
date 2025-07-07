@@ -36,7 +36,9 @@ export const roleColorMap = {
   2: "bg-blue-500",
   3: "bg-gray-400",
   4: "bg-[#FF6666]",
+  default: "bg-gray-700", 
 };
+
 
 export const actionMap = {
   create: "bg-green-400",
@@ -52,6 +54,7 @@ export const rolePermissions = {
   2: "Content Manager",
   3: "Viewer",
   4: "Reviewer",
+  default: "N/A"
 };
 
 

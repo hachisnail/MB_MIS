@@ -66,7 +66,7 @@ const Logs = () => {
 ).filter(Boolean);
 
 const actionOptions = [
-  { value: "*", label: "Filter by action" },
+  { value: "*", label: "*" },
   ...uniqueActions.map((action) => ({
     value: action,
     label: actionLabels[action] || action,
@@ -138,7 +138,9 @@ const actionOptions = [
     <div className="w-full min-w-fit h-full pt-5 max-w-[137rem] 1xl:max-h-[69rem] 2xl:max-h-[81rem] 3xl:max-w-[175rem] 3xl:max-h-[88rem]">
       <div className="w-full h-full flex flex-col gap-y-[2rem]">
         <div className="w-full h-fit flex gap-x-3">
+          {/* searchbar */}
           <SearchBar theme="dark" onChange={handleSearch} />
+
           <CardDropdownPicker
             value={selectedRole}
             onChange={setSelectedRole}
@@ -146,6 +148,7 @@ const actionOptions = [
             theme="dark"
             options={roleOptions}
           />
+
           <CardDropdownPicker
             value={selectedAction}
             onChange={setSelectedAction}
@@ -153,6 +156,7 @@ const actionOptions = [
             theme="dark"
             options={actionOptions}
           />
+
           <TimelineDatePicker onDateChange={handleDateFilter} theme="dark" />
         </div>
 

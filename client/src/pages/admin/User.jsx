@@ -52,34 +52,6 @@ const User = () => {
     return date.toLocaleString();
   };
 
-  const colorMap = {
-    A: "#FF6666",
-    B: "#FF9933",
-    C: "#FFD700",
-    D: "#66CC66",
-    E: "#0099CC",
-    F: "#9933CC",
-    G: "#FF3399",
-    H: "#6666FF",
-    I: "#00CC99",
-    J: "#FF6600",
-    K: "#3399FF",
-    L: "#FF3366",
-    M: "#33CC33",
-    N: "#FFCC00",
-    O: "#336699",
-    P: "#990000",
-    Q: "#FF6699",
-    R: "#666600",
-    S: "#669900",
-    T: "#009999",
-    U: "#6600CC",
-    V: "#CC3300",
-    W: "#99CC00",
-    X: "#9966FF",
-    Y: "#FF0000",
-    Z: "#33CCCC",
-  };
 
   const fetchUsers = async () => {
     try {
@@ -117,25 +89,36 @@ const User = () => {
     }
   };
 
-  useEffect(() => {
+useEffect(() => {
+  // console.log("useEffect triggered. Socket:", socket);
+
+  fetchUsers();
+
+  fetchPendingInvitations();
+  // console.log("Called fetchPendingInvitations");
+
+  const handleUserChange = () => {
+    // console.log("UserSession DB change detected");
     fetchUsers();
+    // console.log("Called fetchUsers from DB change");
+
     fetchPendingInvitations();
+    // console.log("Called fetchPendingInvitations from DB change");
+  };
 
-    const handleUserChange = () => {
-      fetchUsers();
-      fetchPendingInvitations();
-    };
+  if (socket) {
+    // console.log("Attaching socket listener for UserSession changes");
+    socket.onDbChange("UserSession", "*", handleUserChange);
+  }
 
+  return () => {
     if (socket) {
-      socket.onDbChange("UserSession", "*", handleUserChange);
+      // console.log("Detaching socket listener for UserSession changes");
+      socket.offDbChange("UserSession", "*", handleUserChange);
     }
+  };
+}, [socket]);
 
-    return () => {
-      if (socket) {
-        socket.offDbChange("UserSession", "*", handleUserChange);
-      }
-    };
-  }, [socket]);
 
   const showPopup = (title, message, type = "info") => {
     setPopup({

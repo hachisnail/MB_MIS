@@ -364,7 +364,7 @@ if (encodedProfile) {
   { label: "Education", value: "posted" },
   { label: "Exhibit", value: "rejected" },
   { label: "Contests", value: "archived" },
-  { label: "Other", value: "rejected" }
+  { label: "Other", value: "other" }
 ];
 
  const [selectedCat, setSelectedCat] = useState("");

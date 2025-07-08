@@ -1,4 +1,4 @@
-// controllers/articleController.js
+
 
 import Article from '../models/Article.js';
 

@@ -256,21 +256,7 @@ const ArticleModal = ({
 
   return (
     <>
-      <div className=" gap-y-2 font-semibold flex flex-col">
-        <span className="text-5xl">
-          {isEditing ? 'Editing an Article' : 'Add New Article'}
-        </span>
-        <div className="text-2xl flex items-center text-center">
-          <span
-            onClick={onClose}
-            className="cursor-pointer text-gray-700 hover:text-black"
-          >
-            Article{' '}
-          </span>
-          <span className='text-2xl font-extrabold text-amber-900'>&nbsp; &gt; &nbsp;</span>
-          <span>{isEditing ? 'Edit' : 'Insert'}</span>
-        </div>
-      </div>
+
         <div className="flex w-full h-full gap-4 pt-5 border-t-1">
           {/* LEFT SPACER */}
           <div className="hidden 2xl:block 2xl:w-1/5" />

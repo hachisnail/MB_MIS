@@ -15,6 +15,10 @@ const routeMeta = [
   { path: "/admin/appointment", title: "Appointments Management" },
   { path: "/admin/schedule", title: "Schedules Management" },
   { path: "/admin/article", title: "Articles Management" },
+  { path: "/admin/article/add-article", title: "Create a new Article" },
+  { path: "/admin/article/edit-article", title: "Edit Article" },
+
+
   
 ];
 

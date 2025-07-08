@@ -32,6 +32,7 @@ import Article from "./pages/admin/Article";
 import Appointments from "./pages/admin/Appointments";
 import UserView from "./components/subpages/ViewUser";
 import Configuration from "./pages/admin/Configuration";
+import ArticleModal from "./components/subpages/ArticleModal";
 
 // sandbox
 import FileUploadDownload from "./sandbox/fileUploadDownload";
@@ -92,6 +93,12 @@ const Router = () => {
             <Route path="schedule" element={<Schedule />} />
           )}
           {flags["article"] && <Route path="article" element={<Article />} />}
+          {flags["article"] && <Route path="article/add-article" element={<ArticleModal />} />}
+          {flags["article"] && <Route path="article/edit-article" element={<ArticleModal />} />}
+
+
+
+
           {flags["appointment"] && (
             <Route path="appointment" element={<Appointments />} />
           )}

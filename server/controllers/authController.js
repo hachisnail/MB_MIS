@@ -4,6 +4,8 @@
   import { Invitation } from "../models/invitationModels.js";
   import { createLog } from "../services/logService.js";
   import { getIO } from "../configs/socketServer.js";
+import { Op } from "sequelize";
+
 
   export async function login(req, res) {
     const { username, password } = req.body;
@@ -13,7 +15,15 @@
     }
 
     try {
-      const user = await User.findOne({ where: { username } });
+const user = await User.findOne({
+  where: {
+    [Op.or]: [
+      { username: username },
+      { email: username }, // same field used for email input
+    ],
+  },
+});
+
       if (!user) return res.status(401).json({ message: "Invalid credentials" });
 
       const isValid = await bcrypt.compare(password, user.password);

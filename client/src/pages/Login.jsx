@@ -76,7 +76,7 @@ const Login = () => {
           className="  px-8 pt-8 pb-6 rounded-lg shadow-2xl w-full max-w-xl"
         >
           {/* <h2 className="text-2xl font-semibold mb-6 text-center text-white">Login</h2> */}
-          <div className="mb-7 w-full h-fit flex flex-col items-center gap-y-1">
+          <div className="mb-7 w-full h-fit flex flex-col items-center gap-y-4">
             <div className="flex gap-x-2 items-center">
               <img src={Logo} className="w-15" alt="Museo Bulawan Logo" />
               <i className="w-1 h-12 rounded-4xl bg-gray-500"></i>
@@ -97,13 +97,13 @@ const Login = () => {
 
           <div className="mb-4">
             <label htmlFor="username" className="block text-xl mb-2">
-              Your username
+              Your  sername or email
             </label>
             <input
               id="username"
               type="text"
               name="username"
-              placeholder="username"
+              placeholder=""
               value={credentials.username}
               onChange={handleChange}
               className="w-full px-3 py-2   border border-gray-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500"

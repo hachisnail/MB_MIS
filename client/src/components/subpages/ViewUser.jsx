@@ -44,20 +44,25 @@ const ViewUser = () => {
     }
   };
 
-  useEffect(() => {
+useEffect(() => {
+  fetchSessions();
+}, []);
+
+useEffect(() => {
+  if (!socket) return;
+
+  const handleUserChange = () => {
+    // console.log("[Socket] UserSession dbChange received – fetching sessions");
     fetchSessions();
-    const handleUserChange = () => fetchSessions();
+  };
 
-    if (socket) {
-      socket.onDbChange("UserSession", "*", handleUserChange);
-    }
+  socket.onDbChange("UserSession", "*", handleUserChange);
 
-    return () => {
-      if (socket) {
-        socket.offDbChange("UserSession", "*", handleUserChange);
-      }
-    };
-  }, [socket]);
+  return () => {
+    socket.offDbChange("UserSession", "*", handleUserChange);
+  };
+}, [socket]);
+
 
   const user = useMemo(() => userData, [userData]);
   const sessions = useMemo(() => user?.sessions || [], [user]);

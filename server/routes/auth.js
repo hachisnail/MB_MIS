@@ -3,7 +3,7 @@ import { requireAuth,requireRole } from "../middlewares/authMiddlewares.js";
 import {login, logout, getCurrentUser, validateToken} from '../controllers/authController.js'
 import { getFlags, setFlag } from '../controllers/routerFlagController.js';
 import {displayUsers, displayUser} from "../controllers/userControllers.js"
-import { sendInvitation, completeRegistration, resendInvitation, revokeInvitation, getPendingInvitations } from "../controllers/invitiationController.js";
+import { sendInvitation, completeRegistration, resendInvitation, revokeInvitation, getPendingInvitations, forgotPassword ,validateResetToken, resetPassword } from "../controllers/invitiationController.js";
 import { fetchLogs, fetchLog } from "../controllers/logController.js";
 
 import { upload } from '../middlewares/multerMiddleware.js';
@@ -22,6 +22,12 @@ const router = express.Router();
 
 router.post("/login", login);
 router.post("/logout", logout);
+
+router.post("/request-reset", forgotPassword);
+router.get("/validate-reset-token/:token", validateResetToken);
+router.post("/reset-password/:token", resetPassword);
+
+
 router.get("/me", getCurrentUser);
 
 

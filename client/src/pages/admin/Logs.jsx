@@ -73,21 +73,25 @@ const actionOptions = [
   })),
 ];
 
-  useEffect(() => {
+useEffect(() => {
+  fetchLogs();
+}, []);
+
+useEffect(() => {
+  if (!socket) return;
+
+  const handleLogChange = () => {
+    // console.log("[Socket] Log changed – fetching logs...");
     fetchLogs();
+  };
 
-    const handleLogChange = () => fetchLogs();
+  socket.onDbChange("Log", "*", handleLogChange);
 
-    if (socket) {
-      socket.onDbChange("Log", "*", handleLogChange);
-    }
+  return () => {
+    socket.offDbChange("Log", "*", handleLogChange);
+  };
+}, [socket]);
 
-    return () => {
-      if (socket) {
-        socket.offDbChange("Log", "*", handleLogChange);
-      }
-    };
-  }, [socket]);
 
   const formatCreatedAt = (dateString) => {
     if (!dateString) return "N/A";

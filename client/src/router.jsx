@@ -64,6 +64,13 @@ const Router = () => {
       {flags["login"] && (
         <Route path="/forgot-password" element={<RecoverAccount/>} />
       )}
+
+      <Route path="/recover" element={<RecoverAccount />} />
+      <Route path="/recover/:token" element={<RecoverAccount />} />
+      <Route path="/recover/success" element={<RecoverAccount />} />
+
+
+      
       {flags["catalogs"] && <Route path="/catalogs" element={<Catalogue />} />}
       {flags["home"] && <Route path="/" element={<Home />} />}
 

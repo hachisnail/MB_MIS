@@ -27,21 +27,25 @@ const ViewLogs = () => {
     }
   };
 
-  useEffect(() => {
+useEffect(() => {
+  fetchLog();
+}, []);
+
+useEffect(() => {
+  if (!socket) return;
+
+  const handleLogChange = () => {
+    // console.log("[Socket] Log dbChange received – fetching logs");
     fetchLog();
+  };
 
-    const handleLogChange = () => fetchLog();
+  socket.onDbChange("Log", "*", handleLogChange);
 
-    if (socket) {
-      socket.onDbChange("Log", "*", handleLogChange);
-    }
+  return () => {
+    socket.offDbChange("Log", "*", handleLogChange);
+  };
+}, [socket]);
 
-    return () => {
-      if (socket) {
-        socket.offDbChange("Log", "*", handleLogChange);
-      }
-    };
-  }, [socket]);
 
   return (
     <div className="w-full min-w-fit h-full pt-5 max-w-[137rem]  1xl:max-h-[69rem] 2xl:max-h-[81rem] 3xl:max-w-[175rem] 3xl:max-h-[88rem]">

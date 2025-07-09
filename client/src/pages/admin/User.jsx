@@ -7,8 +7,15 @@ import axiosClient from "../../lib/axiosClient";
 // import ContextMenu from "../../components/modals/ContextMenu";
 import ConfirmationModal from "../../components/modals/ConfirmationModal";
 import PopupModal from "../../components/modals/PopupModal";
-import {UserItem, PendingInviteItem,} from "../../components/list/UsersInviteslist";
-import {LoadingSpinner,ErrorBox,EmptyMessage,} from "../../components/list/commons"
+import {
+  UserItem,
+  PendingInviteItem,
+} from "../../components/list/UsersInviteslist";
+import {
+  LoadingSpinner,
+  ErrorBox,
+  EmptyMessage,
+} from "../../components/list/commons";
 
 import { useSocketClient } from "../../context/authContext";
 
@@ -52,7 +59,6 @@ const User = () => {
     return date.toLocaleString();
   };
 
-
   const fetchUsers = async () => {
     try {
       setIsUserLoading(true);
@@ -89,36 +95,26 @@ const User = () => {
     }
   };
 
-useEffect(() => {
-  // console.log("useEffect triggered. Socket:", socket);
-
-  fetchUsers();
-
-  fetchPendingInvitations();
-  // console.log("Called fetchPendingInvitations");
-
-  const handleUserChange = () => {
-    // console.log("UserSession DB change detected");
+  useEffect(() => {
     fetchUsers();
-    // console.log("Called fetchUsers from DB change");
-
     fetchPendingInvitations();
-    // console.log("Called fetchPendingInvitations from DB change");
-  };
+  }, []);
 
-  if (socket) {
-    // console.log("Attaching socket listener for UserSession changes");
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleUserChange = () => {
+      console.log("[Socket] UserSession change → refetching...");
+      fetchUsers();
+      fetchPendingInvitations();
+    };
+
     socket.onDbChange("UserSession", "*", handleUserChange);
-  }
 
-  return () => {
-    if (socket) {
-      // console.log("Detaching socket listener for UserSession changes");
+    return () => {
       socket.offDbChange("UserSession", "*", handleUserChange);
-    }
-  };
-}, [socket]);
-
+    };
+  }, [socket]);
 
   const showPopup = (title, message, type = "info") => {
     setPopup({
@@ -332,14 +328,17 @@ useEffect(() => {
               <>
                 {users.length > 0 ? (
                   users.map((user) => (
-                    <UserItem key={user.id} user={user} handleOpen={handleOpen} />
+                    <UserItem
+                      key={user.id}
+                      user={user}
+                      handleOpen={handleOpen}
+                    />
                   ))
                 ) : (
                   <EmptyMessage message="No users!" />
                 )}
               </>
             )}
-
           </div>
         </div>
         <div className="w-full min-h-[32rem] py-5 overflow-y-scroll flex-col xl:flex-row border-t-1 items-center border-[#373737] flex">

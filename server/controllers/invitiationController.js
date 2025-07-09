@@ -5,7 +5,8 @@ import transporter, { sendEmail } from '../services/emailTransporter.js';
 import { mainDb } from '../models/authModels.js';
 import bcrypt from 'bcryptjs';
 import { createLog } from '../services/logService.js';
-
+import { PasswordResetToken } from '../models/PasswordResetToken.js';
+import { Op } from 'sequelize';
 // Utility function to get the username from userId
 const getUsername = async (userId) => {
   const user = await User.findByPk(userId);
@@ -247,5 +248,191 @@ export const getPendingInvitations = async (req, res) => {
   } catch (error) {
     console.error('Error fetching:', error);
     res.status(500).json({ message: 'Server error' });
+  }
+};
+
+
+export const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ message: "Email is required" });
+
+    const user = await User.findOne({ where: { email } });
+
+    const actorId = req.session?.userId || 1;
+    const actor = await getUsername(actorId);
+
+    // ✅ Log the attempt whether the user exists or not
+    await createLog(
+      "create",
+      "reset-password",
+      `${actor} attempted a password reset for ${email}`,
+      actorId,
+      null,
+      { email },
+      {
+        message: `Password reset requested for ${email} (user ${
+          user ? "found" : "not found"
+        })`,
+      }
+    );
+
+    // Respond vaguely to prevent email enumeration
+    if (!user) {
+      return res.status(200).json({
+        message: "If that email exists, you will receive reset instructions.",
+      });
+    }
+
+    // Optional cleanup
+    await PasswordResetToken.update(
+      { used: true },
+      {
+        where: {
+          userId: user.id,
+          used: false,
+        },
+      }
+    );
+
+    const token = uuidv4();
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+    await PasswordResetToken.create({
+      userId: user.id,
+      token,
+      expiresAt,
+    });
+
+    const resetUrl = `${process.env.CLIENT_URL}/recover/${token}`;
+    const html = `
+      <div style="font-family:'Segoe UI',sans-serif;padding:20px;background:#f9f9f9;color:#333">
+        <div style="max-width:600px;margin:auto;background:#fff;border-radius:10px;padding:30px;
+                    box-shadow:0 5px 15px rgba(0,0,0,0.1)">
+          <h2 style="color:#6F3FFF">Reset Your Museo Bulawan Password</h2>
+          <p>Hello ${user.fname || "User"},</p>
+          <p>You requested a password reset. Click the button below to set a new password. This link will expire in 1 hour.</p>
+          <a href="${resetUrl}" style="display:inline-block;padding:12px 20px;
+             background-color:#6F3FFF;color:white;text-decoration:none;border-radius:5px;margin-top:10px;">
+            Reset Password
+          </a>
+          <p style="margin-top:30px;font-size:14px;color:#777">
+            If you didn’t request this, you can safely ignore this email.
+          </p>
+        </div>
+      </div>
+    `;
+
+    await sendEmail({
+      from: '"Museo Bulawan" <museobulawanmis@gmail.com>',
+      to: email,
+      subject: "Password Reset Instructions",
+      html,
+    });
+
+
+
+    return res.status(200).json({
+      message: "If that email exists, you will receive reset instructions.",
+    });
+  } catch (error) {
+    console.error("forgotPassword error:", error);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+
+
+export const validateResetToken = async (req, res) => {
+  try {
+    const { token } = req.params;
+
+    const resetToken = await PasswordResetToken.findOne({
+      where: {
+        token,
+        expiresAt: { [Op.gt]: new Date() },
+        used: false,
+      },
+    });
+
+    if (!resetToken) {
+      return res.status(400).json({ message: "Invalid or expired token." });
+    }
+
+    return res.status(200).json({ message: "Valid token." });
+  } catch (error) {
+    console.error("validateResetToken error:", error);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+
+
+export const resetPassword = async (req, res) => {
+  try {
+    const { token } = req.params;
+    const { password, confirmPassword } = req.body;
+
+    const actorId = req.session?.userId || 1;
+    const actor = await getUsername(actorId);
+
+    // Log the reset password attempt
+    // await createLog(
+    //   "create",
+    //   "Password Reset",
+    //   `${actor} attempted to reset a password using token ${token}`,
+    //   actorId,
+    //   null,
+    //   { token },
+    //   { message: `Password reset attempt for token: ${token}` }
+    // );
+
+    // if (!password || password.length < 8 || password !== confirmPassword) {
+    //   return res.status(400).json({
+    //     message: "Passwords must match and be at least 8 characters.",
+    //   });
+    // }
+
+    const resetToken = await PasswordResetToken.findOne({
+      where: {
+        token,
+        expiresAt: { [Op.gt]: new Date() },
+        used: false,
+      },
+    });
+
+    if (!resetToken) {
+      return res.status(400).json({ message: "Invalid or expired reset link." });
+    }
+
+    const user = await User.findByPk(resetToken.userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    // Hash and update password
+    user.password = await bcrypt.hash(password, 10);
+    await user.save();
+
+    // Mark token as used
+    resetToken.used = true;
+    await resetToken.save();
+
+    // Log success
+    await createLog(
+      "update",
+      "User",
+      `${actor} successfully reset the password for ${user.email}`,
+      actorId,
+      null,
+      { userId: user.id },
+      {
+        message: `Password reset completed for ${user.email}`,
+        resetByToken: token,
+      }
+    );
+
+    return res.status(200).json({ message: "Password has been reset." });
+  } catch (error) {
+    console.error("resetPassword error:", error);
+    return res.status(500).json({ message: "Server error" });
   }
 };

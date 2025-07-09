@@ -49,14 +49,13 @@ const RecoverAccount = () => {
         email: emailInput,
       });
 
+      e.target.email.value = "";
       localStorage.setItem("resetCooldown", Date.now().toString());
       setCooldown(60);
       setModalMessage(response.data.message || "Reset link sent.");
       setModalOpen(true);
     } catch (err) {
-      setModalMessage(
-        err.response?.data?.message || "Something went wrong."
-      );
+      setModalMessage(err.response?.data?.message || "Something went wrong.");
       setModalOpen(true);
     } finally {
       setIsLoading(false);
@@ -68,7 +67,10 @@ const RecoverAccount = () => {
     e.preventDefault();
     setIsLoading(true);
 
-    if (passwords.password.length < 8 || passwords.password !== passwords.confirm) {
+    if (
+      passwords.password.length < 8 ||
+      passwords.password !== passwords.confirm
+    ) {
       setModalMessage("Passwords must match and be at least 8 characters.");
       setModalOpen(true);
       setIsLoading(false);
@@ -90,15 +92,22 @@ const RecoverAccount = () => {
   };
 
   const renderEmailForm = () => (
-    <form onSubmit={handleEmailSubmit} className="px-8 pt-8 pb-6 rounded-lg shadow-2xl w-full max-w-xl">
+    <form
+      onSubmit={handleEmailSubmit}
+      className="px-8 pt-8 pb-6 rounded-lg shadow-2xl w-full max-w-xl"
+    >
       <div className="mb-7 flex flex-col items-center gap-y-4">
         <LogoHeader />
-        <h1 className="text-5xl font-semibold text-center">Reset Your Password</h1>
+        <h1 className="text-5xl font-semibold text-center">
+          Reset Your Password
+        </h1>
         <p className="text-md text-center text-gray-500">
           Enter your email and we’ll send a reset link.
         </p>
       </div>
-      <label htmlFor="email" className="block text-xl mb-2">Your email</label>
+      <label htmlFor="email" className="block text-xl mb-2">
+        Your email
+      </label>
       <input
         id="email"
         type="email"
@@ -112,17 +121,35 @@ const RecoverAccount = () => {
         disabled={isLoading || cooldown > 0}
         className="w-full bg-black text-white mt-4 py-2 text-2xl rounded-lg disabled:opacity-50"
       >
-        {isLoading ? "Sending..." : cooldown > 0 ? `Wait (${cooldown}s)` : "Reset Password"}
+        {isLoading
+          ? "Sending..."
+          : cooldown > 0
+          ? `Wait (${cooldown}s)`
+          : "Reset Password"}
       </button>
+      <div className="mt-2 w-full flex justify-end">
+        <NavLink to="/login">
+          <span className="font-semibold text-xl hover:text-gray-600">
+            Return to login
+          </span>
+        </NavLink>
+      </div>
     </form>
   );
 
   const renderPasswordForm = () => (
-    <form onSubmit={handlePasswordSubmit} className="px-8 pt-8 pb-6 rounded-lg shadow-2xl w-full max-w-xl">
+    <form
+      onSubmit={handlePasswordSubmit}
+      className="px-8 pt-8 pb-6 rounded-lg shadow-2xl w-full max-w-xl"
+    >
       <div className="mb-7 flex flex-col items-center gap-y-4">
         <LogoHeader />
-        <h1 className="text-5xl font-semibold text-center">Set a New Password</h1>
-        <p className="text-md text-center text-gray-500">Choose a strong password for your account.</p>
+        <h1 className="text-5xl font-semibold text-center">
+          Set a New Password
+        </h1>
+        <p className="text-md text-center text-gray-500">
+          Choose a strong password for your account.
+        </p>
       </div>
 
       <label className="block text-xl mb-2">New Password</label>
@@ -131,7 +158,9 @@ const RecoverAccount = () => {
         required
         minLength={8}
         value={passwords.password}
-        onChange={(e) => setPasswords({ ...passwords, password: e.target.value })}
+        onChange={(e) =>
+          setPasswords({ ...passwords, password: e.target.value })
+        }
         className="w-full px-3 py-2 border border-gray-400 rounded-lg mb-4"
       />
 
@@ -141,7 +170,9 @@ const RecoverAccount = () => {
         required
         minLength={8}
         value={passwords.confirm}
-        onChange={(e) => setPasswords({ ...passwords, confirm: e.target.value })}
+        onChange={(e) =>
+          setPasswords({ ...passwords, confirm: e.target.value })
+        }
         className="w-full px-3 py-2 border border-gray-400 rounded-lg mb-4"
       />
 
@@ -158,8 +189,12 @@ const RecoverAccount = () => {
   const renderSuccess = () => (
     <div className="text-center max-w-xl mx-auto px-8 py-12 rounded shadow-xl bg-white">
       <LogoHeader />
-      <h1 className="text-3xl font-bold text-green-600 mt-4">Password Reset Successful</h1>
-      <p className="mt-2 text-gray-600">You can now log in with your new password.</p>
+      <h1 className="text-3xl font-bold text-green-600 mt-4">
+        Password Reset Successful
+      </h1>
+      <p className="mt-2 text-gray-600">
+        You can now log in with your new password.
+      </p>
       <NavLink
         to="/login"
         className="inline-block mt-6 bg-black text-white px-6 py-2 rounded-lg"
@@ -181,11 +216,18 @@ const RecoverAccount = () => {
       />
 
       <div className="flex flex-col min-h-screen">
-        <NavLink to="/" className="group flex items-center font-semibold ml-1 mt-1 px-1 hover:text-gray-500">
+        <NavLink
+          to="/"
+          className="group flex items-center font-semibold ml-1 mt-1 px-1 hover:text-gray-500"
+        >
           <svg
-            xmlns="http://www.w3.org/2000/svg" width="32" height="32"
-            viewBox="0 0 24 24" fill="none"
-            className="stroke-black group-hover:stroke-gray-500" strokeWidth="1"
+            xmlns="http://www.w3.org/2000/svg"
+            width="32"
+            height="32"
+            viewBox="0 0 24 24"
+            fill="none"
+            className="stroke-black group-hover:stroke-gray-500"
+            strokeWidth="1"
           >
             <path d="M9 14l-4 -4l4 -4" />
             <path d="M5 10h11a4 4 0 1 1 0 8h-1" />

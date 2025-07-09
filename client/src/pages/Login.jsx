@@ -97,13 +97,13 @@ const Login = () => {
 
           <div className="mb-4">
             <label htmlFor="username" className="block text-xl mb-2">
-              Your  sername or email
+              Your  username or email
             </label>
             <input
               id="username"
               type="text"
               name="username"
-              placeholder=""
+              placeholder="username or email"
               value={credentials.username}
               onChange={handleChange}
               className="w-full px-3 py-2   border border-gray-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500"

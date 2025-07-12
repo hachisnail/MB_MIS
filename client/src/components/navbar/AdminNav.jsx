@@ -9,17 +9,11 @@ const AdminNav = ({ isOpen }) => {
   const { user } = useAuth();
   const { flags, loading } = useRouterFlags();
 
-
   const firstInitial = user.fname.charAt(0).toUpperCase();
   const lastInitial = user.lname.charAt(0).toUpperCase();
 
-
-
-
-
   const initials = user.fname.charAt(0) + user.lname.charAt(0);
   const { bg, text } = generateColorFromKey(initials);
-
 
   const NavItem = ({ title, to, icon, label }) => (
     <NavLink
@@ -57,7 +51,9 @@ const AdminNav = ({ isOpen }) => {
                 className="min-w-13.5 min-h-13.5 rounded-full border-1 flex items-center justify-center"
                 style={{ backgroundColor: bg }}
               >
-                <span className={`text-3xl font-semibold flex text-center items-center ${text}`}>
+                <span
+                  className={`text-3xl font-semibold flex text-center items-center ${text}`}
+                >
                   {firstInitial}
                   {lastInitial}
                 </span>
@@ -97,10 +93,34 @@ const AdminNav = ({ isOpen }) => {
         </div>
         <div className="w-full h-full mt-10">
           <div className="flex-1 w-full  flex flex-col items-center px-3 text-xl gap-y-2 font-semibold">
+            <NavItem
+              title="Dashboard"
+              to="/admin/dashboard"
+              label="Dashboard"
+              icon={
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="32"
+                  height="32"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="icon"
+                >
+                  <path d="M5 12l-2 0l9 -9l9 9l-2 0" />
+                  <path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-7" />
+                  <path d="M9 21v-6a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v6" />
+                </svg>
+              }
+            />
+            {flags["appointment"] && (
               <NavItem
-                title="Dashboard"
-                to="/admin/dashboard"
-                label="Dashboard"
+                title="Appointment"
+                to="/admin/appointment"
+                label="Appointment"
                 icon={
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -114,234 +134,164 @@ const AdminNav = ({ isOpen }) => {
                     strokeLinejoin="round"
                     className="icon"
                   >
-                    <path d="M5 12l-2 0l9 -9l9 9l-2 0" />
-                    <path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-7" />
-                    <path d="M9 21v-6a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v6" />
+                    <path d="M10.5 21h-4.5a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v3" />
+                    <path d="M16 3v4" />
+                    <path d="M8 3v4" />
+                    <path d="M4 11h10" />
+                    <path d="M18 18m-4 0a4 4 0 1 0 8 0a4 4 0 1 0 -8 0" />
+                    <path d="M18 16.5v1.5l.5 .5" />
                   </svg>
                 }
               />
-            {flags["appointment"] && (
-            <NavItem
-              title="Appointment"
-              to="/admin/appointment"
-              label="Appointment"
-              icon={
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="32"
-                  height="32"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="icon"
-                >
-                  <path d="M10.5 21h-4.5a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v3" />
-                  <path d="M16 3v4" />
-                  <path d="M8 3v4" />
-                  <path d="M4 11h10" />
-                  <path d="M18 18m-4 0a4 4 0 1 0 8 0a4 4 0 1 0 -8 0" />
-                  <path d="M18 16.5v1.5l.5 .5" />
-                </svg>
-              }
-            />
             )}
-
 
             {flags["schedule"] && (
-
-            <NavItem
-              title="Schedeule"
-              to="/admin/schedule"
-              label="Schedule"
-              icon={
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="32"
-                  height="32"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="icon"
-                >
-                  <path d="M4 7a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-12z" />
-                  <path d="M16 3v4" />
-                  <path d="M8 3v4" />
-                  <path d="M4 11h16" />
-                  <path d="M7 14h.013" />
-                  <path d="M10.01 14h.005" />
-                  <path d="M13.01 14h.005" />
-                  <path d="M16.015 14h.005" />
-                  <path d="M13.015 17h.005" />
-                  <path d="M7.01 17h.005" />
-                  <path d="M10.01 17h.005" />
-                </svg>
-              }
-            />
+              <NavItem
+                title="Schedeule"
+                to="/admin/schedule"
+                label="Schedule"
+                icon={
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="32"
+                    height="32"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="icon"
+                  >
+                    <path d="M4 7a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-12z" />
+                    <path d="M16 3v4" />
+                    <path d="M8 3v4" />
+                    <path d="M4 11h16" />
+                    <path d="M7 14h.013" />
+                    <path d="M10.01 14h.005" />
+                    <path d="M13.01 14h.005" />
+                    <path d="M16.015 14h.005" />
+                    <path d="M13.015 17h.005" />
+                    <path d="M7.01 17h.005" />
+                    <path d="M10.01 17h.005" />
+                  </svg>
+                }
+              />
             )}
 
-
-
-          {flags["acquisition"] && (
-
-            <NavItem
-              title="Acquisition"
-              to="/admin/acquisition"
-              label="Acquisition"
-              icon={
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="32"
-                  height="32"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="icon"
-                >
-                  <path d="M9 5h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2h-2" />
-                  <path d="M9 3m0 2a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v0a2 2 0 0 1 -2 2h-2a2 2 0 0 1 -2 -2z" />
-                  <path d="M10 14h4" />
-                  <path d="M12 12v4" />
-                </svg>
-              }
-            />
+            {flags["acquisition"] && (
+              <NavItem
+                title="Acquisition"
+                to="/admin/acquisition"
+                label="Acquisition"
+                icon={
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="32"
+                    height="32"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="icon"
+                  >
+                    <path d="M9 5h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2h-2" />
+                    <path d="M9 3m0 2a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v0a2 2 0 0 1 -2 2h-2a2 2 0 0 1 -2 -2z" />
+                    <path d="M10 14h4" />
+                    <path d="M12 12v4" />
+                  </svg>
+                }
+              />
             )}
 
-          {flags["inventory"] && (
-
-            <NavItem
-              title="Inventory"
-              to="/admin/inventory"
-              label="Inventory"
-              icon={
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="32"
-                  height="32"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="icon"
-                >
-                  <path d="M9 5h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2h-2" />
-                  <path d="M9 3m0 2a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v0a2 2 0 0 1 -2 2h-2a2 2 0 0 1 -2 -2z" />
-                  <path d="M9 17v-4" />
-                  <path d="M12 17v-1" />
-                  <path d="M15 17v-2" />
-                  <path d="M12 17v-1" />
-                </svg>
-              }
-            />
+            {flags["inventory"] && (
+              <NavItem
+                title="Inventory"
+                to="/admin/inventory"
+                label="Inventory"
+                icon={
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="32"
+                    height="32"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="icon"
+                  >
+                    <path d="M9 5h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2h-2" />
+                    <path d="M9 3m0 2a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v0a2 2 0 0 1 -2 2h-2a2 2 0 0 1 -2 -2z" />
+                    <path d="M9 17v-4" />
+                    <path d="M12 17v-1" />
+                    <path d="M15 17v-2" />
+                    <path d="M12 17v-1" />
+                  </svg>
+                }
+              />
             )}
 
             {flags["article"] && (
-
-            <NavItem
-              title="Article"
-              to="/admin/article"
-              label="Article"
-              icon={
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="32"
-                  height="32"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="icon"
-                >
-                  <path d="M3 4m0 2a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2z" />
-                  <path d="M7 8h10" />
-                  <path d="M7 12h10" />
-                  <path d="M7 16h10" />
-                </svg>
-              }
-            />
+              <NavItem
+                title="Article"
+                to="/admin/article"
+                label="Article"
+                icon={
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="32"
+                    height="32"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="icon"
+                  >
+                    <path d="M3 4m0 2a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2z" />
+                    <path d="M7 8h10" />
+                    <path d="M7 12h10" />
+                    <path d="M7 16h10" />
+                  </svg>
+                }
+              />
             )}
-
           </div>
 
           {user.roleId == "1" ? (
             <>
               <div className="pt-10 flex-1 w-full mt-4 border-t-1 border-gray-700 flex flex-col items-center px-3 text-xl gap-y-2 font-semibold">
-                
                 {flags["user"] && (
-
-                <NavItem
-                  title="User"
-                  to="/admin/user"
-                  label="User"
-                  icon={
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="32"
-                      height="32"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className="icon"
-                    >
-                      <path d="M9 7m-4 0a4 4 0 1 0 8 0a4 4 0 1 0 -8 0" />
-                      <path d="M3 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2" />
-                      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                      <path d="M21 21v-2a4 4 0 0 0 -3 -3.85" />
-                    </svg>
-                  }
-                />
+                  <NavItem
+                    title="User"
+                    to="/admin/user"
+                    label="User"
+                    icon={
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="32"
+                        height="32"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="icon"
+                      >
+                        <path d="M9 7m-4 0a4 4 0 1 0 8 0a4 4 0 1 0 -8 0" />
+                        <path d="M3 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2" />
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                        <path d="M21 21v-2a4 4 0 0 0 -3 -3.85" />
+                      </svg>
+                    }
+                  />
                 )}
-
-                {flags["logs"] && (
-
-                <NavItem
-                  title="Logs"
-                  to="/admin/logs"
-                  label="Logs"
-                  icon={
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="32"
-                      height="32"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className="icon"
-                    >
-                      <path d="M4 12h.01" />
-                      <path d="M4 6h.01" />
-                      <path d="M4 18h.01" />
-                      <path d="M8 18h2" />
-                      <path d="M8 12h2" />
-                      <path d="M8 6h2" />
-                      <path d="M14 6h6" />
-                      <path d="M14 12h6" />
-                      <path d="M14 18h6" />
-                    </svg>
-                  }
-                />
-                )}
-
-
-   
 
                 <NavItem
                   title="Configuration"
@@ -372,7 +322,38 @@ const AdminNav = ({ isOpen }) => {
                     </svg>
                   }
                 />
-                
+
+                {flags["logs"] && (
+                  <NavItem
+                    title="Logs"
+                    to="/admin/logs"
+                    label="Logs"
+                    icon={
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="32"
+                        height="32"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="icon"
+                      >
+                        <path d="M4 12h.01" />
+                        <path d="M4 6h.01" />
+                        <path d="M4 18h.01" />
+                        <path d="M8 18h2" />
+                        <path d="M8 12h2" />
+                        <path d="M8 6h2" />
+                        <path d="M14 6h6" />
+                        <path d="M14 12h6" />
+                        <path d="M14 18h6" />
+                      </svg>
+                    }
+                  />
+                )}
               </div>
             </>
           ) : null}

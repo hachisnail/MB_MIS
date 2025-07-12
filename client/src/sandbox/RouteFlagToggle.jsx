@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
 import axiosClient from "../lib/axiosClient";
-import SocketClient from "../lib/socketClient";
 
 import { useSocketClient } from "../context/authContext";
 

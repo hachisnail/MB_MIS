@@ -4,6 +4,7 @@ import usePrompt from "../../hooks/usePrompt";
 import ConfirmationModal from "../modals/ConfirmationModal";
 import axiosClient from "../../lib/axiosClient";
 import PopupModal from "../modals/PopupModal";
+import BackButton from "../buttons/BackButton";
 
 /**
  * Renders a form for inviting new users to the Museo Bulawan Management Information System.
@@ -403,9 +404,12 @@ const CreateUsers = () => {
         <div className="w-full h-full overflow-y-scroll flex-col xl:flex-row py-5 items-center flex border-t-1 border-[#373737]">
           {/* Form section */}
           <form className="min-w-fit flex h-full p-2 gap-y-5 gap-x-10" onSubmit={(e) => e.preventDefault()}> {/* Prevent default browser form submission */}
+            
+            
             <div className="w-[40rem] h-fit flex flex-col gap-y-2">
               {/* Form header and description */}
               <div className="w-full h-fit flex flex-col gap-y-2">
+
                 <span className="w-fit text-2xl font-semibold">Form</span>
                 <span className="w-[40rem] text-[#9C9C9C] text-lg text-justify">
                   Use this form to invite a new staff member to the{" "}
@@ -570,7 +574,7 @@ const CreateUsers = () => {
                           validateField("role", e.target.value);
                         }}
                         className="form-radio text-violet-600 focus:ring-0 focus:ring-offset-0"
-                        disabled={isLoading} // Disable input during API call
+                        disabled={isLoading}
                       />
                       {role.label}
                     </label>
@@ -585,12 +589,14 @@ const CreateUsers = () => {
 
               {/* Action Buttons */}
               <div className="w-full h-fit flex justify-end gap-2">
+          <BackButton/>
+
                 <StyledButton
                   onClick={clearInputs}
                   buttonColor="bg-gray-600"
                   hoverColor="hover:bg-gray-700"
                   textColor="text-white"
-                  disabled={isLoading} // Disable button during API call
+                  disabled={isLoading} 
                 >
                   Clear Inputs
                 </StyledButton>
@@ -599,7 +605,7 @@ const CreateUsers = () => {
                   buttonColor="bg-violet-600"
                   hoverColor="hover:bg-violet-700"
                   textColor="text-white"
-                  disabled={isLoading} // Disable button during API call
+                  disabled={isLoading} 
                 >
                   {isLoading ? (<div className="w-7 h-7 mx-auto border-2 border-white border-t-transparent animate-spin rounded-full"></div>) : "Send"} {/* Dynamic button text */}
                 </StyledButton>

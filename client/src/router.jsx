@@ -10,6 +10,8 @@ import Login from "./pages/Login";
 import Catalogue from "./pages/Catalogue";
 import RecoverAccount from "./pages/RecoverAccount";
 
+import MaintenanceMode from "./pages/MaintenanceMode";
+
 
 import CompleteRegistrationPage from "./components/subpages/CompleteRegistrationPage";
 import RegistrationSuccess from "./components/subpages/RegistrationSuccessPage";
@@ -151,10 +153,10 @@ const Router = () => {
       </Route>
 
       {/* Catch-all & unauthorized */}
-
       {flags["down"] && <Route path="*" element={<ServerDown />} />}
 
-      {flags["home"] && <Route path="*" element={<NoMatch />} />}
+      {flags["maintenance"] && <Route path="*" element={<MaintenanceMode />} />}
+      {flags["nomatch"] && <Route path="*" element={<NoMatch />} />}
     </Routes>
   );
 };

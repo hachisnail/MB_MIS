@@ -167,7 +167,7 @@ useEffect(() => {
         <div className="w-full h-full flex flex-col ">
           {/* Table Header */}
           <div className="w-full min-w-fit h-12 grid grid-cols-5">
-            {["User", "Timestamp", "Tab", "Action", "Description"].map(
+            {["Actor", "Timestamp", "Tab", "Action", "Description"].map(
               (label) => (
                 <div
                   key={label}

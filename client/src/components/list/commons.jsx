@@ -36,7 +36,8 @@ export const roleColorMap = {
   2: "bg-blue-500",
   3: "bg-gray-400",
   4: "bg-[#FF6666]",
-  default: "bg-gray-700", 
+  5: "bg-gray-500",
+  default: "bg-gray-800", 
 };
 
 
@@ -54,6 +55,7 @@ export const rolePermissions = {
   2: "Content Manager",
   3: "Viewer",
   4: "Reviewer",
+  5: "System",
   default: "N/A"
 };
 

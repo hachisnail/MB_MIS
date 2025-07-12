@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate, NavLink, Outlet } from "react-router-dom";
+import { useNavigate, NavLink } from "react-router-dom";
 import axiosClient from "../lib/axiosClient";
 import TooltipButton from "../components/buttons/TooltipButton";
 import ContextMenu from "../components/modals/ContextMenu";

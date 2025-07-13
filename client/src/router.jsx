@@ -5,10 +5,15 @@ import ServerDown from "./pages/ServerDown";
 import { useRouterFlags } from "./context/routerFlagProvider";
 
 // landing pages
-import Home from "./pages/Home";
-import Login from "./pages/Login";
-import Catalogue from "./pages/Catalogue";
-import RecoverAccount from "./pages/RecoverAccount";
+// import Home from "./pages/public/Home";
+// import Login from "./pages/puclic/Login";
+// import Catalogue from "./pages/public/Catalogue";
+// import RecoverAccount from "./pages/public/RecoverAccount";
+
+import Home from "./pages/public/Home";
+import Login from "./pages/public/Login"
+import Catalogue from "./pages/public/Catalogue";
+import RecoverAccount from "./components/subpages/RecoverAccount";
 
 import MaintenanceMode from "./pages/MaintenanceMode";
 
@@ -64,7 +69,7 @@ const Router = () => {
       )}
   
       {flags["login"] && (
-        <Route path="/forgot-password" element={<RecoverAccount/>} />
+        <Route path="/login/forgot-password" element={<RecoverAccount/>} />
       )}
 
       <Route path="/recover" element={<RecoverAccount />} />

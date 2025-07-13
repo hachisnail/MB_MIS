@@ -337,7 +337,7 @@ export const forgotPassword = async (req, res) => {
     });
   } catch (error) {
     console.error("forgotPassword error:", error);
-    return res.status(500).json({ message: "Server error" });
+    return res.status(500).json({ message: "A server error occurred. Please try again later." });
   }
 };
 
@@ -361,7 +361,7 @@ export const validateResetToken = async (req, res) => {
     return res.status(200).json({ message: "Valid token." });
   } catch (error) {
     console.error("validateResetToken error:", error);
-    return res.status(500).json({ message: "Server error" });
+    return res.status(500).json({  message: "A server error occurred. Please try again later." });
   }
 };
 
@@ -433,6 +433,6 @@ export const resetPassword = async (req, res) => {
     return res.status(200).json({ message: "Password has been reset." });
   } catch (error) {
     console.error("resetPassword error:", error);
-    return res.status(500).json({ message: "Server error" });
+    return res.status(500).json({  message: "A server error occurred. Please try again later." });
   }
 };

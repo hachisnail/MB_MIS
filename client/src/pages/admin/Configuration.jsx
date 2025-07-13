@@ -177,8 +177,8 @@ const Configuration = () => {
     <>
       <div className="w-full min-w-fit h-full p-5 max-w-[137rem] 1xl:max-h-[69rem] 2xl:max-h-[81rem] 3xl:max-w-[175rem] 3xl:max-h-[88rem]">
         <div className="w-full h-full pt-5 flex border-t border-[#373737] gap-y-[2rem]">
-          <div className="w-full space-y-5 h-full pt-1">
-            <div className="flex gap-x-10 items-center w-full border-b border-[#373737] pb-5">
+          <div className="w-[81.5rem] space-y-5 h-full pt-1">
+            <div className="flex justify-between items-center w-full border-b border-[#373737] pb-5">
               <div className="flex flex-col">
                 <span className="text-2xl font-semibold mb-2">
                   Feature Flags
@@ -203,26 +203,14 @@ const Configuration = () => {
                   }}
                 />
                 <span className="text-lg text-[#9C9C9C]">
-                  Disables public pages and shows a maintenance screen.
+                  Disables public pages.
                 </span>
               </div>
 
-                          <NavLink to="edit-about-page" className=" mt-5 w-fit h-fit">
-                            <TooltipButton
-                              buttonText="Edit About Page"
-                              tooltipText="Use this to customize the About page's information, and visuals."
 
-                              buttonColor="bg-[#6F3FFF]"
-                              hoverColor="hover:bg-violet-700"
-                              textColor="text-white"
-                              tooltipColor="bg-violet-800 text-white"
-                              className="w-fit"
-                              // onClick={() => setInfoPopupOpen(true)}
-                            />
-                          </NavLink>
             </div>
 
-            <div className="w-full min-w-fit min-h-fit h-[63rem] flex flex-wrap gap-x-2 gap-y-2 px-5 items-start content-start">
+            <div className="w-full min-w-fit min-h-fit h-[63rem] flex flex-wrap gap-x-2 gap-y-2  items-start content-start">
               {flagsLoading ? (
                 <LoadingSpinner />
               ) : flagsError ? (

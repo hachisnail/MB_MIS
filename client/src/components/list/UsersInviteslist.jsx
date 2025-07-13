@@ -2,7 +2,7 @@ import StyledButton from "../buttons/StyledButton";
 // import ContextMenu from "../modals/ContextMenu";
 import { NavLink } from "react-router-dom";
 
-import { rolePermissions, generateColorFromKey } from "./commons";
+import { rolePermissions, generateColorFromKey, LoadingSpinner } from "./commons";
 
 export const UserItem = ({ user, handleOpen }) => {
   const fname = user.fname.replace(/\s+/g, "");
@@ -88,7 +88,8 @@ export const PendingInviteItem = ({
   const lname = invite.last_name;
   const email = invite.email;
   const initials = fname.charAt(0) + lname.charAt(0);
-  const bgColor = colorMap[fname.charAt(0)] || "#FFFFFF";
+
+  const { bg, text } = generateColorFromKey(initials);
 
   return (
     <div
@@ -101,10 +102,10 @@ export const PendingInviteItem = ({
       >
         <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center">
           <div
-            className="select-none w-11 h-11 rounded-full flex items-center justify-center"
-            style={{ backgroundColor: bgColor }}
+            className={`select-none w-11 h-11 rounded-full flex items-center justify-center `}
+            style={{ backgroundColor: bg }}
           >
-            <span className="text-xl font-semibold text-black">{initials}</span>
+            <span className={`text-xl font-semibold ${text}`}>{initials}</span>
           </div>
         </div>
         <div className="w-fit h-full flex flex-col justify-center">

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, NavLink } from "react-router-dom";
-import { useAuth } from "../context/authContext";
-import Logo from "../assets/LOGO.png";
+import { useAuth } from "../../context/authContext";
+import Logo from "../../assets/LOGO.png";
+import PopupModal from "../../components/modals/PopupModal";
 
 const Login = () => {
   const [credentials, setCredentials] = useState({
@@ -9,9 +10,10 @@ const Login = () => {
     password: "",
   });
   const [error, setError] = useState("");
+  const [apiError, setApiError] = useState("");
   const [isloading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-  const { user, login, forcedLogoutReason } = useAuth(); // ✅ include reason
+  const { user, login, forcedLogoutReason } = useAuth(); 
 
   useEffect(() => {
     if (user) {
@@ -35,6 +37,7 @@ const Login = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    setApiError("");
     setIsLoading(true);
 
     const { success, message } = await login(credentials);
@@ -43,7 +46,17 @@ const Login = () => {
     if (success) {
       navigate("/admin/dashboard");
     } else {
-      setError(message);
+      // If error is validation (simple string), show inline
+      if (
+        message &&
+        (message.toLowerCase().includes("password") ||
+          message.toLowerCase().includes("username") ||
+          message.toLowerCase().includes("email"))
+      ) {
+        setError(message);
+      } else {
+        setApiError(message);
+      }
     }
   };
 
@@ -97,7 +110,7 @@ const Login = () => {
 
           <div className="mb-4">
             <label htmlFor="username" className="block text-xl mb-2">
-              Your  username or email
+              Your username or email
             </label>
             <input
               id="username"
@@ -127,7 +140,7 @@ const Login = () => {
             />
           </div>
           <div className="mb-4 w-full flex justify-end">
-            <NavLink to="/forgot-password">
+            <NavLink to="/login/forgot-password">
               <span className="font-semibold text-xl hover:text-gray-600">
                 Forgot password
               </span>
@@ -144,13 +157,22 @@ const Login = () => {
 
           <div className="mt-2 w-full h-6 flex items-center">
             {error && (
-              <span className="text-red-400 w-full text-xl text-center">
+              <span className="text-red-400 mt-4 w-full text-xl text-center bg-gray-100 rounded px-2 py-1 border border-gray-300">
                 {error}
               </span>
             )}
           </div>
         </form>
       </div>
+      <PopupModal
+        isOpen={!!apiError}
+        onClose={() => setApiError("")}
+        title="Login Error"
+        message={apiError}
+        buttonText="Close"
+        type="error"
+        theme="light"
+      />
     </div>
   );
 };

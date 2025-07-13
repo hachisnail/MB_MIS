@@ -1,8 +1,8 @@
 import { NavLink, useParams, useNavigate, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
-import Logo from "../assets/LOGO.png";
-import PopupModal from "../components/modals/PopupModal";
-import axiosClient from "../lib/axiosClient";
+import Logo from "../../assets/LOGO.png";
+import PopupModal from "../modals/PopupModal";
+import axiosClient from "../../lib/axiosClient";
 
 const RecoverAccount = () => {
   const { token } = useParams();

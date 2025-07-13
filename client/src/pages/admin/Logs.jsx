@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useLocation } from "react-router-dom";
 import { SearchBar, CardDropdownPicker } from "../../features/Utilities";
 import axiosClient from "../../lib/axiosClient";
 import TimelineDatePicker from "../../features/TimelineDatePicker";
@@ -12,8 +12,8 @@ import {
 } from "../../components/list/commons";
 import { rolePermissions, actionLabels } from "../../components/list/commons";
 
-
 const Logs = () => {
+  const location = useLocation();
   const [logs, setLogs] = useState([]);
   const [errorLogs, setErrorLogs] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -23,6 +23,16 @@ const Logs = () => {
   const [searchQuery, setSearchQuery] = useState("");
 
   const socket = useSocketClient();
+
+  // Accept filter params from navigation
+  useEffect(() => {
+    if (location.state) {
+      if (location.state.role) setSelectedRole(location.state.role);
+      if (location.state.action) setSelectedAction(location.state.action);
+      if (location.state.date) setSelectedDate(location.state.date);
+      if (location.state.search) setSearchQuery(location.state.search.toLowerCase());
+    }
+  }, [location.state]);
 
   const matchesFilter = (value, filter) => {
     return (
@@ -49,7 +59,7 @@ const Logs = () => {
     }
   };
 
-    const uniqueRoles = Array.from(
+  const uniqueRoles = Array.from(
     new Set(logs.map((log) => log.user?.roleId))
   ).filter(Boolean);
 
@@ -62,36 +72,35 @@ const Logs = () => {
   ];
 
   const uniqueActions = Array.from(
-  new Set(logs.map((log) => log.action))
-).filter(Boolean);
+    new Set(logs.map((log) => log.action))
+  ).filter(Boolean);
 
-const actionOptions = [
-  { value: "*", label: "*" },
-  ...uniqueActions.map((action) => ({
-    value: action,
-    label: actionLabels[action] || action,
-  })),
-];
+  const actionOptions = [
+    { value: "*", label: "*" },
+    ...uniqueActions.map((action) => ({
+      value: action,
+      label: actionLabels[action] || action,
+    })),
+  ];
 
-useEffect(() => {
-  fetchLogs();
-}, []);
-
-useEffect(() => {
-  if (!socket) return;
-
-  const handleLogChange = () => {
-    // console.log("[Socket] Log changed – fetching logs...");
+  useEffect(() => {
     fetchLogs();
-  };
+  }, []);
 
-  socket.onDbChange("Log", "*", handleLogChange);
+  useEffect(() => {
+    if (!socket) return;
 
-  return () => {
-    socket.offDbChange("Log", "*", handleLogChange);
-  };
-}, [socket]);
+    const handleLogChange = () => {
+      // console.log("[Socket] Log changed – fetching logs...");
+      fetchLogs();
+    };
 
+    socket.onDbChange("Log", "*", handleLogChange);
+
+    return () => {
+      socket.offDbChange("Log", "*", handleLogChange);
+    };
+  }, [socket]);
 
   const formatCreatedAt = (dateString) => {
     if (!dateString) return "N/A";
@@ -191,7 +200,6 @@ useEffect(() => {
             ) : (
               <EmptyMessage message="Empty logs" />
             )}
-
           </div>
         </div>
       </div>

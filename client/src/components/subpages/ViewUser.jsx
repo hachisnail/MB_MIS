@@ -1,7 +1,7 @@
 import axiosClient from "../../lib/axiosClient";
 import { useState, useEffect, useMemo } from "react";
-import { useLocation } from "react-router-dom";
-import PopupModal from "../modals/PopupModal";
+import { useLocation, useNavigate } from "react-router-dom";
+ import PopupModal from "../modals/PopupModal";
 import { useSocketClient } from "../../context/authContext";
 import BackButton from "../buttons/BackButton";
 import {
@@ -11,14 +11,17 @@ import {
 } from "../list/commons";
 import {ViewUserItem, ViewUserSessionItem} from "../list/ViewUserlist";
 
+
 const ViewUser = () => {
   const [userData, setUserData] = useState(null);
   const [popupMessage, setPopupMessage] = useState("");
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [selectedSession, setSelectedSession] = useState(null);
   const [sessionError, setSessionError] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const location = useLocation();
+  const navigate = useNavigate();
   const socket = useSocketClient();
 
   const pathSegments = location.pathname.split("/").filter(Boolean);
@@ -69,9 +72,28 @@ useEffect(() => {
   const sessions = useMemo(() => user?.sessions || [], [user]);
 
 
-  const handleDetails = (message) => {
-    setPopupMessage(message);
+  const handleDetails = (session) => {
+    setSelectedSession(session);
     setIsDetailsOpen(true);
+  };
+
+  const handleSessionFilter = () => {
+    if (selectedSession) {
+      navigate("/admin/logs", {
+        state: {
+          date: selectedSession.loginAt,
+          search: user.username,
+          role: user.roleId,
+        },
+      });
+      setIsDetailsOpen(false);
+      setSelectedSession(null);
+    }
+  };
+
+  const handleCancelConfirm = () => {
+    setIsDetailsOpen(false);
+    setSelectedSession(null);
   };
 
   return (
@@ -189,7 +211,7 @@ useEffect(() => {
                     <ViewUserSessionItem
                       key={session.id}
                       session={session}
-                      onClick={handleDetails}
+                      onClick={() => handleDetails(session)}
                     />
                   ))
               ) : (
@@ -202,10 +224,17 @@ useEffect(() => {
 
       <PopupModal
         isOpen={isDetailsOpen}
-        onClose={() => setIsDetailsOpen(false)}
+        onClose={handleSessionFilter}
         title="Session Details"
-        message={popupMessage}
-        buttonText="Ok"
+        message={selectedSession ? (
+          `Session #${selectedSession.id ?? "N/A"}` +
+          `\nStart: ${selectedSession.loginAt ? new Date(selectedSession.loginAt).toLocaleString() : "N/A"}` +
+          `\nEnd: ${selectedSession.logoutAt ? new Date(selectedSession.logoutAt).toLocaleString() : "Active"}` +
+          `\nTotal Duration: ${selectedSession.logoutAt && selectedSession.loginAt
+            ? `${Math.round((new Date(selectedSession.logoutAt) - new Date(selectedSession.loginAt)) / 60000)} min`
+            : (selectedSession.loginAt ? "Ongoing" : "N/A")}`
+        ) : "Select a session to view details."}
+        buttonText="View Logs for this Session"
         type="info"
         theme="dark"
       />

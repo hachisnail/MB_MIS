@@ -61,7 +61,7 @@ const Login = () => {
   };
 
   return (
-    <div className="flex  flex-col min-h-screen ">
+    <div className="flex  flex-col h-[98.5vh]">
       <NavLink
         className="group flex items-center cursor-pointer font-semibold ml-1 mt-1 w-fit rounded-md px-1 hover:text-gray-500"
         to="/"

@@ -101,7 +101,7 @@ const RecoverAccount = () => {
         <h1 className="text-5xl font-semibold text-center">
           Reset Your Password
         </h1>
-        <p className="text-md text-center text-gray-500">
+        <p className="text-2xl text-center text-gray-500">
           Enter your email and we’ll send a reset link.
         </p>
       </div>
@@ -215,7 +215,7 @@ const RecoverAccount = () => {
         theme="light"
       />
 
-      <div className="flex flex-col min-h-screen">
+      <div className="flex flex-col h-[98.5vh]">
         <NavLink
           to="/"
           className="group flex items-center font-semibold ml-1 mt-1 px-1 hover:text-gray-500"

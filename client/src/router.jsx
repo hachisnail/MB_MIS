@@ -11,12 +11,11 @@ import { useRouterFlags } from "./context/routerFlagProvider";
 // import RecoverAccount from "./pages/public/RecoverAccount";
 
 import Home from "./pages/public/Home";
-import Login from "./pages/public/Login"
+import Login from "./pages/public/Login";
 import Catalogue from "./pages/public/Catalogue";
 import RecoverAccount from "./components/subpages/RecoverAccount";
 
 import MaintenanceMode from "./pages/MaintenanceMode";
-
 
 import CompleteRegistrationPage from "./components/subpages/CompleteRegistrationPage";
 import RegistrationSuccess from "./components/subpages/RegistrationSuccessPage";
@@ -49,6 +48,7 @@ import ModalsTest from "./sandbox/ModalsTest";
 import RouteFlagToggle from "./sandbox/RouteFlagToggle";
 
 import AdminLayout from "./components/layout/AdminLayout";
+import PublicLayout from "./components/layout/PublicLayout";
 
 const RequireAuth = () => {
   const { user } = useAuth();
@@ -63,37 +63,36 @@ const Router = () => {
   return (
     <Routes>
       {/* Public routes */}
+      <Route element={<PublicLayout />}>
+        {flags["login"] && (
+          <Route path="/login" element={<Login onLogin={login} />} />
+        )}
 
-      {flags["login"] && (
-        <Route path="/login" element={<Login onLogin={login} />} />
-      )}
-  
-      {flags["login"] && (
-        <Route path="/login/forgot-password" element={<RecoverAccount/>} />
-      )}
+        {flags["login"] && (
+          <Route path="/login/forgot-password" element={<RecoverAccount />} />
+        )}
 
-      <Route path="/recover" element={<RecoverAccount />} />
-      <Route path="/recover/:token" element={<RecoverAccount />} />
-      <Route path="/recover/success" element={<RecoverAccount />} />
+        <Route path="/recover" element={<RecoverAccount />} />
+        <Route path="/recover/:token" element={<RecoverAccount />} />
+        <Route path="/recover/success" element={<RecoverAccount />} />
 
+        {flags["catalogs"] && (
+          <Route path="/catalogs" element={<Catalogue />} />
+        )}
+        {flags["home"] && <Route path="/" element={<Home />} />}
 
-      
-      {flags["catalogs"] && <Route path="/catalogs" element={<Catalogue />} />}
-      {flags["home"] && <Route path="/" element={<Home />} />}
-
-      <Route
-        path="/complete-registration/:token"
-        element={<CompleteRegistrationPage />}
-      />
-      <Route path="/registration-success" element={<RegistrationSuccess />} />
-      <Route path="/parser" element={<ElectionResultParser />} />
-
+        <Route
+          path="/complete-registration/:token"
+          element={<CompleteRegistrationPage />}
+        />
+        <Route path="/registration-success" element={<RegistrationSuccess />} />
+        <Route path="/parser" element={<ElectionResultParser />} />
+      </Route>
       {/* Protected routes */}
       <Route path="/admin" element={<RequireAuth />}>
         <Route element={<AdminLayout />}>
           <Route index element={<Navigate to="dashboard" replace />} />
 
-   
           <Route path="dashboard" element={<Dashboard />} />
           {flags["inventory"] && (
             <Route path="inventory" element={<Inventory />} />
@@ -108,21 +107,19 @@ const Router = () => {
             <Route path="schedule" element={<Schedule />} />
           )}
           {flags["article"] && <Route path="article" element={<Article />} />}
-          {flags["article"] && <Route path="article/add-article" element={<CreateArticle />} />}
-          {flags["article"] && <Route path="article/edit-article" element={<ArticleModal />} />}
-
-
-
+          {flags["article"] && (
+            <Route path="article/add-article" element={<CreateArticle />} />
+          )}
+          {flags["article"] && (
+            <Route path="article/edit-article" element={<ArticleModal />} />
+          )}
 
           {flags["appointment"] && (
             <Route path="appointment" element={<Appointments />} />
           )}
 
           {flags["files"] && (
-            <Route
-              path="preview/:encoded"
-              element={<FilePreviewer />}
-            />
+            <Route path="preview/:encoded" element={<FilePreviewer />} />
           )}
 
           {/* sandbox for testing */}
@@ -140,12 +137,14 @@ const Router = () => {
           {/* Admin-only subroutes */}
           <Route element={<RequireRole role="Admin" />}>
             {flags["logs"] && <Route path="logs" element={<Logs />} />}
-            {flags["logs"] && <Route path="logs/:encoded" element={<ViewLogs />} />}
+            {flags["logs"] && (
+              <Route path="logs/:encoded" element={<ViewLogs />} />
+            )}
             {flags["user"] && <Route path="user" element={<User />} />}
             {flags["user"] && (
               <Route path="user/:encoded" element={<UserView />} />
             )}
-             <Route path="config" element={<Configuration />} />
+            <Route path="config" element={<Configuration />} />
 
             {flags["user"] && (
               <Route path="user/add-user" element={<CreateUser />} />
@@ -153,7 +152,6 @@ const Router = () => {
           </Route>
 
           <Route path="unauthorized" element={<Unauthorized />} />
-
         </Route>
       </Route>
 

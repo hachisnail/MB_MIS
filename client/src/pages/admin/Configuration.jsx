@@ -176,7 +176,7 @@ const Configuration = () => {
   return (
     <>
       <div className="w-full min-w-fit h-full p-5 max-w-[137rem] 1xl:max-h-[69rem] 2xl:max-h-[81rem] 3xl:max-w-[175rem] 3xl:max-h-[88rem]">
-        <div className="w-full h-full pt-5 flex border-t border-[#373737] gap-y-[2rem]">
+        <div className="w-full h-full justify-between  pt-5 flex border-t border-[#373737] gap-y-[2rem]">
           <div className="w-[81.5rem] space-y-5 h-full pt-1">
             <div className="flex justify-between items-center w-full border-b border-[#373737] pb-5">
               <div className="flex flex-col">
@@ -239,6 +239,11 @@ const Configuration = () => {
                 <EmptyMessage message="Empty flags!" />
               )}
             </div>
+          </div>
+
+          <div className="w-[40rem] border-[#373737] border rounded-sm items-center justify-center h-full flex flex-col gap-y-5">
+            <span className="text-2xl font-semibold">Logs spcific to flags will bre displayed here</span>
+
           </div>
         </div>
       </div>

@@ -1,7 +1,10 @@
-import React from "react";
 import { NavLink } from "react-router-dom";
+import { useEffect } from "react";
 
 const Home = () => {
+
+
+
   return (
     <div className="w-full  min-h-screen flex flex-col">
       <div className="w-full h-fit flex justify-center">

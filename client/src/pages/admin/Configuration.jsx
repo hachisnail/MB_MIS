@@ -202,7 +202,7 @@ const Configuration = () => {
                     off: "translate-x-1 bg-white",
                   }}
                 />
-                <span className="text-lg text-[#9C9C9C]">
+                <span  className="text-lg text-[#9C9C9C]">
                   Disables public pages.
                 </span>
               </div>
@@ -210,7 +210,7 @@ const Configuration = () => {
 
             </div>
 
-            <div className="w-full min-w-fit min-h-fit h-[63rem] flex flex-wrap gap-x-2 gap-y-2  items-start content-start">
+            <div className="w-full min-w-fit min-h-fit h-[60.5rem] flex flex-wrap gap-x-2 gap-y-2  items-start content-start">
               {flagsLoading ? (
                 <LoadingSpinner />
               ) : flagsError ? (

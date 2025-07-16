@@ -2,6 +2,8 @@ import { BrowserRouter } from "react-router-dom";
 import { AuthProvider } from "./context/authContext";
 import { useAuth } from "./context/authContext";
 import { useEffect } from "react";
+import { RouterFlagProvider } from "./context/routerFlagProvider";
+
 
 import Router from "./router";
 
@@ -40,7 +42,11 @@ function App() {
 
   return (
     <AuthProvider>
+    <RouterFlagProvider>
+
       <AppContent />
+    </RouterFlagProvider>
+
     </AuthProvider>
   );
 }

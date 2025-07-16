@@ -7,8 +7,15 @@ import axiosClient from "../../lib/axiosClient";
 // import ContextMenu from "../../components/modals/ContextMenu";
 import ConfirmationModal from "../../components/modals/ConfirmationModal";
 import PopupModal from "../../components/modals/PopupModal";
-import {UserItem, PendingInviteItem,} from "../../components/list/UsersInviteslist";
-import {LoadingSpinner,ErrorBox,EmptyMessage,} from "../../components/list/commons"
+import {
+  UserItem,
+  PendingInviteItem,
+} from "../../components/list/UsersInviteslist";
+import {
+  LoadingSpinner,
+  ErrorBox,
+  EmptyMessage,
+} from "../../components/list/commons";
 
 import { useSocketClient } from "../../context/authContext";
 
@@ -52,7 +59,6 @@ const User = () => {
     return date.toLocaleString();
   };
 
-
   const fetchUsers = async () => {
     try {
       setIsUserLoading(true);
@@ -89,95 +95,80 @@ const User = () => {
     }
   };
 
-useEffect(() => {
-  // console.log("useEffect triggered. Socket:", socket);
-
-  fetchUsers();
-
-  fetchPendingInvitations();
-  // console.log("Called fetchPendingInvitations");
-
-  const handleUserChange = () => {
-    // console.log("UserSession DB change detected");
+  useEffect(() => {
     fetchUsers();
-    // console.log("Called fetchUsers from DB change");
-
     fetchPendingInvitations();
-    // console.log("Called fetchPendingInvitations from DB change");
-  };
+  }, []);
 
-  if (socket) {
-    // console.log("Attaching socket listener for UserSession changes");
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleUserChange = () => {
+      console.log("[Socket] UserSession change → refetching...");
+      fetchUsers();
+      fetchPendingInvitations();
+    };
+
     socket.onDbChange("UserSession", "*", handleUserChange);
-  }
 
-  return () => {
-    if (socket) {
-      // console.log("Detaching socket listener for UserSession changes");
+    return () => {
       socket.offDbChange("UserSession", "*", handleUserChange);
-    }
-  };
-}, [socket]);
-
-
-  const showPopup = (title, message, type = "info") => {
-    setPopup({
-      isOpen: true,
-      title,
-      message,
-      type,
-    });
-  };
-
-  const closePopup = () => {
-    setPopup((prev) => ({ ...prev, isOpen: false }));
-  };
+    };
+  }, [socket]);
 
   const handleOpen = (user) => {
-    // not in use
-    const coded = btoa(user);
-    navigate(`${coded}`);
+
+    navigate(`/admin/user/${user.id}`);
   };
 
-  const handleResend = async (id) => {
-    try {
-      setProcessingInviteId(id);
-      setProcessingAction("resend");
-      const response = await axiosClient.post(
-        `/auth/invitation/${id}/resend`,
-        {},
-        { withCredentials: true }
-      );
-      showPopup("Success", response.data.message || "Invitation resent!");
-      fetchPendingInvitations(); // refresh the list
-    } catch (error) {
-      console.error("Resend Error:", error.response?.data || error);
-      showPopup(
-        "Resend Failed",
-        error.response?.data?.message || "Failed to resend invitation",
-        "error"
-      );
-    } finally {
-      setProcessingInviteId(null);
-      setProcessingAction(null);
-    }
+  // Helper functions for modals
+  const openConfirmModal = (action, id) => {
+    setSelectedInviteId(id);
+    if (action === "resend") setShowConfirmResend(true);
+    if (action === "revoke") setShowConfirmRevoke(true);
   };
 
-  const handleRevoke = async (id) => {
+  const closeConfirmModals = () => {
+    setShowConfirmRevoke(false);
+    setShowConfirmResend(false);
+    setSelectedInviteId(null);
+  };
+
+  const openPopup = (title, message, type = "info") => {
+    setPopup({ isOpen: true, title, message, type });
+  };
+
+  const closePopup = () => setPopup((prev) => ({ ...prev, isOpen: false }));
+
+  // Invitation actions
+  const handleInviteAction = async (action, id) => {
+    setProcessingInviteId(id);
+    setProcessingAction(action);
     try {
-      setProcessingInviteId(id);
-      setProcessingAction("revoke");
-      const response = await axiosClient.delete(
-        `/auth/invitation/${id}/revoke`,
-        { withCredentials: true }
-      );
-      showPopup("Success", response.data.message || "Invitation revoked!");
+      let response;
+      if (action === "resend") {
+        response = await axiosClient.post(
+          `/auth/invitation/${id}/resend`,
+          {},
+          { withCredentials: true }
+        );
+        openPopup("Success", response.data.message || "Invitation resent!");
+      } else if (action === "revoke") {
+        response = await axiosClient.delete(
+          `/auth/invitation/${id}/revoke`,
+          { withCredentials: true }
+        );
+        openPopup("Success", response.data.message || "Invitation revoked!");
+      }
       fetchPendingInvitations();
     } catch (error) {
-      console.error("Revoke Error:", error.response?.data || error);
-      showPopup(
-        "Revoke Failed",
-        error.response?.data?.message || "Failed to revoke invitation",
+      const errMsg =
+        error.response?.data?.message ||
+        error.message ||
+        `Failed to ${action} invitation`;
+      openPopup(
+        `${action.charAt(0).toUpperCase() + action.slice(1)} Failed`,
+        errMsg,
         "error"
       );
     } finally {
@@ -187,26 +178,20 @@ useEffect(() => {
   };
 
   const confirmResend = () => {
-    handleResend(selectedInviteId);
+    handleInviteAction("resend", selectedInviteId);
     setShowConfirmResend(false);
   };
 
   const confirmRevoke = () => {
-    handleRevoke(selectedInviteId);
+    handleInviteAction("revoke", selectedInviteId);
     setShowConfirmRevoke(false);
-  };
-
-  const cancelModal = () => {
-    setShowConfirmRevoke(false);
-    setShowConfirmResend(false);
-    setSelectedInviteId(null);
   };
 
   return (
     <>
       <ConfirmationModal
         isOpen={showConfirmResend}
-        onClose={cancelModal}
+        onClose={closeConfirmModals}
         onConfirm={confirmResend}
         title="Resend Invitation?"
         message="Are you sure you want to resend the invitation?"
@@ -216,7 +201,7 @@ useEffect(() => {
 
       <ConfirmationModal
         isOpen={showConfirmRevoke}
-        onClose={cancelModal}
+        onClose={closeConfirmModals}
         onConfirm={confirmRevoke}
         title="Revoke Invitation?"
         message="Are you sure you want to revoke the invitation?"
@@ -332,14 +317,17 @@ useEffect(() => {
               <>
                 {users.length > 0 ? (
                   users.map((user) => (
-                    <UserItem key={user.id} user={user} handleOpen={handleOpen} />
+                    <UserItem
+                      key={user.id}
+                      user={user}
+                      handleOpen={handleOpen}
+                    />
                   ))
                 ) : (
                   <EmptyMessage message="No users!" />
                 )}
               </>
             )}
-
           </div>
         </div>
         <div className="w-full min-h-[32rem] py-5 overflow-y-scroll flex-col xl:flex-row border-t-1 items-center border-[#373737] flex">
@@ -363,14 +351,8 @@ useEffect(() => {
                     <PendingInviteItem
                       key={invite.id}
                       invite={invite}
-                      onResend={(id) => {
-                        setSelectedInviteId(id);
-                        setShowConfirmResend(true);
-                      }}
-                      onRevoke={(id) => {
-                        setSelectedInviteId(id);
-                        setShowConfirmRevoke(true);
-                      }}
+                      onResend={(id) => openConfirmModal("resend", id)}
+                      onRevoke={(id) => openConfirmModal("revoke", id)}
                       processingId={processingInviteId}
                       action={processingAction}
                       setViewInvite={setViewInvite}

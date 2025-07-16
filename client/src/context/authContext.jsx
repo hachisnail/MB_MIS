@@ -2,16 +2,14 @@
 import { createContext, useContext, useState, useEffect, useRef } from "react";
 import axiosClient from "../lib/axiosClient";
 import SocketClient from "../lib/socketClient";
-// import { useNavigate } from "react-router-dom";
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const socketRef = useRef(null);
-  // const navigate = useNavigate();
   const [forcedLogoutReason, setForcedLogoutReason] = useState(null);
+  const socketRef = useRef(null);
 
   const login = async (credentials) => {
     try {
@@ -32,6 +30,8 @@ export function AuthProvider({ children }) {
     } finally {
       setUser(null);
       localStorage.setItem("logout-event", Date.now());
+      socketRef.current?.disconnect();
+      socketRef.current = null;
     }
   };
 
@@ -52,30 +52,28 @@ export function AuthProvider({ children }) {
     const syncLogout = (event) => {
       if (event.key === "logout-event") {
         setUser(null);
+        socketRef.current?.disconnect();
+        socketRef.current = null;
       }
     };
     window.addEventListener("storage", syncLogout);
     return () => window.removeEventListener("storage", syncLogout);
   }, []);
 
-useEffect(() => {
-  if (user) {
+  useEffect(() => {
+    if (!user) return;
+
     if (!socketRef.current) {
       socketRef.current = new SocketClient(import.meta.env.VITE_SOCKET_URL);
 
       socketRef.current.socket.on("forceLogout", (data) => {
-        // console.warn("Force logout received:", data?.reason);
         setForcedLogoutReason(data?.reason || "You have been logged out.");
         logout();
       });
     }
 
     socketRef.current.registerUser(user.id);
-  } else if (socketRef.current) {
-    socketRef.current.disconnect();
-    socketRef.current = null;
-  }
-}, [user]);
+  }, [user]);
 
   return (
     <AuthContext.Provider

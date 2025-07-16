@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useLocation } from "react-router-dom";
 import { SearchBar, CardDropdownPicker } from "../../features/Utilities";
 import axiosClient from "../../lib/axiosClient";
 import TimelineDatePicker from "../../features/TimelineDatePicker";
@@ -12,8 +12,8 @@ import {
 } from "../../components/list/commons";
 import { rolePermissions, actionLabels } from "../../components/list/commons";
 
-
 const Logs = () => {
+  const location = useLocation();
   const [logs, setLogs] = useState([]);
   const [errorLogs, setErrorLogs] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -23,6 +23,16 @@ const Logs = () => {
   const [searchQuery, setSearchQuery] = useState("");
 
   const socket = useSocketClient();
+
+  // Accept filter params from navigation
+  useEffect(() => {
+    if (location.state) {
+      if (location.state.role) setSelectedRole(location.state.role);
+      if (location.state.action) setSelectedAction(location.state.action);
+      if (location.state.date) setSelectedDate(location.state.date);
+      if (location.state.search) setSearchQuery(location.state.search.toLowerCase());
+    }
+  }, [location.state]);
 
   const matchesFilter = (value, filter) => {
     return (
@@ -49,7 +59,7 @@ const Logs = () => {
     }
   };
 
-    const uniqueRoles = Array.from(
+  const uniqueRoles = Array.from(
     new Set(logs.map((log) => log.user?.roleId))
   ).filter(Boolean);
 
@@ -62,30 +72,33 @@ const Logs = () => {
   ];
 
   const uniqueActions = Array.from(
-  new Set(logs.map((log) => log.action))
-).filter(Boolean);
+    new Set(logs.map((log) => log.action))
+  ).filter(Boolean);
 
-const actionOptions = [
-  { value: "*", label: "*" },
-  ...uniqueActions.map((action) => ({
-    value: action,
-    label: actionLabels[action] || action,
-  })),
-];
+  const actionOptions = [
+    { value: "*", label: "*" },
+    ...uniqueActions.map((action) => ({
+      value: action,
+      label: actionLabels[action] || action,
+    })),
+  ];
 
   useEffect(() => {
     fetchLogs();
+  }, []);
 
-    const handleLogChange = () => fetchLogs();
+  useEffect(() => {
+    if (!socket) return;
 
-    if (socket) {
-      socket.onDbChange("Log", "*", handleLogChange);
-    }
+    const handleLogChange = () => {
+      // console.log("[Socket] Log changed – fetching logs...");
+      fetchLogs();
+    };
+
+    socket.onDbChange("Log", "*", handleLogChange);
 
     return () => {
-      if (socket) {
-        socket.offDbChange("Log", "*", handleLogChange);
-      }
+      socket.offDbChange("Log", "*", handleLogChange);
     };
   }, [socket]);
 
@@ -163,7 +176,7 @@ const actionOptions = [
         <div className="w-full h-full flex flex-col ">
           {/* Table Header */}
           <div className="w-full min-w-fit h-12 grid grid-cols-5">
-            {["User", "Timestamp", "Tab", "Action", "Description"].map(
+            {["Actor", "Timestamp", "Tab", "Action", "Description"].map(
               (label) => (
                 <div
                   key={label}
@@ -187,7 +200,6 @@ const actionOptions = [
             ) : (
               <EmptyMessage message="Empty logs" />
             )}
-
           </div>
         </div>
       </div>

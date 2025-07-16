@@ -1,18 +1,17 @@
-import React, { createContext, useState, useEffect, useContext, useRef } from "react";
+import React, { createContext, useState, useEffect, useContext } from "react";
 import axiosClient from "../lib/axiosClient";
-import SocketClient from "../lib/socketClient";
+import { useSocketClient } from "./authContext";
 
 const RouterFlagContext = createContext();
 
 export const RouterFlagProvider = ({ children }) => {
   const [flags, setFlags] = useState({});
   const [loading, setLoading] = useState(true);
+  const socket = useSocketClient();
+  const POLLING_INTERVAL = 15 * 60 * 1000; // 15 minutes
 
-  // Ref to debounce updates from socket
-  const debounceTimerRef = useRef(null);
 
   const fetchFlags = async () => {
-    setLoading(true);
     try {
       const res = await axiosClient.get("/auth/router-flags");
       const flagMap = {};
@@ -20,44 +19,40 @@ export const RouterFlagProvider = ({ children }) => {
         flagMap[flag.route_key] = flag.is_enabled;
       });
       setFlags(flagMap);
-          
-
     } catch (error) {
       console.error("Failed to fetch router flags", error);
-      const flagMap = { down: true };
-      setFlags(flagMap);
-
+      setFlags({ down: true });
+    } finally {
+      setLoading(false);
     }
-    finally{
-    }
-    setLoading(false);
   };
 
   useEffect(() => {
     fetchFlags();
+  }, []);
 
-    const socketClient = new SocketClient(import.meta.env.VITE_SOCKET_SERVER_URL || "http://localhost:3000");
+  useEffect(() => {
+    let pollInterval;
 
-    // Handle socket events with debounce to avoid rapid UI flicker
-    socketClient.onDbChange("RouterFlag", "*", (action, data) => {
-      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    if (socket) {
+      // console.debug("[RouterFlagProvider] WebSocket available. Using real-time updates.");
+      const handleRouterFlagChange = () => fetchFlags();
+      socket.onDbChange("RouterFlag", "*", handleRouterFlagChange);
 
-      debounceTimerRef.current = setTimeout(() => {
-        // Update only the changed flag instead of full refetch
-        setFlags((prevFlags) => ({
-          ...prevFlags,
-          [data.route_key]: data.is_enabled,
-        }));
-
-        debounceTimerRef.current = null;
-      }, 200); // 200ms debounce, adjust as needed
-    });
+      return () => {
+        socket.offDbChange("RouterFlag", "*", handleRouterFlagChange);
+      };
+    } else {
+      // console.debug("[RouterFlagProvider] WebSocket NOT available. Using polling fallback.");
+      pollInterval = setInterval(() => {
+        fetchFlags();
+      }, POLLING_INTERVAL);
+    }
 
     return () => {
-      socketClient.disconnect();
-      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+      if (pollInterval) clearInterval(pollInterval);
     };
-  }, []);
+  }, [socket]);
 
   return (
     <RouterFlagContext.Provider value={{ flags, loading, fetchFlags }}>

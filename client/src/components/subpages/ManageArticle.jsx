@@ -23,7 +23,7 @@ import Underline from "@tiptap/extension-underline";
 import Image from "@tiptap/extension-image";
 import TextStyle from "@tiptap/extension-text-style";
 import {ColumnBlock,Column,} from "../../components/articleComponents/ColumBlock";
-import ArticleModal from "../../components/subpages/ArticleModal";
+
 
 import Placeholder from "@tiptap/extension-placeholder";
 import Link from "@tiptap/extension-link";

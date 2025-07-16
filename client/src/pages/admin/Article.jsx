@@ -15,7 +15,6 @@ import {
   ColumnBlock,
   Column,
 } from "../../components/articleComponents/ColumBlock";
-import ArticleModal from "../../components/subpages/ArticleModal";
 
 import Placeholder from "@tiptap/extension-placeholder";
 import Link from "@tiptap/extension-link";

@@ -113,9 +113,9 @@ const Router = () => {
 
 
 
-          {flags["article"] && (
+          {/* {flags["article"] && (
             <Route path="article/add-article" element={<CreateArticle />} />
-          )}
+          )} */}
           {/* {flags["article"] && (
             <Route path="article/edit-article" element={<ArticleModal />} />
           )} */}

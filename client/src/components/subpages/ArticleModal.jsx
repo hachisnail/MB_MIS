@@ -258,6 +258,7 @@ const ArticleModal = ({
 
   return (
     <>
+    
       <div className="flex w-full h-full gap-4 pt-5 border-t-1">
         {/* LEFT SPACER */}
         <div className="hidden 2xl:block 2xl:w-1/5" />
@@ -818,6 +819,7 @@ const ArticleModal = ({
               </div>
             </div>
 
+             {/* Buttons */}        
             <div className="flex justify-between">
               <Button
                 type="button"

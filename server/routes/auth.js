@@ -14,7 +14,8 @@ import {
   getPublicArticles,
   getPublicArticle,
   uploadContentImages,
-  updateArticle
+  updateArticle,
+  getArticleById
 } from '../controllers/articleController.js';
 import multer from 'multer';
 
@@ -86,6 +87,8 @@ router.post('/article/content-images', (req, res, next) => {
 }, uploadContentImages);
 router.get('/public-articles', getPublicArticles);
 router.get('/public-article/:id', getPublicArticle);
+router.get('/articles/:id', requireAuth, getArticleById);
+
 
 // PUT route for updating an article
 router.put('/article/:id', (req, res, next) => {

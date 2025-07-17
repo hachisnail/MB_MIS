@@ -2,128 +2,32 @@ import React, { useState, useEffect } from "react";
 // import AdminNav from '../../components/navbar/AdminNav';
 import { NavLink } from "react-router-dom";
 import axios from "axios";
-import { useEditor } from "@tiptap/react";
 // import CustomDatePicker from '../../features/CustomDatePicker';
 import TimelineDatePicker from "../../features/TimelineDatePicker";
 import { SearchBar, CardDropdownPicker } from "../../features/Utilities";
-import StarterKit from "@tiptap/starter-kit";
-import TextAlign from "@tiptap/extension-text-align";
-import Underline from "@tiptap/extension-underline";
-import Image from "@tiptap/extension-image";
-import TextStyle from "@tiptap/extension-text-style";
-import {
-  ColumnBlock,
-  Column,
-} from "../../components/articleComponents/ColumBlock";
 
-import Placeholder from "@tiptap/extension-placeholder";
-import Link from "@tiptap/extension-link";
-import Table from "@tiptap/extension-table";
-import TableRow from "@tiptap/extension-table-row";
-import TableCell from "@tiptap/extension-table-cell";
-import TableHeader from "@tiptap/extension-table-header";
-import Highlight from "@tiptap/extension-highlight";
-import Youtube from "@tiptap/extension-youtube";
-// import { HardBreak } from '@tiptap/extension-hard-break';
-
-import { useNavigate } from "react-router-dom";
 import Articleslist from "../../components/list/Articleslist";
 
 
-const Categories = ["Article", "Education", "Exhibit", "Contests", "Other"]; // changed from 'Contents'
 
-
-
-import FontSize from "../../components/articleComponents/FontSize";
 
 const ArticleForm = () => {
-  const navigate = useNavigate();
-  // Form state
-  const [title, setTitle] = useState("");
-  const [author, setAuthor] = useState("");
-  const [category, setCategory] = useState("");
-  const [address, setAddress] = useState("");
-  const [selectedDate, setSelectedDate] = useState("");
-  const [thumbnail, setThumbnail] = useState(null);
-  const [previewImage, setPreviewImage] = useState(null);
-  // const [showModal, setShowModal] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  const [editingArticleId, setEditingArticleId] = useState(null);
-  const [contentImages, setContentImages] = useState([]);
-  const [isArtifactModalOpen, setIsArtifactModalOpen] = useState(false);
-  const [barangay, setBarangay] = useState(""); // <-- Add this line
+
   // Articles and filters
   const [articles, setArticles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [filterDate, setFilterDate] = useState(new Date());
+  const [filterDate, setFilterDate] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState("");
   const [selectedStatusFilter, setSelectedStatusFilter] = useState("");
+  const [selectedCat, setSelectedCat] = useState("");
 
-  // Example categories
-  // Municipality list (copied from Content.jsx)
-  const Municipalities = [
-    "Basud",
-    "Capalonga",
-    "Daet",
-    "Jose Panganiban",
-    "Labo",
-    "Mercedes",
-    "Paracale",
-    "San Lorenzo Ruiz",
-    "San Vicente",
-    "Santa Elena",
-    "Talisay",
-    "Vinzons",
-  ];
   const token = localStorage.getItem("token");
   const BASE_URL = import.meta.env.VITE_API_BASE_URL;
   const SERVER_ORIGIN = BASE_URL.replace(/\/api$/, ""); // "http://localhost:5000"
   const UPLOAD_PATH = `${SERVER_ORIGIN}/uploads/pictures/`;
 
-  // Initialize TipTap editor
-  const editor = useEditor({
-    extensions: [
-      StarterKit,
-      Underline,
-      TextAlign.configure({
-        types: ["heading", "paragraph"],
-        alignments: ["left", "center", "right", "justify"],
-      }),
-      TextStyle,
-      Image,
-      ColumnBlock,
-      Column,
-      FontSize,
-      Link.configure({
-        openOnClick: true,
-        autolink: true,
-        linkOnPaste: true,
-      }),
-      Table.configure({ resizable: true }),
-      TableRow,
-      TableHeader,
-      TableCell,
-      Placeholder.configure({
-        placeholder: "Start writing your article...",
-      }),
-      Highlight,
-      Youtube,
-      // HardBreak.configure({
-      //   HTMLAttributes: {
-      //     class: 'hard-break',
-      //   },
-      // }),
-    ],
-    content: "",
-    editable: true,
-    editorProps: {
-      handleKeyDown(view, event) {
-        // ...custom logic...
-      },
-    },
-  });
+ 
 
   useEffect(() => {
     fetchArticles();
@@ -151,73 +55,24 @@ const ArticleForm = () => {
     }
   };
 
-  // Handle new or updated article submission
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    const formData = new FormData();
-    formData.append("title", title);
-    formData.append("article_category", category);
-    formData.append("description", editor?.getHTML() || "");
-    formData.append("user_id", 1);
-    formData.append("author", author);
-    formData.append("address", address);
-    formData.append("selectedDate", selectedDate);
-    formData.append("content_images", JSON.stringify(contentImages));
-    formData.append("barangay", barangay); // <-- Add this line
-
-    if (thumbnail && thumbnail instanceof File) {
-      formData.append("thumbnail", thumbnail);
-    }
-
-    try {
-      let response;
-      if (isEditing) {
-        // Update existing
-        response = await axios.put(
-          `${BASE_URL}/auth/article/${editingArticleId}`,
-          formData,
-          {
-            headers: { "Content-Type": "multipart/form-data" },
-            withCredentials: true,
-          }
-        );
-        console.log("Article updated successfully!", response.data);
-      } else {
-        // Create new
-        response = await axios.post(`${BASE_URL}/auth/article`, formData, {
-          headers: { "Content-Type": "multipart/form-data" },
-          withCredentials: true,
-        });
-        console.log("Article created successfully!", response.data);
-      }
-
-      resetForm();
-      fetchArticles();
-    } catch (err) {
-      console.error(
-        `Error ${isEditing ? "updating" : "creating"} article:`,
-        err.response?.data || err.message
-      );
-    }
-  };
 
   // Reset form to initial state
-  const resetForm = () => {
-    setTitle("");
-    setAuthor("");
-    setCategory("");
-    setAddress("");
-    setSelectedDate("");
-    setThumbnail(null);
-    setPreviewImage(null);
-    setContentImages([]);
-    setBarangay("");
-    editor?.commands.setContent("");
-    // setShowModal(false);
-    setIsEditing(false);
-    setEditingArticleId(null);
-    setIsArtifactModalOpen(false);
-  };
+  // const resetForm = () => {
+  //   setTitle("");
+  //   setAuthor("");
+  //   setCategory("");
+  //   setAddress("");
+  //   setSelectedDate("");
+  //   setThumbnail(null);
+  //   setPreviewImage(null);
+  //   setContentImages([]);
+  //   setBarangay("");
+  //   editor?.commands.setContent("");
+  //   // setShowModal(false);
+  //   setIsEditing(false);
+  //   setEditingArticleId(null);
+  //   setIsArtifactModalOpen(false);
+  // };
 
   // Handle editing article (click on table row)
   // const handleRowClick = (article) => {
@@ -285,14 +140,7 @@ const ArticleForm = () => {
   //   });
   // };
 
-  // Handle new thumbnail in <input type="file" />
-  const handleThumbnailChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setThumbnail(file);
-      setPreviewImage(URL.createObjectURL(file));
-    }
-  };
+
 
   // Filter the articles by searchTerm, category, and status
   const filteredArticles = articles.filter((article) => {
@@ -305,13 +153,17 @@ const ArticleForm = () => {
       article.article_category?.toLowerCase().includes(term);
 
     const matchesCategory =
-      !selectedCategoryFilter ||
-      article.article_category === selectedCategoryFilter;
+      !selectedCat || article.article_category === selectedCat;
 
     const matchesStatus =
       !selectedStatusFilter || article.status === selectedStatusFilter;
 
-    return matchesSearch && matchesCategory && matchesStatus;
+
+    const matchesDate = filterDate
+      ? new Date(article.created_at).toDateString() ===
+        new Date(filterDate).toDateString()
+      : true;
+    return matchesSearch && matchesCategory && matchesStatus && matchesDate;
   });
 
   const postedCount = articles.filter(
@@ -386,24 +238,24 @@ const ArticleForm = () => {
     }
   }
 
-  const actionOptions = [
+  const filterStatus = [
     { label: "Pending", value: "pending" },
     { label: "Posted", value: "posted" },
     { label: "Rejected", value: "rejected" },
     { label: "Archived", value: "archived" },
   ];
 
-  const [selectedAction, setSelectedAction] = useState("");
+ 
 
   const CatOptions = [
-    { label: "Article", value: "pending" },
-    { label: "Education", value: "posted" },
-    { label: "Exhibit", value: "rejected" },
-    { label: "Contests", value: "archived" },
-    { label: "Other", value: "other" },
+    { label: "Article", value: "Article" },
+    { label: "Education", value: "Education" },
+    { label: "Exhibit", value: "Exhibit" },
+    { label: "Contests", value: "Contests" },
+    { label: "Other", value: "Other" },
   ];
 
-  const [selectedCat, setSelectedCat] = useState("");
+  
 
   return (
     
@@ -450,7 +302,7 @@ const ArticleForm = () => {
 
                 <NavLink to="add-article">
                   <button
-                    onClick={resetForm}
+                    // onClick={resetForm}
                     className="cursor-pointer flex items-center justify-between w-full px-6 py-4 bg-[#6BFFD5] text-black font-medium"
                   >
                     
@@ -470,7 +322,7 @@ const ArticleForm = () => {
               <TimelineDatePicker onDateChange={setFilterDate} theme="light" />
               <SearchBar theme="light" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
               <CardDropdownPicker value={selectedCat} onChange={setSelectedCat} placeholder="Categories" theme="light" options={CatOptions} />
-              <CardDropdownPicker value={selectedAction} onChange={setSelectedAction} placeholder="Filter by action" theme="light" options={actionOptions} />
+              <CardDropdownPicker value={selectedStatusFilter} onChange={setSelectedStatusFilter} placeholder="Status" theme="light" options={filterStatus} />
             </div>
 
             <div className="bg-[#F0F0F0] min-w-[60rem] w-full font-semibold grid grid-cols-5 justify-between mb-7">

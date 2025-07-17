@@ -132,7 +132,7 @@ const PublicNav = ({ theme = "light" }) => {
 
   return (
     <div
-      className={`w-full h-full flex items-center justify-between px-10 py-3 ${bgClass}`}
+      className={`w-full h-full flex items-center justify-between pl-10 pr-30 py-3 ${bgClass}`}
     >
       <div className="flex items-center gap-x-5">
         <NavLink to="/" title="Home">

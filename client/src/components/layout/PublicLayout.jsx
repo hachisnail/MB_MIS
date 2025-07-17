@@ -1,15 +1,12 @@
 import { Outlet, useLocation } from 'react-router-dom';
-import { useEffect } from 'react';
 import PublicNav from '../navbar/PublicNav';
 import PublicHeader from '../headers/PublicHeader';
 import PublicFooter from '../footers/PublicFooter';
 
 const PublicLayout = () => {
+
   const location = useLocation();
 
-  useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'smooth' }); // use "smooth" if you want animation
-  }, [location.pathname]);
 
   const hiddenPaths = [
     '/login',

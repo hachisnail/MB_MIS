@@ -3,6 +3,7 @@ import { AuthProvider } from "./context/authContext";
 import { useAuth } from "./context/authContext";
 import { useEffect } from "react";
 import { RouterFlagProvider } from "./context/routerFlagProvider";
+import ScrollToTop from "./features/ScrollToTop";
 
 
 import Router from "./router";
@@ -64,6 +65,7 @@ function AppContent() {
 
   return (
     <BrowserRouter>
+     <ScrollToTop />
       <Router />
     </BrowserRouter>
   );

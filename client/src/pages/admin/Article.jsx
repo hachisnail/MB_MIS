@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 // import AdminNav from '../../components/navbar/AdminNav';
 import { NavLink } from "react-router-dom";
 import axios from "axios";
+import axiosClient from "../../lib/axiosClient";
 // import CustomDatePicker from '../../features/CustomDatePicker';
 import TimelineDatePicker from "../../features/TimelineDatePicker";
 import { SearchBar, CardDropdownPicker } from "../../features/Utilities";
@@ -36,12 +37,7 @@ const ArticleForm = () => {
   const fetchArticles = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`${BASE_URL}/auth/articles`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        withCredentials: true,
-      });
+      const response = await axiosClient.get(`/auth/articles`);
       // Ensure response.data is always an array
       setArticles(Array.isArray(response.data) ? response.data : []);
       setLoading(false);
@@ -55,6 +51,48 @@ const ArticleForm = () => {
     }
   };
 
+  // Handle new or updated article submission
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const formData = new FormData();
+    formData.append("title", title);
+    formData.append("article_category", category);
+    formData.append("description", editor?.getHTML() || "");
+    formData.append("user_id", 1);
+    formData.append("author", author);
+    formData.append("address", address);
+    formData.append("selectedDate", selectedDate);
+    formData.append("content_images", JSON.stringify(contentImages));
+    formData.append("barangay", barangay); // <-- Add this line
+
+    if (thumbnail && thumbnail instanceof File) {
+      formData.append("thumbnail", thumbnail);
+    }
+
+    try {
+      let response;
+      if (isEditing) {
+        // Update existing
+        response = await axiosClient.put(
+          `/auth/article/${editingArticleId}`,
+          formData
+        );
+        console.log("Article updated successfully!", response.data);
+      } else {
+        // Create new
+        response = await axiosClient.post(`/auth/article`, formData);
+        console.log("Article created successfully!", response.data);
+      }
+
+      resetForm();
+      fetchArticles();
+    } catch (err) {
+      console.error(
+        `Error ${isEditing ? "updating" : "creating"} article:`,
+        err.response?.data || err.message
+      );
+    }
+  };
 
   // Reset form to initial state
   // const resetForm = () => {
@@ -176,15 +214,9 @@ const ArticleForm = () => {
 
   const handleStatusChange = async (articleId, newStatus) => {
     try {
-      await axios.put(
-        `${BASE_URL}/auth/article/${articleId}`,
-        { status: newStatus },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-          withCredentials: true,
-        }
+      await axiosClient.put(
+        `/auth/article/${articleId}`,
+        { status: newStatus }
       );
 
       setArticles((prev) =>

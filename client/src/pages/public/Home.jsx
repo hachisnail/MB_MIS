@@ -1,16 +1,18 @@
 import { NavLink } from "react-router-dom";
 import { useEffect } from "react";
+import bgImage1 from "../../assets/06-AfternoonMealOfTheWorker 1.png";
 
 const Home = () => {
-
-
-
   return (
-    <div className="w-full  min-h-screen flex flex-col">
-      <div className="w-full h-fit flex justify-center">
-        <span className="text-4xl">Home</span>
-      </div>
-      <NavLink className="w-fit" to="/login">
+    <>
+      <div
+        className="bg-cover bg-center bg-no-repeat w-screen rounded-sm  h-screen pt-30 flex flex-col"
+        style={{ backgroundImage: `url(${bgImage1})` }}
+      >
+        <div className="w-full h-fit flex justify-center">
+          <span className="text-4xl text-white">Home</span>
+        </div>
+        {/* <NavLink className="w-fit" to="/login">
         <span className="text-2xl font-semibold hover:text-gray-600">
           login
         </span>
@@ -19,8 +21,8 @@ const Home = () => {
         <span className="text-2xl font-semibold hover:text-gray-600">
           Catalogs
         </span>
-      </NavLink>
-
+      </NavLink> */}
+        {/* 
       <div className="w-full h-fit justify-center flex">
         <div className="flex flex-col items-center">
           <svg
@@ -146,8 +148,14 @@ const Home = () => {
           </svg>
           <span className="text-5xl">No content, sadge!</span>
         </div>
+      </div> */}
       </div>
-    </div>
+      <div id="gold" className="pt-10 w-full h-screen flex justify-center">
+        <span className="text-2xl font-semibold hover:text-gray-600">
+          This is the home page.
+        </span>
+      </div>
+    </>
   );
 };
 

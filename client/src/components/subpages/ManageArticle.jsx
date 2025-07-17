@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef, useMemo } from "react";
+import { useLocation } from "react-router-dom";
 import { EditorContent } from "@tiptap/react";
 import {
   Bold,
@@ -23,6 +24,9 @@ import Underline from "@tiptap/extension-underline";
 import Image from "@tiptap/extension-image";
 import TextStyle from "@tiptap/extension-text-style";
 import {ColumnBlock,Column,} from "../../components/articleComponents/ColumBlock";
+import axiosClient from "../../lib/axiosClient";
+
+
 
 
 import Placeholder from "@tiptap/extension-placeholder";
@@ -35,12 +39,12 @@ import Highlight from "@tiptap/extension-highlight";
 import Youtube from "@tiptap/extension-youtube";
 // import { HardBreak } from '@tiptap/extension-hard-break';
 
-import FontSize from "../../components/articleComponents/FontSize";
+import FontSize from "../../lib/axiosClient"
 
 
 const ArticleEditorForm = () => {
 
-  const token = localStorage.getItem("token");
+
   const BASE_URL = import.meta.env.VITE_API_BASE_URL;
   const SERVER_ORIGIN = BASE_URL.replace(/\/api$/, ""); // "http://localhost:5000"
   const UPLOAD_PATH = `${SERVER_ORIGIN}/uploads/pictures/`;
@@ -119,15 +123,26 @@ const ArticleEditorForm = () => {
 
       const { encoded } = useParams();
 
-const articleId = useMemo(() => {
-  try {
-    return encoded ? atob(encoded) : null;
-  } catch (err) {
-    console.error("Invalid base64 ID:", encoded);
-    return null;
-  }
-}, [encoded]);
+// const articleId = useMemo(() => {
+//   try {
+//     return encoded ? atob(encoded) : null;
+//   } catch (err) {
+//     console.error("Invalid base64 ID:", encoded);
+//     return null;
+//   }
+// }, [encoded]);
 
+
+let articleId = null;
+
+try {
+  if (encoded) {
+    const decoded = atob(encoded);       // e.g. "123 Some Title"
+    articleId = decoded.split(" ")[0];   // extract just the ID
+  }
+} catch (err) {
+  console.error("Invalid base64 ID:", encoded);
+}
       const [article, setArticle] = useState(null);
 
 
@@ -154,13 +169,9 @@ const articleId = useMemo(() => {
       let response;
       if (isEditing) {
         // Update existing
-        response = await axios.put(
-          `${BASE_URL}/auth/article/${articleId}`,
-          formData,
-          {
-            headers: { "Content-Type": "multipart/form-data" },
-            withCredentials: true,
-          }
+        response = await axiosClient.put(
+          `/auth/article/${articleId}`,
+          formData
         );
         console.log("Article updated successfully!", response.data);
       } else {
@@ -221,12 +232,7 @@ const articleId = useMemo(() => {
   if (articleId) {
     const fetchArticle = async () => {
       try {
-        const response = await axios.get(`${BASE_URL}/auth/articles/${articleId}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-          withCredentials: true,
-        });
+        const response = await axiosClient.get(`/auth/articles/${articleId}`);
 
         const data = response.data;
         setArticle(data);
@@ -278,12 +284,7 @@ useEffect(() => {
   const fetchArticles = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`${BASE_URL}/auth/articles`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        withCredentials: true,
-      });
+      const response = await axiosClient.get(`/auth/articles`);
       // Ensure response.data is always an array
       setArticles(Array.isArray(response.data) ? response.data : []);
       setLoading(false);

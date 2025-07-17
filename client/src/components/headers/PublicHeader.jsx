@@ -1,16 +1,19 @@
-import { useState, useEffect } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { useState, useEffect } from "react";
+import { NavLink, useLocation } from "react-router-dom";
 
 function getHeaderThemeClasses(theme, isScrolled) {
   const bgClass = isScrolled
-    ? theme === "dark"
-      ? "bg-black shadow-lg"
-      : "bg-[#1C1B19] shadow-lg"
+    ? "bg-[#1C1B19] shadow-md"
     : theme === "dark"
-      ? "bg-black shadow-none"
-      : "bg-transparent shadow-none";
+    ? "bg-[#1C1B19] shadow-md"
+    : "bg-transparent shadow-md";
 
-  const textClass = theme === "dark" ? "text-white" : "text-black";
+  const textClass = isScrolled
+    ? "text-white"
+    : theme === "dark"
+    ? "text-white"
+    : "text-black";
+
   return { bgClass, textClass };
 }
 
@@ -20,45 +23,74 @@ const PublicHeader = ({ theme = "light" }) => {
 
   const handleScroll = () => {
     const currentScrollY = window.scrollY;
-    setIsScrolled(currentScrollY > 50);
+    setIsScrolled(currentScrollY > 5);
   };
 
   useEffect(() => {
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
   const { bgClass } = getHeaderThemeClasses(theme, isScrolled);
   let { textClass } = getHeaderThemeClasses(theme, isScrolled);
 
-  // Invert text class on scroll
-  if (isScrolled) {
-    textClass = textClass === "text-white" ? "text-black" : "text-white";
-  }
-
   return (
-    <header className={`w-full fixed z-50 transition-all duration-300 ${bgClass}`}>
-      <div className="flex w-auto h-7 justify-between px-5">
-        <span className={`${textClass} text-[0.65rem] sm:text-xs md:text-md lg:text-md xl:text-md h-fit w-fit my-auto`}>
+    <header
+      className={`w-full fixed z-50 transition-all h-10 duration-300 ${bgClass}`}
+    >
+      <div className="flex w-auto h-full justify-between px-5">
+        <span
+          className={`${textClass} text-[0.65rem] sm:text-xs md:text-md lg:text-md xl:text-md h-fit w-fit my-auto`}
+        >
           Open Daily 9:00am-5:00pm, Monday-Friday, Closed During Holidays
         </span>
         <div className="w-auto flex items-center">
           {isScrolled && (
             <div className="inline-block animate-slide-in-right">
-              <NavLink to="/" className="mx-2">
-                <span className={`text-xs my-auto cursor-pointer ${textClass}`}>Home</span>
+              <NavLink
+                to="/"
+                className={({ isActive }) =>
+                  `mx-2 text-xs my-auto cursor-pointer ${
+                    isActive
+                      ? `underline underline-offset-4 decoration-1 ${textClass}`
+                      : textClass
+                  }`
+                }
+              >
+                Home
               </NavLink>
-              <NavLink to="/content" className="mx-2">
-                <span className={`text-xs my-auto cursor-pointer ${textClass}`}>News & Events</span>
+              <NavLink
+                to="/articles"
+                className={({ isActive }) =>
+                  `mx-2 text-xs my-auto cursor-pointer ${
+                    isActive
+                      ? `underline underline-offset-4 decoration-1 ${textClass}`
+                      : textClass
+                  }`
+                }
+              >
+                News & Events
               </NavLink>
-              <NavLink to="/about" className="mx-2">
-                <span className={`text-xs my-auto cursor-pointer ${textClass}`}>About</span>
+              <NavLink
+                to="/about"
+                className={({ isActive }) =>
+                  `mx-2 text-xs my-auto cursor-pointer ${
+                    isActive
+                      ? `underline underline-offset-4 decoration-1 ${textClass}`
+                      : textClass
+                  }`
+                }
+              >
+                About
               </NavLink>
             </div>
           )}
+
           <NavLink to="/login" className="mx-2 my-auto ">
             <span
-              className={`${location.pathname === '/login' ? 'hidden' : ''} ${textClass} px-1 border-1 font-semibold rounded-sm text-xs my-auto cursor-pointer`}
+              className={`${
+                location.pathname === "/login" ? "hidden" : ""
+              } ${textClass} px-1 hover:text-gray-400 border border-gray-700 font-semibold rounded-sm text-xs my-auto cursor-pointer`}
             >
               Login
             </span>

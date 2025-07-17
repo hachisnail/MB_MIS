@@ -4,15 +4,17 @@ import Unauthorized from "./pages/Unauthorized";
 import ServerDown from "./pages/ServerDown";
 import { useRouterFlags } from "./context/routerFlagProvider";
 
-// landing pages
-// import Home from "./pages/public/Home";
-// import Login from "./pages/puclic/Login";
-// import Catalogue from "./pages/public/Catalogue";
-// import RecoverAccount from "./pages/public/RecoverAccount";
+import ManageArticle from "./components/subpages/ManageArticle";
+
 
 import Home from "./pages/public/Home";
 import Login from "./pages/public/Login";
 import Catalogue from "./pages/public/Catalogue";
+import Appointment from "./pages/public/Appointment";
+import Articles from "./pages/public/Articles";
+import About from "./pages/public/About";
+
+
 import RecoverAccount from "./components/subpages/RecoverAccount";
 
 import MaintenanceMode from "./pages/MaintenanceMode";
@@ -39,7 +41,6 @@ import Appointments from "./pages/admin/Appointments";
 import UserView from "./components/subpages/ViewUser";
 import Configuration from "./pages/admin/Configuration";
 // import ArticleModal from "./components/subpages/ArticleModal";
-import ManageArticle from "./components/subpages/ManageArticle";
 
 // sandbox
 import FileUploadDownload from "./sandbox/fileUploadDownload";
@@ -81,6 +82,11 @@ const Router = () => {
           <Route path="/catalogs" element={<Catalogue />} />
         )}
         {flags["home"] && <Route path="/" element={<Home />} />}
+        {flags["home"] && <Route path="/home" element={<Home />} />}
+
+        <Route path="/appointment" element={<Appointment />} />
+        <Route path="/articles" element={<Articles />} />
+        <Route path="/about" element={<About />} />
 
         <Route
           path="/complete-registration/:token"
@@ -113,12 +119,12 @@ const Router = () => {
 
 
 
-          {/* {flags["article"] && (
-            <Route path="article/add-article" element={<CreateArticle />} />
-          )} */}
-          {/* {flags["article"] && (
-            <Route path="article/edit-article" element={<ArticleModal />} />
-          )} */}
+          {flags["article"] && (
+            <Route path="article/add-article" element={<ManageArticle />} />
+          )}
+          {flags["article"] && (
+            <Route path="article/edit-article" element={<ManageArticle />} />
+          )}
 
           {flags["appointment"] && (
             <Route path="appointment" element={<Appointments />} />

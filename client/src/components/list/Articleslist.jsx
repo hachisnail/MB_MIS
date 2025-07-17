@@ -5,8 +5,8 @@ import { useNavigate } from "react-router-dom";
 const Articleslist = ({ article, handleStatusChange, userRole, getStatusBadge }) => {
   const navigate = useNavigate();
 
-  const handleRowClick = (id) => {
-  const encodedId = btoa(id);
+  const handleRowClick = (prop) => {
+  const encodedId = btoa(prop);
   navigate(`/admin/article/edit-article/${encodedId}`);
 };
 
@@ -15,7 +15,7 @@ const Articleslist = ({ article, handleStatusChange, userRole, getStatusBadge })
     <div
       key={article.article_id}
       className="min-w-[60rem] text-xl h-fit font-semibold grid grid-cols-5 cursor-pointer hover:bg-gray-300"
-      onClick={() => handleRowClick(article.article_id)}
+      onClick={() => handleRowClick(article.article_id + " " + article.title)}
     >
       <div className="px-4 py-3 border-b-1 border-gray-400">
         {article.upload_date

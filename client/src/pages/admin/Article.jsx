@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 // import AdminNav from '../../components/navbar/AdminNav';
 import { NavLink } from "react-router-dom";
 import axios from "axios";
+import axiosClient from "../../lib/axiosClient";
 import { useEditor } from "@tiptap/react";
 // import CustomDatePicker from '../../features/CustomDatePicker';
 import TimelineDatePicker from "../../features/TimelineDatePicker";
@@ -132,12 +133,7 @@ const ArticleForm = () => {
   const fetchArticles = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`${BASE_URL}/auth/articles`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        withCredentials: true,
-      });
+      const response = await axiosClient.get(`/auth/articles`);
       // Ensure response.data is always an array
       setArticles(Array.isArray(response.data) ? response.data : []);
       setLoading(false);
@@ -173,21 +169,14 @@ const ArticleForm = () => {
       let response;
       if (isEditing) {
         // Update existing
-        response = await axios.put(
-          `${BASE_URL}/auth/article/${editingArticleId}`,
-          formData,
-          {
-            headers: { "Content-Type": "multipart/form-data" },
-            withCredentials: true,
-          }
+        response = await axiosClient.put(
+          `/auth/article/${editingArticleId}`,
+          formData
         );
         console.log("Article updated successfully!", response.data);
       } else {
         // Create new
-        response = await axios.post(`${BASE_URL}/auth/article`, formData, {
-          headers: { "Content-Type": "multipart/form-data" },
-          withCredentials: true,
-        });
+        response = await axiosClient.post(`/auth/article`, formData);
         console.log("Article created successfully!", response.data);
       }
 
@@ -324,15 +313,9 @@ const ArticleForm = () => {
 
   const handleStatusChange = async (articleId, newStatus) => {
     try {
-      await axios.put(
-        `${BASE_URL}/auth/article/${articleId}`,
-        { status: newStatus },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-          withCredentials: true,
-        }
+      await axiosClient.put(
+        `/auth/article/${articleId}`,
+        { status: newStatus }
       );
 
       setArticles((prev) =>

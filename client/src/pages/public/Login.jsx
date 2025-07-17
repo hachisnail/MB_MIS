@@ -61,7 +61,7 @@ const Login = () => {
   };
 
   return (
-    <div className="flex  flex-col h-[98.5vh]">
+    <div className="flex  flex-col w-screen  min-w-fit h-[98.5vh]">
       <NavLink
         className="group flex items-center cursor-pointer font-semibold ml-1 mt-1 w-fit rounded-md px-1 hover:text-gray-500"
         to="/"
@@ -86,7 +86,7 @@ const Login = () => {
       <div className="w-full flex my-auto select-none justify-center">
         <form
           onSubmit={handleSubmit}
-          className="  px-8 pt-8 pb-6 rounded-lg shadow-2xl w-full max-w-xl"
+          className="  px-8 pt-8 pb-6  rounded-lg shadow-2xl w-full max-w-xl"
         >
           {/* <h2 className="text-2xl font-semibold mb-6 text-center text-white">Login</h2> */}
           <div className="mb-7 w-full h-fit flex flex-col items-center gap-y-4">

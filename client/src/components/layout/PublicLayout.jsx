@@ -1,10 +1,15 @@
 import { Outlet, useLocation } from 'react-router-dom';
+import { useEffect } from 'react';
 import PublicNav from '../navbar/PublicNav';
 import PublicHeader from '../headers/PublicHeader';
 import PublicFooter from '../footers/PublicFooter';
 
 const PublicLayout = () => {
   const location = useLocation();
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' }); // use "smooth" if you want animation
+  }, [location.pathname]);
 
   const hiddenPaths = [
     '/login',
@@ -15,32 +20,52 @@ const PublicLayout = () => {
 
   const isMinimalLayout =
     hiddenPaths.includes(location.pathname) ||
-    /^\/recover\/[^/]+$/.test(location.pathname); 
+    /^\/recover\/[^/]+$/.test(location.pathname);
 
-  console.log('PublicLayout isMinimalLayout:', isMinimalLayout, location.pathname);
+  const themeRoutes = {
+    '/': 'dark',
+    '/home': 'dark',
+    '/catalogs': 'light',
+    '/articles': 'dark',
+    '/about': 'dark',
+    '/login': 'light',
+  };
+
+  const defaultTheme = 'light';
+  const theme = themeRoutes[location.pathname] || defaultTheme;
 
   return (
-    <div className="flex flex-col h-fit min-h-screen w-screen overflow-scroll">
-      {/* Header */}
+    <div
+      className={`${
+        theme === 'dark' ? 'bg-[#1C1B19]' : 'bg-white'
+      } flex flex-col h-fit min-h-screen w-screen overflow-scroll relative`}
+    >
       {!isMinimalLayout && (
-        <header className="bg-white flex items-center mb-5 justify-between border-b border-gray-300 h-7 min-h-fit shadow-sm">
-          <PublicHeader />
+        <header
+          className={`${
+            theme === 'dark' ? 'bg-[#1C1B19]' : 'bg-white'
+          } z-50 flex items-center justify-between h-10 min-h-fit`}
+        >
+          <PublicHeader theme={theme} />
         </header>
       )}
 
-      {/* Navigation Bar */}
       {!isMinimalLayout && (
-        <nav className="bg-white flex items-center px-8 h-20 min-h-20 max-h-20">
-          <PublicNav />
+        <nav
+          className={`
+            ${theme === 'dark' ? 'bg-transparent' : 'bg-white'}
+            z-25 px-8 pt-5 flex items-center h-30 min-h-20 
+            w-full absolute top-0 left-0 shadow-md mt-10
+          `}
+        >
+          <PublicNav theme={theme} />
         </nav>
       )}
 
-      {/* Main content */}
-      <main className="flex-1 h-auto min-h-fit overflow-y-auto px-4 py-2 w-full">
+      <main className="flex-1 z-10 h-auto flex flex-col items-center min-h-fit overflow-y-auto pb-5 w-full">
         <Outlet />
       </main>
 
-      {/* Footer */}
       {!isMinimalLayout && (
         <footer className="flex items-center justify-center bg-white h-fit">
           <PublicFooter />

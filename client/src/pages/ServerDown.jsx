@@ -1,9 +1,10 @@
 import Logo from "../assets/LOGO.png";
+import bg from '../assets/Taoist Landscape Painting.jpg';
 
 const ServerDown = () => {
   return (
-    <div className="w-screen h-screen flex items-center justify-center">
-      <div className="w-fit h-fit flex flex-col items-center gap-y-10 px-10 pt-10 pb-25 rounded-xl shadow-2xl">
+    <div className="bg-cover bg-center bg-no-repeat w-screen h-screen flex items-center justify-center" style={{ backgroundImage: `url(${bg})`}}>
+      <div className="w-fit h-fit flex flex-col items-center gap-y-10 px-10 pt-10 pb-25 bg-white rounded-xl shadow-2xl">
         <div className="flex gap-x-2 items-center">
           <img src={Logo} className="w-20" alt="Museo Bulawan Logo" />
           <i className="w-1 h-16 rounded-4xl bg-gray-600"></i>

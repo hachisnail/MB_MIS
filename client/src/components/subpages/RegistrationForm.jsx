@@ -58,7 +58,7 @@ const RegistrationForm = ({ error, setError }) => {
   return (
     <form
       onSubmit={handleSubmit}
-      className=" min-h-fit min-w-fit px-10 pt-10 pb-4 rounded-lg space-y-4 w-[40rem] "
+      className=" min-h-fit min-w-fit w-screen min-w-fit px-10 pt-10 pb-4 rounded-lg space-y-4 w-[40rem] "
     > 
       <div className="mb-4 gap-y-2 flex flex-col">
         <label htmlFor="username" className=" text-xl">Username</label>

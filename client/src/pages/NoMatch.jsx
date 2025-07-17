@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import bg from '../assets/Taoist Landscape Painting.jpg'
 
 const NoMatch = () => {
   const navigate = useNavigate();
@@ -8,8 +9,8 @@ const NoMatch = () => {
   };
 
   return (
-    <div className='flex items-center h-screen w-screen justify-center'>
-      <div className='flex items-center flex-col'>
+    <div className='bg-cover bg-center bg-no-repeat flex items-center h-screen w-screen justify-center' style={{ backgroundImage: `url(${bg})` }}>
+      <div className='flex items-center flex-col backdrop-blur-xs px-5 py-5 rounded-md shadow-2xl'>
         <svg
           xmlns="http://www.w3.org/2000/svg"
           width="32"
@@ -34,7 +35,7 @@ const NoMatch = () => {
           <span>go back to</span>
           <button
             onClick={handleGoBack}
-            className='hover:text-gray-500 underline'
+            className='hover:text-gray-300 underline cursor-pointer'
           >
             previous page.
           </button>

@@ -215,7 +215,7 @@ const RecoverAccount = () => {
         theme="light"
       />
 
-      <div className="flex flex-col h-[98.5vh]">
+      <div className="flex flex-col w-screen min-w-fit h-[98.5vh]">
         <NavLink
           to="/"
           className="group flex items-center font-semibold ml-1 mt-1 px-1 hover:text-gray-500"

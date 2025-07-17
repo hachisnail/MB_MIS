@@ -4,6 +4,8 @@ import Unauthorized from "./pages/Unauthorized";
 import ServerDown from "./pages/ServerDown";
 import { useRouterFlags } from "./context/routerFlagProvider";
 
+import ManageArticle from "./components/subpages/ManageArticle";
+
 
 import Home from "./pages/public/Home";
 import Login from "./pages/public/Login";
@@ -38,8 +40,7 @@ import Article from "./pages/admin/Article";
 import Appointments from "./pages/admin/Appointments";
 import UserView from "./components/subpages/ViewUser";
 import Configuration from "./pages/admin/Configuration";
-import ArticleModal from "./components/subpages/ArticleModal";
-import CreateArticle from "./components/subpages/CreateArticle";
+// import ArticleModal from "./components/subpages/ArticleModal";
 
 // sandbox
 import FileUploadDownload from "./sandbox/fileUploadDownload";
@@ -49,6 +50,7 @@ import RouteFlagToggle from "./sandbox/RouteFlagToggle";
 
 import AdminLayout from "./components/layout/AdminLayout";
 import PublicLayout from "./components/layout/PublicLayout";
+
 
 const RequireAuth = () => {
   const { user } = useAuth();
@@ -112,11 +114,16 @@ const Router = () => {
             <Route path="schedule" element={<Schedule />} />
           )}
           {flags["article"] && <Route path="article" element={<Article />} />}
+          {flags["article"] && <Route path="article/add-article" element={<ManageArticle />} />}
+          {flags["article"] && <Route path="article/edit-article/:encoded" element={<ManageArticle />} />}
+
+
+
           {flags["article"] && (
-            <Route path="article/add-article" element={<CreateArticle />} />
+            <Route path="article/add-article" element={<ManageArticle />} />
           )}
           {flags["article"] && (
-            <Route path="article/edit-article" element={<ArticleModal />} />
+            <Route path="article/edit-article" element={<ManageArticle />} />
           )}
 
           {flags["appointment"] && (

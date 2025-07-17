@@ -210,5 +210,20 @@ export const updateArticle = async (req, res) => {
   }
 };
 
+export const getArticleById = async (req, res) => {
+  try {
+    const { id } = req.params; // Get the ID from the URL parameters
+    // Assuming your article model has a method to find by primary key or ID
+    const article = await Article.findByPk(id); // Example: if using Sequelize
 
+    if (!article) {
+      return res.status(404).json({ message: 'Article not found.' });
+    }
+
+    res.status(200).json(article);
+  } catch (error) {
+    console.error('Error fetching article by ID:', error);
+    res.status(500).json({ message: 'Server error.', error: error.message });
+  }
+};
 

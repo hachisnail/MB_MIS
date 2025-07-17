@@ -51,8 +51,8 @@ const PublicLayout = () => {
         <nav
           className={`
             ${theme === 'dark' ? 'bg-transparent' : 'bg-white'}
-            z-25 px-8 pt-5 flex items-center h-30 min-h-20 
-            w-full absolute top-0 left-0 shadow-md mt-10
+            z-25 px-8 pt-5 flex items-center h-35 
+            w-full absolute top-0 left-0 shadow-md mt-10 justify-center
           `}
         >
           <PublicNav theme={theme} />

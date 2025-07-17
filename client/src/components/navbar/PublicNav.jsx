@@ -11,7 +11,7 @@ const PublicNav = ({ theme = "light" }) => {
   const [openDropdown, setOpenDropdown] = useState(null);
   const dropdownRefs = useRef({});
 
-  const bgClass = theme === "dark" ? "bg-transparent" : "bg-transaprent";
+  const bgClass = theme === "dark" ? "bg-transparent border-white" : "bg-transaprent border-black";
   const textClass = theme === "dark" ? "text-white" : "text-black";
   const dividerClass = theme === "dark" ? "bg-white" : "bg-gray-700";
 
@@ -86,7 +86,7 @@ const PublicNav = ({ theme = "light" }) => {
         to={to}
         onClick={() => setOpenDropdown(null)}
         className={({ isActive }) =>
-          `px-3 py-2  transition-all duration-200 font-semibold text-2xl ${
+          `px-3 py-2  transition-all duration-200 font-semibold text-3xl ${
             isActive
               ? `border-b-2 border-yellow-500 ${
                   theme === "dark" ? "text-white" : "text-black"
@@ -132,20 +132,20 @@ const PublicNav = ({ theme = "light" }) => {
 
   return (
     <div
-      className={`w-full h-full flex items-center justify-between pl-10 pr-30 py-3 ${bgClass}`}
+      className={`w-[95vw] h-full flex items-center justify-between pl-5 pr-15 py-3 border-b-2  ${bgClass}`}
     >
-      <div className="flex items-center gap-x-5">
+      <div className="flex items-center gap-x-5 ">
         <NavLink to="/" title="Home">
-          <img src={Logo} alt="Museo Bulawan Logo" className="w-18" />
+          <img src={Logo} alt="Museo Bulawan Logo" className="w-20" />
         </NavLink>
         <div className="flex items-center gap-x-2">
-          <i className={`h-15 w-1.5 rounded-sm ${dividerClass}`} />
+          <i className={`h-17 w-1.5 rounded-sm ${dividerClass}`} />
           <NavLink
             to="/"
-            className={`flex flex-col text-3xl justify-center ${textClass}`}
+            className={`flex flex-col text-4xl justify-center ${textClass}`}
           >
-            <span className="font-bold leading-6">Museo</span>
-            <span className="font-bold leading-6">Bulawan</span>
+            <span className="font-bold leading-7">Museo</span>
+            <span className="font-bold leading-7">Bulawan</span>
           </NavLink>
         </div>
       </div>

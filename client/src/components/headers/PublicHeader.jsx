@@ -3,7 +3,7 @@ import { NavLink, useLocation } from "react-router-dom";
 
 function getHeaderThemeClasses(theme, isScrolled) {
   const bgClass = isScrolled
-    ? "bg-[#1C1B19] shadow-md"
+    ? "bg-[#1C1B19] shadow-md "
     : theme === "dark"
     ? "bg-[#1C1B19] shadow-md"
     : "bg-transparent shadow-md";
@@ -36,7 +36,7 @@ const PublicHeader = ({ theme = "light" }) => {
 
   return (
     <header
-      className={`w-full fixed z-50 transition-all h-10 duration-300 ${bgClass}`}
+      className={`w-full shadow-md fixed z-50 transition-all h-10 duration-300 ${bgClass}`}
     >
       <div className="flex w-auto h-full justify-between px-5">
         <span

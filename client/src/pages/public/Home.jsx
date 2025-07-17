@@ -6,149 +6,214 @@ const Home = () => {
   return (
     <>
       <div
-        className="bg-cover bg-center bg-no-repeat w-screen rounded-sm  h-screen pt-30 flex flex-col"
+        className="bg-cover bg-center bg-no-repeat w-screen rounded-sm h-screen pt-40 flex flex-col items-center"
         style={{ backgroundImage: `url(${bgImage1})` }}
       >
-        <div className="w-full h-fit flex justify-center">
-          <span className="text-4xl text-white">Home</span>
-        </div>
-        {/* <NavLink className="w-fit" to="/login">
-        <span className="text-2xl font-semibold hover:text-gray-600">
-          login
-        </span>
-      </NavLink>
-      <NavLink className="w-fit" to="/catalogs">
-        <span className="text-2xl font-semibold hover:text-gray-600">
-          Catalogs
-        </span>
-      </NavLink> */}
-        {/* 
-      <div className="w-full h-fit justify-center flex">
-        <div className="flex flex-col items-center">
-          <svg
-            version="1.0"
-            xmlns="http://www.w3.org/2000/svg"
-            width="288.000000pt"
-            height="300.000000pt"
-            viewBox="0 0 288.000000 300.000000"
-            preserveAspectRatio="xMidYMid meet"
-          >
-            <g
-              transform="translate(0.000000,300.000000) scale(0.100000,-0.100000)"
-              fill="#000000"
-              stroke="none"
+        <div className="w-[97vw] h-full min-w-fit flex justify-center">
+          <div className="min-w-fit w-10 text-white gap-y-30 pb-10 h-full flex flex-col justify-center">
+            {/* left col */}
+
+            <a
+              href="https://www.facebook.com/museobulawancn"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="[writing-mode:vertical-rl] rotate-180"
             >
-              <path
-                d="M0 1500 l0 -1500 1440 0 1440 0 0 1500 0 1500 -1440 0 -1440 0 0
-                -1500z m1585 1315 c28 -4 64 -13 80 -20 17 -7 52 -16 79 -20 44 -6 132 -40
-                256 -98 59 -28 121 -69 205 -135 6 -5 18 -13 28 -18 29 -17 187 -176 187 -190
-                0 -6 7 -14 15 -18 8 -3 15 -10 15 -15 0 -6 12 -23 26 -38 40 -44 48 -55 84
-                -107 47 -70 92 -155 102 -196 5 -19 14 -53 19 -75 6 -22 13 -51 15 -65 3 -21
-                3 -22 -6 -7 -6 9 -17 17 -25 17 -9 0 -12 -6 -9 -17 3 -10 8 -24 10 -32 3 -10
-                8 -10 18 -2 15 13 33 -3 34 -29 1 -28 10 -95 16 -120 16 -68 14 -117 -5 -134
-                -11 -9 -19 -23 -19 -31 0 -9 -6 -26 -14 -38 -9 -13 -14 -48 -14 -87 0 -36 -1
-                -69 -1 -74 -1 -5 -12 1 -25 13 -28 26 -50 19 -43 -13 6 -29 -7 -72 -21 -68 -7
-                1 -12 -4 -12 -10 0 -10 -3 -9 -9 1 -5 7 -14 10 -20 7 -16 -10 -14 -26 4 -26
-                22 0 19 -8 -14 -36 -17 -14 -33 -34 -36 -44 -4 -11 -15 -20 -26 -20 -10 0 -19
-                -7 -19 -15 0 -12 -5 -11 -30 3 -16 9 -30 25 -30 35 0 22 -52 24 -74 2 -13 -14
-                -16 -13 -26 6 -10 18 -13 19 -28 6 -20 -17 -54 -19 -65 -3 -5 8 -11 6 -20 -4
-                -27 -33 -282 27 -261 61 3 6 -3 13 -15 16 -12 3 -21 10 -21 15 0 6 -14 8 -34
-                4 -44 -8 -62 -1 -76 35 -8 19 -22 31 -39 35 -50 11 -53 14 -48 36 7 26 -8 58
-                -28 58 -8 0 -22 9 -32 20 -18 19 -63 19 -63 0 0 -5 -17 -11 -38 -15 -24 -4
-                -58 -22 -88 -46 -40 -34 -53 -40 -79 -34 -48 10 -115 7 -115 -5 0 -4 -15 -13
-                -32 -21 -37 -14 -50 -28 -43 -46 2 -6 -11 -22 -28 -36 -28 -21 -61 -30 -147
-                -42 -14 -2 -47 -13 -73 -24 -27 -12 -53 -21 -58 -21 -5 0 -24 -15 -42 -33 -17
-                -17 -35 -31 -40 -29 -5 2 -7 -6 -4 -18 4 -15 0 -20 -13 -20 -10 0 -20 5 -22
-                11 -2 7 -19 -3 -36 -21 -18 -18 -31 -39 -28 -46 3 -7 2 -16 -3 -18 -4 -3 -5
-                -24 -2 -48 6 -40 8 -43 39 -46 26 -3 32 -7 28 -19 -4 -9 -1 -22 5 -29 9 -11
-                16 -9 39 8 16 11 35 18 43 15 8 -3 18 -3 21 0 3 4 21 7 38 8 39 3 109 30 123
-                48 6 7 38 22 72 34 52 17 70 19 110 11 26 -6 62 -20 78 -32 24 -17 46 -21 115
-                -23 47 -1 96 4 110 9 23 11 108 37 121 38 3 0 21 -13 39 -30 18 -16 41 -30 51
-                -30 10 0 26 -11 37 -24 10 -14 31 -28 45 -32 15 -3 27 -10 27 -14 0 -6 43 -56
-                119 -136 16 -16 19 -29 14 -57 -7 -48 -38 -73 -97 -81 -34 -4 -53 -13 -67 -30
-                -16 -20 -28 -25 -59 -23 -32 1 -40 5 -40 20 0 16 -3 17 -14 7 -8 -6 -12 -19
-                -9 -27 4 -11 3 -14 -6 -9 -6 4 -17 3 -24 -2 -25 -20 -86 -33 -104 -23 -12 6
-                -36 6 -67 0 -30 -5 -55 -5 -66 1 -13 7 -21 7 -25 -1 -4 -5 -19 -9 -33 -8 -15
-                2 -33 -1 -41 -5 -8 -5 -16 -4 -20 2 -4 6 -39 9 -91 8 -47 -2 -95 0 -106 5 -12
-                4 -48 9 -80 10 -33 2 -64 7 -71 12 -15 11 -71 13 -103 3 -21 -6 -33 -1 -60 24
-                -19 16 -46 33 -60 37 -14 3 -38 17 -53 30 -16 12 -33 23 -38 23 -5 0 -9 7 -9
-                15 0 9 -7 18 -15 21 -8 4 -15 12 -15 20 0 8 -10 14 -24 14 -31 0 -53 25 -37
-                44 6 7 9 20 5 29 -4 10 0 15 13 14 11 -1 19 6 21 19 4 26 -21 27 -59 1 -22
-                -14 -32 -16 -55 -7 -16 6 -31 11 -34 11 -3 0 -16 9 -28 20 -22 19 -23 22 -7
-                39 20 22 16 54 -7 58 -10 2 -18 -5 -20 -18 -4 -27 -22 -27 -26 1 -2 12 -11 23
-                -20 26 -25 7 -46 40 -76 123 -15 41 -36 94 -47 118 -10 23 -19 55 -19 70 0 15
-                -7 61 -16 102 -20 90 -24 412 -7 505 20 110 35 170 44 180 5 5 9 15 9 23 0 12
-                30 84 68 162 9 19 31 53 47 75 17 22 37 54 45 70 21 42 265 285 286 285 3 0
-                37 23 76 50 39 28 75 50 79 50 5 0 24 11 43 24 46 31 217 93 281 102 28 3 57
-                12 65 20 25 21 264 27 405 9z"
-              />
-              <path
-                d="M2460 2205 c0 -8 5 -15 10 -15 6 0 10 7 10 15 0 8 -4 15 -10 15 -5 0
-                    -10 -7 -10 -15z"
-              />
-              <path
-                d="M1592 2160 c-7 -11 -18 -20 -25 -20 -15 0 -67 -64 -67 -84 0 -8 -4
-                  -17 -9 -21 -6 -3 -6 -18 1 -37 8 -23 8 -36 -1 -51 -16 -24 -5 -202 13 -232 18
-                  -29 36 -107 36 -158 0 -33 6 -49 24 -66 25 -24 46 -21 46 6 0 8 -9 17 -20 20
-                  -20 5 -28 23 -10 23 5 0 34 -16 64 -35 30 -19 59 -35 64 -35 6 0 29 -9 53 -19
-                  43 -19 43 -20 16 -26 -39 -10 -33 -33 11 -41 20 -4 48 -15 61 -25 36 -29 162
-                  -26 215 4 62 35 131 171 97 191 -17 11 -12 59 9 86 11 14 20 41 20 63 0 25 4
-                  37 14 37 24 0 46 30 46 63 l0 32 17 -34 c16 -31 17 -32 30 -15 20 27 13 98 -9
-                  102 -11 2 -18 -3 -18 -11 0 -8 -7 -20 -15 -27 -13 -11 -18 -10 -29 5 -9 13
-                  -10 27 -2 56 9 34 7 41 -12 62 -13 14 -22 36 -22 55 0 20 -6 35 -15 38 -8 4
-                  -15 11 -15 18 0 6 -15 18 -32 26 -18 7 -36 15 -39 17 -8 5 -40 -67 -34 -77 3
-                  -5 1 -19 -5 -30 -12 -23 -34 -20 -106 12 -51 22 -205 32 -252 17 -18 -6 -40
-                  -8 -49 -5 -13 5 -12 11 9 39 50 64 46 87 -16 94 -23 2 -35 -2 -44 -17z m302
-                  -356 c25 -24 17 -108 -9 -98 -7 3 -26 -9 -43 -25 -24 -25 -31 -28 -36 -15 -18
-                  46 2 98 39 105 11 3 20 11 20 19 0 8 -6 14 -12 13 -7 -2 -13 2 -13 7 0 16 37
-                  12 54 -6z m-13 -157 c-11 -12 -23 -19 -25 -16 -9 9 25 50 36 43 6 -4 2 -14
-                  -11 -27z"
-              />
-              <path
-                d="M1162 2153 c-10 -4 -6 -14 15 -36 15 -17 20 -25 11 -18 -12 9 -18 10
-                  -18 2 0 -7 -34 -11 -107 -11 -98 0 -154 -9 -193 -31 -8 -4 -39 -19 -67 -33
-                  -29 -14 -64 -36 -78 -50 -14 -14 -28 -26 -31 -26 -11 0 9 76 23 87 12 9 12 16
-                  3 33 l-12 23 -24 -27 c-14 -14 -29 -26 -35 -26 -7 0 -8 -12 -4 -30 6 -25 3
-                  -30 -12 -30 -24 0 -53 -58 -53 -106 0 -19 7 -48 15 -65 9 -16 13 -34 10 -39
-                  -3 -5 -1 -11 4 -14 4 -3 11 -19 14 -36 5 -21 12 -30 26 -30 22 0 61 -44 61
-                  -70 0 -10 7 -23 15 -30 21 -18 19 -32 -5 -25 -41 13 -17 -62 37 -117 52 -54
-                  90 -64 177 -48 73 14 108 33 100 54 -3 9 4 11 26 8 26 -4 31 -1 28 14 -2 13 8
-                  22 37 33 75 29 102 56 124 124 19 55 21 85 20 232 -2 163 -3 171 -25 198 -13
-                  16 -24 37 -24 47 0 44 -20 59 -58 43z m-151 -331 c45 -80 -10 -209 -62 -146
-                  -18 22 -39 83 -39 115 0 31 18 56 45 61 29 6 39 1 56 -30z m-123 -336 c12 -13
-                  -6 -15 -40 -6 -19 6 -43 19 -54 31 l-19 21 54 -21 c29 -11 56 -22 59 -25z"
-              />
-              <path d="M950 1816 c0 -9 7 -16 16 -16 17 0 14 22 -4 28 -7 2 -12 -3 -12 -12z" />
-              <path
-                d="M2630 1700 c0 -5 5 -10 11 -10 5 0 7 5 4 10 -3 6 -8 10 -11 10 -2 0
-                  -4 -4 -4 -10z"
-              />
-              <path
-                d="M609 868 c5 -24 13 -34 29 -36 26 -4 29 14 6 46 -24 34 -43 29 -35
-                -10z"
-              />
-              <path
-                d="M580 860 c0 -5 5 -10 10 -10 6 0 10 5 10 10 0 6 -4 10 -10 10 -5 0
-                -10 -4 -10 -10z"
-              />
-              <path d="M612 811 c-11 -6 -10 -10 4 -15 20 -8 32 0 18 14 -5 5 -15 5 -22 1z" />
-              <path
-                d="M1299 763 c-18 -13 -38 -23 -43 -23 -16 0 -76 -72 -76 -90 0 -17 42
-                  -60 78 -79 26 -14 69 -14 77 -1 4 6 12 7 18 3 7 -4 24 -6 39 -4 18 1 30 -4 37
-                  -17 8 -14 22 -19 63 -20 36 -1 56 -6 65 -18 11 -15 14 -14 43 6 17 12 37 19
-                  45 16 25 -9 55 33 55 78 0 35 -6 45 -47 83 -27 24 -58 43 -71 43 -12 0 -25 7
-                  -29 15 -3 9 -13 15 -22 14 -9 -1 -32 1 -51 4 -94 17 -146 14 -181 -10z"
-              />
-              <path d="M405 771 c-6 -11 9 -23 19 -14 9 9 7 23 -3 23 -6 0 -12 -4 -16 -9z" />
-              <path
-                d="M450 729 c0 -5 5 -7 10 -4 6 3 10 8 10 11 0 2 -4 4 -10 4 -5 0 -10
-                  -5 -10 -11z"
-              />
-            </g>
-          </svg>
-          <span className="text-5xl">No content, sadge!</span>
+              <div className="w-10 h-auto  text-white flex items-center text-xl  ">
+                <svg
+                  className="w-7 rotate-90 mb-2 "
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 448 512"
+                  fill="currentColor"
+                >
+                  <path d="M64 32C28.7 32 0 60.7 0 96V416c0 35.3 28.7 64 64 64h98.2V334.2H109.4V256h52.8V222.3c0-87.1 39.4-127.5 125-127.5c16.2 0 44.2 3.2 55.7 6.4V172c-6-.6-16.5-1-29.6-1c-42 0-58.2 15.9-58.2 57.2V256h83.6l-14.4 78.2H255V480H384c35.3 0 64-28.7 64-64V96c0-35.3-28.7-64-64-64H64z" />
+                </svg>
+
+                <svg
+                  className="w-2 rotate-90 mb-2 "
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 512 512"
+                  fill="currentColor"
+                >
+                  <path d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512z" />
+                </svg>
+                <span>Museo Bulawan</span>
+              </div>
+            </a>
+
+            <a
+              href="https://www.instagram.com/museobulawanofficial/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="[writing-mode:vertical-rl] rotate-180"
+            >
+              <div className="w-10 h-auto  text-white flex items-center text-xl   ">
+                <svg
+                  className="w-7 rotate-90 mb-2 "
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 448 512"
+                  fill="currentColor"
+                >
+                  <path d="M224.1 141c-63.6 0-114.9 51.3-114.9 114.9s51.3 114.9 114.9 114.9S339 319.5 339 255.9 287.7 141 224.1 141zm0 189.6c-41.1 0-74.7-33.5-74.7-74.7s33.5-74.7 74.7-74.7 74.7 33.5 74.7 74.7-33.6 74.7-74.7 74.7zm146.4-194.3c0 14.9-12 26.8-26.8 26.8-14.9 0-26.8-12-26.8-26.8s12-26.8 26.8-26.8 26.8 12 26.8 26.8zm76.1 27.2c-1.7-35.9-9.9-67.7-36.2-93.9-26.2-26.2-58-34.4-93.9-36.2-37-2.1-147.9-2.1-184.9 0-35.8 1.7-67.6 9.9-93.9 36.1s-34.4 58-36.2 93.9c-2.1 37-2.1 147.9 0 184.9 1.7 35.9 9.9 67.7 36.2 93.9s58 34.4 93.9 36.2c37 2.1 147.9 2.1 184.9 0 35.9-1.7 67.7-9.9 93.9-36.2 26.2-26.2 34.4-58 36.2-93.9 2.1-37 2.1-147.8 0-184.8zM398.8 388c-7.8 19.6-22.9 34.7-42.6 42.6-29.5 11.7-99.5 9-132.1 9s-102.7 2.6-132.1-9c-19.6-7.8-34.7-22.9-42.6-42.6-11.7-29.5-9-99.5-9-132.1s-2.6-102.7 9-132.1c7.8-19.6 22.9-34.7 42.6-42.6 29.5-11.7 99.5-9 132.1-9s102.7-2.6 132.1 9c19.6 7.8 34.7 22.9 42.6 42.6 11.7 29.5 9 99.5 9 132.1s2.7 102.7-9 132.1z" />
+                </svg>
+
+                <svg
+                  className="w-2 rotate-90 mb-2 "
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 512 512"
+                  fill="currentColor"
+                >
+                  <path d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512z" />
+                </svg>
+                <span>museobulawanofficial</span>
+              </div>
+            </a>
+          </div>
+          <div className="w-full h-full px-25 pt-20">
+            {/* middle col  */}
+
+            <div className="w-fit h-fit flex flex-col ">
+              <span className="text-4xl xl:text-5xl w-full font-bold text-[#DAB765]  drop-shadow-[3px_3px_0px_black] ">
+                WELCOME TO
+              </span>
+
+              <span className="text-8xl xl:text-9xl font-bold text-white drop-shadow-[3px_3px_0px_black] -mt-3">
+                MUSEO
+                <br />
+                BULAWAN
+              </span>
+            </div>
+
+              <div className="w-fit h-fit text-2xl flex gap-x-5 my-10 sm:my-20">
+              <button
+                onClick={() =>
+                  learnMore.current?.scrollIntoView({ behavior: 'smooth' })
+                }
+                className="w-48 h-16 hover:outline-1 hover:outline-black bg-white flex items-center justify-center font-medium text-black transition duration-300 hover:shadow-lg cursor-pointer outline-1 outline-white"
+              >
+                Learn More
+              </button>
+
+              <NavLink to="/appointment">
+                <button className="w-48 h-16 hover:outline-1 hover:outline-black bg-transparent flex items-center justify-center outline-1 outline-white text-2xl font-medium text-white transition duration-300 hover:bg-white hover:text-black cursor-pointer">
+                  BOOK A VISIT
+                </button>
+              </NavLink>
+            </div>
+            
+            <div className="ml-11 w-fit flex flex-col gap-y-5">
+              <div className="w-fit h-auto text-white flex items-start gap-4">
+                <svg 
+                className="w-9"
+                xmlns="http://www.w3.org/2000/svg" 
+                viewBox="0 0 512 512"
+                fill="currentColor">
+                <path d="M256 0a256 256 0 1 1 0 512A256 256 0 1 1 256 0zM232 120l0 136c0 8 4 15.5 10.7 20l96 64c11 7.4 25.9 4.4 33.3-6.7s4.4-25.9-6.7-33.3L280 243.2 280 120c0-13.3-10.7-24-24-24s-24 10.7-24 24z"/>
+                </svg>
+
+                <div>
+                  <span className="block text-xl font-bold">Museum Hours</span>
+                  <span className="text-md font-normal leading-tight">
+                    Open Daily 9:00am-5:00pm, Monday-Friday,
+                  </span>
+                </div>
+              </div>
+              
+
+
+    
+
+              
+              <div className="w-fit h-auto text-white flex items-start gap-4">
+              <svg 
+                className="w-9"
+                xmlns="http://www.w3.org/2000/svg" 
+                viewBox="0 0 384 512"
+                fill="currentColor">
+
+
+                <path d="M215.7 499.2C267 435 384 279.4 384 192C384 86 298 0 192 0S0 86 0 192c0 87.4 117 243 168.3 307.2c12.3 15.3 35.1 15.3 47.4 0zM192 128a64 64 0 1 1 0 128 64 64 0 1 1 0-128z"/>
+                </svg>
+                
+
+
+                <div>
+                  <span className="block text-xl font-bold">
+                    Museum Location
+                  </span>
+                  <span className="text-md font-normal leading-tight">
+                    Camarines Norte Provincial Capitol Grounds, Daet Philippines
+                  </span>
+                </div>
+              </div>
+              </div>
+
+
+
+          </div>
+
+
+
+          <div className="min-w-fit w-10 text-white gap-y-30 pb-10 h-full flex flex-col justify-center">
+            {/* right col */}
+
+            <a
+              href="https://www.tiktok.com/@museobulawan"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="[writing-mode:vertical-rl] rotate-180"
+            >
+              <div className="w-10 h-auto  text-white flex items-center text-xl  ">
+                <svg
+                  className="w-7 rotate-90 mb-2 "
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 448 512"
+                  fill="currentColor"
+                >
+                  <path d="M448 209.9a210.1 210.1 0 0 1 -122.8-39.3V349.4A162.6 162.6 0 1 1 185 188.3V278.2a74.6 74.6 0 1 0 52.2 71.2V0l88 0a121.2 121.2 0 0 0 1.9 22.2h0A122.2 122.2 0 0 0 381 102.4a121.4 121.4 0 0 0 67 20.1z" />
+                </svg>
+
+                <svg
+                  className="w-2 rotate-90 mb-2 "
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 512 512"
+                  fill="currentColor"
+                >
+                  <path d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512z" />
+                </svg>
+                <span>museobulawan</span>
+              </div>
+            </a>
+
+            <a
+              href="https://www.youtube.com/@museobulawanofficial"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="[writing-mode:vertical-rl] rotate-180"
+            >
+              <div className="w-10 h-auto  text-white flex items-center text-xl   ">
+                <svg
+                  className="w-7 rotate-90 mb-2 "
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 576 512"
+                  fill="currentColor"
+                >
+                  <path d="M549.7 124.1c-6.3-23.7-24.8-42.3-48.3-48.6C458.8 64 288 64 288 64S117.2 64 74.6 75.5c-23.5 6.3-42 24.9-48.3 48.6-11.4 42.9-11.4 132.3-11.4 132.3s0 89.4 11.4 132.3c6.3 23.7 24.8 41.5 48.3 47.8C117.2 448 288 448 288 448s170.8 0 213.4-11.5c23.5-6.3 42-24.2 48.3-47.8 11.4-42.9 11.4-132.3 11.4-132.3s0-89.4-11.4-132.3zm-317.5 213.5V175.2l142.7 81.2-142.7 81.2z" />
+                </svg>
+
+                <svg
+                  className="w-2 rotate-90 mb-2 "
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 512 512"
+                  fill="currentColor"
+                >
+                  <path d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512z" />
+                </svg>
+                <span>Museo Bulawan (Abel C. Icatlo)</span>
+              </div>
+            </a>
+          </div>
         </div>
-      </div> */}
       </div>
       <div id="gold" className="pt-10 w-full h-screen flex justify-center">
         <span className="text-2xl font-semibold hover:text-gray-600">

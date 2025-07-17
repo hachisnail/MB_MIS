@@ -3,7 +3,7 @@ import { NavLink } from 'react-router-dom'
 
 const Catalogue = () => {
   return (
-    <div className='w-screen min-w-fit min-h-screen flex flex-col'>
+    <div className='w-screen min-w-fit pt-40  min-h-screen flex flex-col'>
         <div className='w-full h-fit flex justify-center'>
             <span className='text-4xl'>Catalalogs</span>
         </div>

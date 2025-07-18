@@ -60,6 +60,18 @@ const PublicHeader = ({ theme = "light" }) => {
                 Home
               </NavLink>
               <NavLink
+                to="/catalogs"
+                className={({ isActive }) =>
+                  `mx-2 text-xs my-auto cursor-pointer ${
+                    isActive
+                      ? `underline underline-offset-4 decoration-1 ${textClass}`
+                      : textClass
+                  }`
+                }
+              >
+                Catalogs
+              </NavLink>
+              <NavLink
                 to="/articles"
                 className={({ isActive }) =>
                   `mx-2 text-xs my-auto cursor-pointer ${

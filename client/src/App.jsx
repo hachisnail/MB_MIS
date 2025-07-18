@@ -3,14 +3,12 @@ import { AuthProvider } from "./context/authContext";
 import { useAuth } from "./context/authContext";
 import { useEffect } from "react";
 import { RouterFlagProvider } from "./context/routerFlagProvider";
-import ScrollToTop from "./features/ScrollToTop";
-
+import { ScrollToTop } from "./lib/ScrollToTop";
 
 import Router from "./router";
 
 function App() {
   useEffect(() => {
-    // fonts override
     const userAgent = navigator.userAgent;
 
     const isOpera = userAgent.includes("OPR") || userAgent.includes("Opera");
@@ -65,7 +63,8 @@ function AppContent() {
 
   return (
     <BrowserRouter>
-     <ScrollToTop />
+      <ScrollToTop/>
+
       <Router />
     </BrowserRouter>
   );

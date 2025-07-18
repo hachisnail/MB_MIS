@@ -1,10 +1,10 @@
-import { useEffect, useState, useRef } from "react";
-import Logo from "../../assets/LOGO.png";
-import { useRouterFlags } from "../../context/routerFlagProvider";
+// src/components/navbar/PublicNav.jsx
+import { useEffect, useState, useRef, useCallback } from "react";
+import Logo from "@/assets/LOGO.png";
+import { useRouterFlags } from "@/context/routerFlagProvider";
 import { NavLink, useNavigate, useLocation } from "react-router-dom";
 
 const PublicNav = ({ theme = "light" }) => {
-
   const { flags } = useRouterFlags();
   const navigate = useNavigate();
   const location = useLocation();
@@ -35,34 +35,34 @@ const PublicNav = ({ theme = "light" }) => {
     </svg>
   );
 
-  const scrollToAnchor = (anchorId) => {
+  // This is only used internally by navigateToAnchor.
+  // The global ScrollToTop will call scrollIntoView based on hash.
+  const scrollToAnchor = useCallback((anchorId) => {
     const el = document.getElementById(anchorId);
-    if (el) el.scrollIntoView({ behavior: "smooth" });
-  };
-
-  const navigateToAnchor = (page, anchorId) => {
-    if (!anchorId) return;
-
-    const path = `/${page}`;
-    const hash = `#${anchorId}`;
-
-    if (location.pathname !== path) {
-      navigate(`${path}${hash}`, { replace: false });
-    } else {
-      navigate(`${location.pathname}${hash}`, { replace: false });
-      scrollToAnchor(anchorId);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
     }
+  }, []);
 
+
+  const navigateToAnchor = useCallback((targetPage, anchorId) => {
     setOpenDropdown(null);
-  };
+    const targetPath = `/${targetPage}`;
+    const isSamePage = location.pathname === targetPath;
 
-  useEffect(() => {
-    if (location.hash) {
-      const anchor = location.hash.replace("#", "");
-      scrollToAnchor(anchor);
+    if (!isSamePage) {
+      // If navigating to a different page, append the hash.
+      // ScrollToTop will handle the scroll to the specific anchor (or the navbar top).
+      navigate(`${targetPath}#${anchorId}`);
+    } else {
+      // If on the same page, replace the hash directly.
+      // ScrollToTop will detect the hash change and scroll.
+      navigate(`${location.pathname}${location.search}#${anchorId}`, { replace: true });
     }
-  }, [location]);
+  }, [location.pathname, location.search, navigate]);
 
+
+  // --- Only dropdown related useEffect remains here ---
   useEffect(() => {
     const handleClickOutside = (e) => {
       const clickedOutside = Object.values(dropdownRefs.current).every(
@@ -74,6 +74,7 @@ const PublicNav = ({ theme = "light" }) => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+
   const NavItem = ({ to, label, title, dropdownKey, anchorpoints = [] }) => (
     <div
       className="relative w-fit flex items-center gap-x-1"
@@ -84,13 +85,13 @@ const PublicNav = ({ theme = "light" }) => {
       <NavLink
         title={title}
         to={to}
-        onClick={() => setOpenDropdown(null)}
+        // When clicking a standard NavLink, just navigate to the path.
+        // ScrollToTop will then determine if it needs to scroll to the top (main-navbar-top)
+        // or a specific anchor if present.
         className={({ isActive }) =>
-          `px-3 py-2  transition-all duration-200 font-semibold text-3xl ${
+          `px-3 py-2 transition-all duration-200 font-semibold text-3xl ${
             isActive
-              ? `border-b-2 border-yellow-500 ${
-                  theme === "dark" ? "text-white" : "text-black"
-                }`
+              ? `border-b-2 border-yellow-500 ${theme === "dark" ? "text-white" : "text-black"}`
               : `${textClass}`
           }`
         }
@@ -102,9 +103,7 @@ const PublicNav = ({ theme = "light" }) => {
         <>
           <button
             onClick={() =>
-              setOpenDropdown((prev) =>
-                prev === dropdownKey ? null : dropdownKey
-              )
+              setOpenDropdown((prev) => (prev === dropdownKey ? null : dropdownKey))
             }
             className="text-xl cursor-pointer"
             title="Toggle section dropdown"
@@ -113,12 +112,12 @@ const PublicNav = ({ theme = "light" }) => {
           </button>
 
           {openDropdown === dropdownKey && (
-            <div className="absolute top-full mt-2 right-0 backdrop-blur-xs border-white border rounded shadow z-50 w-40 flex flex-col">
+            <div className={`absolute top-full mt-2 right-0 backdrop-blur-xs ${theme === 'dark' ? "border-white " : 'border-black '} border rounded shadow z-50 w-40 flex flex-col`}>
               {anchorpoints.map(({ label, value }) => (
                 <button
                   key={value}
                   onClick={() => navigateToAnchor(to.replace("/", ""), value)}
-                  className="cursor-pointer px-4 py-2 text-center text-white hover:bg-gray-500 rounded text-sm w-full"
+                  className={`cursor-pointer px-4 py-2 text-center ${textClass} hover:bg-gray-500 rounded text-sm w-full`}
                 >
                   {label}
                 </button>
@@ -132,9 +131,10 @@ const PublicNav = ({ theme = "light" }) => {
 
   return (
     <div
-      className={`w-[95vw] h-full flex items-center justify-between pl-5 pr-15 py-3 border-b-2  ${bgClass}`}
+      id="main-navbar-top" 
+      className={`w-[95vw] h-full flex items-center justify-between pl-5 pr-15 py-3 border-b-2 ${bgClass}`}
     >
-      <div className="flex items-center gap-x-5 ">
+      <div className="flex items-center gap-x-5">
         <NavLink to="/" title="Home">
           <img src={Logo} alt="Museo Bulawan Logo" className="w-20" />
         </NavLink>
@@ -151,52 +151,38 @@ const PublicNav = ({ theme = "light" }) => {
       </div>
 
       <div className="flex items-center gap-x-4">
-
-        {flags["home"] && ( 
-        <NavItem
-          to="/"
-          label="Home"
-          title="Go to Home Page"
-          dropdownKey="home"
-          anchorpoints={[
-            { label: "Featured Paintings", value: "paintings" },
-            { label: "Traditional Textiles", value: "textiles" },
-            { label: "Cultural Sculptures", value: "sculptures" },
-            { label: "Gold Artifacts", value: "gold" },
-          ]}
-        />
+        {flags["home"] && (
+          <NavItem
+            to="/"
+            label="Home"
+            title="Go to Home Page"
+            dropdownKey="home"
+            anchorpoints={[
+              { label: "Featured Paintings", value: "paintings" },
+              { label: "Traditional Textiles", value: "textiles" },
+              { label: "Cultural Sculptures", value: "sculptures" },
+              { label: "Gold Artifacts", value: "gold" },
+            ]}
+          />
         )}
-
         {flags["catalogs"] && (
-        <NavItem
-          to="/catalogs"
-          label="Catalogs"
-          title="View Artifacts Catalog"
-        />
+          <NavItem to="/catalogs" label="Catalogs" title="View Artifacts Catalog" />
         )}
-
         {flags["article"] && (
-        <NavItem
-          to="/articles"
-          label="News & Events"
-          title="View News & Events"
-        />
+          <NavItem to="/articles" label="News & Events" title="View News & Events" />
         )}
-
-        {flags["about"] && ( 
-
-        <NavItem
-          to="/about"
-          label="About"
-          title="Learn About Museo Bulawan"
-          dropdownKey="about"
-          anchorpoints={[
-            { label: "Latest News", value: "latest" },
-            { label: "Upcoming Events", value: "upcoming" },
-            { label: "Past Events", value: "past" },
-          ]}
-
-        />
+        {flags["about"] && (
+          <NavItem
+            to="/about"
+            label="About"
+            title="Learn About Museo Bulawan"
+            dropdownKey="about"
+            anchorpoints={[
+              { label: "Latest News", value: "latest" },
+              { label: "Upcoming Events", value: "upcoming" },
+              { label: "Past Events", value: "past" },
+            ]}
+          />
         )}
       </div>
     </div>

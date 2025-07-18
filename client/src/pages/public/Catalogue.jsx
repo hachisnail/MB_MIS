@@ -1,6 +1,5 @@
 import React from 'react'
 import { NavLink } from 'react-router-dom'
-
 const Catalogue = () => {
   return (
     <div className='w-screen min-w-fit pt-40  min-h-screen flex flex-col'>

@@ -1,46 +1,40 @@
 import { NavLink } from "react-router-dom";
 import bgImage1 from "@/assets/06-AfternoonMealOfTheWorker 1.png";
-import { socialLinks } from "@/components/list/commons";
+import { scrollToElementById } from "@/components/list/commons";
 
-
-
+import { socialLinks } from "../../components/list/commons";
 
 const Home = () => {
-
-
-const SocialLink = ({ href, name, iconPath, viewBox }) => (
-  
-  <a
-    href={href}
-    target="_blank"
-    rel="noopener noreferrer"
-    className="[writing-mode:vertical-rl] rotate-180"
-  >
-    <div className="w-10 h-auto text-white flex items-center text-xl">
-      <svg
-        className="w-7 rotate-90 mb-2"
-        xmlns="http://www.w3.org/2000/svg"
-        viewBox={viewBox}
-        fill="currentColor"
-      >
-        <path d={iconPath} />
-      </svg>
-      <svg
-        className="w-2 rotate-90 mb-2"
-        xmlns="http://www.w3.org/2000/svg"
-        viewBox="0 0 512 512"
-        fill="currentColor"
-      >
-        <path d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512z" />
-      </svg>
-      <span>{name}</span>
-    </div>
-  </a>
-);
-
+  const SocialLink = ({ href, name, iconPath, viewBox }) => (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="[writing-mode:vertical-rl] rotate-180"
+    >
+      <div className="w-10 h-auto text-white flex items-center text-xl">
+        <svg
+          className="w-7 rotate-90 mb-2"
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox={viewBox}
+          fill="currentColor"
+        >
+          <path d={iconPath} />
+        </svg>
+        <svg
+          className="w-2 rotate-90 mb-2"
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 512 512"
+          fill="currentColor"
+        >
+          <path d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512z" />
+        </svg>
+        <span>{name}</span>
+      </div>
+    </a>
+  );
 
   // const learnMore = { current: null };
-
 
   return (
     <>
@@ -51,9 +45,11 @@ const SocialLink = ({ href, name, iconPath, viewBox }) => (
         <div className="w-[97vw] h-full min-w-fit flex justify-center">
           {/* Left Column */}
           <div className="min-w-fit w-10 text-white gap-y-30 pb-10 h-full flex flex-col justify-center">
-            {socialLinks.filter(link => link.position === "left").map(link => (
-              <SocialLink key={link.name} {...link} />
-            ))}
+            {socialLinks
+              .filter((link) => link.position === "left")
+              .map((link) => (
+                <SocialLink key={link.name} {...link} />
+              ))}
           </div>
 
           {/* Middle Column */}
@@ -69,7 +65,9 @@ const SocialLink = ({ href, name, iconPath, viewBox }) => (
 
             <div className="w-fit h-fit text-2xl flex gap-x-5 my-10 sm:my-20">
               <button
-                // onClick={() => learnMore.current?.scrollIntoView({ behavior: 'smooth' })}
+                onClick={(e) => {
+                  scrollToElementById("learn_more", 0);
+                }}
                 className="w-48 h-16 bg-white hover:outline-1 hover:outline-black flex items-center justify-center font-medium text-black transition duration-300 hover:shadow-lg cursor-pointer outline-1 outline-white"
               >
                 Learn More
@@ -83,21 +81,35 @@ const SocialLink = ({ href, name, iconPath, viewBox }) => (
 
             <div className="ml-11 w-fit flex flex-col gap-y-5">
               <div className="text-white flex items-start gap-4">
-                <svg className="w-9" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="currentColor">
-                  <path d="M256 0a256 256 0 1 1 0 512..." />
+                <svg
+                  className="w-9"
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 512 512"
+                  fill="currentColor"
+                >
+                  <path d="M464 256A208 208 0 1 1 48 256a208 208 0 1 1 416 0zM0 256a256 256 0 1 0 512 0A256 256 0 1 0 0 256zM232 120l0 136c0 8 4 15.5 10.7 20l96 64c11 7.4 25.9 4.4 33.3-6.7s4.4-25.9-6.7-33.3L280 243.2 280 120c0-13.3-10.7-24-24-24s-24 10.7-24 24z" />
                 </svg>
                 <div>
                   <span className="block text-xl font-bold">Museum Hours</span>
-                  <span className="text-md font-normal leading-tight">Open Daily 9:00am-5:00pm, Monday-Friday,</span>
+                  <span className="text-md font-normal leading-tight">
+                    Open Daily 9:00am-5:00pm, Monday-Friday,
+                  </span>
                 </div>
               </div>
 
               <div className="text-white flex items-start gap-4">
-                <svg className="w-9" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512" fill="currentColor">
-                  <path d="M215.7 499.2C267..." />
+                <svg
+                  className="w-9"
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 384 512"
+                  fill="currentColor"
+                >
+                  <path d="M215.7 499.2C267 435 384 279.4 384 192C384 86 298 0 192 0S0 86 0 192c0 87.4 117 243 168.3 307.2c12.3 15.3 35.1 15.3 47.4 0zM192 128a64 64 0 1 1 0 128 64 64 0 1 1 0-128z" />
                 </svg>
                 <div>
-                  <span className="block text-xl font-bold">Museum Location</span>
+                  <span className="block text-xl font-bold">
+                    Museum Location
+                  </span>
                   <span className="text-md font-normal leading-tight">
                     Camarines Norte Provincial Capitol Grounds, Daet Philippines
                   </span>
@@ -108,20 +120,50 @@ const SocialLink = ({ href, name, iconPath, viewBox }) => (
 
           {/* Right Column */}
           <div className="min-w-fit w-10 text-white gap-y-30 pb-10 h-full flex flex-col justify-center">
-            {socialLinks.filter(link => link.position === "right").map(link => (
-              <SocialLink key={link.name} {...link} />
-            ))}
+            {socialLinks
+              .filter((link) => link.position === "right")
+              .map((link) => (
+                <SocialLink key={link.name} {...link} />
+              ))}
           </div>
         </div>
       </div>
 
-      <section id="gold" className="pt-10 w-full h-screen flex justify-center">
-        <span className="text-2xl font-semibold hover:text-gray-600">This is the home page.</span>
+      <section
+        id="learn_more"
+        className="pt-15 w-full h-screen flex justify-center"
+      >
+        <span className="text-2xl text-white font-semibold hover:text-gray-600">
+          Learn more.
+        </span>
+      </section>
+      <section
+        id="whats_on"
+        className="pt-15 w-full h-screen flex justify-center"
+      >
+        <span className="text-2xl text-white font-semibold hover:text-gray-600">
+          Whats on?
+        </span>
+      </section>
+
+      <section
+        id="news_events"
+        className="pt-15 w-full h-screen flex justify-center"
+      >
+        <span className="text-2xl text-white font-semibold hover:text-gray-600">
+          News & Events
+        </span>
+      </section>
+      <section
+        id="support"
+        className="pt-15 w-full h-screen flex justify-center"
+      >
+        <span className="text-2xl text-white font-semibold hover:text-gray-600">
+          Support
+        </span>
       </section>
     </>
   );
 };
 
 export default Home;
-
-

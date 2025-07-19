@@ -143,3 +143,16 @@ export const socialLinks = [
                       
   },
 ];
+
+
+export function scrollToElementById(id, offset) {
+  const el = document.getElementById(id);
+  if (el) {
+    const elementTop = el.getBoundingClientRect().top + window.scrollY;
+    window.scrollTo({
+      top: elementTop - offset,
+      behavior: "smooth",
+    });
+  }
+}
+

@@ -158,10 +158,10 @@ const PublicNav = ({ theme = "light" }) => {
             title="Go to Home Page"
             dropdownKey="home"
             anchorpoints={[
-              { label: "Featured Paintings", value: "paintings" },
-              { label: "Traditional Textiles", value: "textiles" },
-              { label: "Cultural Sculptures", value: "sculptures" },
-              { label: "Gold Artifacts", value: "gold" },
+              { label: "Learn More", value: "learn_more" },
+              { label: "Whats On?", value: "whats_on" },
+              { label: "News & Events", value: "news_events" },
+              { label: "Support", value: "support" },
             ]}
           />
         )}
@@ -178,7 +178,7 @@ const PublicNav = ({ theme = "light" }) => {
             title="Learn About Museo Bulawan"
             dropdownKey="about"
             anchorpoints={[
-              { label: "Latest News", value: "latest" },
+              { label: "Latest News", value: "about_more" },
               { label: "Upcoming Events", value: "upcoming" },
               { label: "Past Events", value: "past" },
             ]}

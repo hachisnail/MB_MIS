@@ -22,7 +22,7 @@ const PublicLayout = () => {
   const themeRoutes = {
     '/': 'dark',
     '/home': 'dark',
-    '/catalogs': 'light',
+    '/catalogs': 'dark',
     '/articles': 'dark',
     '/about': 'dark',
     '/login': 'light',

@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { NavLink, useLocation } from "react-router-dom";
+import { scrollToElementById } from "@/components/list/commons";
+
 
 function getHeaderThemeClasses(theme, isScrolled) {
   const bgClass = isScrolled
@@ -16,6 +18,9 @@ function getHeaderThemeClasses(theme, isScrolled) {
 
   return { bgClass, textClass };
 }
+
+
+
 
 const PublicHeader = ({ theme = "light" }) => {
   const location = useLocation();
@@ -49,6 +54,10 @@ const PublicHeader = ({ theme = "light" }) => {
             <div className="inline-block animate-slide-in-right">
               <NavLink
                 to="/"
+                onClick={(e) => {
+                  scrollToElementById("main-navbar-top", 50);
+                }}
+
                 className={({ isActive }) =>
                   `mx-2 text-xs my-auto cursor-pointer ${
                     isActive
@@ -85,6 +94,9 @@ const PublicHeader = ({ theme = "light" }) => {
               </NavLink>
               <NavLink
                 to="/about"
+                  onClick={(e) => {
+                    scrollToElementById("main-navbar-top", 50);
+                  }}
                 className={({ isActive }) =>
                   `mx-2 text-xs my-auto cursor-pointer ${
                     isActive

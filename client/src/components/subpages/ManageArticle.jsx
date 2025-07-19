@@ -123,15 +123,6 @@ const ArticleEditorForm = () => {
 
       const { encoded } = useParams();
 
-// const articleId = useMemo(() => {
-//   try {
-//     return encoded ? atob(encoded) : null;
-//   } catch (err) {
-//     console.error("Invalid base64 ID:", encoded);
-//     return null;
-//   }
-// }, [encoded]);
-
 
 let articleId = null;
 
@@ -362,12 +353,12 @@ useEffect(() => {
 
   // Available font sizes for the dropdown
   const fontSizes = [
-    { label: "Small", value: "0.75em" }, // ~14px if 1em = 16px
-    { label: "Normal", value: "1em" }, // Default (16px)
-    { label: "Medium", value: "1.25em" }, // 20px
-    { label: "Large", value: "1.5em" }, // 24px
-    { label: "XL", value: "1.75em" }, // 28px
-    { label: "2XL", value: "2em" }, // 32px
+    { label: "Small", value: "0.75em" }, 
+    { label: "Normal", value: "1em" },
+    { label: "Medium", value: "1.25em" }, 
+    { label: "Large", value: "1.5em" }, 
+    { label: "XL", value: "1.75em" }, 
+    { label: "2XL", value: "2em" }, 
   ];
 
   // For uploading inline images from the editor
@@ -396,7 +387,8 @@ useEffect(() => {
         response.data.images.length > 0
       ) {
         const uploadedFilename = response.data.images[0];
-        const fullImageUrl = `${BASE_URL}/uploads/pictures/${uploadedFilename}`;
+        // Use SERVER_ORIGIN instead of BASE_URL to avoid /api in the path
+        const fullImageUrl = `${SERVER_ORIGIN}/uploads/pictures/${uploadedFilename}`;
 
         // Insert <img> into Tiptap
         if (editor) {
@@ -407,10 +399,7 @@ useEffect(() => {
             .run();
         }
 
-        // Store the filename if needed
         setContentImages((prev) => [...prev, uploadedFilename]);
-
-        // Mark form as dirty since we added content
         setIsDirty(true);
       }
     } catch (err) {
@@ -1050,118 +1039,93 @@ useEffect(() => {
 </form>
 </div>
 {/* RIGHT SIDE - Article Preview */}
-        <div
-          className="
-              bg-white
-              w-full
-              2xl:w-2/5
-              p-6
-              rounded-lg
-              shadow-xl
-              overflow-y-auto
-              max-h-[90vh]
-              mt-4
-              2xl:mt-0
-              hidden
-              lg:block
-            "
-        >
-          <h3 className="text-2xl font-bold mb-4">Preview</h3>
-          <div className="border border-gray-200 p-4 mb-4 rounded">
-            <h1 className="text-center text-3xl font-bold">
-              {title || "Title of the News or Event"}
-            </h1>
-          </div>
-
-          <div className="flex w-full justify-center mb-6">
-            <div className="flex w-full items-center justify-center text-center text-base">
-              <span className="w-1/4 h-24 border border-gray-300 flex flex-col items-center justify-center p-2">
-                <h4 className="text-lg font-medium">Date</h4>
-                <p
-                  className={`text-sm ${
-                    !selectedDate ? "text-gray-500 italic" : ""
-                  }`}
-                >
-                  {selectedDate
-                    ? new Date(selectedDate).toLocaleDateString("en-US", {
-                        month: "long",
-                        day: "numeric",
-                        year: "numeric",
-                      })
-                    : "[month dd, yyyy]"}
-                </p>
-              </span>
-              <span className="w-1/4 h-24 border border-gray-300 flex flex-col items-center justify-center p-2">
-                <h4 className="text-lg font-medium">Author</h4>
-                <p
-                  className={`text-sm ${!author ? "text-gray-500 italic" : ""}`}
-                >
-                  {author || "[Name of the Author]"}
-                </p>
-              </span>
-              <span className="w-1/4 h-24 border border-gray-300 flex flex-col items-center justify-center p-2">
-                <h4 className="text-lg font-medium">Address</h4>
-                <p
-                  className={`text-sm ${
-                    !address && !barangay ? "text-gray-500 italic" : ""
-                  }`}
-                >
-                  {barangay ? `${barangay}, ` : ""}
-                  {address || "[Location]"}
-                </p>
-              </span>
-              <span className="w-1/4 h-24 border border-gray-300 flex flex-col items-center justify-center p-2">
-                <h4 className="text-lg font-medium">Category</h4>
-                <p
-                  className={`text-sm ${
-                    !category ? "text-gray-500 italic" : ""
-                  }`}
-                >
-                  {category || "[placeholder]"}
-                </p>
-              </span>
-            </div>
-          </div>
-
-          <div className="border border-gray-200 p-4 rounded min-h-[300px] font-[Hina Mincho]">
-            {previewImage && !removeThumbnail ? (
-              <div className="flex justify-center mb-4">
-                <img
-                  src={previewImage}
-                  alt="Article thumbnail"
-                  className="max-h-64 object-contain"
-                />
-              </div>
-            ) : null}
-            <div
-              className="
-                prose max-w-none
-                min-h-[18rem] max-h-[24rem]
-                sm:min-h-[22rem] sm:max-h-[28rem]
-                md:min-h-[26rem] md:max-h-[32rem]
-                lg:min-h-[30rem] lg:max-h-[30rem]
-                xl:min-h-[32rem] xl:max-h-[32rem]
-                2xl:min-h-[34rem] 2xl:max-h-[34rem]
-                overflow-y-auto
-                relative
-                break-words
-                "
+        <div className="bg-white w-full 2xl:w-2/5 p-6 rounded-lg shadow-xl overflow-y-auto max-h-[90vh] mt-4 2xl:mt-0 hidden lg:block"
             >
-              {editor?.getHTML() ? (
+              <h3 className="text-2xl font-bold mb-4">Preview</h3>
+              <div className="border border-gray-200 p-4 mb-4 rounded">
+                <h1 className="text-center text-3xl font-bold">
+                  {title || "Title of the News or Event"}
+                </h1>
+              </div>
+
+              <div className="flex w-full justify-center mb-6">
+                <div className="flex w-full items-center justify-center text-center text-base">
+                  <span className="w-1/4 h-24 border border-gray-300 flex flex-col items-center justify-center p-2">
+                    <h4 className="text-lg font-medium">Date</h4>
+                    <p
+                      className={`text-sm ${
+                        !selectedDate ? "text-gray-500 italic" : ""
+                      }`}
+                    >
+                      {selectedDate
+                        ? new Date(selectedDate).toLocaleDateString("en-US", {
+                            month: "long",
+                            day: "numeric",
+                            year: "numeric",
+                          })
+                        : "[month dd, yyyy]"}
+                    </p>
+                  </span>
+                  <span className="w-1/4 h-24 border border-gray-300 flex flex-col items-center justify-center p-2">
+                    <h4 className="text-lg font-medium">Author</h4>
+                    <p
+                      className={`text-sm ${!author ? "text-gray-500 italic" : ""}`}
+                    >
+                      {author || "[Name of the Author]"}
+                    </p>
+                  </span>
+                  <span className="w-1/4 h-24 border border-gray-300 flex flex-col items-center justify-center p-2">
+                    <h4 className="text-lg font-medium">Address</h4>
+                    <p
+                      className={`text-sm ${
+                        !address && !barangay ? "text-gray-500 italic" : ""
+                      }`}
+                    >
+                      {barangay ? `${barangay}, ` : ""}
+                      {address || "[Location]"}
+                    </p>
+                  </span>
+                  <span className="w-1/4 h-24 border border-gray-300 flex flex-col items-center justify-center p-2">
+                    <h4 className="text-lg font-medium">Category</h4>
+                    <p
+                      className={`text-sm ${
+                        !category ? "text-gray-500 italic" : ""
+                      }`}
+                    >
+                      {category || "[placeholder]"}
+                    </p>
+                  </span>
+                </div>
+              </div>
+
+              <div className="border border-gray-200 p-4 rounded min-h-[300px] font-[Hina Mincho]">
+                    {previewImage && !removeThumbnail ? (
+                      <div className="flex justify-center mb-4">
+                        <img
+                          src={previewImage}
+                          alt="Article thumbnail"
+                          className="max-h-64 object-contain"
+                        />
+                      </div>
+                    ) : null}
                 <div
-                  className="editor-content-preview"
-                  dangerouslySetInnerHTML={{ __html: editor.getHTML() }}
-                />
-              ) : (
-                <p className="text-gray-400 italic">
-                  Article content will appear here...
-                </p>
-              )}
+                  className="prose max-w-none min-h-[18rem] max-h-[24rem] sm:min-h-[22rem] sm:max-h-[28rem] md:min-h-[26rem] md:max-h-[32rem] lg:min-h-[30rem] lg:max-h-[30rem] xl:min-h-[32rem] xl:max-h-[32rem] 2xl:min-h-[34rem] 2xl:max-h-[34rem] overflow-y-auto relative break-words"
+                >
+                      {editor?.getHTML() ? (
+                        <div
+                          className="editor-content-preview"
+                          dangerouslySetInnerHTML={{ __html: editor.getHTML() }}
+                        />
+                      ) : (
+                        <p className="text-gray-400 italic">
+                          Article content will appear here...
+                        </p>
+                      )}
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
-        {/* RIGHT SPACER */}
-<div className="hidden 2xl:block 2xl:w-1/5" />
+            {/* RIGHT SPACER */}
+          <div className="hidden 2xl:block 2xl:w-1/5" />
       </div>
       </>
   );

@@ -1,9 +1,11 @@
 import { BrowserRouter } from "react-router-dom";
-import { AuthProvider } from "./context/authContext";
-import { useAuth } from "./context/authContext";
+import { AuthProvider } from "@/context/authContext";
+import { useAuth } from "@/context/authContext";
 import { useEffect } from "react";
-import { RouterFlagProvider } from "./context/routerFlagProvider";
-import { ScrollToTop } from "./lib/ScrollToTop";
+import { RouterFlagProvider } from "@/context/routerFlagProvider";
+import { ScrollToTop } from "@/lib/ScrollToTop";
+import bg from "@/assets/Image-1-1.jpg";
+
 
 import Router from "./router";
 
@@ -55,8 +57,11 @@ function AppContent() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-black border-opacity-75"></div>
+      <div 
+      
+      className="flex flex-col items-center justify-center h-screen">
+            <div className="w-7 h-7 mx-auto border-2 border-black border-t-transparent animate-spin rounded-full" />
+            <span>Checking Server!</span>
       </div>
     );
   }

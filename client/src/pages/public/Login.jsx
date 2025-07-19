@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, NavLink } from "react-router-dom";
-import { useAuth } from "../../context/authContext";
-import Logo from "../../assets/LOGO.png";
-import PopupModal from "../../components/modals/PopupModal";
+import { useAuth } from "@/context/authContext";
+import Logo from "@/assets/LOGO.png";
+import PopupModal from "@/components/modals/PopupModal";
+import bg from "@/assets/Image-1-1.jpg";
 
 const Login = () => {
   const [credentials, setCredentials] = useState({
@@ -61,7 +62,10 @@ const Login = () => {
   };
 
   return (
-    <div className="flex  flex-col w-screen  min-w-fit h-[98.5vh]">
+    <div className="flex  flex-col w-screen  min-w-fit h-[98.5vh]" 
+        // style={{ backgroundImage: `url(${bg})` }}
+      
+      >
       <NavLink
         className="group flex items-center cursor-pointer font-semibold ml-1 mt-1 w-fit rounded-md px-1 hover:text-gray-500"
         to="/"

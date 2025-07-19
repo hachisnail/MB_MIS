@@ -9,7 +9,7 @@ const Unauthorized = () => {
 
   return (
     <div className='flex items-center h-full w-full justify-center'>
-      <div className='flex items-center flex-col'>
+      <div className='flex  items-center flex-col'>
         <svg
           xmlns="http://www.w3.org/2000/svg"
           width="32"

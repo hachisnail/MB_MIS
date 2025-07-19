@@ -1,16 +1,9 @@
 import React, { useState, useEffect } from "react";
-// import AdminNav from '../../components/navbar/AdminNav';
 import { NavLink } from "react-router-dom";
-import axios from "axios";
 import axiosClient from "../../lib/axiosClient";
-// import CustomDatePicker from '../../features/CustomDatePicker';
 import TimelineDatePicker from "../../features/TimelineDatePicker";
 import { SearchBar, CardDropdownPicker } from "../../features/Utilities";
-
 import Articleslist from "../../components/list/Articleslist";
-
-
-
 
 const ArticleForm = () => {
 
@@ -23,13 +16,11 @@ const ArticleForm = () => {
   const [selectedStatusFilter, setSelectedStatusFilter] = useState("");
   const [selectedCat, setSelectedCat] = useState("");
 
-  const token = localStorage.getItem("token");
   const BASE_URL = import.meta.env.VITE_API_BASE_URL;
   const SERVER_ORIGIN = BASE_URL.replace(/\/api$/, ""); // "http://localhost:5000"
   const UPLOAD_PATH = `${SERVER_ORIGIN}/uploads/pictures/`;
 
  
-
   useEffect(() => {
     fetchArticles();
   }, []);
@@ -50,134 +41,6 @@ const ArticleForm = () => {
       setLoading(false);
     }
   };
-
-  // Handle new or updated article submission
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    const formData = new FormData();
-    formData.append("title", title);
-    formData.append("article_category", category);
-    formData.append("description", editor?.getHTML() || "");
-    formData.append("user_id", 1);
-    formData.append("author", author);
-    formData.append("address", address);
-    formData.append("selectedDate", selectedDate);
-    formData.append("content_images", JSON.stringify(contentImages));
-    formData.append("barangay", barangay); // <-- Add this line
-
-    if (thumbnail && thumbnail instanceof File) {
-      formData.append("thumbnail", thumbnail);
-    }
-
-    try {
-      let response;
-      if (isEditing) {
-        // Update existing
-        response = await axiosClient.put(
-          `/auth/article/${editingArticleId}`,
-          formData
-        );
-        console.log("Article updated successfully!", response.data);
-      } else {
-        // Create new
-        response = await axiosClient.post(`/auth/article`, formData);
-        console.log("Article created successfully!", response.data);
-      }
-
-      resetForm();
-      fetchArticles();
-    } catch (err) {
-      console.error(
-        `Error ${isEditing ? "updating" : "creating"} article:`,
-        err.response?.data || err.message
-      );
-    }
-  };
-
-  // Reset form to initial state
-  // const resetForm = () => {
-  //   setTitle("");
-  //   setAuthor("");
-  //   setCategory("");
-  //   setAddress("");
-  //   setSelectedDate("");
-  //   setThumbnail(null);
-  //   setPreviewImage(null);
-  //   setContentImages([]);
-  //   setBarangay("");
-  //   editor?.commands.setContent("");
-  //   // setShowModal(false);
-  //   setIsEditing(false);
-  //   setEditingArticleId(null);
-  //   setIsArtifactModalOpen(false);
-  // };
-
-  // Handle editing article (click on table row)
-  // const handleRowClick = (article) => {
-  //   setIsEditing(true);
-  //   setEditingArticleId(article.article_id);
-  //   setTitle(article.title || "");
-  //   setAuthor(article.author || "");
-  //   setCategory(article.article_category || "");
-  //   setAddress(article.address || "");
-  //   setBarangay(article.barangay || ""); // <-- Set barangay from article
-
-  //   if (article.upload_date) {
-  //     const date = new Date(article.upload_date);
-  //     const formattedDate = date.toISOString().split("T")[0];
-  //     setSelectedDate(formattedDate);
-  //   } else {
-  //     setSelectedDate("");
-  //   }
-
-  //   if (editor && article.description) {
-  //     editor.commands.setContent(article.description);
-  //   }
-
-  //   if (article.images) {
-  //     const imageUrl = `${UPLOAD_PATH}${article.images}`;
-  //     setPreviewImage(imageUrl);
-  //     setThumbnail(article.images);
-  //   } else {
-  //     setPreviewImage(null);
-  //     setThumbnail(null);
-  //   }
-
-  //   if (article.content_images) {
-  //     try {
-  //       const parsedImages = JSON.parse(article.content_images);
-  //       if (Array.isArray(parsedImages)) {
-  //         setContentImages(parsedImages);
-  //       } else {
-  //         setContentImages([]);
-  //       }
-  //     } catch {
-  //       setContentImages([]);
-  //     }
-  //   } else {
-  //     setContentImages([]);
-  //   }
-
-  //   // setShowModal(true);
-  //   // setIsArtifactModalOpen(true);
-  //   navigate("/admin/article/add-article", {
-  //     state: {
-  //       article,
-  //       isEditing: true,
-  //       editor,
-  //       setTitle,
-  //       setAuthor,
-  //       setCategory,
-  //       setAddress,
-  //       setSelectedDate,
-  //       setThumbnail,
-  //       setPreviewImage,
-  //       setContentImages,
-  //       setBarangay,
-  //     },
-  //   });
-  // };
-
 
 
   // Filter the articles by searchTerm, category, and status
@@ -334,10 +197,8 @@ const ArticleForm = () => {
 
                 <NavLink to="add-article">
                   <button
-                    // onClick={resetForm}
                     className="cursor-pointer flex items-center justify-between w-full px-6 py-4 bg-[#6BFFD5] text-black font-medium"
                   >
-                    
                     <span className="text-2xl font-semibold">Add New Article</span>
                     <span className="border-2 border-black rounded-full p-2 flex items-center justify-center">
                       <i className="fas fa-plus text-xl"></i>

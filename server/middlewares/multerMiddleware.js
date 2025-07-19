@@ -52,8 +52,19 @@ const storage = multer.diskStorage({
 
 export const upload = multer({
   storage,
-  limits: { fileSize: 10 * 1024 * 1024 },
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit for images
   fileFilter: (req, file, cb) => {
     cb(null, true);
   }
 });
+
+// Multer error handler middleware
+export const multerErrorHandler = (err, req, res, next) => {
+  if (err instanceof multer.MulterError) {
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(413).json({ message: 'File too large. Max size is 5MB.' });
+    }
+    return res.status(500).json({ message: 'Multer error.', error: err.message });
+  }
+  next(err);
+};

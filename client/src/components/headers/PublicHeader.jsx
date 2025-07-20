@@ -70,6 +70,9 @@ const PublicHeader = ({ theme = "light" }) => {
               </NavLink>
               <NavLink
                 to="/catalogs"
+                onClick={(e) => {
+                  scrollToElementById("main-navbar-top", 50);
+                }}
                 className={({ isActive }) =>
                   `mx-2 text-xs my-auto cursor-pointer ${
                     isActive
@@ -82,6 +85,9 @@ const PublicHeader = ({ theme = "light" }) => {
               </NavLink>
               <NavLink
                 to="/articles"
+                onClick={(e) => {
+                  scrollToElementById("main-navbar-top", 50);
+                }}
                 className={({ isActive }) =>
                   `mx-2 text-xs my-auto cursor-pointer ${
                     isActive

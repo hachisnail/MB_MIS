@@ -13,6 +13,7 @@ import Catalogue from "./pages/public/Catalogue";
 import Appointment from "./pages/public/Appointment";
 import Articles from "./pages/public/Articles";
 import About from "./pages/public/About";
+import Articlecontents from "./pages/public/Articlecontents";
 
 
 import RecoverAccount from "./components/subpages/RecoverAccount";
@@ -87,6 +88,7 @@ const Router = () => {
         <Route path="/appointment" element={<Appointment />} />
         <Route path="/articles" element={<Articles />} />
         <Route path="/about" element={<About />} />
+        <Route path="/article/:id" element={<Articlecontents />} />
 
         <Route
           path="/complete-registration/:token"

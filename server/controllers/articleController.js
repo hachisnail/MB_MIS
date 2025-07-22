@@ -1,5 +1,3 @@
-
-
 import Article from '../models/Article.js';
 
 // Controller to handle uploading multiple article images (not the main thumbnail)
@@ -93,7 +91,7 @@ export const getPublicArticles = async (req, res) => {
     const formattedArticles = articles.map((article) => ({
       ...article.dataValues,
       images: article.images
-        ? `${baseUrl}/uploads/${article.images}`
+        ? `${baseUrl}/uploads/pictures/${article.images}`
         : null
     }));
 
@@ -105,6 +103,7 @@ export const getPublicArticles = async (req, res) => {
 };
 
 // Retrieve a specific public article
+// In your backend controller.js
 export const getPublicArticle = async (req, res) => {
   try {
     const { id } = req.params;
@@ -112,30 +111,30 @@ export const getPublicArticle = async (req, res) => {
       return res.status(400).json({ message: 'Article ID is required.' });
     }
 
-    // Pull the "editImages" field instead of "content_images"
     const article = await Article.findOne({
       where: { article_id: id },
       attributes: [
-        'article_id',
-        'title',
-        'user_id',
-        'upload_date',
-        'images',
-        'editImages',
-        'article_category',
-        'description',
-        'author',
-        'address',
-        'barangay',
-        'status',
-        'upload_period_start',
-        'upload_period_end',
-        'created_at',
-        'updated_at'
+        'article_id', 'title', 'user_id', 'upload_date', 'images', // Get the raw images value
+        'editImages', 'article_category', 'description', 'author',
+        'address', 'barangay', 'status', 'upload_period_start',
+        'upload_period_end', 'created_at', 'updated_at'
       ]
     });
 
-    return res.json(article);
+    if (!article) {
+      return res.status(404).json({ message: 'Article not found.' });
+    }
+
+    // Construct full URL for images before sending
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    const formattedArticle = {
+      ...article.dataValues,
+      images: article.images
+        ? `${baseUrl}/uploads/pictures/${article.images}` // Ensure it points to the correct path
+        : null
+    };
+
+    return res.json(formattedArticle); // Send the formatted article
   } catch (error) {
     console.error('Error fetching public article:', error);
     return res.status(500).json({ message: 'Server error retrieving public article.' });

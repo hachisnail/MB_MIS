@@ -17,5 +17,8 @@
   "bugs": {
     "url": "https://github.com/hachisnail/MB_MIS/issues"
   },
-  "homepage": "https://github.com/hachisnail/MB_MIS#readme"
+  "homepage": "https://github.com/hachisnail/MB_MIS#readme",
+  "dependencies": {
+    "react-icons": "^5.5.0"
+  }
 }

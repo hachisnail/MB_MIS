@@ -1,15 +1,17 @@
 import { useNavigate } from 'react-router-dom';
+import bg from '@/assets/Taoist Landscape Painting.jpg'
 
 const NoMatch = () => {
   const navigate = useNavigate();
 
-  const handleGoBack = () => {
+  const handleGoBack = (e) => {
+    e.preventDefault();
     navigate(-1);
   };
 
   return (
-    <div className='flex items-center h-screen w-screen justify-center'>
-      <div className='flex items-center flex-col'>
+    <div className='bg-cover bg-center bg-no-repeat flex items-center h-screen w-screen justify-center' style={{ backgroundImage: `url(${bg})` }}>
+      <div className='flex text-white items-center flex-col backdrop-blur-xs px-5 py-5 rounded-xl border-2 border-white shadow-2xl'>
         <svg
           xmlns="http://www.w3.org/2000/svg"
           width="32"
@@ -17,7 +19,7 @@ const NoMatch = () => {
           viewBox="0 0 24 24"
           fill="none"
           className='w-40 h-40'
-          stroke="#000000"
+          stroke="#ffffff"
           strokeWidth="1"
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -34,7 +36,7 @@ const NoMatch = () => {
           <span>go back to</span>
           <button
             onClick={handleGoBack}
-            className='hover:text-gray-500 underline'
+            className='hover:text-gray-300 underline cursor-pointer'
           >
             previous page.
           </button>

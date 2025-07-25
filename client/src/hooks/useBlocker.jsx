@@ -10,6 +10,8 @@ export function useBlocker(blocker, when = true) {
     if (!when) return;
 
     const push = navigator.push;
+    const replace = navigator.replace;
+    const go = navigator.go;
 
     navigator.push = (...args) => {
       blocker({
@@ -19,9 +21,27 @@ export function useBlocker(blocker, when = true) {
         },
       });
     };
+    navigator.replace = (...args) => {
+      blocker({
+        retry() {
+          navigator.replace = replace;
+          navigator.replace(...args);
+        },
+      });
+    };
+    navigator.go = (...args) => {
+      blocker({
+        retry() {
+          navigator.go = go;
+          navigator.go(...args);
+        },
+      });
+    };
 
     return () => {
       navigator.push = push;
+      navigator.replace = replace;
+      navigator.go = go;
     };
   }, [navigator, blocker, when]);
 }

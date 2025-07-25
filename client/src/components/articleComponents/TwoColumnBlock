@@ -1,0 +1,67 @@
+import { Node } from '@tiptap/core'
+import { ReactNodeViewRenderer } from '@tiptap/react'
+import TwoColumnComponent from './TwoColumnComponent'
+
+// Import the column nodes
+import { ColumnLeft } from './ColumnLeft'
+import { ColumnRight } from './ColumnRight'
+
+export const TwoColumnBlock = Node.create({
+  name: 'twoColumnBlock',
+  group: 'block',
+  content: 'columnLeft columnRight', // Order matters: left first, then right
+  defining: true,
+  isolating: true,
+
+  parseHTML() {
+    return [
+      {
+        tag: 'div[data-type="two-column-block"]',
+      },
+    ]
+  },
+
+  renderHTML() {
+    return [
+      'div',
+      { 'data-type': 'two-column-block', class: 'two-column-grid' },
+      0,
+    ]
+  },
+
+  addNodeView() {
+    return ReactNodeViewRenderer(TwoColumnComponent)
+  },
+
+  addCommands() {
+    return {
+      insertTwoColumnBlock:
+        () =>
+        ({ commands }) => {
+          return commands.insertContent({
+            type: 'twoColumnBlock',
+            content: [
+              {
+                type: 'columnLeft',
+                content: [
+                  {
+                    type: 'paragraph',
+                    content: [{ type: 'text', text: 'Left side' }],
+                  },
+                ],
+              },
+              {
+                type: 'columnRight',
+                content: [
+                  {
+                    type: 'paragraph',
+                    content: [{ type: 'text', text: 'Right side' }],
+                  },
+                ],
+              },
+            ],
+          })
+        },
+    }
+  },
+})

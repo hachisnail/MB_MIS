@@ -47,15 +47,31 @@ app.use(session({
   },
 }));
 
-// Static file serving
 app.use("/uploads", express.static(UPLOAD_BASE_DIR));
 // console.log("Serving static files from:", path.join(UPLOAD_BASE_DIR, "assets"));
-
-// app.use("/assets", express.static(path.join(UPLOAD_BASE_DIR, "assets")));
 
 // API routes
 app.use("/api", uploadRoutes);
 app.use("/api/auth", authRoutes);
+
+if (process.env.NODE_ENV === "production" ) {
+  const CLIENT_BUILD_PATH = path.resolve(process.cwd(), "..", "client", "dist");
+
+  if (fs.existsSync(path.join(CLIENT_BUILD_PATH, "index.html"))) {
+    app.use(express.static(CLIENT_BUILD_PATH));
+
+    app.get(/^\/(?!api|uploads).*/, (req, res) => {
+      res.sendFile(path.join(CLIENT_BUILD_PATH, "index.html"));
+    });
+  } else {
+    console.warn("Frontend build not found. Skipping static fallback.");
+  }
+}
+
+
+
+
+
 
 const server = http.createServer(app);
 

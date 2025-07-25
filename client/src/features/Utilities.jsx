@@ -15,11 +15,11 @@ export function SearchBar({ placeholder = "Search History", onChange, theme }) {
       break;
     case "light":
       outer = "bg-white border-[#353535]";
-      inner = "text-gray-300 placeholder-gray-500";
+      inner = "text-gray-600 placeholder-gray-500";
       break;
     default:
       outer = "bg-white border-[#353535]";
-      inner = "text-gray-300 placeholder-gray-500";
+      inner = "text-gray-600 placeholder-gray-500";
       break;
   }
 
@@ -28,11 +28,11 @@ export function SearchBar({ placeholder = "Search History", onChange, theme }) {
       <div className={`flex items-center ${outer} border rounded-md px-3 py-2`}>
         <svg
           xmlns="http://www.w3.org/2000/svg"
-          className="h-5 w-5 text-gray-400"
+          className="h-5 w-5"
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
-          strokeWidth={1}
+          strokeWidth={2}
         >
           <path
             strokeLinecap="round"
@@ -50,8 +50,6 @@ export function SearchBar({ placeholder = "Search History", onChange, theme }) {
     </div>
   );
 }
-
-
 
 export function CardDropdownPicker({
   options = [],
@@ -106,10 +104,10 @@ export function CardDropdownPicker({
           >
             {options.map((opt) => (
               <ListboxOption key={opt.value} value={opt.value} as={Fragment}>
-                {({ active, selected }) => (
+                {( props) => (
                   <li
                     className={`cursor-pointer px-4 py-2 text-lg ${
-                      active ? "bg-blue-500 text-white" : optionStyle
+                      props.focus  ? "bg-blue-500 text-white" : optionStyle
                     }`}
                   >
                     {opt.label}

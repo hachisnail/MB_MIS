@@ -1,15 +1,17 @@
-import Logo from "../assets/LOGO.png";
+import Logo from "@/assets/LOGO.png";
+import bg from "@/assets/Image-1-1.jpg";
+
 
 const ServerDown = () => {
   return (
-    <div className="w-screen h-screen flex items-center justify-center">
-      <div className="w-fit h-fit flex flex-col items-center gap-y-10 px-10 pt-10 pb-25 rounded-xl shadow-2xl">
+    <div className="bg-cover bg-center bg-no-repeat w-screen h-screen flex items-center justify-center" style={{ backgroundImage: `url(${bg})`}}>
+      <div className="w-fit h-fit text-white flex flex-col items-center gap-y-10 px-10 pt-10 pb-25 border-white border-2 backdrop-blur-xs rounded-xl shadow-2xl">
         <div className="flex gap-x-2 items-center">
           <img src={Logo} className="w-20" alt="Museo Bulawan Logo" />
-          <i className="w-1 h-16 rounded-4xl bg-gray-600"></i>
+          <i className="w-1 h-16 rounded-4xl bg-white"></i>
           <div className="flex flex-col justify-center">
-            <span className="text-4xl font-bold">Museo Bulawan</span>
-            <span className="text-lg text-gray-600 font-semibold leading-3">
+            <span className="text-4xl font-bold ">Museo Bulawan</span>
+            <span className="text-lg text-gray-200 font-semibold leading-3">
               Management Information System
             </span>
           </div>
@@ -18,7 +20,7 @@ const ServerDown = () => {
             <span className="w-fit text-4xl font-semibold">
             Server down or Flags not set!
             </span>
-            <span className="w-fit text-xl text-gray-500">
+            <span className="w-fit text-xl text-gray-200">
             Please contact server administrators immediately.
             </span>
         </div>

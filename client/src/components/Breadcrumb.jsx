@@ -17,6 +17,11 @@ const routeMeta = [
   { path: "/admin/schedule", title: "Schedules Management" },
   { path: "/admin/article", title: "Articles Management" },
 
+  { path: "/admin/article/add-article", title: "Create a new Article" },
+  { path: "/admin/article/edit-article/:encoded", title: "Edit Article" },
+
+
+
 ];
 
 function safeDecodeBase64(str) {
@@ -56,7 +61,7 @@ const Breadcrumb = () => {
   const crumbs = pathSegments
     .map((segment) => {
       currentLink += `/${segment}`;
-      if (["admin", "preview", "files", "pictures"].includes(segment)) return null;
+      if (["admin", "preview", "files", "pictures", "edit-article"].includes(segment)) return null;
 
       const raw = decodeURIComponent(segment);
       const decoded = safeDecodeBase64(raw);

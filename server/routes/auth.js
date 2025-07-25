@@ -5,6 +5,25 @@ import { getFlags, setFlag } from '../controllers/routerFlagController.js';
 import {displayUsers, displayUser} from "../controllers/userControllers.js"
 import { sendInvitation, completeRegistration, resendInvitation, revokeInvitation, getPendingInvitations } from "../controllers/invitiationController.js";
 import { fetchLogs, fetchLog } from "../controllers/logController.js";
+import {
+  createAppointment,
+  getAllAppointments,
+  getAppointmentById,
+  updateAppointmentStatus,
+  getAppointmentStats,
+  getAttendanceData,
+  getVisitorRecords,
+  getAttendanceDetail,
+  getVisitorRecordDetail,
+  sendEmailNotification
+} from '../controllers/appointmentController.js';
+import {
+  createSchedule,
+  getAllSchedules,
+  updateScheduleStatus,
+  deleteSchedule,
+  getScheduleById
+} from '../controllers/scheduleController.js';
 
 const router = express.Router();
 
@@ -35,6 +54,23 @@ router.get("/user/:fullName", requireAuth, requireRole([1]), displayUser);
 router.get("/logs", requireAuth, requireRole([1]), fetchLogs);
 router.get("/logs/:logId", requireAuth, requireRole([1]), fetchLog);
 
+// Appointment routes
+router.post('/appointment', createAppointment);
+router.get('/appointment', getAllAppointments);
+router.get('/appointment/stats', requireAuth, getAppointmentStats);  // Move this BEFORE :id route
+router.get('/appointment/:id', requireAuth, getAppointmentById);
+router.patch('/appointment/:id/status', requireAuth, updateAppointmentStatus);
+router.get('/attendance', requireAuth, getAttendanceData);
+router.get('/visitor-records', requireAuth, getVisitorRecords);
+router.get('/attendance/:id', requireAuth, getAttendanceDetail);
+router.get('/visitor-record/:visitorId/:appointmentId', requireAuth, getVisitorRecordDetail);
+router.post('/send-email-notification', requireAuth, sendEmailNotification);
 
+// Schedule routes
+router.post('/schedules', requireAuth, createSchedule);
+router.get('/schedules', requireAuth, getAllSchedules);
+router.get('/schedules/:id', requireAuth, getScheduleById);
+router.patch('/schedules/:id/status', requireAuth, updateScheduleStatus);
+router.delete('/schedules/:id', requireAuth, deleteSchedule);
 
 export default router;

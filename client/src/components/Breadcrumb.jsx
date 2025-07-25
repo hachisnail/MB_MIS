@@ -11,11 +11,12 @@ const routeMeta = [
   { path: "/admin/user/:user", title: "View User", theme: "text-gray-400" },
   { path: "/admin/config", title: "System Configuration", theme: "text-gray-400" },
 
-  
+
   { path: "/admin/appointment", title: "Appointments Management" },
+  { path: "/admin/appointment/:encoded", title: "View Appointment", theme: "text-gray-800" },
   { path: "/admin/schedule", title: "Schedules Management" },
   { path: "/admin/article", title: "Articles Management" },
-  
+
 ];
 
 function safeDecodeBase64(str) {

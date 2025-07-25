@@ -28,6 +28,7 @@ import ViewArtifacts from "./components/subpages/ViewArtifacts";
 import Schedule from "./pages/admin/Schedule";
 import Article from "./pages/admin/Article";
 import Appointments from "./pages/admin/Appointments";
+import { AppointmentViewPage } from "./components/subpages/AppointmentViewPage";
 import UserView from "./components/subpages/ViewUser";
 import Configuration from "./pages/admin/Configuration";
 
@@ -71,7 +72,7 @@ const Router = () => {
         <Route element={<AdminLayout />}>
           <Route index element={<Navigate to="dashboard" replace />} />
 
-   
+
           <Route path="dashboard" element={<Dashboard />} />
           {flags["inventory"] && (
             <Route path="inventory" element={<Inventory />} />
@@ -88,6 +89,9 @@ const Router = () => {
           {flags["article"] && <Route path="article" element={<Article />} />}
           {flags["appointment"] && (
             <Route path="appointment" element={<Appointments />} />
+          )}
+          {flags["appointment"] && (
+            <Route path="appointment/:encoded" element={<AppointmentViewPage />} />
           )}
 
           {flags["files"] && (
@@ -117,7 +121,7 @@ const Router = () => {
             {flags["user"] && (
               <Route path="user/:encoded" element={<UserView />} />
             )}
-             <Route path="config" element={<Configuration />} />
+            <Route path="config" element={<Configuration />} />
 
             {flags["user"] && (
               <Route path="user/add-user" element={<CreateUser />} />

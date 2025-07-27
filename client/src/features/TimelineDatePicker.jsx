@@ -85,22 +85,21 @@ export default function TimelineDatePicker({
           )}
 
           <PopoverPanel
-  className={`absolute z-10 mt-2 shadow-lg rounded border ${
-    isDark
-      ? "bg-[#191919] border-[#353535] text-white"
-      : "bg-white border-gray-300 text-black"
-  }`}
->
-  <div className={isDark ? "dark" : ""}>
-    <DayPicker
-      mode="single"
-      selected={selected}
-      onSelect={(date) => handleSelect(date, close)}
-      className="p-3"
-    />
-  </div>
-</PopoverPanel>
-
+            className={`absolute z-10 mt-2  shadow-lg rounded border ${
+              isDark
+                ? "bg-[#191919] border-[#353535] text-white"
+                : "bg-white border-gray-300 text-black"
+            }`}
+          >
+            <div className={isDark ? "dark" : ""}>
+              <DayPicker
+                mode="single"
+                selected={selected}
+                onSelect={(date) => handleSelect(date, close)}
+                className="p-3"
+              />
+            </div>
+          </PopoverPanel>
         </>
       )}
     </Popover>

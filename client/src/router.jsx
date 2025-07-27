@@ -1,58 +1,57 @@
 import { Routes, Route, Navigate, Outlet } from "react-router-dom";
-import { useAuth } from "./context/authContext";
-import Unauthorized from "./pages/Unauthorized";
-import ServerDown from "./pages/ServerDown";
-import { useRouterFlags } from "./context/routerFlagProvider";
+import { useAuth } from "@/context/authContext";
+import Unauthorized from "@/pages/Unauthorized";
+import ServerDown from "@/pages/ServerDown";
+import { useRouterFlags } from "@/context/routerFlagProvider";
 
-import ManageArticle from "./components/subpages/ManageArticle";
+import ManageArticle from "@/components/subpages/ManageArticle";
 
+import Home from "@/pages/public/Home";
+import Login from "@/pages/public/Login";
+import Catalogue from "@/pages/public/Catalogue";
+import Appointment from "@/pages/public/Appointment";
+import Articles from "@/pages/public/Articles";
+import About from "@/pages/public/About";
+import Articlecontents from "@/pages/public/Articlecontents";
+import Contribution from "@/components/subpages/Contribution";
+import Support from "@/components/subpages/Support";
 
-import Home from "./pages/public/Home";
-import Login from "./pages/public/Login";
-import Catalogue from "./pages/public/Catalogue";
-import Appointment from "./pages/public/Appointment";
-import Articles from "./pages/public/Articles";
-import About from "./pages/public/About";
-import Articlecontents from "./pages/public/Articlecontents";
+import RecoverAccount from "@/components/subpages/RecoverAccount";
 
+import MaintenanceMode from "@/pages/MaintenanceMode";
 
-import RecoverAccount from "./components/subpages/RecoverAccount";
+import CompleteRegistrationPage from "@/components/subpages/CompleteRegistrationPage";
+import RegistrationSuccess from "@/components/subpages/RegistrationSuccessPage";
 
-import MaintenanceMode from "./pages/MaintenanceMode";
-
-import CompleteRegistrationPage from "./components/subpages/CompleteRegistrationPage";
-import RegistrationSuccess from "./components/subpages/RegistrationSuccessPage";
-
-import ElectionResultParser from "./pages/ElectionRParser";
+import ElectionResultParser from "@/pages/ElectionRParser";
 
 // admin pages
-import Dashboard from "./pages/admin/Dashboard";
-import Logs from "./pages/admin/Logs";
-import ViewLogs from "./components/subpages/ViewLogs";
-import User from "./pages/admin/User";
-import CreateUser from "./components/subpages/CreateUsers";
-import Inventory from "./pages/admin/Inventory";
-import NoMatch from "./pages/NoMatch";
-import RequireRole from "./lib/requiredRole";
-import Acquisition from "./pages/admin/Acquisition";
-import ViewArtifacts from "./components/subpages/ViewArtifacts";
-import Schedule from "./pages/admin/Schedule";
-import Article from "./pages/admin/Article";
-import Appointments from "./pages/admin/Appointments";
-import { AppointmentViewPage } from "./components/subpages/AppointmentViewPage";
-import UserView from "./components/subpages/ViewUser";
-import Configuration from "./pages/admin/Configuration";
+import Dashboard from "@/pages/admin/Dashboard";
+import Logs from "@/pages/admin/Logs";
+import ViewLogs from "@/components/subpages/ViewLogs";
+import User from "@/pages/admin/User";
+import CreateUser from "@/components/subpages/CreateUsers";
+import Inventory from "@/pages/admin/Inventory";
+import NoMatch from "@/pages/NoMatch";
+import RequireRole from "@/lib/requiredRole";
+import Acquisition from "@/pages/admin/Acquisition";
+import ViewArtifacts from "@/components/subpages/ViewArtifacts";
+import Schedule from "@/pages/admin/Schedule";
+import Article from "@/pages/admin/Article";
+import Appointments from "@/pages/admin/Appointments";
+import { AppointmentViewPage } from "@/components/subpages/AppointmentViewPage";
+import UserView from "@/components/subpages/ViewUser";
+import Configuration from "@/pages/admin/Configuration";
 // import ArticleModal from "./components/subpages/ArticleModal";
 
 // sandbox
-import FileUploadDownload from "./sandbox/fileUploadDownload";
-import FilePreviewer from "./features/FilePreviewer";
-import ModalsTest from "./sandbox/ModalsTest";
-import RouteFlagToggle from "./sandbox/RouteFlagToggle";
+import FileUploadDownload from "@/sandbox/fileUploadDownload";
+import FilePreviewer from "@/features/FilePreviewer";
+import ModalsTest from "@/sandbox/ModalsTest";
+import RouteFlagToggle from "@/sandbox/RouteFlagToggle";
 
-import AdminLayout from "./components/layout/AdminLayout";
-import PublicLayout from "./components/layout/PublicLayout";
-
+import AdminLayout from "@/components/layout/AdminLayout";
+import PublicLayout from "@/components/layout/PublicLayout";
 
 const RequireAuth = () => {
   const { user } = useAuth();
@@ -89,6 +88,9 @@ const Router = () => {
         <Route path="/appointment" element={<Appointment />} />
         <Route path="/articles" element={<Articles />} />
         <Route path="/about" element={<About />} />
+        <Route path="/about/support" element={<Support />} />
+        <Route path="/about/support/contribution" element={<Contribution />} />
+
         <Route path="/article/:id" element={<Articlecontents />} />
 
         <Route
@@ -98,12 +100,11 @@ const Router = () => {
         <Route path="/registration-success" element={<RegistrationSuccess />} />
         <Route path="/parser" element={<ElectionResultParser />} />
       </Route>
+
       {/* Protected routes */}
       <Route path="/admin" element={<RequireAuth />}>
         <Route element={<AdminLayout />}>
           <Route index element={<Navigate to="dashboard" replace />} />
-
-
 
           <Route path="dashboard" element={<Dashboard />} />
           {flags["inventory"] && (
@@ -119,10 +120,15 @@ const Router = () => {
             <Route path="schedule" element={<Schedule />} />
           )}
           {flags["article"] && <Route path="article" element={<Article />} />}
-          {flags["article"] && <Route path="article/add-article" element={<ManageArticle />} />}
-          {flags["article"] && <Route path="article/edit-article/:encoded" element={<ManageArticle />} />}
-
-
+          {flags["article"] && (
+            <Route path="article/add-article" element={<ManageArticle />} />
+          )}
+          {flags["article"] && (
+            <Route
+              path="article/edit-article/:encoded"
+              element={<ManageArticle />}
+            />
+          )}
 
           {flags["article"] && (
             <Route path="article/add-article" element={<ManageArticle />} />
@@ -135,7 +141,10 @@ const Router = () => {
             <Route path="appointment" element={<Appointments />} />
           )}
           {flags["appointment"] && (
-            <Route path="appointment/:encoded" element={<AppointmentViewPage />} />
+            <Route
+              path="appointment/:encoded"
+              element={<AppointmentViewPage />}
+            />
           )}
 
           {flags["files"] && (

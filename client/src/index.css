@@ -1,4 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Hina+Mincho&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Hind+Kochi:wght@400;500;600;700&display=swap');
+
 @import "tailwindcss";
 /* @import '../node_modules/modern-normalize/modern-normalize.css'; */
 
@@ -55,6 +57,8 @@ body {
 @theme {
     --breakpoint-3xl: 1800px;
     --font-hina: "Hina Mincho", "serif";
+    --font-hind: "Hind Kochi", "serif";
+   --shadow-inset-test: inset 0 1px 1px rgba(0, 0, 0, 0.05); 
 }
 
 @custom-variant 1xl (@media (max-height: 800px));

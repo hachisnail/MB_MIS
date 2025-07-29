@@ -1,6 +1,7 @@
 import { Schedule } from '../models/scheduleModels.js';
 import { Appointment, AppointmentStatus } from '../models/appointmentIndex.js';
 import { Op } from 'sequelize';
+import { createLog } from '../services/logService.js';
 
 /**
  * Create a new schedule
@@ -216,6 +217,24 @@ export const createSchedule = async (req, res) => {
       availability
     });
 
+    // Get user info for logging
+    const userId = req.session?.user?.id || 1; // Default to system user
+    const username = req.session?.user?.username || 'System';
+
+    // Create log entry
+    const logDescription = `Schedule "${title}" created for ${date}`;
+    const details = `${username} created a ${availability.toLowerCase()} schedule from ${start_time} to ${end_time}`;
+    
+    await createLog(
+      'create',
+      'Schedule',
+      logDescription,
+      userId,
+      null,
+      schedule.toJSON(),
+      details
+    );
+
     res.status(201).json({
       message: 'Schedule created successfully',
       schedule_id: schedule.schedule_id
@@ -300,8 +319,30 @@ export const updateScheduleStatus = async (req, res) => {
       return res.status(404).json({ message: 'Schedule not found.' });
     }
 
+    // Capture before state for logging
+    const beforeState = schedule.toJSON();
+
     schedule.status = status;
     await schedule.save();
+
+    // Get user info for logging
+    const userId = req.session?.user?.id || 1; // Default to system user
+    const username = req.session?.user?.username || 'System';
+
+    // Create log entry
+    const statusText = status.toLowerCase().replace('_', ' ');
+    const logDescription = `Schedule "${schedule.title}" status updated to ${statusText}`;
+    const details = `${username} changed schedule status from ${beforeState.status} to ${status} for schedule on ${schedule.date}`;
+    
+    await createLog(
+      'update',
+      'Schedule',
+      logDescription,
+      userId,
+      beforeState,
+      schedule.toJSON(),
+      details
+    );
 
     return res.status(200).json({
       message: 'Schedule status updated successfully',
@@ -328,7 +369,28 @@ export const deleteSchedule = async (req, res) => {
       return res.status(404).json({ message: 'Schedule not found.' });
     }
 
+    // Capture schedule data before deletion for logging
+    const scheduleData = schedule.toJSON();
+
     await schedule.destroy();
+
+    // Get user info for logging
+    const userId = req.session?.user?.id || 1; // Default to system user
+    const username = req.session?.user?.username || 'System';
+
+    // Create log entry
+    const logDescription = `Schedule "${scheduleData.title}" deleted`;
+    const details = `${username} deleted schedule "${scheduleData.title}" that was scheduled for ${scheduleData.date} from ${scheduleData.start_time} to ${scheduleData.end_time}`;
+    
+    await createLog(
+      'delete',
+      'Schedule',
+      logDescription,
+      userId,
+      scheduleData,
+      null,
+      details
+    );
 
     return res.status(200).json({
       message: 'Schedule deleted successfully'

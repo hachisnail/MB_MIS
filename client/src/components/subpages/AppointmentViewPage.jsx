@@ -1,13 +1,13 @@
 // FileName: /AppointmentModal.jsx
 import React, { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import axiosClient from '../../lib/axiosClient';
 import { useSocketClient } from "../../context/authContext";
 import ConfirmationModal from '../modals/ConfirmationModal';
 import PopupModal from '../modals/PopupModal';
 import Modal from '../modals/Modal';
 import StyledButton from '../buttons/StyledButton';
-import Toast from '../function/Toast';
+import Toast from '../../features/Toast';
 
 export const AppointmentViewPage = ({
   showModal,
@@ -21,14 +21,14 @@ export const AppointmentViewPage = ({
   // Check if we're being used as a route component
   const { encoded } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const socket = useSocketClient();
   const isRouteComponent = !!encoded;
 
-  // State for when used as a route component
+  // State for when used as route component
   const [routeModalData, setRouteModalData] = useState(null);
   const [loading, setLoading] = useState(isRouteComponent);
   const [toastConfig, setToastConfig] = useState({
-    isVisible: false,
     message: '',
     type: 'success'
   });
@@ -36,13 +36,25 @@ export const AppointmentViewPage = ({
   // Use prop data or route data
   const modalData = isRouteComponent ? routeModalData : propModalData;
 
+  // Determine if we should show the respond section
+  const shouldShowRespondSection = () => {
+    if (!showRespondSection) return false;
+
+    // If we're in route mode, check where we came from
+    if (isRouteComponent && location.state?.cameFrom) {
+      // Hide respond section if coming from attendance or visitor records
+      return location.state.cameFrom === 'forms' || location.state.cameFrom === 'schedule';
+    }
+
+    return true;
+  };
+
   // Toast functions for route mode
   const showToast = useCallback((message, type = 'success') => {
     if (propShowToast) {
       propShowToast(message, type);
     } else {
       setToastConfig({
-        isVisible: true,
         message,
         type
       });
@@ -52,9 +64,10 @@ export const AppointmentViewPage = ({
   const hideToast = useCallback(() => {
     setToastConfig(prevConfig => ({
       ...prevConfig,
-      isVisible: false
+      message: ''
     }));
   }, []);
+
 
   // Fetch appointment details when used as route
   const fetchAppointmentDetails = useCallback(async (appointmentId) => {
@@ -107,9 +120,19 @@ export const AppointmentViewPage = ({
     if (propOnClose) {
       propOnClose();
     } else {
-      navigate('/admin/appointment');
+      // Check if location state has cameFrom
+      const cameFrom = location.state?.cameFrom;
+      if (cameFrom === 'schedule') {
+        navigate('/admin/schedule');
+      } else if (cameFrom === 'attendance' || cameFrom === 'visitorRecords') {
+        // Navigate back to appointments page with the correct tab
+        navigate('/admin/appointment', { state: { activeTab: cameFrom } });
+      } else {
+        navigate('/admin/appointment');
+      }
     }
-  }, [propOnClose, navigate]);
+  }, [propOnClose, navigate, location.state]);
+
 
   // Send handler
   const onSend = useCallback(() => {
@@ -126,8 +149,31 @@ export const AppointmentViewPage = ({
     if (isRouteComponent && encoded) {
       try {
         const decoded = atob(encoded);
-        const appointmentId = parseInt(decoded.split(' ')[0], 10);
-        fetchAppointmentDetails(appointmentId);
+        // Extract appointment ID from the decoded string
+        // The format could be either:
+        // 1. Old format: "123 " (just ID with space)
+        // 2. New format: "John Doe - Confirmed - Jan 15 - 10:00 AM - 12:00 PM - 5 visitors"
+        // 3. Attendance format: "Appointment 123 - John Doe - Jan 15, 2024 - Purpose..."
+
+        let appointmentId;
+
+        // Extract appointment ID from the beginning of the decoded string
+        // Format is now simply: "123 John Doe"
+        const match = decoded.match(/^(\d+)\s/);
+        if (match) {
+          appointmentId = parseInt(match[1], 10);
+        } else {
+          console.error('Unable to extract appointment ID from breadcrumb:', decoded);
+          navigate('/admin/appointment');
+          return;
+        }
+
+        if (appointmentId) {
+          fetchAppointmentDetails(appointmentId);
+        } else {
+          console.error('Invalid appointment ID:', decoded);
+          navigate('/admin/appointment');
+        }
       } catch (error) {
         console.error('Failed to decode appointment ID from URL:', error);
         navigate('/admin/appointment');
@@ -281,6 +327,7 @@ export const AppointmentViewPage = ({
         subject: `Appointment ${newStatus.toLowerCase()} - Museo Bulawan`,
         message: message,
         status: newStatus,
+        appointmentId: modalData.appointmentId,
         appointmentDetails: {
           visitorName: `${modalData.fromFirstName} ${modalData.fromLastName}`,
           preferredDate: modalData.preferredDate,
@@ -289,14 +336,17 @@ export const AppointmentViewPage = ({
         }
       };
 
+      let emailSent = false;
       try {
         await axiosClient.post(
-          `/auth/send-email-notification`, // <--- FIXED: Remove /api prefix to match User.jsx pattern
+          `/auth/send-email-notification`,
           emailData
         );
         console.log('Email notification sent.');
+        emailSent = true;
       } catch (emailError) {
         console.error('Error sending email notification:', emailError);
+        emailSent = false;
         // Log error but proceed with status update
       }
 
@@ -305,6 +355,26 @@ export const AppointmentViewPage = ({
         await updateAppointmentStatus(modalData.appointmentId, newStatus, presentValue);
       } else {
         await updateAppointmentStatus(modalData.appointmentId, newStatus);
+      }
+
+      // Create a comprehensive log entry for the entire appointment response action
+      try {
+        const logData = {
+          appointmentId: modalData.appointmentId,
+          status: newStatus,
+          presentCount: approveVisit === 'arrive' ? parseInt(presentCount, 10) || 0 : undefined,
+          emailSent: emailSent,
+          message: message,
+          visitorName: `${modalData.fromFirstName} ${modalData.fromLastName}`,
+          recipientEmail: modalData.email
+        };
+
+        // The logging will happen automatically through the backend middleware
+        // when we update the appointment status, so we don't need a separate API call
+        console.log('Appointment response completed with log data:', logData);
+      } catch (logError) {
+        console.error('Error creating log entry:', logError);
+        // Don't fail the operation if logging fails
       }
 
       onSend && onSend(); // Trigger parent component's success callback
@@ -440,7 +510,7 @@ export const AppointmentViewPage = ({
 
       <hr className="border-gray-300 my-6" />
 
-      {showRespondSection && (
+      {shouldShowRespondSection() && (
         <div>
           <h3 className="text-2xl font-bold mb-6">Respond</h3>
 
@@ -691,7 +761,7 @@ export const AppointmentViewPage = ({
         </div>
       )}
 
-      {!showRespondSection && (
+      {!shouldShowRespondSection() && (
         <div className="flex justify-end mt-6">
           <StyledButton
             onClick={onClose}
@@ -794,10 +864,10 @@ export const AppointmentViewPage = ({
         <Toast
           message={toastConfig.message}
           type={toastConfig.type}
-          isVisible={toastConfig.isVisible}
           onClose={hideToast}
         />
       )}
+
     </>
   );
 };

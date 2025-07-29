@@ -1,7 +1,6 @@
 // src/components/DayScheduler.jsx
 
 import React from 'react';
-import 'react-calendar/dist/Calendar.css';
 import 'react-time-picker/dist/TimePicker.css';
 
 // ---------------- UTILITY FUNCTIONS ----------------

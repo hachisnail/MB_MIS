@@ -1,23 +1,30 @@
 // FileName: /Appointments.jsx
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { NavLink } from 'react-router-dom';
-import { useSocketClient } from "../../context/authContext";
+import { useSocketClient } from "@/context/authContext";
+import { useLocation } from 'react-router-dom';
 import axiosClient from '../../lib/axiosClient';
 import TimelineDatePicker from '../../features/TimelineDatePicker';
-import Toast from '../../components/function/Toast';
+import Toast from '../../features/Toast';
 import { SearchBar, CardDropdownPicker } from "../../features/Utilities";
-import Breadcrumb from '../../components/Breadcrumb';
+import { LoadingSpinner, ErrorBox, EmptyMessage } from "../../components/list/commons";
+import {
+  AppointmentFormItem,
+  AttendanceItem,
+  VisitorRecordItem,
+  standardizeStatus,
+  formatDateForDisplay,
+  formatDate
+} from "../../components/list/AppointmentsList";
 
 
 const Appointments = () => {
+  const location = useLocation();
+
+  // State management
   const [selectedDate, setSelectedDate] = useState(null);
   const [appointments, setAppointments] = useState([]);
-  const [sortDirection, setSortDirection] = useState('asc');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('All Statuses');
-  const [columnFilter, setColumnFilter] = useState('');
-
-  // Stats from backend
+  const [attendanceData, setAttendanceData] = useState([]);
+  const [visitorRecords, setVisitorRecords] = useState([]);
   const [stats, setStats] = useState({
     approved: 0,
     rejected: 0,
@@ -27,141 +34,57 @@ const Appointments = () => {
     present: 0
   });
 
-  // Track the currently active tab
-  const [activeTab, setActiveTab] = useState('forms');
-
-  // State for visitor record row expansion
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [activeTab, setActiveTab] = useState(() => {
+    // Check if we're returning from a view page with a specific tab
+    return location.state?.activeTab || 'forms';
+  });
   const [expandedRecordId, setExpandedRecordId] = useState(null);
 
-  // State for visitor records and attendance data
-  const [visitorRecords, setVisitorRecords] = useState([]);
-  const [attendanceData, setAttendanceData] = useState([]);
+  // Filters
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('All Statuses');
+  const [columnFilter, setColumnFilter] = useState('');
+  const [sortDirection, setSortDirection] = useState('asc');
 
-  // Toast message
+  // Toast
   const [toastConfig, setToastConfig] = useState({
-    isVisible: false,
     message: '',
     type: 'success'
   });
 
-  // const API_URL = import.meta.env.VITE_API_BASE_URL; // <--- REMOVE OR COMMENT OUT THIS LINE
+  const socket = useSocketClient();
 
-  // Memoized showToast and hideToast functions
+  // Update active tab when location state changes
+  useEffect(() => {
+    if (location.state?.activeTab) {
+      setActiveTab(location.state.activeTab);
+    }
+  }, [location.state]);
+
+  // Toast functions
   const showToast = useCallback((message, type = 'success') => {
-    setToastConfig({
-      isVisible: true,
-      message,
-      type
-    });
-  }, []); // No dependencies, so it's stable
+    setToastConfig({ message, type });
+  }, []);
 
   const hideToast = useCallback(() => {
-    setToastConfig(prevConfig => ({
-      ...prevConfig,
-      isVisible: false
-    }));
-  }, []); // No dependencies, so it's stable
+    setToastConfig(prevConfig => ({ ...prevConfig, message: '' }));
+  }, []);
 
-  // Helper functions (pure, no need for useCallback unless passed as prop to memoized child)
-  const convertTo12Hour = (timeStr) => {
-    if (!timeStr) return '';
-    const cleanTime = timeStr.includes(':') ? timeStr.split(':').slice(0, 2).join(':') : timeStr;
-    const [hourStr, minuteStr] = cleanTime.split(':');
-    let hour = parseInt(hourStr, 10);
-    const minute = parseInt(minuteStr || '0', 10);
-    const period = hour >= 12 ? 'PM' : 'AM';
-    hour = hour % 12 || 12;
-    return `${hour}:${minute.toString().padStart(2, '0')} ${period}`;
-  };
-
-  const formatDateForDisplay = (date) => {
-    if (!date) return 'N/A';
-    return new Date(date).toLocaleDateString('en-US', {
-      month: 'long',
-      day: 'numeric',
-      year: 'numeric'
-    });
-  };
-
-  const formatTimeDisplay = (start_time, end_time) => {
-    if (!start_time || !end_time) {
-      return 'Flexible';
-    }
-    const formattedStart = convertTo12Hour(start_time);
-    const formattedEnd = convertTo12Hour(end_time);
-    if (formattedStart && formattedEnd) {
-      return `${formattedStart} - ${formattedEnd}`;
-    }
-    return 'Flexible';
-  };
-
-  const standardizeStatus = useCallback((status) => {
-    if (!status) return 'To Review';
-    const formatted = status.toLowerCase().replace(/_/g, ' ');
-    return formatted
-      .split(' ')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ');
-  }, []); // No dependencies, so it's stable
-
-  const getStatusLabel = useCallback((status) => {
-    const standardStatus = standardizeStatus(status);
-    let bgColor = 'bg-gray-200';
-    let textColor = 'text-gray-800';
-
-    switch (standardStatus.toLowerCase()) {
-      case 'confirmed':
-        bgColor = 'bg-green-500';
-        textColor = 'text-white';
-        break;
-      case 'rejected':
-        bgColor = 'bg-red-600';
-        textColor = 'text-white';
-        break;
-      case 'failed':
-        bgColor = 'bg-orange-600';
-        textColor = 'text-white';
-        break;
-      case 'to review':
-        bgColor = 'bg-purple-200';
-        textColor = 'text-black';
-        break;
-      case 'completed':
-        bgColor = 'bg-blue-600';
-        textColor = 'text-white';
-        break;
-      default:
-        break;
-    }
-    bgColor += ' h-9 w-30 flex items-center justify-center';
-    return (
-      <span className={`${bgColor} ${textColor} px-2 py-1 rounded inline-flex items-center justify-center`}>
-        {standardStatus}
-      </span>
-    );
-  }, [standardizeStatus]); // Depends on standardizeStatus, which is stable
-
-  const formatDate = useCallback((dateStr) => {
-    if (!dateStr) return 'N/A';
-    const date = new Date(dateStr);
-    return `${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}-${date.getFullYear()}`;
-  }, []); // Stable
-
-  const toggleRecordExpansion = useCallback((id) => {
-    setExpandedRecordId(prevId => prevId === id ? null : id);
-  }, []); // Stable
+  // Helper function to format date for API
 
   const formatDateForAPI = useCallback((date) => {
     if (!date) return null;
     const d = new Date(date);
     if (isNaN(d.getTime())) return null;
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  }, []); // Stable
+  }, []);
 
-  // Refactored fetch functions to be more generic and reusable
+  // Data fetching
   const fetchData = useCallback(async (endpoint, setter) => {
     try {
-      let url = `/auth/${endpoint}`; // <--- FIXED: Remove /api prefix to match User.jsx pattern
+      let url = `/auth/${endpoint}`;
       if (selectedDate) {
         const dateParam = formatDateForAPI(selectedDate);
         if (dateParam) {
@@ -176,46 +99,47 @@ const Appointments = () => {
     }
   }, [selectedDate, formatDateForAPI, showToast]);
 
-  // Combined data fetching into a single effect
+  const fetchAllData = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      await Promise.all([
+        fetchData('appointment', setAppointments),
+        fetchData('appointment/stats', setStats),
+        fetchData('attendance', setAttendanceData),
+        fetchData('visitor-records', setVisitorRecords)
+      ]);
+    } catch (err) {
+      setError('Failed to load data. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [fetchData]);
+
   useEffect(() => {
-    // This effect will run on mount and whenever selectedDate changes
-    fetchData('appointment', setAppointments);
-    fetchData('appointment/stats', setStats);
-    fetchData('attendance', setAttendanceData);
-    fetchData('visitor-records', setVisitorRecords);
-  }, [selectedDate, fetchData]); // Only re-run when selectedDate or fetchData (which is stable) changes
+    fetchAllData();
+  }, [selectedDate, fetchAllData]);
 
-  const handleAttendanceRowClick = useCallback((row) => {
-    if (!row || !row.appointment_id) {
-      console.error('Missing appointment ID');
-      showToast('Cannot find appointment details', 'error');
-      return;
-    }
+  // Socket listeners
+  useEffect(() => {
+    if (!socket) return;
 
-    // Create encoded ID for navigation
-    const encodedId = btoa(`${row.appointment_id} `);
-    return `/admin/appointment/${encodedId}`;
-  }, [showToast]);
+    const handleAppointmentChange = () => {
+      fetchAllData();
+    };
 
-  const handleVisitorDetailClick = useCallback((detail, record) => {
-    if (!detail.appointment_id) {
-      console.error('Missing appointment ID');
-      showToast('Cannot find visitor details', 'error');
-      return;
-    }
+    socket.onDbChange("Appointment", "*", handleAppointmentChange);
+    socket.onDbChange("AppointmentStatus", "*", handleAppointmentChange);
+    socket.onDbChange("Visitor", "*", handleAppointmentChange);
 
-    // Create encoded ID for navigation
-    const encodedId = btoa(`${detail.appointment_id} `);
-    return `/admin/appointment/${encodedId}`;
-  }, [showToast]);
+    return () => {
+      socket.offDbChange("Appointment", "*", handleAppointmentChange);
+      socket.offDbChange("AppointmentStatus", "*", handleAppointmentChange);
+      socket.offDbChange("Visitor", "*", handleAppointmentChange);
+    };
+  }, [socket, fetchAllData]);
 
-  const handleRowClick = useCallback((appt) => {
-    if (!appt || !appt.appointment_id) return;
-
-    // Create encoded ID for navigation
-    const encodedId = btoa(`${appt.appointment_id} `);
-    return `/admin/appointment/${encodedId}`;
-  }, []);
+  // Event handlers
 
   const handleDateChange = useCallback((date) => {
     setSelectedDate(date);
@@ -224,131 +148,144 @@ const Appointments = () => {
     } else {
       showToast('Showing all dates', 'info');
     }
-  }, [showToast]); // Stable
+  }, [showToast]);
+
+  const toggleRecordExpansion = useCallback((id) => {
+    setExpandedRecordId(prevId => prevId === id ? null : id);
+  }, []);
 
   const tabButtonStyle = useCallback((tabName) => {
     return tabName === activeTab
       ? 'bg-black text-white border-black'
       : 'border-gray-500 text-black';
-  }, [activeTab]); // Stable
+  }, [activeTab]);
 
-  /**
-   * Use useMemo for filtered data to ensure it only re-calculates when dependencies change
-   */
-  const memoizedFilteredData = useMemo(() => {
-    let currentFilteredAppointments = [];
-    let currentFilteredAttendance = [];
-    let currentFilteredVisitorRecords = [];
+  // Filtering and sorting logic
+  const filteredData = useMemo(() => {
+    let filteredAppointments = [...appointments];
+    let filteredAttendance = [...attendanceData];
+    let filteredVisitorRecords = [...visitorRecords];
 
-    // Forms (Appointments) filtering and sorting
-    currentFilteredAppointments = [...appointments];
+    // Apply search filter
     if (searchQuery) {
-      currentFilteredAppointments = currentFilteredAppointments.filter(appt =>
+      filteredAppointments = filteredAppointments.filter(appt =>
         (appt.Visitor?.first_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
         (appt.Visitor?.last_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (appt.preferred_time || '').toLowerCase().includes((searchQuery || '').toLowerCase()) ||
-        (appt.AppointmentStatus?.status || '').toLowerCase().includes((searchQuery || '').toLowerCase())
+        (appt.preferred_time || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (appt.AppointmentStatus?.status || '').toLowerCase().includes(searchQuery.toLowerCase())
       );
-    }
-    if (statusFilter !== 'All Statuses') {
-      currentFilteredAppointments = currentFilteredAppointments.filter(appt => {
-        const status = standardizeStatus(appt.AppointmentStatus?.status || 'To Review');
-        return status === statusFilter;
-      });
-    }
-    if (activeTab === 'forms' && columnFilter) {
-      currentFilteredAppointments.sort((a, b) => {
-        // Sorting logic for forms
-        switch (columnFilter) {
-          case 'creation_date':
-            return sortDirection === 'asc' ? new Date(a.creation_date) - new Date(b.creation_date) : new Date(b.creation_date) - new Date(a.creation_date);
-          case 'visitor_name':
-            return sortDirection === 'asc' ? `${a.Visitor?.last_name} ${a.Visitor?.first_name}`.localeCompare(`${b.Visitor?.last_name} ${b.Visitor?.first_name}`) : `${b.Visitor?.last_name} ${b.Visitor?.first_name}`.localeCompare(`${a.Visitor?.last_name} ${a.Visitor?.first_name}`);
-          case 'preferred_time':
-            return sortDirection === 'asc' ? (a.start_time || '').localeCompare(b.start_time || '') : (b.start_time || '').localeCompare(a.start_time || '');
-          case 'visitor_count':
-            return sortDirection === 'asc' ? (a.population_count || 0) - (b.population_count || 0) : (b.population_count || 0) - (a.population_count || 0);
-          case 'status':
-            const statusA = standardizeStatus(a.AppointmentStatus?.status || 'To Review');
-            const statusB = standardizeStatus(b.AppointmentStatus?.status || 'To Review');
-            return sortDirection === 'asc' ? statusA.localeCompare(statusB) : statusB.localeCompare(statusA);
-          case 'updated_at':
-            const dateA = a.AppointmentStatus?.updated_at ? new Date(a.AppointmentStatus.updated_at) : new Date(0);
-            const dateB = b.AppointmentStatus?.updated_at ? new Date(b.AppointmentStatus.updated_at) : new Date(0);
-            return sortDirection === 'asc' ? dateA - dateB : dateB - dateA;
-          default:
-            return 0;
-        }
-      });
-    }
 
-    // Attendance filtering and sorting
-    currentFilteredAttendance = [...attendanceData];
-    if (searchQuery) {
-      currentFilteredAttendance = currentFilteredAttendance.filter(record =>
+      filteredAttendance = filteredAttendance.filter(record =>
         record.visitorName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         record.purpose?.toLowerCase().includes(searchQuery.toLowerCase())
       );
-    }
-    if (activeTab === 'attendance' && columnFilter) {
-      currentFilteredAttendance.sort((a, b) => {
-        // Sorting logic for attendance
-        switch (columnFilter) {
-          case 'date':
-            return sortDirection === 'asc' ? new Date(a.date) - new Date(b.date) : new Date(b.date) - new Date(a.date);
-          case 'visitor_name':
-            return sortDirection === 'asc' ? a.visitorName.localeCompare(b.visitorName) : b.visitorName.localeCompare(a.visitorName);
-          case 'purpose':
-            return sortDirection === 'asc' ? a.purpose.localeCompare(b.purpose) : b.purpose.localeCompare(a.purpose);
-          case 'preferred_date':
-            return sortDirection === 'asc' ? new Date(a.preferredDate) - new Date(b.preferredDate) : new Date(b.preferredDate) - new Date(a.preferredDate);
-          case 'expected_visitor':
-            return sortDirection === 'asc' ? parseInt(a.expectedVisitor || 0) - parseInt(b.expectedVisitor || 0) : parseInt(b.expectedVisitor || 0) - parseInt(a.expectedVisitor || 0);
-          case 'present':
-            const presentA = a.present === 'ongoing' ? 0 : parseInt(a.present || 0);
-            const presentB = b.present === 'ongoing' ? 0 : parseInt(b.present || 0);
-            return sortDirection === 'asc' ? presentA - presentB : presentB - presentA;
-          default:
-            return 0;
-        }
-      });
-    }
 
-    // Visitor Records filtering and sorting
-    currentFilteredVisitorRecords = [...visitorRecords];
-    if (searchQuery) {
-      currentFilteredVisitorRecords = currentFilteredVisitorRecords.filter(record =>
+      filteredVisitorRecords = filteredVisitorRecords.filter(record =>
         record.visitorName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (record.date && record.date.toString().toLowerCase().includes(searchQuery.toLowerCase()))
       );
     }
-    if (activeTab === 'visitorRecords' && columnFilter) {
-      currentFilteredVisitorRecords.sort((a, b) => {
-        // Sorting logic for visitor records
-        switch (columnFilter) {
-          case 'date':
-            const dateA = a.date ? new Date(a.date) : new Date(0);
-            const dateB = b.date ? new Date(b.date) : new Date(0);
-            return sortDirection === 'asc' ? dateA - dateB : dateB - dateA;
-          case 'visitor_name':
-            return sortDirection === 'asc' ? (a.visitorName || '').localeCompare(b.visitorName || '') : (b.visitorName || '').localeCompare(a.visitorName || '');
-          case 'visit_counts':
-            return sortDirection === 'asc' ? (a.visitCount || 0) - (b.visitCount || 0) : (b.visitCount || 0) - (a.visitCount || 0);
-          default:
-            return 0;
-        }
+
+    // Apply status filter for appointments
+    if (statusFilter !== 'All Statuses') {
+      filteredAppointments = filteredAppointments.filter(appt => {
+        const status = standardizeStatus(appt.AppointmentStatus?.status || 'To Review');
+        return status === statusFilter;
       });
     }
 
-    return {
-      appointments: currentFilteredAppointments,
-      attendanceData: currentFilteredAttendance,
-      visitorRecords: currentFilteredVisitorRecords
+    // Apply sorting
+    const sortData = (data, type) => {
+      if (!columnFilter) return data;
+
+      const sorted = [...data];
+      sorted.sort((a, b) => {
+        let compareResult = 0;
+
+        switch (type) {
+          case 'forms':
+            switch (columnFilter) {
+              case 'creation_date':
+                compareResult = new Date(a.creation_date) - new Date(b.creation_date);
+                break;
+              case 'visitor_name':
+                compareResult = `${a.Visitor?.last_name} ${a.Visitor?.first_name}`.localeCompare(
+                  `${b.Visitor?.last_name} ${b.Visitor?.first_name}`
+                );
+                break;
+              case 'preferred_time':
+                compareResult = (a.start_time || '').localeCompare(b.start_time || '');
+                break;
+              case 'visitor_count':
+                compareResult = (a.population_count || 0) - (b.population_count || 0);
+                break;
+              case 'status':
+                const statusA = standardizeStatus(a.AppointmentStatus?.status || 'To Review');
+                const statusB = standardizeStatus(b.AppointmentStatus?.status || 'To Review');
+                compareResult = statusA.localeCompare(statusB);
+                break;
+              case 'updated_at':
+                const dateA = a.AppointmentStatus?.updated_at ? new Date(a.AppointmentStatus.updated_at) : new Date(0);
+                const dateB = b.AppointmentStatus?.updated_at ? new Date(b.AppointmentStatus.updated_at) : new Date(0);
+                compareResult = dateA - dateB;
+                break;
+            }
+            break;
+
+          case 'attendance':
+            switch (columnFilter) {
+              case 'date':
+                compareResult = new Date(a.date) - new Date(b.date);
+                break;
+              case 'visitor_name':
+                compareResult = a.visitorName.localeCompare(b.visitorName);
+                break;
+              case 'purpose':
+                compareResult = a.purpose.localeCompare(b.purpose);
+                break;
+              case 'preferred_date':
+                compareResult = new Date(a.preferredDate) - new Date(b.preferredDate);
+                break;
+              case 'expected_visitor':
+                compareResult = parseInt(a.expectedVisitor || 0) - parseInt(b.expectedVisitor || 0);
+                break;
+              case 'present':
+                const presentA = a.present === 'ongoing' ? 0 : parseInt(a.present || 0);
+                const presentB = b.present === 'ongoing' ? 0 : parseInt(b.present || 0);
+                compareResult = presentA - presentB;
+                break;
+            }
+            break;
+
+          case 'visitorRecords':
+            switch (columnFilter) {
+              case 'date':
+                const dateA = a.date ? new Date(a.date) : new Date(0);
+                const dateB = b.date ? new Date(b.date) : new Date(0);
+                compareResult = dateA - dateB;
+                break;
+              case 'visitor_name':
+                compareResult = (a.visitorName || '').localeCompare(b.visitorName || '');
+                break;
+              case 'visit_counts':
+                compareResult = (a.visitCount || 0) - (b.visitCount || 0);
+                break;
+            }
+            break;
+        }
+
+        return sortDirection === 'desc' ? -compareResult : compareResult;
+      });
+
+      return sorted;
     };
-  }, [searchQuery, statusFilter, columnFilter, sortDirection, activeTab, appointments, attendanceData, visitorRecords, standardizeStatus]);
 
-
-  const socket = useSocketClient();
+    return {
+      appointments: sortData(filteredAppointments, 'forms'),
+      attendanceData: sortData(filteredAttendance, 'attendance'),
+      visitorRecords: sortData(filteredVisitorRecords, 'visitorRecords')
+    };
+  }, [appointments, attendanceData, visitorRecords, searchQuery, statusFilter, columnFilter, sortDirection]);
 
   return (
     <div className="relative w-full h-full bg-[#F0F0F0] select-none flex pt-[1rem] overflow-hidden">
@@ -569,65 +506,16 @@ const Appointments = () => {
 
                 {/* Table Data - Scrollable */}
                 <div className="w-full min-w-[94rem] overflow-y-auto h-full border-t-1 border-t-gray-400">
-                  {memoizedFilteredData.appointments.length > 0 ? (
-                    memoizedFilteredData.appointments.map((appt) => {
-                      const status = standardizeStatus(appt.AppointmentStatus?.status || 'To Review');
-                      const updatedAt = appt.AppointmentStatus?.updated_at
-                        ? new Date(appt.AppointmentStatus.updated_at).toLocaleString()
-                        : 'N/A';
-
-                      const encodedId = btoa(`${appt.appointment_id} `);
-
-                      return (
-                        <NavLink
-                          key={appt.appointment_id}
-                          to={encodedId}
-                          className="min-w-[94rem] text-xl h-fit font-semibold grid grid-cols-6 cursor-pointer hover:bg-gray-300"
-                        >
-                          <div className="px-4 py-3 border-b-1 border-gray-400">
-                            {appt.creation_date
-                              ? new Date(appt.creation_date).toLocaleString()
-                              : 'N/A'}
-                          </div>
-                          <div className="px-4 py-3 border-b-1 border-gray-400">
-                            {appt.Visitor?.first_name} {appt.Visitor?.last_name}
-                          </div>
-                          <div className="px-4 py-3 border-b-1 border-gray-400">
-                            {formatTimeDisplay(appt.start_time, appt.end_time)}
-                          </div>
-
-                          <div className="px-4 py-3 border-b-1 border-gray-400">
-                            {getStatusLabel(status)}
-                          </div>
-                          <div className="px-4 py-3 border-b-1 border-gray-400">
-                            {appt.population_count}
-                          </div>
-                          <div className="px-4 py-3 border-b-1 border-gray-400">
-                            {updatedAt}
-                          </div>
-                        </NavLink>
-                      );
-                    })
+                  {isLoading ? (
+                    <LoadingSpinner />
+                  ) : error ? (
+                    <ErrorBox message={error} />
+                  ) : filteredData.appointments.length > 0 ? (
+                    filteredData.appointments.map((appt) => (
+                      <AppointmentFormItem key={appt.appointment_id} appointment={appt} cameFrom="forms" />
+                    ))
                   ) : (
-                    <div className="min-w-[94rem] h-full py-16 flex justify-center items-center border-b-1 border-gray-400">
-                      <div className="text-2xl text-gray-500 flex flex-col items-center">
-                        <svg
-                          className="w-16 h-16 mb-4 text-gray-500"
-                          xmlns="http://www.w3.org/2000/svg"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="1"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        >
-                          <path d="M22 12h-6l-2 3h-4l-2-3H2" />
-                          <path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" />
-                        </svg>
-                        <p>No appointment data available</p>
-                        <p className="text-lg mt-2">Try adjusting your filters or search criteria</p>
-                      </div>
-                    </div>
+                    <EmptyMessage message="No appointment data available" />
                   )}
                 </div>
               </div>
@@ -660,49 +548,16 @@ const Appointments = () => {
 
                 {/* Table Data - Scrollable */}
                 <div className="w-full min-w-[94rem] overflow-y-auto h-full border-t-1 border-t-gray-400">
-                  {memoizedFilteredData.attendanceData.length > 0 ? (
-                    memoizedFilteredData.attendanceData.map((row, i) => {
-                      const presentValue = row.present ?? 'ongoing';
-                      const encodedId = row.appointment_id ? btoa(`${row.appointment_id} `) : '#';
-
-                      return (
-                        <NavLink
-                          key={i}
-                          to={encodedId}
-                          className="min-w-[94rem] text-xl h-fit font-semibold grid grid-cols-6 hover:bg-gray-300 cursor-pointer"
-                        >
-                          <div className="px-4 py-3 border-b-1 border-gray-400">{row.date}</div>
-                          <div className="px-4 py-3 border-b-1 border-gray-400">{row.visitorName}</div>
-                          <div className="px-4 py-3 border-b-1 border-gray-400">{row.purpose}</div>
-                          <div className="px-4 py-3 border-b-1 border-gray-400">{row.preferredDate}</div>
-                          <div className="px-4 py-3 border-b-1 border-gray-400">{row.expectedVisitor}</div>
-                          <div className="px-4 py-3 border-b-1 border-gray-400">{presentValue}</div>
-                        </NavLink>
-                      );
-                    })
+                  {isLoading ? (
+                    <LoadingSpinner />
+                  ) : error ? (
+                    <ErrorBox message={error} />
+                  ) : filteredData.attendanceData.length > 0 ? (
+                    filteredData.attendanceData.map((row, i) => (
+                      <AttendanceItem key={i} attendance={row} cameFrom="attendance" />
+                    ))
                   ) : (
-                    <div className="min-w-[94rem] h-full py-16 flex justify-center items-center border-b-1 border-gray-400">
-                      <div className="text-2xl text-gray-500 flex flex-col items-center">
-                        <svg
-                          className="w-16 h-16 mb-4 text-gray-500"
-                          xmlns="http://www.w3.org/2000/svg"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="1"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        >
-                          <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-                          <line x1="16" y1="2" x2="16" y2="6" />
-                          <line x1="8" y1="2" x2="8" y2="6" />
-                          <line x1="3" y1="10" x2="21" y2="10" />
-                          <path d="M9 16l2 2 4-4" />
-                        </svg>
-                        <p>No attendance records found</p>
-                        <p className="text-lg mt-2">Try adjusting your filters or search criteria</p>
-                      </div>
-                    </div>
+                    <EmptyMessage message="No attendance records found" />
                   )}
                 </div>
               </div>
@@ -726,145 +581,22 @@ const Appointments = () => {
 
                 {/* Table Data - Scrollable */}
                 <div className="w-full min-w-[94rem] overflow-y-auto h-full border-t-1 border-t-gray-400">
-                  {memoizedFilteredData.visitorRecords.length > 0 ? (
-                    memoizedFilteredData.visitorRecords.map((record) => (
-                      <React.Fragment key={record.id}>
-                        {/* Main Row */}
-                        <div
-                          className="min-w-[94rem] text-xl h-fit font-semibold grid grid-cols-3 cursor-pointer hover:bg-gray-300 border-b-1 border-gray-200"
-                          onClick={() => toggleRecordExpansion(record.id)}
-                        >
-                          <div className="px-4 py-4">{formatDate(record.date)}</div>
-                          <div className="px-4 py-4">{record.visitorName}</div>
-                          <div className="px-4 py-4 flex justify-between items-center">
-                            <span>{record.visitCount}</span>
-                            <svg
-                              className={`w-5 h-5 mr-4 text-gray-500 transform ${expandedRecordId === record.id ? 'rotate-180' : ''}`}
-                              xmlns="http://www.w3.org/2000/svg"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            >
-                              <polyline points="6 9 12 15 18 9" />
-                            </svg>
-                          </div>
-                        </div>
-
-                        {/* Expanded Row with Details */}
-                        {expandedRecordId === record.id && (
-                          <div className="min-w-[94rem] flex justify-end">
-                            <div className="w-[45%] my-4 mr-4 rounded-lg overflow-hidden shadow-sm">
-                              {record.details && record.details.length > 0 ? (
-                                <div style={{
-                                  maxHeight: record.details.length > 3 ? 'calc(3*3.5rem)' : 'auto',
-                                  overflowY: record.details.length > 3 ? 'scroll' : 'visible',
-                                  scrollbarWidth: 'thin',
-                                  scrollbarColor: '#333 #ccc'
-                                }}>
-                                  <table className="w-full border-collapse bg-white">
-                                    <thead className="sticky top-0 bg-white z-10">
-                                      <tr className="border-b border-gray-200">
-                                        <th className="text-left py-3 px-4 font-semibold text-gray-700">Purpose of visit</th>
-                                        <th className="text-center py-3 px-4 font-semibold text-gray-700">Visitor Count</th>
-                                        <th className="text-center py-3 px-4 font-semibold text-gray-700">Present</th>
-                                        <th className="text-center py-3 px-4 font-semibold text-gray-700">Date</th>
-                                        <th className="w-10 py-3 px-2 text-right">
-                                        </th>
-                                      </tr>
-                                    </thead>
-                                    <tbody>
-                                      {record.details.map((detail, idx) => {
-                                        const detailWithId = {
-                                          ...detail,
-                                          appointment_id: detail.appointment_id || null
-                                        };
-
-                                        return (
-                                          <tr key={idx} className={idx !== record.details.length - 1 ? "border-b border-gray-200" : ""}>
-                                            <td className="py-3 px-4 text-gray-800">{detail.purpose}</td>
-                                            <td className="py-3 px-4 text-center text-gray-800">{detail.visitorCount}</td>
-                                            <td className="py-3 px-4 text-center text-gray-800">{detail.present}</td>
-                                            <td className="py-3 px-4 text-center text-gray-800">{formatDate(detail.date)}</td>
-                                            <td className="py-3 px-2 text-right">
-                                              {detail.appointment_id ? (
-                                                <NavLink
-                                                  to={btoa(`${detail.appointment_id} `)}
-                                                  className="text-blue-500 hover:text-blue-700"
-                                                  onClick={(e) => e.stopPropagation()}
-                                                >
-                                                  <svg
-                                                    className="w-5 h-5"
-                                                    xmlns="http://www.w3.org/2000/svg"
-                                                    viewBox="0 0 24 24"
-                                                    fill="none"
-                                                    stroke="currentColor"
-                                                    strokeWidth="2"
-                                                    strokeLinecap="round"
-                                                    strokeLinejoin="round"
-                                                  >
-                                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                                                    <circle cx="12" cy="12" r="3" />
-                                                  </svg>
-                                                </NavLink>
-                                              ) : (
-                                                <span className="text-gray-400">
-                                                  <svg
-                                                    className="w-5 h-5"
-                                                    xmlns="http://www.w3.org/2000/svg"
-                                                    viewBox="0 0 24 24"
-                                                    fill="none"
-                                                    stroke="currentColor"
-                                                    strokeWidth="2"
-                                                    strokeLinecap="round"
-                                                    strokeLinejoin="round"
-                                                  >
-                                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                                                    <circle cx="12" cy="12" r="3" />
-                                                  </svg>
-                                                </span>
-                                              )}
-                                            </td>
-                                          </tr>
-                                        );
-                                      })}
-                                    </tbody>
-                                  </table>
-                                </div>
-                              ) : (
-                                <div className="p-8 text-center text-gray-500">
-                                  No details available for this record.
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        )}
-                      </React.Fragment>
+                  {isLoading ? (
+                    <LoadingSpinner />
+                  ) : error ? (
+                    <ErrorBox message={error} />
+                  ) : filteredData.visitorRecords.length > 0 ? (
+                    filteredData.visitorRecords.map((record) => (
+                      <VisitorRecordItem
+                        key={record.id}
+                        record={record}
+                        isExpanded={expandedRecordId === record.id}
+                        onToggle={toggleRecordExpansion}
+                        cameFrom="visitorRecords"
+                      />
                     ))
                   ) : (
-                    <div className="min-w-[94rem] h-full py-16 flex justify-center items-center border-b-1 border-gray-400">
-                      <div className="text-2xl text-gray-500 flex flex-col items-center">
-                        <svg
-                          className="w-16 h-16 mb-4 text-gray-500"
-                          xmlns="http://www.w3.org/2000/svg"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="1"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        >
-                          <circle cx="12" cy="7" r="4" />
-                          <path d="M12 11v4" />
-                          <circle cx="12" cy="15" r="6" />
-                          <path d="M12 15l2 2" />
-                        </svg>
-                        <p>No visitor records available</p>
-                        <p className="text-lg mt-2">Try adjusting your filters or search criteria</p>
-                      </div>
-                    </div>
+                    <EmptyMessage message="No visitor records available" />
                   )}
                 </div>
               </div>
@@ -876,7 +608,6 @@ const Appointments = () => {
       <Toast
         message={toastConfig.message}
         type={toastConfig.type}
-        isVisible={toastConfig.isVisible}
         onClose={hideToast}
       />
     </div>

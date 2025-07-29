@@ -14,13 +14,23 @@ class SocketClient {
     this.joinedRooms = new Set();
     this.userId = null;
 
-    this.socket.on("connect", () => {
-      console.log("[Socket] Connected:", this.socket.id);
-      if (this.userId) this.socket.emit("registerUser", this.userId);
-      for (const room of this.joinedRooms) {
-        this.socket.emit("joinRoom", room);
-      }
-    });
+this.socket.on("connect", () => {
+  console.log("[Socket] Connected:", this.socket.id);
+
+  // Delay slightly to ensure server has fully initialized this connection
+  setTimeout(() => {
+    if (this.userId) {
+      this.socket.emit("registerUser", this.userId);
+      console.log("[Socket] registerUser sent after connection");
+    }
+
+    for (const room of this.joinedRooms) {
+      this.socket.emit("joinRoom", room);
+      console.log(`[Socket] joinRoom sent: ${room}`);
+    }
+  }, 50); // 50ms is enough for event loop tick
+});
+
 
     this.socket.on("disconnect", (reason) => {
       console.log("[Socket] Disconnected:", reason);

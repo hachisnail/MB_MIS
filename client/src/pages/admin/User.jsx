@@ -1,10 +1,8 @@
-import TooltipButton from "../../components/buttons/TooltipButton";
-// import StyledButton from "../../components/buttons/StyledButton";
+import { useEffect, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
-import { useEffect, useState, useRef } from "react";
 import axiosClient from "../../lib/axiosClient";
 
-// import ContextMenu from "../../components/modals/ContextMenu";
+import TooltipButton from "../../components/buttons/TooltipButton";
 import ConfirmationModal from "../../components/modals/ConfirmationModal";
 import PopupModal from "../../components/modals/PopupModal";
 import {
@@ -28,7 +26,7 @@ const User = () => {
   const [inviteLoading, setIsInviteLoading] = useState(false);
 
   const [processingInviteId, setProcessingInviteId] = useState(null);
-  const [processingAction, setProcessingAction] = useState(null); // 'resend' or 'revoke'
+  const [processingAction, setProcessingAction] = useState(null);
 
   const [selectedInviteId, setSelectedInviteId] = useState(null);
   const [showConfirmRevoke, setShowConfirmRevoke] = useState(false);
@@ -46,31 +44,17 @@ const User = () => {
     invite: null,
   });
 
+  const socket = useSocketClient(); // ✅ Our SocketClient class
   const navigate = useNavigate();
-  const socket = useSocketClient();
-
-  const closeViewInvite = () => {
-    setViewInvite({ isOpen: false, invite: null });
-  };
-
-  const formatDate = (dateString) => {
-    if (!dateString) return "N/A";
-    const date = new Date(dateString);
-    return date.toLocaleString();
-  };
 
   const fetchUsers = async () => {
     try {
       setIsUserLoading(true);
       setUserError(null);
-      const response = await axiosClient.get(`/auth/users`, {
-        withCredentials: true,
-      });
+      const response = await axiosClient.get(`/auth/users`);
       setUsers(response.data);
-      console.log(response.data);
     } catch (error) {
-      // setFlagsError("Failed to ferch users!");
-      setUserError("Failed to fetch users!\n" + error);
+      setUserError("Failed to fetch users!\n" + error.message);
     } finally {
       setIsUserLoading(false);
     }
@@ -80,16 +64,10 @@ const User = () => {
     try {
       setIsInviteLoading(true);
       setInviteError(null);
-      const response = await axiosClient.get(`/auth/invitations`, {
-        withCredentials: true,
-      });
+      const response = await axiosClient.get(`/auth/invitations`);
       setPendingInvitations(response.data || []);
     } catch (error) {
-      console.error(
-        "Error fetching invitations:",
-        error.response?.data || error
-      );
-      setInviteError("Failed to load pending invitations!\n" + error);
+      setInviteError("Failed to load pending invitations!\n" + error.message);
     } finally {
       setIsInviteLoading(false);
     }
@@ -103,8 +81,8 @@ const User = () => {
   useEffect(() => {
     if (!socket) return;
 
-    const handleUserChange = () => {
-      console.log("[Socket] UserSession change → refetching...");
+    const handleUserChange = (action, data) => {
+      console.log("[Socket] UserSession changed:", action, data);
       fetchUsers();
       fetchPendingInvitations();
     };

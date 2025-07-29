@@ -1,4 +1,3 @@
-// context/authContext.jsx
 import { createContext, useContext, useState, useEffect, useRef } from "react";
 import axiosClient from "../lib/axiosClient";
 import SocketClient from "../lib/socketClient";
@@ -15,7 +14,6 @@ export function AuthProvider({ children }) {
     try {
       const res = await axiosClient.post("/auth/login", credentials);
       setUser(res.data.user);
-      // console.log(res.data.user);
       return { success: true };
     } catch (err) {
       const message = err.response?.data?.message || "Login failed";
@@ -47,6 +45,7 @@ export function AuthProvider({ children }) {
     }
   };
 
+  // Listen for localStorage logout from other tabs
   useEffect(() => {
     fetchCurrentUser();
 
@@ -57,22 +56,31 @@ export function AuthProvider({ children }) {
         socketRef.current = null;
       }
     };
+
     window.addEventListener("storage", syncLogout);
     return () => window.removeEventListener("storage", syncLogout);
   }, []);
 
+  // Setup Socket when user is available
   useEffect(() => {
     if (!user) return;
 
+    // Only initialize once
     if (!socketRef.current) {
-      socketRef.current = new SocketClient(import.meta.env.VITE_SOCKET_URL);
+      const socketClient = new SocketClient(import.meta.env.VITE_SOCKET_URL);
+      socketRef.current = socketClient;
 
-      socketRef.current.socket.on("forceLogout", (data) => {
-        setForcedLogoutReason(data?.reason || "You have been logged out.");
-        logout();
+      // Handle forced logout (from server)
+      socketClient.onMessage((data) => {
+        if (data.type === "forceLogout") {
+          console.warn("[Socket] Forced logout received:", data);
+          setForcedLogoutReason(data.reason || "You have been logged out.");
+          logout();
+        }
       });
     }
 
+    // Register user after socket is ready
     socketRef.current.registerUser(user.id);
   }, [user]);
 
@@ -84,7 +92,7 @@ export function AuthProvider({ children }) {
         logout,
         loading,
         forcedLogoutReason,
-        socketClient: socketRef.current,
+        socketClient: socketRef.current, // ✅ the full class instance
       }}
     >
       {children}
@@ -98,5 +106,5 @@ export function useAuth() {
 
 export function useSocketClient() {
   const { socketClient } = useContext(AuthContext);
-  return socketClient;
+  return socketClient; // ✅ this returns SocketClient, NOT .socket
 }

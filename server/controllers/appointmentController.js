@@ -1,6 +1,7 @@
 import { Visitor, Appointment, AppointmentStatus } from '../models/appointmentIndex.js';
 import { Op } from 'sequelize';
 import { sendEmail } from '../services/emailTransporter.js';
+import { createLog } from '../services/logService.js';
 
 /**
  * Create a new appointment, reusing or creating the visitor.
@@ -99,15 +100,25 @@ export const updateAppointmentStatus = async (req, res) => {
     const { status, present_count } = req.body;
 
     // Confirm the appointment exists
-    const appointment = await Appointment.findByPk(id);
+    const appointment = await Appointment.findByPk(id, {
+      include: [Visitor]
+    });
     if (!appointment) {
       return res.status(404).json({ message: 'Appointment not found.' });
     }
+
+    // Get user info for logging
+    const userId = req.session?.user?.id || 1; // Default to system user
+    const username = req.session?.user?.username || 'System';
 
     // Find or create the linked status record
     let appointmentStatus = await AppointmentStatus.findOne({
       where: { appointment_id: id },
     });
+
+    let beforeState = null;
+    let action = 'create';
+    
     if (!appointmentStatus) {
       appointmentStatus = await AppointmentStatus.create({
         appointment_id: id,
@@ -115,6 +126,10 @@ export const updateAppointmentStatus = async (req, res) => {
         present_count,
       });
     } else {
+      // Capture before state for logging
+      beforeState = appointmentStatus.toJSON();
+      action = 'update';
+      
       if (status !== undefined) {
         appointmentStatus.status = status;
       }
@@ -124,6 +139,26 @@ export const updateAppointmentStatus = async (req, res) => {
       appointmentStatus.updated_at = new Date();
       await appointmentStatus.save();
     }
+
+    // Create log entry
+    const visitorName = `${appointment.Visitor?.first_name || ''} ${appointment.Visitor?.last_name || ''}`.trim();
+    const statusText = status ? status.toLowerCase().replace('_', ' ') : 'status';
+    const description = `Appointment #${id} for ${visitorName} ${action === 'create' ? 'created with' : 'updated to'} ${statusText}`;
+    
+    let details = `${username} ${action === 'create' ? 'set' : 'changed'} appointment status to ${statusText}`;
+    if (present_count !== undefined && status === 'COMPLETED') {
+      details += ` with ${present_count} visitors present`;
+    }
+
+    await createLog(
+      action,
+      'AppointmentStatus',
+      description,
+      userId,
+      beforeState,
+      appointmentStatus.toJSON(),
+      details
+    );
 
     return res.status(200).json({
       message: 'Appointment status updated successfully',

@@ -1,5 +1,6 @@
 import { DataTypes } from 'sequelize';
 import { mainDb } from '../configs/databases.js';
+import { addDbChangeHooks } from '../hooks/emitDbChangeHooks.js';
 
 export const Schedule = mainDb.define('Schedule', {
   schedule_id: {
@@ -41,6 +42,9 @@ export const Schedule = mainDb.define('Schedule', {
   tableName: 'schedules',
   timestamps: true, // Use Sequelize's automatic timestamps (createdAt, updatedAt)
 });
+
+// Add database change hooks for real-time updates
+addDbChangeHooks(Schedule, "Schedule");
 
 // Export default for easier importing
 export default Schedule;

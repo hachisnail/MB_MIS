@@ -19,8 +19,6 @@
   },
   "homepage": "https://github.com/hachisnail/MB_MIS#readme",
   "dependencies": {
-    "react-calendar": "^6.0.0",
-    "react-icons": "^5.5.0",
-    "react-time-picker": "^7.0.0"
+    "react-icons": "^5.5.0"
   }
 }

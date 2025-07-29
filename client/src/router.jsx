@@ -146,6 +146,11 @@ const Router = () => {
               element={<AppointmentViewPage />}
             />
           )}
+          {flags["schedule"] && (
+            <Route path="schedule/:encoded" element={<AppointmentViewPage />} />
+          )}
+
+
 
           {flags["files"] && (
             <Route path="preview/:encoded" element={<FilePreviewer />} />

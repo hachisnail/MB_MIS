@@ -11,9 +11,15 @@ class SocketClient {
     });
 
     this.listeners = new Map();
+    this.joinedRooms = new Set();
+    this.userId = null;
 
     this.socket.on("connect", () => {
       console.log("[Socket] Connected:", this.socket.id);
+      if (this.userId) this.socket.emit("registerUser", this.userId);
+      for (const room of this.joinedRooms) {
+        this.socket.emit("joinRoom", room);
+      }
     });
 
     this.socket.on("disconnect", (reason) => {
@@ -33,27 +39,21 @@ class SocketClient {
   }
 
   registerUser(userId) {
-    if (!userId) return;
+    this.userId = userId;
     if (this.socket.connected) {
       this.socket.emit("registerUser", userId);
-    } else {
-      this.socket.once("connect", () => {
-        this.socket.emit("registerUser", userId);
-      });
     }
   }
 
   joinRoom(roomName) {
+    this.joinedRooms.add(roomName);
     if (this.socket.connected) {
       this.socket.emit("joinRoom", roomName);
-    } else {
-      this.socket.once("connect", () => {
-        this.socket.emit("joinRoom", roomName);
-      });
     }
   }
 
   leaveRoom(roomName) {
+    this.joinedRooms.delete(roomName);
     if (this.socket.connected) {
       this.socket.emit("leaveRoom", roomName);
     }
@@ -126,5 +126,6 @@ class SocketClient {
     this.socket.disconnect();
   }
 }
+
 
 export default SocketClient;

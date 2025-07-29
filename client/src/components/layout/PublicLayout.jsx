@@ -1,12 +1,10 @@
-import { Outlet, useLocation } from 'react-router-dom';
+import { Outlet, useLocation, matchPath } from 'react-router-dom';
 import PublicNav from '../navbar/PublicNav';
 import PublicHeader from '../headers/PublicHeader';
 import PublicFooter from '../footers/PublicFooter';
 
 const PublicLayout = () => {
-
   const location = useLocation();
-
 
   const hiddenPaths = [
     '/login',
@@ -19,17 +17,37 @@ const PublicLayout = () => {
     hiddenPaths.includes(location.pathname) ||
     /^\/recover\/[^/]+$/.test(location.pathname);
 
-  const themeRoutes = {
-    '/': 'dark',
-    '/home': 'dark',
-    '/catalogs': 'dark',
-    '/articles': 'dark',
-    '/about': 'dark',
-    '/login': 'light',
-  };
+  // Define themes for overall layout
+  const themeRoutes = [
+    { path: '/', theme: 'dark' },
+    { path: '/home', theme: 'dark' },
+    { path: '/catalogs', theme: 'dark' },
+    { path: '/article/:id', theme: 'dark' },
+    { path: '/articles', theme: 'dark' },
+    { path: '/about', theme: 'dark' },
+    { path: '/login', theme: 'light' },
+  ];
+
+  // Define themes specifically for the navigation bar
+  const themeNavs = [
+    { path: '/', theme: 'dark' },
+    { path: '/home', theme: 'dark' },
+    { path: '/catalogs', theme: 'dark' },
+    { path: '/article/:id', theme: 'light' },
+    { path: '/articles', theme: 'dark' },
+    { path: '/about', theme: 'dark' },
+    { path: '/login', theme: 'light' },
+  ];
 
   const defaultTheme = 'light';
-  const theme = themeRoutes[location.pathname] || defaultTheme;
+
+  const getMatchedTheme = (routesArray) =>
+    routesArray.find(route =>
+      matchPath({ path: route.path, end: true }, location.pathname)
+    )?.theme || defaultTheme;
+
+  const theme = getMatchedTheme(themeRoutes);      // Layout theme
+  const navTheme = getMatchedTheme(themeNavs);     // Nav-specific theme
 
   return (
     <div
@@ -50,12 +68,11 @@ const PublicLayout = () => {
       {!isMinimalLayout && (
         <nav
           className={`
-            ${theme === 'dark' ? 'bg-transparent' : 'bg-white'}
-            z-25 px-8 pt-5 flex items-center h-35 min-h-20 
+            z-25 px-8 pt-5 flex items-center h-35 min-h-20 bg-transparent
             w-full absolute top-0 left-0 shadow-md mt-10 justify-center
           `}
         >
-          <PublicNav theme={theme} />
+          <PublicNav theme={navTheme} />
         </nav>
       )}
 

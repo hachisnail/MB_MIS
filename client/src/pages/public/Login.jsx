@@ -14,11 +14,13 @@ const Login = () => {
   const [apiError, setApiError] = useState("");
   const [isloading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  
   const { user, login, forcedLogoutReason } = useAuth(); 
 
   useEffect(() => {
     if (user) {
       navigate("/admin/dashboard", { replace: true });
+      // console.log(user);
     }
   }, [user]);
 

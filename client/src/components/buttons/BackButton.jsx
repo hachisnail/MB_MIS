@@ -10,12 +10,32 @@ const BackButton = () => {
   return (
     <StyledButton
       onClick={backTo}
-      buttonColor="bg-gray-600"
+      buttonColor="bg-neutral-600"
       hoverColor="hover:bg-gray-700"
       textColor="text-white"
-      className="w-fit"
-    >Go back</StyledButton>
+      className="w-fit flex gap-x-2"
+    >
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="18"
+  height="18"
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="#FFFFFF"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M4 12l10 0" />
+  <path d="M4 12l4 4" />
+  <path d="M4 12l4 -4" />
+  <path d="M20 4l0 16" />
+</svg>
+back
+</StyledButton>
   );
 };
 
 export default BackButton;
+
+

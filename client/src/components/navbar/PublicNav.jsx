@@ -13,7 +13,7 @@ const PublicNav = ({ theme = "light" }) => {
 
   const bgClass = theme === "dark" ? "bg-transparent border-white" : "bg-transaprent border-black";
   const textClass = theme === "dark" ? "text-white" : "text-black";
-  const dividerClass = theme === "dark" ? "bg-white" : "bg-gray-700";
+  const dividerClass = theme === "dark" ? "bg-transparent" : "bg-gray-700";
 
   const carretIcon = (isOpen) => (
     <svg

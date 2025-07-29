@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
+import texture from "../../assets/Texture.png"
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL;
 const SERVER_ORIGIN = BASE_URL.replace(/\/api$/, "");
@@ -48,9 +49,12 @@ const Appointment = () => {
   }
 
   return (
-    <div className="bg-white flex flex-col gap-y-4 min-h-fit h-fit w-screen pt-7">
+    <div className="flex flex-col gap-y-4 min-h-fit h-fit w-screen pt-7"
+            style={{ backgroundImage: `url(${texture})` }}
+    
+    >
      
-      <div className="flex w-screen h-[20rem] justify-center my-[5rem]">
+      <div className="flex w-screen h-[20rem] justify-center mb-[5rem] pt-40 " >
         <div className="flex w-[140rem] h-auto items-stretch text-center text-[2rem] border-t border-b border-black">
           {/* Left Column */}
           <div className="flex flex-col items-center justify-start py-6 gap-4 basis-[22.5%]">

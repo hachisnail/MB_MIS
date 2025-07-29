@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1:3306
--- Generation Time: Jul 12, 2025 at 08:12 PM
+-- Generation Time: Jul 29, 2025 at 03:31 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -20,6 +20,38 @@ SET time_zone = "+00:00";
 --
 -- Database: `museo_bulawan_mis`
 --
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `appointment`
+--
+
+CREATE TABLE `appointment` (
+  `appointment_id` int(11) NOT NULL,
+  `visitor_id` int(11) NOT NULL,
+  `purpose_of_visit` varchar(200) NOT NULL,
+  `population_count` int(11) NOT NULL,
+  `preferred_date` date NOT NULL,
+  `start_time` time DEFAULT NULL,
+  `end_time` time DEFAULT NULL,
+  `creation_date` datetime NOT NULL,
+  `additional_notes` text DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `appointment_status`
+--
+
+CREATE TABLE `appointment_status` (
+  `status_id` int(11) NOT NULL,
+  `appointment_id` int(11) NOT NULL,
+  `status` enum('TO_REVIEW','CONFIRMED','REJECTED','FAILED','COMPLETED') NOT NULL DEFAULT 'TO_REVIEW',
+  `present_count` int(11) DEFAULT NULL COMMENT 'Number of visitors who actually showed up',
+  `updated_at` datetime NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -87,7 +119,7 @@ INSERT INTO `articles` (`article_id`, `title`, `user_id`, `upload_date`, `images
 (34, 'asfasfasfaf', 1, '2025-05-21 00:00:00', '1747682167831-Screenshot 2023-12-23 042044.png', 'Article', '<p>asfasfasf</p>', NULL, 'Russel', 'San Felipe', 'Jose Panganiban', 'posted', NULL, NULL, '2025-05-19 19:16:07', '2025-05-19 20:11:07'),
 (35, 'Hello!', 1, '2025-05-21 00:00:00', '1747683837095-Screenshot 2024-03-19 203541.png', 'Education', '<div class=\"column-block\"><div class=\"column\"><p>eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupi<br class=\"hard-break\"><span><span><br class=\"hard-break\"></span><strong><span>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad</span></strong><span><br class=\"hard-break\"><br class=\"hard-break\"></span></span></p><img src=\"http://localhost:5000/uploads/1747683482223-455363415_812761527719886_1195461782753847821_n.png\" alt=\"455363415_812761527719886_1195461782753847821_n.png\"></div><div class=\"column\"><p><span><strong><span>Discovered at Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco.</span></strong><span><br class=\"hard-break\"><br class=\"hard-break\"></span></span>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p></div></div>', NULL, 'Russel', 'San Felipe', 'Daet', 'posted', NULL, NULL, '2025-05-19 19:43:57', '2025-05-19 20:11:06'),
 (36, 'Font size on edit test', 1, '2025-05-21 00:00:00', '1747684251907-Screenshot 2024-11-14 172640.png', 'Contests', '<p><br class=\"hard-break\">asfasfasf<span style=\"font-size: 2em\">asfasfasf</span><span style=\"font-size: 1.75em\">asfasfasf</span><span style=\"font-size: 0.75em\">asfasfasf</span><u><span style=\"font-size: 2em\">asfasfasf</span></u><strong><u><span style=\"font-size: 2em\">asfasfasfasf</span></u></strong><br class=\"hard-break\"><br class=\"hard-break\"><br class=\"hard-break\"><br class=\"hard-break\"><br class=\"hard-break\"></p><div class=\"column-block\"><div class=\"column\"><img src=\"http://localhost:5000/uploads/1747684224922-Screenshot 2023-12-24 180620.png\" alt=\"Screenshot 2023-12-24 180620.png\"></div><div class=\"column\"><img src=\"http://localhost:5000/uploads/1747684221797-Screenshot 2023-12-24 180532.png\" alt=\"Screenshot 2023-12-24 180532.png\"></div></div>', NULL, 'asfasf', 'asfasf', 'Labo', 'pending', NULL, NULL, '2025-05-19 19:50:51', '2025-06-09 11:37:07'),
-(37, 'asfasfasf', 1, '2025-05-21 00:00:00', 'Screenshot 2023-12-23 050503-20250707-911104612.png', 'Exhibit', '<ul><li><p>asfasfasf</p></li><li><p>asfasf</p></li><li><p>asfasfasf</p></li></ul><p>asfasf</p><p></p><p></p><p>asf</p><p></p><p></p><p></p><p>asf</p><ul><li><p>asfasf</p></li><li><p>asfasfasf</p></li><li><p>asfasfasf</p></li><li><p>asf</p><div class=\"column-block\"><div class=\"column\"><ul><li><p>asfasf</p></li><li><p>asfasfasf</p></li></ul></div><div class=\"column\"><ul><li><p>asfasfasfas</p></li><li><p>asfasfasf</p></li><li><p>asfasfafs</p></li></ul><p></p></div><div class=\"column\"><ul><li><p>asfasf</p></li><li><p>asfasfa</p></li><li><p>fasfasfasf</p></li><li><p>asfasf</p></li></ul><p>asfasf</p></div></div><p></p></li></ul>', NULL, 'asfasfasf', 'asfasf', 'Labo', 'posted', NULL, NULL, '2025-05-19 23:14:08', '2025-07-07 06:33:42'),
+(37, 'asfasfasf', 1, '2025-05-21 00:00:00', 'Screenshot 2023-12-23 050503-20250707-911104612.png', 'Exhibit', '<ul><li><p>asfasfasf</p></li><li><p>asfasf</p></li><li><p>asfasfasf</p></li></ul><p>asfasf</p><p></p><p></p><p>asf</p><p></p><p></p><p></p><p>asf</p><ul><li><p>asfasf</p></li><li><p>asfasfasf</p></li><li><p>asfasfasf</p></li><li><p>asf</p><div class=\"column-block\"><div class=\"column\"><ul><li><p>asfasf</p></li><li><p>asfasfasf</p></li></ul></div><div class=\"column\"><ul><li><p>asfasfasfas</p></li><li><p>asfasfasf</p></li><li><p>asfasfafs</p></li></ul><p></p></div><div class=\"column\"><ul><li><p>asfasf</p></li><li><p>asfasfa</p></li><li><p>fasfasfasf</p></li><li><p>asfasf</p></li></ul><p>asfasf</p></div></div><p></p></li></ul>', NULL, 'asfasfasf', 'asfasf', 'Labo', 'pending', NULL, NULL, '2025-05-19 23:14:08', '2025-07-17 04:56:14'),
 (38, 'asfasf', 1, '2025-07-03 00:00:00', '1751833289835-e4e432e5ef46a79bc723fca8fead2fb5.mp4', 'Contests', '<p>asfaf</p>', NULL, 'asfasf', 'asfasf', 'Talisay', 'pending', NULL, NULL, '2025-07-06 20:21:29', '2025-07-06 20:21:29'),
 (39, 'asfasf', 1, '2025-07-16 00:00:00', 'download-20250707-106391387.jpg', 'Contests', '<p>asfasfa</p>', NULL, 'asfasf', 'asfasf', 'Labo', 'pending', NULL, NULL, '2025-07-06 23:25:34', '2025-07-07 05:39:43'),
 (40, 'asfasf', 1, '2025-07-09 00:00:00', 'download-20250707-222280195.jpg', 'Contests', '<p>asfasf</p>', NULL, 'asfasf', 'asfasf', 'San Lorenzo Ruiz', 'pending', NULL, NULL, '2025-07-07 05:42:40', '2025-07-07 05:43:46'),
@@ -171,20 +203,40 @@ CREATE TABLE `router_flags` (
 
 INSERT INTO `router_flags` (`id`, `route_key`, `is_enabled`, `createdAt`, `updatedAt`, `is_public`, `backup_json`) VALUES
 (1, 'login', 1, '2025-06-09 12:52:19', '2025-06-24 00:29:49', 0, NULL),
-(2, 'catalogs', 0, '2025-06-09 12:52:19', '2025-07-12 17:46:19', 1, NULL),
-(3, 'home', 1, '2025-06-09 12:52:19', '2025-07-12 17:46:19', 1, NULL),
+(2, 'catalogs', 1, '2025-06-09 12:52:19', '2025-07-15 17:18:52', 1, NULL),
+(3, 'home', 1, '2025-06-09 12:52:19', '2025-07-13 09:14:34', 1, NULL),
 (4, 'files', 1, '2025-06-09 12:52:19', '2025-07-12 17:38:47', 0, NULL),
-(5, 'inventory', 1, '2025-06-09 12:52:19', '2025-07-12 14:58:20', 0, NULL),
+(5, 'inventory', 1, '2025-06-09 12:52:19', '2025-07-19 18:25:26', 0, NULL),
 (6, 'acquisition', 1, '2025-06-09 12:52:19', '2025-07-07 07:50:48', 0, NULL),
-(7, 'schedule', 1, '2025-06-09 12:52:19', '2025-07-12 15:21:25', 0, NULL),
+(7, 'schedule', 1, '2025-06-09 12:52:19', '2025-07-13 08:47:12', 0, NULL),
 (8, 'article', 1, '2025-06-09 12:52:19', '2025-07-07 07:50:52', 0, NULL),
-(9, 'appointment', 1, '2025-06-09 12:52:19', '2025-07-12 15:17:30', 0, NULL),
+(9, 'appointment', 1, '2025-06-09 12:52:19', '2025-07-19 18:29:09', 0, NULL),
 (10, 'sandbox', 1, '2025-06-09 12:52:19', '2025-07-12 16:44:16', 0, NULL),
 (11, 'logs', 1, '2025-06-09 12:52:19', '2025-07-12 15:03:18', 0, NULL),
 (12, 'user', 1, '2025-06-09 12:52:19', '2025-07-07 07:50:51', 0, NULL),
 (13, 'down', 0, '0000-00-00 00:00:00', '2025-07-12 17:16:51', 0, NULL),
-(14, 'maintenance', 0, '0000-00-00 00:00:00', '2025-07-12 17:46:19', 0, NULL),
-(15, 'nomatch', 1, '0000-00-00 00:00:00', '2025-07-12 17:25:51', 0, NULL);
+(14, 'maintenance', 0, '0000-00-00 00:00:00', '2025-07-13 09:14:34', 0, NULL),
+(15, 'nomatch', 1, '0000-00-00 00:00:00', '2025-07-12 17:25:51', 0, NULL),
+(16, 'about', 1, '0000-00-00 00:00:00', '0000-00-00 00:00:00', 1, NULL);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `schedules`
+--
+
+CREATE TABLE `schedules` (
+  `schedule_id` int(11) NOT NULL,
+  `title` varchar(255) NOT NULL,
+  `description` text DEFAULT NULL,
+  `date` date NOT NULL,
+  `start_time` time NOT NULL,
+  `end_time` time NOT NULL,
+  `availability` enum('SHARED','EXCLUSIVE') NOT NULL DEFAULT 'SHARED',
+  `status` enum('ACTIVE','COMPLETED') NOT NULL DEFAULT 'ACTIVE',
+  `createdAt` datetime NOT NULL,
+  `updatedAt` datetime NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -199,13 +251,6 @@ CREATE TABLE `sessions` (
   `createdAt` datetime NOT NULL,
   `updatedAt` datetime NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `sessions`
---
-
-INSERT INTO `sessions` (`sid`, `expires`, `data`, `createdAt`, `updatedAt`) VALUES
-('vNiAqI5lda_EwDtLDv3TasX37eOGW23D', '2025-07-13 18:10:44', '{\"cookie\":{\"originalMaxAge\":86400000,\"expires\":\"2025-07-13T13:47:50.090Z\",\"secure\":false,\"httpOnly\":true,\"path\":\"/\",\"sameSite\":\"lax\"},\"userId\":6,\"user\":{\"id\":6,\"username\":\"hachisnail\",\"fname\":\"Jefferson\",\"lname\":\"Talagtag\",\"email\":\"jeffersontalagtag06@gmail.com\",\"roleId\":1,\"position\":\"System Administrator\"}}', '2025-07-12 13:47:50', '2025-07-12 18:10:44');
 
 -- --------------------------------------------------------
 
@@ -238,9 +283,42 @@ INSERT INTO `users` (`id`, `username`, `password`, `fname`, `lname`, `email`, `c
 (4, 'test', '$2a$10$NKaNOQ4YOLOieY49Ol9xnOYjQenD5HlDcfCDwUOnYif84NBXYAchO', 'Johnny', 'Sins', 'jeffersontalagtag06@yahoo.com', '09054163430', NULL, 'Tester', '2025-06-11 03:30:33', '2025-06-11 03:30:33'),
 (6, 'hachisnail', '$2b$10$BggMQBNKEZ4jec1yF54E0uokERJSyTTimhfxpNd1Xk0pn/Y06AN5m', 'Jefferson', 'Talagtag', 'jeffersontalagtag06@gmail.com', '09054163430', 1, 'System Administrator', '2025-06-14 13:27:20', '2025-07-09 15:19:09');
 
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `visitor`
+--
+
+CREATE TABLE `visitor` (
+  `visitor_id` int(11) NOT NULL,
+  `first_name` varchar(100) NOT NULL,
+  `last_name` varchar(100) NOT NULL,
+  `email` varchar(150) NOT NULL,
+  `phone` varchar(30) DEFAULT NULL,
+  `organization` varchar(150) DEFAULT NULL,
+  `province` varchar(100) NOT NULL,
+  `barangay` varchar(100) NOT NULL,
+  `city_municipality` varchar(100) NOT NULL,
+  `street` varchar(200) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
 --
 -- Indexes for dumped tables
 --
+
+--
+-- Indexes for table `appointment`
+--
+ALTER TABLE `appointment`
+  ADD PRIMARY KEY (`appointment_id`),
+  ADD KEY `visitor_id` (`visitor_id`);
+
+--
+-- Indexes for table `appointment_status`
+--
+ALTER TABLE `appointment_status`
+  ADD PRIMARY KEY (`status_id`),
+  ADD KEY `appointment_id` (`appointment_id`);
 
 --
 -- Indexes for table `articles`
@@ -272,6 +350,12 @@ ALTER TABLE `router_flags`
   ADD UNIQUE KEY `router_flags_route_key` (`route_key`);
 
 --
+-- Indexes for table `schedules`
+--
+ALTER TABLE `schedules`
+  ADD PRIMARY KEY (`schedule_id`);
+
+--
 -- Indexes for table `sessions`
 --
 ALTER TABLE `sessions`
@@ -287,8 +371,26 @@ ALTER TABLE `users`
   ADD KEY `roleId` (`roleId`);
 
 --
+-- Indexes for table `visitor`
+--
+ALTER TABLE `visitor`
+  ADD PRIMARY KEY (`visitor_id`);
+
+--
 -- AUTO_INCREMENT for dumped tables
 --
+
+--
+-- AUTO_INCREMENT for table `appointment`
+--
+ALTER TABLE `appointment`
+  MODIFY `appointment_id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `appointment_status`
+--
+ALTER TABLE `appointment_status`
+  MODIFY `status_id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `articles`
@@ -300,7 +402,7 @@ ALTER TABLE `articles`
 -- AUTO_INCREMENT for table `invitations`
 --
 ALTER TABLE `invitations`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
 
 --
 -- AUTO_INCREMENT for table `roles`
@@ -312,7 +414,13 @@ ALTER TABLE `roles`
 -- AUTO_INCREMENT for table `router_flags`
 --
 ALTER TABLE `router_flags`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
+
+--
+-- AUTO_INCREMENT for table `schedules`
+--
+ALTER TABLE `schedules`
+  MODIFY `schedule_id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `users`
@@ -321,8 +429,26 @@ ALTER TABLE `users`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
+-- AUTO_INCREMENT for table `visitor`
+--
+ALTER TABLE `visitor`
+  MODIFY `visitor_id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
 -- Constraints for dumped tables
 --
+
+--
+-- Constraints for table `appointment`
+--
+ALTER TABLE `appointment`
+  ADD CONSTRAINT `appointment_ibfk_1` FOREIGN KEY (`visitor_id`) REFERENCES `visitor` (`visitor_id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Constraints for table `appointment_status`
+--
+ALTER TABLE `appointment_status`
+  ADD CONSTRAINT `appointment_status_ibfk_1` FOREIGN KEY (`appointment_id`) REFERENCES `appointment` (`appointment_id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
 -- Constraints for table `users`

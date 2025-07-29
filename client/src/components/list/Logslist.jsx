@@ -2,8 +2,14 @@ import { useNavigate } from "react-router-dom";
 import { rolePermissions, roleColorMap, actionMap } from "./commons";
 
 const LogItem = ({ log, formatCreatedAt }) => {
-  const logRoleId = log.user.roleId ?? "default";
   const navigate = useNavigate();
+
+  const user = log.user;
+  const fname = user?.fname || "Unknown";
+  const lname = user?.lname || "";
+  const isSystem = fname === "System" && lname === "Account";
+  const fullName = `${fname} ${lname}`.trim();
+  const roleId = user?.roleId ?? "default";
 
   const navigateTo = (path, endpoint) => {
     if (path === "user" && endpoint !== "System Account")
@@ -21,12 +27,13 @@ const LogItem = ({ log, formatCreatedAt }) => {
       }
       className="w-full min-w-fit min-h-15 py-1 border-b border-gray-600 grid-cols-5 grid cursor-pointer hover:bg-gray-900"
     >
+      {/* Actor */}
       <div className="col-span-1 flex flex-col justify-center pl-5 border-gray-600">
-        {log.user.fname === "System" && log.user.lname === "Account" ? (
+        {isSystem ? (
           <>
             <span className="text-xl">System Generated</span>
             <span
-              className={`font-semibold text-xs w-27 text-center py-1 px-1 rounded-md ${roleColorMap[logRoleId]}`}
+              className={`font-semibold text-xs w-27 text-center py-1 px-1 rounded-md ${roleColorMap[roleId]}`}
             >
               System
             </span>
@@ -36,47 +43,51 @@ const LogItem = ({ log, formatCreatedAt }) => {
             <span
               onClick={(e) => {
                 e.stopPropagation();
-                navigateTo("user", log.user.fname + " " + log.user.lname);
+                navigateTo("user", fullName);
               }}
               className="text-xl z-5 w-fit hover:text-gray-400"
             >
-              {log.user.fname + " " + log.user.lname}
+              {fullName}
             </span>
 
             <span
               onClick={(e) => {
                 e.stopPropagation();
-                navigateTo("user", log.user.fname + " " + log.user.lname);
+                navigateTo("user", fullName);
               }}
-              className={`font-semibold text-xs w-27 text-center py-1 px-1 rounded-md ${roleColorMap[logRoleId]}`}
+              className={`font-semibold text-xs w-27 text-center py-1 px-1 rounded-md ${roleColorMap[roleId]}`}
             >
-              {rolePermissions[logRoleId]}
+              {rolePermissions[roleId] || "Unknown Role"}
             </span>
           </>
         )}
       </div>
 
+      {/* Timestamp */}
       <div className="col-span-1 flex items-center pl-5 border-gray-600">
         <span className="text-xl">{formatCreatedAt(log.createdAt)}</span>
       </div>
 
+      {/* Model */}
       <div className="col-span-1 flex items-center pl-5 border-gray-600">
-        <span className="text-xl">{log.model.toUpperCase()}</span>
+        <span className="text-xl">{log.model?.toUpperCase() || "N/A"}</span>
       </div>
 
+      {/* Action */}
       <div className="col-span-1 flex items-center pl-5 border-gray-600">
         <span
           className={`text-xl w-40 rounded-md text-center py-1 font-semibold ${
-            actionMap[log.action]
+            actionMap[log.action] || ""
           }`}
         >
-          {log.action.toUpperCase()}
+          {log.action?.toUpperCase() || "UNKNOWN"}
         </span>
       </div>
 
+      {/* Description */}
       <div className="col-span-1 flex items-center px-5 border-gray-600">
         <span className="text-xl max-w-full whitespace-nowrap overflow-hidden text-ellipsis">
-          {log.description}
+          {log.description || "No description"}
         </span>
       </div>
     </div>

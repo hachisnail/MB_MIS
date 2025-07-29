@@ -25,6 +25,19 @@ import {
   getScheduleById
 } from '../controllers/scheduleController.js';
 
+import {
+  createArticle,
+  getAllArticles,
+  getPublicArticles,
+  getPublicArticle,
+  uploadContentImages,
+  updateArticle,
+  getArticleById
+} from '../controllers/articleController.js';
+
+import { upload, multerErrorHandler } from '../middlewares/multerMiddleware.js';
+
+
 const router = express.Router();
 
 router.post("/login", login);
@@ -73,5 +86,15 @@ router.get('/schedules/public/availability', getAllSchedules); // Public endpoin
 router.get('/schedules/:id', requireAuth, getScheduleById);
 router.patch('/schedules/:id/status', requireAuth, updateScheduleStatus);
 router.delete('/schedules/:id', requireAuth, deleteSchedule);
+
+// Articles
+router.get('/articles', requireAuth, getAllArticles);
+router.post('/article', upload.single('thumbnail'), multerErrorHandler, createArticle);
+router.post('/article/content-images', upload.array('contentImages', 10), multerErrorHandler, uploadContentImages);
+router.get('/public-articles', getPublicArticles);
+router.get('/public-article/:id', getPublicArticle);
+router.get('/articles/:id', requireAuth, getArticleById);
+router.put('/article/:id', upload.single('thumbnail'), multerErrorHandler, updateArticle);
+
 
 export default router;

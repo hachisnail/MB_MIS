@@ -126,18 +126,18 @@ const Logs = () => {
 
   const filtered = logs.filter((log) => {
     const searchableString = [
-      log.user.fname,
-      log.user.lname,
-      log.model,
-      log.action,
-      log.description,
+      log.user?.fname || "",
+      log.user?.lname || "",
+      log.model || "",
+      log.action || "",
+      log.description || "",
       formatCreatedAt(log.createdAt),
     ]
       .join(" ")
       .toLowerCase();
 
     const matchesSearch = searchableString.includes(searchQuery);
-    const matchesRole = matchesFilter(log.user.roleId, selectedRole);
+    const matchesRole = matchesFilter(log.user?.roleId, selectedRole);
     const matchesAction = matchesFilter(log.action, selectedAction);
     const matchesDate = selectedDate
       ? new Date(log.createdAt).toDateString() ===

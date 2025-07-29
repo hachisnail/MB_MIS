@@ -401,7 +401,13 @@ const Appointments = () => {
           {/* Right side: Tables */}
           <div className="w-full h-full flex flex-col gap-y-7 overflow-x-auto overflow-y-hidden">
             <div className="w-full h-fit flex gap-x-3 items-center">
+                            <TimelineDatePicker
+                defaultValue={selectedDate ? selectedDate.toISOString().split('T')[0] : ''}
+                onDateChange={(dateString) => handleDateChange(dateString ? new Date(dateString) : null)}
+                theme="light"
+              />
               <div className="[&_input]:text-black [&_input]:placeholder-gray-500">
+
                 <SearchBar
                   theme="light"
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -470,11 +476,7 @@ const Appointments = () => {
                   { value: 'Completed', label: 'Completed' }
                 ]}
               />
-              <TimelineDatePicker
-                defaultValue={selectedDate ? selectedDate.toISOString().split('T')[0] : ''}
-                onDateChange={(dateString) => handleDateChange(dateString ? new Date(dateString) : null)}
-                theme="light"
-              />
+
             </div>
 
             {/* FORMS (Appointments) TABLE */}

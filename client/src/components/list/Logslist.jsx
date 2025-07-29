@@ -38,7 +38,7 @@ const LogItem = ({ log, formatCreatedAt }) => {
                 e.stopPropagation();
                 navigateTo("user", log.user.fname + " " + log.user.lname);
               }}
-              className="text-xl z-100 w-fit hover:text-gray-400"
+              className="text-xl z-5 w-fit hover:text-gray-400"
             >
               {log.user.fname + " " + log.user.lname}
             </span>

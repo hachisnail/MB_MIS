@@ -4,8 +4,9 @@ import {
   ListboxOptions,
   ListboxOption,
 } from "@headlessui/react";
-import { Fragment } from "react";
+import { Fragment, useState, useRef, useEffect } from "react";
 
+// admin utilities
 export function SearchBar({ placeholder = "Search History", onChange, theme }) {
   let outer, inner;
   switch (theme) {
@@ -95,7 +96,11 @@ export function CardDropdownPicker({
               stroke="currentColor"
               strokeWidth={1}
             >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M19 9l-7 7-7-7"
+              />
             </svg>
           </ListboxButton>
 
@@ -104,10 +109,10 @@ export function CardDropdownPicker({
           >
             {options.map((opt) => (
               <ListboxOption key={opt.value} value={opt.value} as={Fragment}>
-                {( props) => (
+                {(props) => (
                   <li
                     className={`cursor-pointer px-4 py-2 text-lg ${
-                      props.focus  ? "bg-blue-500 text-white" : optionStyle
+                      props.focus ? "bg-blue-500 text-white" : optionStyle
                     }`}
                   >
                     {opt.label}
@@ -118,6 +123,316 @@ export function CardDropdownPicker({
           </ListboxOptions>
         </div>
       </Listbox>
+    </div>
+  );
+}
+
+// Utilities for contribution form
+export function StyledInput({
+  placeholder = "Type here...",
+  value = "",
+  onChange = () => {},
+  onBlur = () => {},
+  error, // error prop is crucial
+}) {
+  return (
+    <>
+      <input
+        type="text"
+        value={value}
+        onChange={onChange}
+        onBlur={onBlur}
+        placeholder={placeholder}
+        style={{ boxShadow: "inset 0 1px 1px rgba(1, 1, 1, 0.50)" }}
+        className={`
+          w-full
+          px-4 py-1
+          text-md
+          bg-white
+          border
+          rounded-full
+          focus:outline-none
+          focus:ring-2
+          focus:ring-gray-300
+          ${error ? "border-red-500" : "border-black"}
+        `}
+      />
+    </>
+  );
+}
+
+export function StyledSelect({
+  value,
+  onChange,
+  options = [],
+  placeholder = "Select...",
+  onBlur = () => {},
+  error, // error prop is crucial
+}) {
+  return (
+    <Listbox value={value} onChange={onChange}>
+      <div className="relative w-full">
+        <ListboxButton
+          className={`
+            w-full
+            px-4 py-1
+            text-sm
+            text-left
+            bg-white
+            border
+            rounded-full
+            focus:outline-none
+            focus:ring-2
+            focus:ring-gray-300
+            shadow-inner
+            ${error ? "border-red-500" : "border-black"} 
+          `}
+          style={{ boxShadow: "inset 0 1px 1px rgba(1, 1, 1, 0.50)" }}
+          onBlur={onBlur}
+        >
+          <span>{value || placeholder}</span>
+
+          {/* Inline SVG icon */}
+          <span className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
+            <svg
+              className="w-4 h-4 text-gray-500"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
+          </span>
+        </ListboxButton>
+
+        <ListboxOptions
+          className="
+            absolute z-10 mt-1 max-h-60 w-full overflow-auto
+            rounded-xl bg-white py-1 text-sm shadow-lg ring-1 ring-gray-500 ring-opacity-5 focus:outline-none
+          "
+        >
+          {options.map((option) => (
+            <ListboxOption
+              key={option.value || option}
+              value={option.value || option}
+              className={({ active }) =>
+                `relative cursor-pointer select-none py-2 pl-4 pr-4 ${
+                  active ? "bg-gray-100" : ""
+                }`
+              }
+            >
+              {option.label || option}
+            </ListboxOption>
+          ))}
+        </ListboxOptions>
+      </div>
+    </Listbox>
+  );
+}
+
+export function LabeledInput({
+  style = "1",
+  label,
+  value,
+  onChange,
+  width = "w-60",
+  placeholder,
+  error,
+  onBlur,
+  isRequired = false, // Added isRequired prop
+}) {
+  const containerClass =
+    style === "1"
+      ? "flex w-full items-center justify-between"
+      : "flex flex-col w-full gap-y-3 items-end justify-between";
+
+  const labelWrapperClass = style !== "1" ? "w-full" : "w-fit";
+
+  return (
+    <div className={containerClass}>
+      <div className={labelWrapperClass}>
+        <span className="text-md font-medium">
+          {label}
+          {isRequired && <span className="text-red-500 ml-1">*</span>} {/* Display asterisk if required */}
+        </span>
+      </div>
+      <div className={width}>
+        <StyledInput
+          value={value}
+          onChange={onChange}
+          placeholder={placeholder}
+          error={error} // This error prop is correctly passed to StyledInput
+          onBlur={onBlur}
+        />
+      </div>
+    </div>
+  );
+}
+
+export function StyledRadioSelector({
+  selectedOption,
+  onChange,
+  options = [],
+  label,
+  onBlur = () => {},
+  error, // error prop is crucial
+  isRequired = false, // Added isRequired prop
+}) {
+  return (
+    <div className="flex flex-col gap-y-1 w-full">
+      {label && <span className="block text-xl font-semibold mb-1">{label}{isRequired && <span className="text-red-500 ml-1">*</span>}</span>}
+      <div className="flex space-x-10">
+        {options.map((option) => (
+          <label key={option.value} className="flex items-center space-x-2 cursor-pointer">
+            <input
+              type="radio"
+              name="type"
+              value={option.value}
+              checked={selectedOption === option.value}
+              onChange={onChange}
+              onBlur={onBlur}
+              // Tailwind's default radio button styling doesn't easily support border-colors directly on the input
+              // It's often better to style the parent label or use custom radio button designs for error states.
+              // For a simple fix, we can apply it here, but it might not be visually prominent.
+              className={`w-5 h-5 accent-black ${error ? "border-red-500" : ""}`} // Added accent-black, border won't show on default radio
+            />
+            <span className="text-2xl font-semibold">{option.label}</span>
+          </label>
+        ))}
+      </div>
+      {error && ( // Display error message for radio selector
+        <p className="text-red-500 text-xs font-hind mt-1">
+          Please select an option.
+        </p>
+      )}
+    </div>
+  );
+}
+
+export function StyledFileInput({
+  onFilesSelected,
+  accept = "*",
+  multiple = true,
+  label = "Drag or Choose Files",
+  initialFiles = [],
+  error,
+  isRequired = false,
+}) {
+  const fileInputRef = useRef(null);
+  const [selectedFiles, setSelectedFiles] = useState(initialFiles);
+  const [isDragging, setIsDragging] = useState(false);
+
+  useEffect(() => {
+    setSelectedFiles(initialFiles);
+  }, [initialFiles]);
+
+  const handleClick = () => {
+    fileInputRef.current.click();
+  };
+
+  const handleChange = (e) => {
+    handleFiles(e.target.files);
+  };
+
+  const handleFiles = (fileList) => {
+    const files = Array.from(fileList);
+    const updatedFiles = multiple
+      ? [...selectedFiles, ...files]
+      : files.slice(0, 1);
+
+    setSelectedFiles(updatedFiles);
+    if (onFilesSelected) onFilesSelected(updatedFiles);
+  };
+
+  const handleRemoveFile = (indexToRemove) => {
+    const updated = selectedFiles.filter((_, i) => i !== indexToRemove);
+    setSelectedFiles(updated);
+    if (onFilesSelected) onFilesSelected(updated);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (e.dataTransfer?.files?.length) {
+      handleFiles(e.dataTransfer.files);
+    }
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+  };
+
+  const handleDragEnter = () => setIsDragging(true);
+  const handleDragLeave = () => setIsDragging(false);
+
+  return (
+    <div
+      className="flex items-start gap-4 text-[7px]"
+      onDrop={handleDrop}
+      onDragOver={handleDragOver}
+      onDragEnter={handleDragEnter}
+      onDragLeave={handleDragLeave}
+    >
+      {/* File Input Box */}
+      <div
+        onClick={handleClick}
+        className={`border-[1.5px] rounded-xl px-4 py-4 text-center cursor-pointer select-none transition w-36 ${
+          isDragging ? "bg-indigo-100 border-indigo-400" : "hover:bg-gray-50"
+        } ${error ? "border-red-500" : "border-black"}`}
+      >
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleChange}
+          accept={accept}
+          multiple={multiple}
+          className="hidden"
+        />
+        <span className="text-gray-700 leading-tight">
+          {label.split("Choose")[0]}
+          <span className="text-indigo-600 font-medium underline">
+            Choose Files
+          </span>
+          {isRequired && <span className="text-red-500 ml-1">*</span>}
+        </span>
+      </div>
+
+      {/* File List (Horizontal Scroll) */}
+      <div className="flex-1 overflow-x-auto">
+        <div className="flex flex-row space-x-2 h-10">
+          {selectedFiles.length > 0 ? (
+            selectedFiles.map((file, idx) => (
+              <div
+                key={idx}
+                className="flex items-center text-gray-800 bg-gray-100 px-3 py-1 rounded-md whitespace-nowrap"
+                title={file.name}
+              >
+                <span className="truncate max-w-[120px]">📄 {file.name}</span>
+                <button
+                  onClick={() => handleRemoveFile(idx)}
+                  className="ml-2 text-red-500 hover:text-red-700 text-sm font-bold"
+                  title="Remove file"
+                >
+                  ❌
+                </button>
+              </div>
+            ))
+          ) : (
+            <div className="text-gray-500 italic">No files</div>
+          )}
+        </div>
+      </div>
+      {error && (
+        <p className="text-red-500 text-xs font-hind mt-1">
+          Please provide a URL or upload a file.
+        </p>
+      )}
     </div>
   );
 }

@@ -49,48 +49,66 @@ const Appointment = () => {
 
   return (
     <div className="bg-white flex flex-col gap-y-4 min-h-fit h-fit w-screen pt-7">
-      <div className="w-screen h-[20rem] font-hina">
-        <span className="flex w-auto h-full text-center items-center justify-center text-[7rem]">
-          {articleName || article.title}
-        </span>
-      </div>
-      <div className="flex w-auto justify-center my-[5rem]">
-        <div className="flex w-[70rem] h-auto items-center justify-center text-center text-[2rem]">
-          <span className="w-1/4 h-[13rem] border border-black flex flex-col items-center justify-center">
-            <h1 className="text-[1.5rem]">Date</h1>
-            <p className="break-words whitespace-normal px-4">
+     
+      <div className="flex w-screen h-[20rem] justify-center my-[5rem]">
+        <div className="flex w-[140rem] h-auto items-stretch text-center text-[2rem] border-t border-b border-black">
+          {/* Left Column */}
+          <div className="flex flex-col items-center justify-start py-6 gap-4 basis-[22.5%]">
+            <div className="flex gap-2 mb-2">
+              <span className="w-10 h-10 rounded-full bg-gray-300 inline-block"></span>
+              <span className="w-10 h-10 rounded-full bg-gray-300 inline-block"></span>
+            </div>
+            <div className="flex flex-col items-center text-[1.1rem] leading-tight">
+              <span className="font-bold">
+                The Provincial Government of Camarines Norte
+              </span>
+              <span>Museum, Archives and Shrine Curation Division</span>
+            </div>
+          </div>
+          {/* Middle Column */}
+          <div className="flex flex-col items-center justify-center py-6 gap-2 border-l border-r border-black basis-[55%]">
+            <span
+              className="text-[2.2rem] font-bold"
+              style={{ color: "#FFD700" }}
+            >
+              Museo{" "}
+              <span
+                className="text-[2.2rem] font-bold"
+                style={{ color: "#FFD700", textShadow: "0 0 2px #bfa100" }}
+              >
+                B
+              </span>
+              ulawan News
+            </span>
+            <span className="text-[2rem] font-bold underline mt-2 mb-1">
+              {article.title}
+            </span>
+            <span className="text-[1.2rem] italic text-gray-700">
+              {article.author || "N/A"}
+            </span>
+          </div>
+          {/* Right Column */}
+          <div className="flex flex-col items-center justify-center py-6 gap-2 basis-[22.5%]">
+            <span className="text-[1.3rem] font-semibold">
               {article.upload_date
                 ? new Date(article.upload_date).toLocaleDateString("en-US", {
-                    year: "numeric",
-                    month: "long",
-                    day: "numeric",
+                    weekday: "long",
                   })
                 : "N/A"}
-            </p>
-          </span>
-          <span className="w-1/4 h-[13rem] border border-black flex flex-col items-center justify-center">
-            <h1 className="text-[1.5rem]">Author</h1>
-            <p className="break-words whitespace-normal px-4">
-              {article.author || "N/A"}
-            </p>
-          </span>
-          <span className="w-1/4 h-[13rem] border border-black flex flex-col items-center justify-center">
-            <h1 className="text-[1.5rem]">Address</h1>
-            <p className="break-words whitespace-normal px-4">
-              {article.barangay && article.address
-                ? `${article.barangay}, ${article.address}`
-                : article.barangay
-                ? article.barangay
-                : article.address
-                ? article.address
+            </span>
+            <span className="text-[1.1rem]">
+              {article.upload_date
+                ? new Date(article.upload_date).toLocaleDateString("en-US", {
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric",
+                  })
                 : "N/A"}
-            </p>
-          </span>
-          <span className="w-1/4 h-[13rem] border border-black flex flex-col items-center justify-center">
-            <h1 className="text-[1.5rem]">
-              {article.article_category || "N/A"}
-            </h1>
-          </span>
+            </span>
+            <span className="font-semibold text-[1.1rem]   w-full pt-2">
+              Vol.2, No.3
+            </span>
+          </div>
         </div>
       </div>
       <div className="w-screen h-auto min-h-[79rem] mx-auto font-hina">

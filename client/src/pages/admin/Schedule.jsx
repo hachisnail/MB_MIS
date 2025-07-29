@@ -1,64 +1,35 @@
 // src/pages/Schedule.jsx
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Calendar from 'react-calendar';
 import TimePicker from 'react-time-picker';
 import 'react-calendar/dist/Calendar.css';
 import 'react-time-picker/dist/TimePicker.css';
-import LiveClock from '../../components/function/LiveClock';
-import Toast from '../../components/function/Toast';
-import DayScheduler from '../../components/DayScheduler'; // Import the new DayScheduler component
-import { LoadingSpinner } from '../../components/list/commons'; // Import LoadingSpinner
-import axiosClient from '../../lib/axiosClient'; // Import axiosClient for API calls
-import { AppointmentViewPage } from '../../components/subpages/AppointmentViewPage'; // Import AppointmentViewPage
-import ConfirmationModal from '../../components/modals/ConfirmationModal'; // Import ConfirmationModal
-import StyledButton from '../../components/buttons/StyledButton'; // Import StyledButton
-
-
-// ---------------- UTILITY FUNCTIONS ----------------
-// Safely build a YYYY-MM-DD string from a Date object (no UTC offset).
-function getLocalDateString(dateObj) {
-  const year = dateObj.getFullYear();
-  const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-  const day = String(dateObj.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
-
-function timeStringToMinutes(str) {
-  const [hourStr, minuteStr] = str.split(':');
-  const hour = parseInt(hourStr, 10);
-  const minute = parseInt(minuteStr, 10) || 0;
-  return hour * 60 + minute;
-}
-
-function formatTimeTo12H(str) {
-  if (!str) return '';
-
-  let [hour, minute] = str.split(':');
-  hour = parseInt(hour, 10);
-  minute = parseInt(minute, 10) || 0;
-
-  const suffix = hour >= 12 ? 'pm' : 'am';
-  const normalized = hour % 12 || 12;
-  const minuteStr = minute.toString().padStart(2, '0');
-  return `${normalized}:${minuteStr}${suffix}`;
-}
-
-function countOverlappingEvents(events, startTime, endTime) {
-  const newStart = timeStringToMinutes(startTime);
-  const newEnd = timeStringToMinutes(endTime);
-
-  const newEvent = { start: newStart, end: newEnd };
-
-  return events.filter(event => {
-    const eventStart = timeStringToMinutes(event.startTime);
-    const eventEnd = timeStringToMinutes(event.endTime);
-    return (newEvent.start < eventEnd && eventStart < newEvent.end);
-  }).length;
-}
+import LiveClock from '../../features/LiveClock';
+import Toast from '../../features/Toast';
+import DayScheduler from '../../features/DayScheduler';
+import { LoadingSpinner, EmptyMessage } from '../../components/list/commons';
+import ScheduleItem from '../../components/list/ScheduleItem';
+import axiosClient from '../../lib/axiosClient';
+import { AppointmentViewPage } from '../../components/subpages/AppointmentViewPage';
+import ConfirmationModal from '../../components/modals/ConfirmationModal';
+import StyledButton from '../../components/buttons/StyledButton';
+import { useSocketClient } from '../../context/authContext';
+import {
+  getLocalDateString,
+  timeStringToMinutes,
+  formatTimeTo12H,
+  countOverlappingEvents,
+  convertTo24Hour,
+  transformScheduleData,
+  transformAppointmentData
+} from '../../utils/scheduleUtils';
 
 // ---------------- MAIN SCHEDULE PAGE ----------------
 const Schedule = () => {
+  const navigate = useNavigate();
+
   // Calendar state
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [newAvailability, setNewAvailability] = useState('SHARED'); // Default to 'SHARED'
@@ -114,53 +85,7 @@ const Schedule = () => {
     }
   }, []);
 
-  // Transform backend data to match the expected format for DayScheduler
-  const transformScheduleData = (schedules) => {
-    return schedules
-      .filter(schedule => schedule.status !== 'COMPLETED') // Filter out COMPLETED schedules from day scheduler
-      .map(schedule => ({
-        id: `schedule-${schedule.schedule_id}`,
-        schedule_id: schedule.schedule_id,
-        title: schedule.title || 'Unnamed Schedule',
-        description: schedule.description || '',
-        date: schedule.date,
-        startTime: schedule.start_time,
-        endTime: schedule.end_time,
-        availability: schedule.availability || 'SHARED',
-        status: schedule.status || 'ACTIVE',
-        createdAt: schedule.createdAt,
-        updatedAt: schedule.updatedAt,
-        isSchedule: true,
-        isAppointment: false,
-        isActive: schedule.status !== 'COMPLETED' // Add isActive property
-      }));
-  };
-
-  const transformAppointmentData = (appointments) => {
-    return appointments.map(appointment => {
-      const visitor = appointment.Visitor || {};
-      const status = appointment.AppointmentStatus?.status || 'TO_REVIEW';
-
-      // Only include confirmed appointments in the schedule view
-      if (status !== 'CONFIRMED') return null;
-
-      return {
-        id: `appointment-${appointment.appointment_id}`,
-        appointment_id: appointment.appointment_id,
-        title: appointment.purpose_of_visit,
-        description: appointment.additional_notes || '',
-        date: appointment.preferred_date,
-        startTime: appointment.start_time || '09:00',
-        endTime: appointment.end_time || '10:00',
-        organizer: `${visitor.first_name || ''} ${visitor.last_name || ''}`.trim(),
-        numPeople: appointment.population_count,
-        status: status,
-        isSchedule: false,
-        isAppointment: true,
-        isActive: status === 'CONFIRMED' // Add isActive property
-      };
-    }).filter(Boolean); // Remove null entries
-  };
+  const socket = useSocketClient();
 
   const fetchEvents = useCallback(async () => {
     setIsLoading(true);
@@ -263,7 +188,7 @@ const Schedule = () => {
 
         return {
           id: `appointment-${appointment.appointment_id}`,
-          appointment_id: appointment.appointment_id, // Add this field
+          appointment_id: appointment.appointment_id,
           title: appointment.purpose_of_visit || 'Unnamed Appointment',
           description: appointment.additional_notes || '',
           date: appointment.preferred_date.split('T')[0],
@@ -275,8 +200,8 @@ const Schedule = () => {
           numPeople: `${appointment.population_count || 1} visitors`,
           isAppointment: true,
           status: 'CONFIRMED',
-          availability: 'SHARED', // All appointments are shared by default
-          isActive: true // Add isActive property for confirmed appointments
+          availability: 'SHARED',
+          isActive: true
         };
       });
 
@@ -300,22 +225,18 @@ const Schedule = () => {
     try {
       console.log("hit");
 
-      // Format date for API
       const formattedDate = dateString;
       console.log("Fetching today's tours for:", formattedDate);
 
-      // Get all schedules for today (including completed ones)
       const schedulesResponse = await axiosClient.get(`/auth/schedules?date=${formattedDate}`);
 
-      // Get all appointments
       const appointmentsResponse = await axiosClient.get(`/auth/appointment`);
 
       console.log("Today's schedules:", schedulesResponse.data.length);
       console.log("All appointments:", appointmentsResponse.data.length);
 
-      // Process all schedules for today
       const todaySchedules = schedulesResponse.data
-        .filter(schedule => schedule && schedule.date)  // Ensure date exists
+        .filter(schedule => schedule && schedule.date)
         .map(schedule => ({
           id: `schedule-${schedule.schedule_id}`,
           title: schedule.title || 'Schedule',
@@ -329,16 +250,12 @@ const Schedule = () => {
 
       console.log("Processed schedules:", todaySchedules.length);
 
-      // Filter appointments for today's date and process them
-      // Only include CONFIRMED and COMPLETED appointments
       const todayAppointments = appointmentsResponse.data
         .filter(appointment => {
-          // Skip if preferred_date is missing
           if (!appointment.preferred_date) {
             return false;
           }
 
-          // Normalize date format by removing any time portion
           const appointmentDate = appointment.preferred_date.split('T')[0];
           const matchesDate = appointmentDate === formattedDate;
 
@@ -349,23 +266,18 @@ const Schedule = () => {
           return matchesDate;
         })
         .filter(appointment => {
-          // Only include CONFIRMED and COMPLETED appointments (case-insensitive)
           const status = (appointment.AppointmentStatus?.status || '').toUpperCase();
           return status === 'CONFIRMED' || status === 'COMPLETED';
         })
         .map(appointment => {
-          // Process time values
           let startTime = "09:00";
           let endTime = "10:00";
 
-          // Try direct time fields first
           if (appointment.start_time && appointment.end_time) {
             startTime = appointment.start_time;
             endTime = appointment.end_time;
             console.log(`Using direct time fields for ${appointment.appointment_id}: ${startTime}-${endTime}`);
-          }
-          // Fall back to preferred_time if available
-          else if (appointment.preferred_time && typeof appointment.preferred_time === 'string') {
+          } else if (appointment.preferred_time && typeof appointment.preferred_time === 'string') {
             try {
               const timeParts = appointment.preferred_time.split('-');
               if (timeParts[0]) startTime = convertTo24Hour(timeParts[0].trim());
@@ -373,13 +285,12 @@ const Schedule = () => {
               console.log(`Parsed preferred_time for ${appointment.appointment_id}: ${startTime}-${endTime}`);
             } catch (error) {
               console.error("Error parsing preferred_time:", appointment.preferred_time, error);
-              // Keep default times on error
             }
           }
 
           return {
             id: `appointment-${appointment.appointment_id}`,
-            appointment_id: appointment.appointment_id, // Add this field
+            appointment_id: appointment.appointment_id,
             title: appointment.purpose_of_visit || 'Visitor Appointment',
             organizer: appointment.Visitor ?
               `${appointment.Visitor.first_name || ''} ${appointment.Visitor.last_name || ''}`.trim() :
@@ -395,7 +306,6 @@ const Schedule = () => {
 
       console.log("Processed appointments:", todayAppointments.length);
 
-      // Combine and sort by start time
       const allTours = [...todaySchedules, ...todayAppointments];
       allTours.sort((a, b) => {
         return timeStringToMinutes(a.startTime) - timeStringToMinutes(b.startTime);
@@ -410,29 +320,23 @@ const Schedule = () => {
     }
   }, [dateString]);
 
-  // Helper function to convert 12-hour time format to 24-hour format (from old project)
   const convertTo24Hour = (timeStr) => {
     if (!timeStr) return "09:00";
 
-    // Check if time string has AM/PM
     const hasAMPM = timeStr.toLowerCase().includes('am') || timeStr.toLowerCase().includes('pm');
 
     if (hasAMPM) {
-      // Handle 12-hour format with AM/PM
       const isPM = timeStr.toLowerCase().includes('pm');
-      // Remove AM/PM and trim
       const cleanTime = timeStr.toLowerCase().replace(/am|pm/g, '').trim();
       const [hourStr, minuteStr] = cleanTime.split(':');
       let hour = parseInt(hourStr, 10);
       const minute = parseInt(minuteStr || '0', 10);
 
-      // Convert to 24-hour format
       if (isPM && hour < 12) hour += 12;
       if (!isPM && hour === 12) hour = 0;
 
       return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
     } else {
-      // Already in 24-hour format or just missing AM/PM
       const [hourStr, minuteStr] = timeStr.split(':');
       const hour = parseInt(hourStr, 10);
       const minute = parseInt(minuteStr || '0', 10);
@@ -448,20 +352,16 @@ const Schedule = () => {
 
       console.log(`Fetching calendar events for month: ${month + 1}/${year}`);
 
-      // Get all schedules
       const schedulesResponse = await axiosClient.get('/auth/schedules');
       console.log("All schedules:", schedulesResponse.data.length);
 
-      // Get all appointments
       const appointmentsResponse = await axiosClient.get('/auth/appointment');
       console.log("All appointments:", appointmentsResponse.data.length);
 
-      // Filter schedules for this month and process them
       const monthSchedules = schedulesResponse.data
         .filter(schedule => {
           if (!schedule.date) return false;
 
-          // Parse date properly and compare year and month
           const scheduleDate = new Date(schedule.date);
           return !isNaN(scheduleDate.getTime()) &&
             scheduleDate.getMonth() === month &&
@@ -469,24 +369,20 @@ const Schedule = () => {
         })
         .map(schedule => ({
           id: `schedule-${schedule.schedule_id}`,
-          date: schedule.date.split('T')[0], // Normalize date format
+          date: schedule.date.split('T')[0],
           isActive: schedule.status !== 'COMPLETED',
           isSchedule: true
         }));
 
       console.log("Month-filtered schedules:", monthSchedules.length);
 
-      // Filter appointments for this month and process them
       const monthAppointments = appointmentsResponse.data
         .filter(appointment => {
-          // Skip appointments without preferred_date
           if (!appointment.preferred_date) return false;
 
-          // Extract date and normalize format (remove time portion if present)
           const dateStr = appointment.preferred_date.split('T')[0];
           const appointmentDate = new Date(dateStr);
 
-          // Check if date is valid and in current month/year
           return !isNaN(appointmentDate.getTime()) &&
             appointmentDate.getMonth() === month &&
             appointmentDate.getFullYear() === year;
@@ -500,7 +396,6 @@ const Schedule = () => {
 
       console.log("Month-filtered appointments:", monthAppointments.length);
 
-      // Combine both types of events
       const allEvents = [...monthSchedules, ...monthAppointments];
       console.log(`Total filtered calendar events: ${allEvents.length}`);
 
@@ -510,9 +405,8 @@ const Schedule = () => {
     }
   }, [viewedDate]);
 
-  // Memoize fetchAllData
   const fetchAllData = useCallback(async () => {
-    setIsLoading(true); // Start loading
+    setIsLoading(true);
     try {
       await Promise.all([
         fetchEvents(),
@@ -522,55 +416,66 @@ const Schedule = () => {
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
-      setIsLoading(false); // End loading
+      setIsLoading(false);
     }
-  }, [fetchEvents, fetchTodayTours, fetchMonthEvents]); // Removed isLoading from dependencies
+  }, [fetchEvents, fetchTodayTours, fetchMonthEvents]);
 
-  // Single useEffect for initial data load
   useEffect(() => {
     fetchAllData();
-  }, [selectedDate, viewedDate, fetchAllData]); // Re-run when selectedDate or viewedDate changes
+  }, [selectedDate, viewedDate, fetchAllData]);
 
-  // Handle mark as done button click
+  // Socket integration for real-time updates
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleScheduleChange = () => {
+      console.log("[Socket] Schedule changed – fetching data...");
+      fetchAllData();
+    };
+
+    const handleAppointmentChange = () => {
+      console.log("[Socket] Appointment changed – fetching data...");
+      fetchAllData();
+    };
+
+    // Listen for schedule changes
+    socket.onDbChange("Schedule", "*", handleScheduleChange);
+
+    // Listen for appointment changes
+    socket.onDbChange("Appointment", "*", handleAppointmentChange);
+    socket.onDbChange("AppointmentStatus", "*", handleAppointmentChange);
+
+    return () => {
+      socket.offDbChange("Schedule", "*", handleScheduleChange);
+      socket.offDbChange("Appointment", "*", handleAppointmentChange);
+      socket.offDbChange("AppointmentStatus", "*", handleAppointmentChange);
+    };
+  }, [socket, fetchAllData]);
+
   const handleMarkAsDone = async () => {
     if (!selectedAppointment) return;
 
     if (selectedAppointment.isAppointment) {
-      // Fetch real appointment data from backend
       try {
         const response = await axiosClient.get(`/auth/attendance/${selectedAppointment.appointment_id}`);
         const appointmentData = response.data;
 
-        setModalData({
-          appointmentId: selectedAppointment.appointment_id,
-          fromFirstName: appointmentData.fromFirstName || '',
-          fromLastName: appointmentData.fromLastName || '',
-          email: appointmentData.email || '',
-          phone: appointmentData.phone || '',
-          organization: appointmentData.organization || '',
-          street: appointmentData.street || '',
-          barangay: appointmentData.barangay || '',
-          city_municipality: appointmentData.city_municipality || '',
-          province: appointmentData.province || '',
-          purpose: appointmentData.purpose || selectedAppointment.title,
-          populationCount: appointmentData.populationCount || selectedAppointment.numPeople || 0,
-          preferredDate: appointmentData.preferredDate || selectedAppointment.date,
-          preferredTime: appointmentData.preferredTime || `${selectedAppointment.startTime} - ${selectedAppointment.endTime}`,
-          notes: appointmentData.notes || selectedAppointment.description || '',
-          status: appointmentData.status || 'CONFIRMED',
-          dateSent: appointmentData.creation_date || new Date().toLocaleString()
-        });
-        setShowAppointmentModal(true);
+        const visitorName = `${appointmentData.fromFirstName || ''} ${appointmentData.fromLastName || ''}`.trim() || 'Unknown Visitor';
+        const breadcrumbText = `${selectedAppointment.appointment_id} ${visitorName}`;
+        const encodedId = btoa(breadcrumbText);
+
+        navigate(`/admin/schedule/${encodedId}`, { state: { cameFrom: 'schedule' } });
       } catch (error) {
         console.error('Error fetching appointment details:', error);
         showToast('Error loading appointment details', 'error');
       }
+
+
     } else if (selectedAppointment.isSchedule) {
       setShowConfirmModal(true);
     }
   };
 
-  // Handle schedule confirmation
   const handleScheduleConfirm = async () => {
     try {
       setIsLoading(true);
@@ -581,7 +486,7 @@ const Schedule = () => {
       showToast('Schedule marked as completed', 'success');
       setSelectedAppointment(null);
       setShowConfirmModal(false);
-      fetchAllData(); // Refresh all data
+      fetchAllData();
     } catch (error) {
       console.error('Error updating schedule status:', error);
       showToast(error.message || 'Error updating schedule status', 'error');
@@ -590,7 +495,6 @@ const Schedule = () => {
     }
   };
 
-  // Function to update appointment status
   const updateAppointmentStatus = async (appointmentId, status, presentCount = null) => {
     try {
       const requestData = { status };
@@ -599,7 +503,7 @@ const Schedule = () => {
       }
 
       await axiosClient.patch(`/auth/appointment/${appointmentId}/status`, requestData);
-      fetchAllData(); // Refresh all data after update
+      fetchAllData();
     } catch (error) {
       console.error('Error updating appointment status:', error);
       throw error;
@@ -634,7 +538,6 @@ const Schedule = () => {
         return;
       }
 
-      // Check for existing exclusive schedules
       const existingExclusiveEvent = backendEvents.find(event => {
         if (!event.isSchedule) return false;
         if (event.availability === 'EXCLUSIVE' && event.date === dateString) {
@@ -650,13 +553,12 @@ const Schedule = () => {
         return;
       }
 
-      // Check for adding an exclusive event
       if (newAvailability === 'EXCLUSIVE') {
         const existingEvents = backendEvents.filter(event => {
           if (event.date !== dateString) return false;
           const eventStart = timeStringToMinutes(event.startTime);
           const eventEnd = timeStringToMinutes(event.endTime);
-          return (startMinutes < eventEnd && eventStart < endMinutes);
+          return (startMinutes < eventEnd && eventStart < endTime);
         });
 
         if (existingEvents.length > 0) {
@@ -665,10 +567,9 @@ const Schedule = () => {
         }
       }
 
-      // Check for overlapping limit for shared events
       if (newAvailability === 'SHARED') {
         const overlappingCount = countOverlappingEvents(backendEvents, newStartTime, newEndTime);
-        if (overlappingCount >= 5) { // Assuming a max of 5 overlapping shared events
+        if (overlappingCount >= 5) {
           showToast('Maximum limit reached: Cannot add more than 5 overlapping events', 'error');
           return;
         }
@@ -693,7 +594,7 @@ const Schedule = () => {
       setNewEndTime('10:00');
       setNewAvailability('SHARED');
 
-      fetchAllData(); // Refresh all data
+      fetchAllData();
     } catch (error) {
       console.error('Error creating schedule:', error);
       showToast(error.response?.data?.message || error.message || 'Failed to create schedule', 'error');
@@ -701,14 +602,12 @@ const Schedule = () => {
   };
 
   const [toastConfig, setToastConfig] = useState({
-    isVisible: false,
     message: '',
     type: 'success'
   });
 
   const showToast = (message, type = 'success') => {
     setToastConfig({
-      isVisible: true,
       message,
       type
     });
@@ -717,7 +616,7 @@ const Schedule = () => {
   const hideToast = () => {
     setToastConfig({
       ...toastConfig,
-      isVisible: false
+      message: ''
     });
   };
 
@@ -733,7 +632,7 @@ const Schedule = () => {
             setModalData(null);
           }}
           onSend={() => {
-            fetchAllData(); // Refresh data after appointment update
+            fetchAllData();
           }}
           updateAppointmentStatus={updateAppointmentStatus}
           showRespondSection={true}
@@ -743,9 +642,7 @@ const Schedule = () => {
         <div className="w-full bg-[#F0F0F0] h-full flex flex-col pb-7">
           <div className="w-full h-full flex flex-col xl:flex-row gap-y-5 xl:gap-y-0 justify-between px-4 sm:px-12 gap-x-10">
 
-            {/* LEFT SECTION - Calendar & Today's Scheduled Tours */}
             <div className="w-full xl:w-[31rem] h-fit flex flex-col gap-y-6 items-center justify-around">
-              {/* Calendar */}
               <div className="w-full xl:min-w-[31rem] xl:max-w-[31rem] min-h-[27rem] flex flex-col gap-y-4">
                 <div className="flex justify-between items-center">
                   <span className="text-2xl font-semibold">{monthLabel}</span>
@@ -760,23 +657,18 @@ const Schedule = () => {
                     }}
                     tileContent={({ date, view }) => {
                       if (view === 'month') {
-                        // Get the date string in YYYY-MM-DD format for comparison
                         const ds = getLocalDateString(date);
 
-                        // Count active schedules for this date
                         const activeSchedules = calendarEvents.filter(event =>
                           event.date === ds && event.isSchedule && event.isActive
                         ).length;
 
-                        // Count confirmed appointments for this date
                         const confirmedAppointments = calendarEvents.filter(event =>
                           event.date === ds && event.isAppointment && event.isActive
                         ).length;
 
-                        // Total count of events
                         const totalCount = activeSchedules + confirmedAppointments;
 
-                        // Only show badge if there are events (no zero badges)
                         return totalCount > 0 ? (
                           <span className="absolute top-1 right-1 rounded-full bg-red-500 text-white text-[10px] w-4 h-4 flex items-center justify-center">
                             {totalCount}
@@ -791,7 +683,6 @@ const Schedule = () => {
                 </div>
               </div>
 
-              {/* Today's Scheduled Tours */}
               <div className="w-full xl:min-w-[31rem] xl:max-w-[31rem] flex flex-col h-[40rem] bg-white rounded-xl shadow-xl p-5">
                 <span className="text-2xl font-semibold mb-4">Today's Scheduled Tours</span>
                 <div className="w-full border-t border-gray-200 pt-4 space-y-3 max-h-140 overflow-y-auto">
@@ -801,48 +692,18 @@ const Schedule = () => {
                     </div>
                   )}
                   {todayTours.map((tour, idx) => (
-                    <div
+                    <ScheduleItem
                       key={tour.id || idx}
-                      className={`
-                        ${idx % 2 === 0 ? 'bg-black text-white' : 'bg-gray-100 text-gray-700'}
-                        p-3 rounded-lg flex items-center justify-between
-                      `}
-                    >
-                      <div className="flex items-center flex-grow">
-                        <div
-                          className={`
-                            ${idx % 2 === 0 ? 'bg-gray-800 text-white' : 'bg-gray-300 text-gray-800'}
-                            px-3 py-1.5 rounded mr-3 text-sm
-                          `}
-                        >
-                          {formatTimeTo12H(tour.startTime)}-{formatTimeTo12H(tour.endTime)}
-                        </div>
-                        <div className="flex-grow">
-                          <div className="font-medium">
-                            {tour.organizer || 'No Name'}
-                          </div>
-                          <div className="text-sm truncate max-w-[150px]">
-                            {tour.title}
-                          </div>
-                          {tour.numPeople && (
-                            <div className="text-sm">{tour.numPeople}</div>
-                          )}
-                        </div>
-                      </div>
-                      {tour.isDone && (
-                        <div className="bg-green-500 text-xs px-2 py-1 rounded whitespace-nowrap">
-                          tour done
-                        </div>
-                      )}
-                    </div>
+                      tour={tour}
+                      idx={idx}
+                      formatTimeTo12H={formatTimeTo12H}
+                    />
                   ))}
                 </div>
               </div>
             </div>
 
-            {/* MIDDLE SECTION - Day Scheduler */}
             <div className="w-full xl:flex-1 h-full flex flex-col gap-y-8 min-w-0">
-              {/* Title and date navigation */}
               <div className="w-full min-h-[5rem] flex flex-col justify-between">
                 <span className="text-4xl font-bold text-black">Today's Schedule</span>
                 <div className="w-full h-fit flex items-center">
@@ -850,23 +711,6 @@ const Schedule = () => {
                     {weekdayName} {dayNum}
                   </span>
                   <div className="flex items-center ml-4">
-                    {/* <i
-                      className="text-3xl fa-solid fa-less-than cursor-pointer hover:text-gray-700"
-                      onClick={() => {
-                        const prevDay = new Date(selectedDate);
-                        prevDay.setDate(prevDay.getDate() - 1);
-                        setSelectedDate(prevDay);
-                      }}
-                    />
-                    <span className="mx-3" />
-                    <i
-                      className="text-3xl fa-solid fa-greater-than cursor-pointer hover:text-gray-700"
-                      onClick={() => {
-                        const nextDay = new Date(selectedDate);
-                        nextDay.setDate(nextDay.getDate() + 1);
-                        setSelectedDate(nextDay);
-                      }}
-                    /> */}
                     <svg
                       className="w-8 h-8 cursor-pointer hover:text-gray-700"
                       xmlns="http://www.w3.org/2000/svg"
@@ -906,7 +750,6 @@ const Schedule = () => {
                 </div>
               </div>
 
-              {/* DayScheduler container */}
               <div className="w-full flex-1 bg-white p-5 rounded-xl shadow-xl overflow-hidden">
                 <DayScheduler
                   appointments={backendEvents}
@@ -918,12 +761,9 @@ const Schedule = () => {
               </div>
             </div>
 
-            {/* RIGHT SECTION - Clock, Form, and Selected Appointment */}
             <div className="w-full xl:w-[31rem] h-full flex flex-col gap-y-5">
-              {/* Live Clock with Time Context */}
               <div className="w-full rounded-xl bg-white shadow-xl p-6 flex items-center justify-center gap-x-8 hover:shadow-2xl transition-shadow">
                 <div className="bg-gray-100 p-3 rounded-full">
-                  {/* <i className="text-5xl fa-solid fa-clock text-[#9590FF]" /> */}
                   <svg
                     className="w-12 h-12 text-[#9590FF]"
                     xmlns="http://www.w3.org/2000/svg"
@@ -943,7 +783,6 @@ const Schedule = () => {
                 </div>
               </div>
 
-              {/* Add Schedule */}
               <div className="w-full max-w-lg mx-auto rounded-2xl bg-white shadow-2xl p-8 space-y-6">
                 <div>
                   <span className="text-2xl font-bold block mb-2 text-gray-800">
@@ -955,7 +794,6 @@ const Schedule = () => {
                 </div>
 
                 <div className="space-y-4">
-                  {/* Event Title */}
                   <div className="flex flex-col">
                     <label htmlFor="event-title" className="text-sm text-gray-600 mb-1">
                       Event Title
@@ -970,7 +808,6 @@ const Schedule = () => {
                     />
                   </div>
 
-                  {/* Event Description */}
                   <div className="flex flex-col">
                     <label htmlFor="event-desc" className="text-sm text-gray-600 mb-1">
                       Description
@@ -985,7 +822,6 @@ const Schedule = () => {
                     />
                   </div>
 
-                  {/* Start / End Time */}
                   <div className="grid grid-cols-2 gap-4">
                     <div className="flex flex-col">
                       <label htmlFor="start-time" className="text-sm text-gray-600 mb-1">
@@ -1015,7 +851,6 @@ const Schedule = () => {
                     </div>
                   </div>
 
-                  {/* Availability Selection - Improved Layout */}
                   <div className="flex flex-col">
                     <label className="text-sm text-gray-600 mb-2">
                       Availability
@@ -1052,10 +887,8 @@ const Schedule = () => {
                     </div>
                   </div>
 
-                  {/* Exclusive Event Warning/Helper */}
                   <div className="mt-2">
                     <div className="flex items-start">
-                      {/* <i className="fas fa-info-circle text-blue-500 mr-2 mt-1"></i> */}
                       <svg
                         className="w-5 h-5 text-blue-500 mr-2 mt-1"
                         xmlns="http://www.w3.org/2000/svg"
@@ -1081,7 +914,6 @@ const Schedule = () => {
                     </div>
                   </div>
 
-                  {/* Add Event Button */}
                   <StyledButton
                     onClick={handleAddEvent}
                     buttonColor="bg-[#A6A3F6]"
@@ -1107,31 +939,26 @@ const Schedule = () => {
                 </div>
               </div>
 
-              {/* Selected Appointment/Schedule */}
               <div className="w-full shadow-xl bg-white rounded-xl p-6">
                 <h2 className="text-xl font-bold mb-4">Selected Event</h2>
                 {selectedAppointment ? (
                   <>
-                    {/* Title with label based on type */}
                     <p className="mb-2">
                       <strong>{selectedAppointment.isAppointment ? 'Purpose:' : 'Title:'}</strong> {selectedAppointment.title}
                     </p>
 
-                    {/* Show Visitor only for appointments */}
                     {selectedAppointment.isAppointment && selectedAppointment.organizer && (
                       <p className="mb-2">
                         <strong>Visitor:</strong> {selectedAppointment.organizer}
                       </p>
                     )}
 
-                    {/* Time for both types */}
                     <p className="mb-2">
                       <strong>Time:</strong>{' '}
                       {formatTimeTo12H(selectedAppointment.startTime)} -{' '}
                       {formatTimeTo12H(selectedAppointment.endTime)}
                     </p>
 
-                    {/* Number of People only for appointments */}
                     {selectedAppointment.isAppointment && selectedAppointment.numPeople && (
                       <p className="mb-2">
                         <strong>Number of People:</strong>{' '}
@@ -1139,7 +966,6 @@ const Schedule = () => {
                       </p>
                     )}
 
-                    {/* Availability only for schedules */}
                     {selectedAppointment.isSchedule && (
                       <p className="mb-2">
                         <strong>Availability:</strong>{' '}
@@ -1152,7 +978,6 @@ const Schedule = () => {
                       </p>
                     )}
 
-                    {/* Description for both types */}
                     {selectedAppointment.description && (
                       <p className="mb-2">
                         <strong>Description:</strong>{' '}
@@ -1181,24 +1006,23 @@ const Schedule = () => {
         </div>
       )}
 
-      {isLoading && ( // Simplified condition
-        <div className="fixed inset-0 bg-opacity-30 flex items-center justify-center z-50">
+      {isLoading && (
+        <div className="fixed inset-0 flex items-center justify-center z-50">
           <div className="bg-white p-5 rounded-lg shadow-lg flex items-center space-x-3">
-            <LoadingSpinner /> {/* Using the imported component */}
-            <span>Loading events...</span>
+            <div className="w-10 h-10 bg-[#9590FF] rounded-full p-1">
+              <LoadingSpinner />
+            </div>
+            <span className="text-gray-700 font-medium">Loading events...</span>
           </div>
         </div>
       )}
 
-      {/* Toast notifications */}
       <Toast
         message={toastConfig.message}
         type={toastConfig.type}
-        isVisible={toastConfig.isVisible}
         onClose={hideToast}
       />
 
-      {/* Confirmation modal for schedules */}
       <ConfirmationModal
         isOpen={showConfirmModal}
         onClose={() => setShowConfirmModal(false)}

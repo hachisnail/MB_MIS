@@ -15,6 +15,7 @@ const routeMeta = [
   { path: "/admin/appointment", title: "Appointments Management" },
   { path: "/admin/appointment/:encoded", title: "View Appointment", theme: "text-gray-800" },
   { path: "/admin/schedule", title: "Schedules Management" },
+  { path: "/admin/schedule/:encoded", title: "View Appointment from Schedule", theme: "text-gray-800" },
   { path: "/admin/article", title: "Articles Management" },
 
   { path: "/admin/article/add-article", title: "Create a new Article" },
@@ -23,6 +24,8 @@ const routeMeta = [
 
 
 ];
+
+
 
 function safeDecodeBase64(str) {
   if (typeof str !== "string" || str.length < 8 || str.length % 4 !== 0) return str;

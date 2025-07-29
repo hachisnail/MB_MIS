@@ -1,5 +1,6 @@
 import { DataTypes } from 'sequelize';
 import { mainDb } from '../configs/databases.js';
+import { addDbChangeHooks } from '../hooks/emitDbChangeHooks.js';
 
 const AppointmentStatus = mainDb.define('AppointmentStatus', {
   status_id: {
@@ -30,5 +31,7 @@ const AppointmentStatus = mainDb.define('AppointmentStatus', {
   tableName: 'appointment_status',
   timestamps: false
 });
+
+addDbChangeHooks(AppointmentStatus, "AppointmentStatus");
 
 export default AppointmentStatus;

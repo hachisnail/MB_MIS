@@ -1,5 +1,6 @@
 import { DataTypes } from 'sequelize';
 import { mainDb } from '../configs/databases.js';
+import { addDbChangeHooks } from '../hooks/emitDbChangeHooks.js';
 
 const Visitor = mainDb.define('Visitor', {
   visitor_id: {
@@ -47,5 +48,7 @@ const Visitor = mainDb.define('Visitor', {
   tableName: 'visitor',
   timestamps: false
 });
+
+addDbChangeHooks(Visitor, "Visitor");
 
 export default Visitor;

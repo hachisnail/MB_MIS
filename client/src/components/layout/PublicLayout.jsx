@@ -59,7 +59,7 @@ const PublicLayout = () => {
         <header
           className={`${
             theme === 'dark' ? 'bg-[#1C1B19]' : 'bg-white'
-          } z-50 flex items-center justify-between h-10 min-h-fit`}
+          } z-40 flex items-center justify-between h-10 min-h-fit`}
         >
           <PublicHeader theme={theme} />
         </header>

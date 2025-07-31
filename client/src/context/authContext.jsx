@@ -8,6 +8,7 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [forcedLogoutReason, setForcedLogoutReason] = useState(null);
+  const [socketReady, setSocketReady] = useState(false);
   const socketRef = useRef(null);
 
   const login = async (credentials) => {
@@ -31,6 +32,7 @@ export function AuthProvider({ children }) {
       localStorage.setItem("logout-event", Date.now());
       socketRef.current?.disconnect();
       socketRef.current = null;
+      setSocketReady(false);
     }
   };
 
@@ -45,7 +47,6 @@ export function AuthProvider({ children }) {
     }
   };
 
-  // Listen for localStorage logout from other tabs
   useEffect(() => {
     fetchCurrentUser();
 
@@ -54,6 +55,7 @@ export function AuthProvider({ children }) {
         setUser(null);
         socketRef.current?.disconnect();
         socketRef.current = null;
+        setSocketReady(false);
       }
     };
 
@@ -61,16 +63,17 @@ export function AuthProvider({ children }) {
     return () => window.removeEventListener("storage", syncLogout);
   }, []);
 
-  // Setup Socket when user is available
   useEffect(() => {
     if (!user) return;
 
-    // Only initialize once
     if (!socketRef.current) {
       const socketClient = new SocketClient(import.meta.env.VITE_SOCKET_URL);
       socketRef.current = socketClient;
 
-      // Handle forced logout (from server)
+      socketClient.onReady(() => {
+        setSocketReady(true);
+      });
+
       socketClient.onMessage((data) => {
         if (data.type === "forceLogout") {
           console.warn("[Socket] Forced logout received:", data);
@@ -80,7 +83,6 @@ export function AuthProvider({ children }) {
       });
     }
 
-    // Register user after socket is ready
     socketRef.current.registerUser(user.id);
   }, [user]);
 
@@ -92,7 +94,8 @@ export function AuthProvider({ children }) {
         logout,
         loading,
         forcedLogoutReason,
-        socketClient: socketRef.current, // ✅ the full class instance
+        socketClient: socketRef.current,
+        socketReady,
       }}
     >
       {children}
@@ -106,5 +109,5 @@ export function useAuth() {
 
 export function useSocketClient() {
   const { socketClient } = useContext(AuthContext);
-  return socketClient; // ✅ this returns SocketClient, NOT .socket
+  return socketClient;
 }

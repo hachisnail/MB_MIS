@@ -13,24 +13,25 @@ class SocketClient {
     this.listeners = new Map();
     this.joinedRooms = new Set();
     this.userId = null;
+    this.readyCallbacks = new Set();
 
-this.socket.on("connect", () => {
-  console.log("[Socket] Connected:", this.socket.id);
+    this.socket.on("connect", () => {
+      console.log("[Socket] Connected:", this.socket.id);
 
-  // Delay slightly to ensure server has fully initialized this connection
-  setTimeout(() => {
-    if (this.userId) {
-      this.socket.emit("registerUser", this.userId);
-      console.log("[Socket] registerUser sent after connection");
-    }
+      setTimeout(() => {
+        if (this.userId) {
+          this.socket.emit("registerUser", this.userId);
+          console.log("[Socket] registerUser sent after connection");
+        }
 
-    for (const room of this.joinedRooms) {
-      this.socket.emit("joinRoom", room);
-      console.log(`[Socket] joinRoom sent: ${room}`);
-    }
-  }, 50); // 50ms is enough for event loop tick
-});
+        for (const room of this.joinedRooms) {
+          this.socket.emit("joinRoom", room);
+          console.log(`[Socket] joinRoom sent: ${room}`);
+        }
 
+        this.readyCallbacks.forEach(cb => cb());
+      }, 50);
+    });
 
     this.socket.on("disconnect", (reason) => {
       console.log("[Socket] Disconnected:", reason);
@@ -46,6 +47,14 @@ this.socket.on("connect", () => {
       console.log("[Socket] Message received:", data);
       this.handleMessage(data);
     });
+  }
+
+  onReady(callback) {
+    if (this.socket.connected) {
+      callback();
+    } else {
+      this.readyCallbacks.add(callback);
+    }
   }
 
   registerUser(userId) {
@@ -136,6 +145,5 @@ this.socket.on("connect", () => {
     this.socket.disconnect();
   }
 }
-
 
 export default SocketClient;

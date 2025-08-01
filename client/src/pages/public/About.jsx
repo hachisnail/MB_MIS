@@ -1,4 +1,4 @@
-import bgImage1 from "@/assets/440832115_947772303495782_6010038099693171993_n.png";
+import bgImage1 from "@/assets/440832115_947772303495782_6010038099693171993_n.svg";
 
 const About = () => {
   return (

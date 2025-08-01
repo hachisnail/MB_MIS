@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import StyledButton from "@/components/buttons/StyledButton";
 import usePrompt from "@/hooks/usePrompt"; 
 import ConfirmationModal from "@/components/modals/ConfirmationModal"; 
+import { useNavigate } from "react-router-dom";
 
 import {
   StyledInput,
@@ -13,9 +14,9 @@ import {
 
 const Notice = () => {
   return (
-    <div className="w-[30rem] h-fit flex flex-col justify-center gap-y-5">
-      <span className="text-5xl font-hina font-extralight">NOTICE</span>
-      <span className="text-lg font-hind font-medium text-justify ">
+    <div className="w-[35rem] h-fit flex flex-col justify-center gap-y-5">
+      <span className="text-6xl font-hina font-extralight">NOTICE</span>
+      <span className="text-xl font-hind font-medium text-justify ">
         &nbsp; &nbsp; &nbsp; &nbsp; In addition to preserving your historic
         objects it is important to remember to preserve the history or story
         that goes with them. For example, the uniform worn by your great grand
@@ -24,7 +25,7 @@ const Notice = () => {
         details that would help our team understand the significance of the
         item.
       </span>
-      <span className="text-xl font-hina font-ligt text-right">
+      <span className="text-2xl font-hina font-ligt text-right">
         “The Story Matters as Much as the Artifact”
       </span>
     </div>
@@ -487,6 +488,8 @@ const ArtifactFiles = ({ value, onChange, errors, validateField }) => {
 
 const Contribution = () => {
   const [step, setStep] = useState(0);
+  const navigate = useNavigate();
+
 
   const initialFormData = {
     person: {
@@ -922,6 +925,21 @@ const validateField = useCallback(
             {steps[step].component}
           </div>
           <div className="flex justify-between">
+            {isNoticeStep ? (
+                          <StyledButton
+              onClick={() => {
+                navigate(-1);
+                
+              }}
+              buttonColor="bg-black"
+              hoverColor="hover:bg-gray-900"
+              textColor="text-white"
+              
+            >
+              Return
+            </StyledButton>
+            ) :
+            (
             <StyledButton
               onClick={handlePrevious}
               buttonColor="bg-black"
@@ -931,7 +949,7 @@ const validateField = useCallback(
             >
               Previous
             </StyledButton>
-
+            )}
             <div className="flex gap-x-3">
 
             {isNoticeStep ? (

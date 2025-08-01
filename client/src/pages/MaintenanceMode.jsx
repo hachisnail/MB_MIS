@@ -1,37 +1,45 @@
 import { NavLink } from "react-router-dom";
 import Logo from "../assets/LOGO.png";
+import bgImage1 from "@/assets/06-AfternoonMealOfTheWorker 1.svg";
+import ServerDownIco from "../assets/ServerDown.svg"
+
 
 const MaintenanceMode = () => {
   return (
-    <div className="w-screen h-screen flex items-center justify-center bg-white">
-      <div className="w-fit h-fit flex flex-col items-center gap-y-10 px-10 pt-10 pb-24 rounded-xl shadow-2xl">
-        <div className="flex gap-x-2 items-center">
-          <img src={Logo} className="w-20" alt="Museo Bulawan Logo" />
-          <i className="w-1 h-16 rounded-4xl bg-gray-600"></i>
-          <div className="flex flex-col justify-center">
-            <span className="text-4xl font-bold">Museo Bulawan</span>
-            <span className="text-lg text-gray-600 font-semibold leading-3">
-              Management Information System
-            </span>
+    <div
+      className="bg-cover bg-center bg-no-repeat w-screen h-screen flex items-center justify-center"
+      style={{ backgroundImage: `url(${bgImage1})` }}
+    >
+      <div className="flex w-[40rem] text-black items-center flex-col gap-y-20 p-10 rounded-xl  bg-white opacity-75 shadow-black  shadow-xl">
+        <div className="w-full">
+          <div className="flex gap-x-2 items-center">
+            <img src={Logo} className="w-20" alt="Museo Bulawan Logo" />
+            <i className="w-1 h-16 rounded-4xl bg-black"></i>
+            <div className="flex flex-col justify-center">
+              <span className="text-4xl font-bold ">Museo Bulawan</span>
+              <span className="text-lg text-gray-700 font-semibold leading-3">
+                Management Information System
+              </span>
+            </div>
           </div>
         </div>
 
-        <div className="flex flex-col items-center text-center">
-          <span className="w-fit text-4xl font-semibold text-red-600">
-            Maintenance Mode Active
-          </span>
-          <span className="w-fit text-xl text-gray-500 mt-2">
-            The system is currently undergoing maintenance.<br />
+        <div className="w-full flex items-start ">
+          <div className="flex flex-col w-full items-center  pl-20">
+            <span className="text-6xl font-bold mb-5">503</span>
+            <span className="text-3xl font-semibold">Service Unavailable</span>
+            <div className="flex text-xl">
+            <span className=" text-xl w-85 text-gray-500 mt-2 text-justify">
+            The system is currently undergoing maintenance. 
             Please check back later or contact an administrator.
           </span>
-        </div>
 
-        <NavLink
-          to="/login"
-          className="px-6 py-3 bg-gray-800 text-white font-semibold rounded hover:bg-gray-700 transition-colors"
-        >
-          Go to Login
-        </NavLink>
+            </div>
+          </div>
+          <div className="h-60 flex items-end">
+            <img src={ServerDownIco} className="w-25" alt="" />
+          </div>
+        </div>
       </div>
     </div>
   );

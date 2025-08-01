@@ -5,6 +5,7 @@ import {
   ListboxOption,
 } from "@headlessui/react";
 import { Fragment, useState, useRef, useEffect } from "react";
+import { scrollToElementById } from "@/components/list/commons";
 
 // admin utilities
 export function SearchBar({ placeholder = "Search History", onChange, theme }) {
@@ -433,6 +434,66 @@ export function StyledFileInput({
           Please provide a URL or upload a file.
         </p>
       )}
+    </div>
+  );
+}
+
+
+// utilities for home
+
+export function ScrollButton({
+  pt = 0,
+  title,
+  targetId,
+  direction = "left",
+  textColor = "text-gray-600",
+  hoverTextColor = "hover:text-gray-900",
+  icon,
+}) {
+  return (
+    <div className={`flex w-full ${direction === "left" ? "justify-start" : "justify-end" }`}>
+      <button
+        onClick={() => scrollToElementById(targetId, pt)}
+        className={`items-center text-2xl flex ${textColor} hover:italic font-semibold rounded cursor-pointer ${hoverTextColor} transition`}
+      >
+        {direction === "left" && (icon || (
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="32"
+            height="32"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M4 12l10 0" />
+            <path d="M4 12l4 4" />
+            <path d="M4 12l4 -4" />
+            <path d="M20 4l0 16" />
+          </svg>
+        ))}
+        <span className={direction === "left" ? "ml-2" : "mr-2"}>{title}</span>
+        {direction === "right" && (icon || (
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="32"
+            height="32"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M20 12l-10 0" />
+            <path d="M20 12l-4 4" />
+            <path d="M20 12l-4 -4" />
+            <path d="M4 4l0 16" />
+          </svg>
+        ))}
+      </button>
     </div>
   );
 }

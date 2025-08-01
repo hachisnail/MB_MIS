@@ -1,12 +1,15 @@
 import { NavLink } from "react-router-dom";
-import bgImage1 from "@/assets/06-AfternoonMealOfTheWorker 1.png";
-import block1 from "@/assets/block1.png";
+import bgImage1 from "@/assets/06-AfternoonMealOfTheWorker 1.svg";
+import block1 from "@/assets/block1.svg";
 import block2 from "@/assets/block2.png";
 import { scrollToElementById } from "@/components/list/commons";
+import { ScrollButton } from "../../features/Utilities";
+import { useNavigate } from "react-router-dom";
 
 import { socialLinks } from "../../components/list/commons";
 
 const Home = () => {
+  const navigate = useNavigate();
   const SocialLink = ({ href, name, iconPath, viewBox }) => (
     <a
       href={href}
@@ -135,32 +138,16 @@ const Home = () => {
         id="learn_more"
         className="pt-15 w-full bg-white min-h-screen h-auto px-30 flex flex-col justify-center items-center"
       >
-        <div className="flex w-full justify-start ">
-          <button
-            onClick={(e) => {
-              scrollToElementById("main-navbar-top", 50);
-            }}
-            className="items-center text-2xl flex text-gray-600 hover:italic font-semibold rounded cursor-pointer hover:text-gray-900 transition"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="32"
-              height="32"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M4 12l10 0" />
-              <path d="M4 12l4 4" />
-              <path d="M4 12l4 -4" />
-              <path d="M20 4l0 16" />
-            </svg>
-            Home
-          </button>
-        </div>
+
+        <ScrollButton
+          pt="50"
+          title="Home"
+          targetId="main-navbar-top"
+          direction="left"
+
+        />
+
+
         {/* <span className="text-2xl text-white font-semibold hover:text-gray-600">
           Learn more.
         </span> */}
@@ -208,64 +195,26 @@ const Home = () => {
             </div>
           </div>
         </div>
-        <div className="flex w-full justify-end ">
-          <button
-            onClick={(e) => {
-              scrollToElementById("whats_on", 0);
-            }}
-            className="items-center text-2xl flex text-gray-600 hover:italic font-semibold rounded cursor-pointer hover:text-gray-900 transition"
-          >
-            Whats On?
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="32"
-              height="32"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M20 12l-10 0" />
-              <path d="M20 12l-4 4" />
-              <path d="M20 12l-4 -4" />
-              <path d="M4 4l0 16" />
-            </svg>
-          </button>
-        </div>
+
+        <ScrollButton
+          pt="0"
+          title="Whats On?"
+          targetId="whats_on"
+          direction="right"
+
+        />
       </section>
 
       <section
         id="whats_on"
         className="pt-15 w-full bg-white min-h-screen h-auto px-30 flex flex-col justify-center items-center"
       >
-        <div className="flex w-full justify-start ">
-          <button
-            onClick={(e) => {
-              scrollToElementById("learn_more", 0);
-            }}
-            className="items-center text-2xl flex text-gray-600 hover:italic font-semibold rounded cursor-pointer hover:text-gray-900 transition"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="32"
-              height="32"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M4 12l10 0" />
-              <path d="M4 12l4 4" />
-              <path d="M4 12l4 -4" />
-              <path d="M20 4l0 16" />
-            </svg>
-            Learn More
-          </button>
-        </div>
+        <ScrollButton
+          pt="0"
+          title="learn More"
+          targetId="learn_more"
+          direction="left"
+        />
 
         <div className="w-full xl:justify-between min-h-[85vh] gap-y-20 xl:gap-y-0 xl:gap-x-10 h-auto flex xl:flex-row flex-col items-center overflow-hidden ">
           {/* calendar component */}
@@ -306,15 +255,36 @@ const Home = () => {
 
           </div>
         </div>
+        
 
-        <div className="flex w-full justify-end ">
-          <button
-            onClick={(e) => {
-              scrollToElementById("news_events", 0);
-            }}
-            className="items-center text-2xl flex text-gray-600 hover:italic font-semibold rounded cursor-pointer hover:text-gray-900 transition"
-          >
-            News & Events
+        <ScrollButton
+          pt="0"
+          title="News & Events"
+          targetId="news_events"
+          direction="right"
+        />
+
+      </section>
+
+      <section
+        id="news_events"
+               className="pt-15 w-full min-h-screen h-auto px-30 flex flex-col justify-center items-center"
+
+      >
+        <ScrollButton
+          pt="0"
+          title="Whats On?"
+          targetId="whats_on"
+          direction="left"
+          textColor="text-gray-300"
+          hoverTextColor="hover:text-gray-600"
+        />
+
+
+
+
+         <div className="w-full flex-col py-10 px-20 min-h-[85vh] gap-y-20 xl:gap-y-0 h-auto flex flex-coloverflow-hidden">
+          <div className="flex items-center justify-start w-full text-gray-500">
             <svg
               xmlns="http://www.w3.org/2000/svg"
               width="32"
@@ -326,30 +296,126 @@ const Home = () => {
               strokeLinecap="round"
               strokeLinejoin="round"
             >
-              <path d="M20 12l-10 0" />
-              <path d="M20 12l-4 4" />
-              <path d="M20 12l-4 -4" />
-              <path d="M4 4l0 16" />
+              <line x1="5" y1="12" x2="19" y2="12" />
             </svg>
-          </button>
-        </div>
-      </section>
+            <span className=" text-xl font-hind font-extralight pt-1">DONT MISS</span>
+          </div>
+          <span className="text-white text-7xl font-hina">News & Events</span>
 
-      <section
-        id="news_events"
-        className="pt-15 w-full h-screen flex justify-center"
-      >
-        <span className="text-2xl text-white font-semibold hover:text-gray-600">
-          News & Events
-        </span>
+
+
+
+          <div className="w-full h-[53rem] my-[1rem] flex flex-wrap items-center justify-center gap-2">
+            {/* render top 4 news and events card here */}
+
+            <div className="w-[63rem] h-[26rem] border border-white flex items-center justify-center">
+            {/* this is the absolute size of the cards */}
+
+            <span className="text-3xl text-white">News & Events 1</span>
+
+            </div>
+
+
+            <div className="w-[63rem] h-[26rem] border border-white flex items-center justify-center">
+            <span className="text-3xl text-white">News & Events 2</span>
+
+
+            {/* this is the absolute size of the cards */}
+
+            </div>
+            
+
+
+            <div className="w-[63rem] h-[26rem] border border-white flex items-center justify-center">
+            <span className="text-3xl text-white">News & Events 3</span>
+
+
+            {/* this is the absolute size of the cards */}
+
+            </div>
+
+
+            <div className="w-[63rem] h-[26rem] border border-white flex items-center justify-center">
+            <span className="text-3xl text-white">News & Events 4</span>
+
+
+            {/* this is the absolute size of the cards */}
+
+            </div>
+            
+
+
+          </div>
+          
+          <div className="flex  justify-end w-full text-gray-300 hover:text-gray-500 ">
+            <button
+              className="flex items-center cursor-pointer"
+              onClick={()=>{navigate('articles')}}>
+            <span className=" text-xl font-hind font-extralight pt-1">See All Events</span>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="72"
+              height="32"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <line x1="-10" y1="12" x2="19" y2="12" />
+              <polyline points="12 8 19 12 12 16" />
+            </svg>
+            </button>
+          </div>
+
+
+        </div>
+
+
+
+
+        <ScrollButton
+          pt="0"
+          title="Support Us"
+          targetId="support"
+          direction="right"
+          textColor="text-gray-300"
+          hoverTextColor="hover:text-gray-600"
+        />
+
+
       </section>
       <section
         id="support"
-        className="pt-15 w-full h-screen flex justify-center"
+        className="pt-15 bg-white w-full min-h-screen h-auto px-30 flex flex-col justify-center items-center"
+
       >
-        <span className="text-2xl text-white font-semibold hover:text-gray-600">
+        <ScrollButton
+          pt="0"
+          title="News & Events"
+          targetId="news_events"
+          direction="left"
+        />
+
+
+
+
+         <div className="w-full xl:justify-between min-h-[85vh] gap-y-20 xl:gap-y-0 h-auto flex xl:flex-row flex-col items-center overflow-hidden">
           Support
-        </span>
+        </div>
+
+
+
+
+        <ScrollButton
+          pt="-500"
+          title="Footer"
+          targetId="support"
+          direction="right"
+        />
+
+
       </section>
     </>
   );

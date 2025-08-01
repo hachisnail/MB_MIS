@@ -1,5 +1,7 @@
-import { useNavigate } from 'react-router-dom';
-import bg from '@/assets/Taoist Landscape Painting.jpg'
+import { useNavigate } from "react-router-dom";
+import bg from "@/assets/Taoist Landscape Painting.jpg";
+import Logo from "@/assets/LOGO.png";
+import NoMatchIco from "../assets/NoMatchIco.svg"
 
 const NoMatch = () => {
   const navigate = useNavigate();
@@ -10,36 +12,43 @@ const NoMatch = () => {
   };
 
   return (
-    <div className='bg-cover bg-center bg-no-repeat flex items-center h-screen w-screen justify-center' style={{ backgroundImage: `url(${bg})` }}>
-      <div className='flex text-white items-center flex-col backdrop-blur-xs px-5 py-5 rounded-xl border-2 border-white shadow-2xl'>
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="32"
-          height="32"
-          viewBox="0 0 24 24"
-          fill="none"
-          className='w-40 h-40'
-          stroke="#ffffff"
-          strokeWidth="1"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="M15 20h-1a1 1 0 0 1 -1 -1v-10a1 1 0 0 1 1 -1h6a1 1 0 0 1 1 1v2" />
-          <path d="M18 8v-3a1 1 0 0 0 -1 -1h-13a1 1 0 0 0 -1 1v12a1 1 0 0 0 1 1h9" />
-          <path d="M19 22v.01" />
-          <path d="M19 19a2.003 2.003 0 0 0 .914 -3.782a1.98 1.98 0 0 0 -2.414 .483" />
-          <path d="M16 9h2" />
-        </svg>
+    <div
+      className="bg-cover bg-center bg-no-repeat flex items-center h-screen w-screen justify-center"
+      style={{ backgroundImage: `url(${bg})` }}
+    >
+      <div className="flex w-[40rem] text-black items-center flex-col gap-y-20 p-10 rounded-xl  bg-white opacity-75 shadow-black  shadow-xl">
+        
+        
+        <div className="w-full">
+          <div className="flex gap-x-2 items-center">
+            <img src={Logo} className="w-20" alt="Museo Bulawan Logo" />
+            <i className="w-1 h-16 rounded-4xl bg-black"></i>
+            <div className="flex flex-col justify-center">
+              <span className="text-4xl font-bold ">Museo Bulawan</span>
+              <span className="text-lg text-gray-700 font-semibold leading-3">
+                Management Information System
+              </span>
+            </div>
+          </div>
+        </div>
 
-        <span className='text-3xl font-semibold'>Are you lost?</span>
-        <div className='flex items-center gap-x-2'>
-          <span>go back to</span>
-          <button
-            onClick={handleGoBack}
-            className='hover:text-gray-300 underline cursor-pointer'
-          >
-            previous page.
-          </button>
+        <div className="w-full flex items-start ">
+          <div className="flex flex-col w-full items-center  pl-28">
+            <span className="text-6xl font-bold mb-5">404</span>
+            <span className="text-3xl font-semibold">Are you lost?</span>
+            <div className="flex text-xl">
+              <span>go back to &nbsp;</span>
+              <button
+                onClick={handleGoBack}
+                className="hover:text-blue-900 text-blue-600 underline cursor-pointer"
+              >
+                previous page.
+              </button>
+            </div>
+          </div>
+          <div className="h-60 flex items-end">
+            <img src={NoMatchIco} className="w-60" alt="" />
+          </div>
         </div>
       </div>
     </div>

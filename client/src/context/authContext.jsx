@@ -1,24 +1,36 @@
 import { createContext, useContext, useState, useEffect, useRef } from "react";
-import axiosClient from "../lib/axiosClient";
-import SocketClient from "../lib/socketClient";
+import axiosClient from "@/lib/axiosClient";
+import SocketClient from "@/lib/socketClient";
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false); 
   const [forcedLogoutReason, setForcedLogoutReason] = useState(null);
   const [socketReady, setSocketReady] = useState(false);
   const socketRef = useRef(null);
 
+  const fetchCurrentUser = async () => {
+    try {
+      const res = await axiosClient.get("/auth/me");
+      setUser(res.data.user);
+    } catch {
+      setUser(null);
+    }
+  };
+
   const login = async (credentials) => {
+    setLoading(true);
     try {
       const res = await axiosClient.post("/auth/login", credentials);
-      setUser(res.data.user);
+      await fetchCurrentUser();
       return { success: true };
     } catch (err) {
       const message = err.response?.data?.message || "Login failed";
       return { success: false, message };
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -36,20 +48,7 @@ export function AuthProvider({ children }) {
     }
   };
 
-  const fetchCurrentUser = async () => {
-    try {
-      const res = await axiosClient.get("/auth/me");
-      setUser(res.data.user);
-    } catch {
-      setUser(null);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    fetchCurrentUser();
-
     const syncLogout = (event) => {
       if (event.key === "logout-event") {
         setUser(null);

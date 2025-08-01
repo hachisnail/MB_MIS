@@ -21,12 +21,12 @@ class SocketClient {
       setTimeout(() => {
         if (this.userId) {
           this.socket.emit("registerUser", this.userId);
-          console.log("[Socket] registerUser sent after connection");
+          // console.log("[Socket] registerUser sent after connection");
         }
 
         for (const room of this.joinedRooms) {
           this.socket.emit("joinRoom", room);
-          console.log(`[Socket] joinRoom sent: ${room}`);
+          // console.log(`[Socket] joinRoom sent: ${room}`);
         }
 
         this.readyCallbacks.forEach(cb => cb());

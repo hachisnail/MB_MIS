@@ -59,7 +59,7 @@ export function initializeSocket(server, corsOrigin) {
       socket.leave(room);
       console.log(`Socket ${socket.id} left room ${room}`);
     });
-
+    
     // [Optional] validate again if needed
     socket.on("registerUser", (userId) => {
       if (userId === socket.userId) {

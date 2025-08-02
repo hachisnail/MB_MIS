@@ -1,23 +1,36 @@
 import { createContext, useContext, useState, useEffect, useRef } from "react";
-import axiosClient from "../lib/axiosClient";
-import SocketClient from "../lib/socketClient";
+import axiosClient from "@/lib/axiosClient";
+import SocketClient from "@/lib/socketClient";
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false); 
   const [forcedLogoutReason, setForcedLogoutReason] = useState(null);
+  const [socketReady, setSocketReady] = useState(false);
   const socketRef = useRef(null);
 
+  const fetchCurrentUser = async () => {
+    try {
+      const res = await axiosClient.get("/auth/me");
+      setUser(res.data.user);
+    } catch {
+      setUser(null);
+    }
+  };
+
   const login = async (credentials) => {
+    setLoading(true);
     try {
       const res = await axiosClient.post("/auth/login", credentials);
-      setUser(res.data.user);
+      await fetchCurrentUser();
       return { success: true };
     } catch (err) {
       const message = err.response?.data?.message || "Login failed";
       return { success: false, message };
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -31,29 +44,17 @@ export function AuthProvider({ children }) {
       localStorage.setItem("logout-event", Date.now());
       socketRef.current?.disconnect();
       socketRef.current = null;
+      setSocketReady(false);
     }
   };
 
-  const fetchCurrentUser = async () => {
-    try {
-      const res = await axiosClient.get("/auth/me");
-      setUser(res.data.user);
-    } catch {
-      setUser(null);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Listen for localStorage logout from other tabs
   useEffect(() => {
-    fetchCurrentUser();
-
     const syncLogout = (event) => {
       if (event.key === "logout-event") {
         setUser(null);
         socketRef.current?.disconnect();
         socketRef.current = null;
+        setSocketReady(false);
       }
     };
 
@@ -61,16 +62,17 @@ export function AuthProvider({ children }) {
     return () => window.removeEventListener("storage", syncLogout);
   }, []);
 
-  // Setup Socket when user is available
   useEffect(() => {
     if (!user) return;
 
-    // Only initialize once
     if (!socketRef.current) {
       const socketClient = new SocketClient(import.meta.env.VITE_SOCKET_URL);
       socketRef.current = socketClient;
 
-      // Handle forced logout (from server)
+      socketClient.onReady(() => {
+        setSocketReady(true);
+      });
+
       socketClient.onMessage((data) => {
         if (data.type === "forceLogout") {
           console.warn("[Socket] Forced logout received:", data);
@@ -80,7 +82,6 @@ export function AuthProvider({ children }) {
       });
     }
 
-    // Register user after socket is ready
     socketRef.current.registerUser(user.id);
   }, [user]);
 
@@ -92,7 +93,8 @@ export function AuthProvider({ children }) {
         logout,
         loading,
         forcedLogoutReason,
-        socketClient: socketRef.current, // ✅ the full class instance
+        socketClient: socketRef.current,
+        socketReady,
       }}
     >
       {children}
@@ -106,5 +108,5 @@ export function useAuth() {
 
 export function useSocketClient() {
   const { socketClient } = useContext(AuthContext);
-  return socketClient; // ✅ this returns SocketClient, NOT .socket
+  return socketClient;
 }

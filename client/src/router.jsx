@@ -89,7 +89,7 @@ const Router = () => {
         <Route path="/articles" element={<Articles />} />
         <Route path="/about" element={<About />} />
         <Route path="/about/support" element={<Support />} />
-        <Route path="/about/support/contribution" element={<Contribution />} />
+        <Route path="/about/support/contribution-form" element={<Contribution />} />
 
         <Route path="/article/:id" element={<Articlecontents />} />
 

@@ -112,7 +112,7 @@ const PublicNav = ({ theme = "light" }) => {
           </button>
 
           {openDropdown === dropdownKey && (
-            <div className={`absolute top-full mt-2 right-0 backdrop-blur-xs ${theme === 'dark' ? "border-white " : 'border-black '} border rounded shadow z-50 w-40 flex flex-col`}>
+            <div className={`absolute top-full mt-2 right-0 backdrop-blur-xs ${theme === 'dark' ? "border-white " : 'border-black '} border rounded shadow z-40 w-40 flex flex-col`}>
               {anchorpoints.map(({ label, value }) => (
                 <button
                   key={value}

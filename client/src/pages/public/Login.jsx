@@ -12,17 +12,16 @@ const Login = () => {
   });
   const [error, setError] = useState("");
   const [apiError, setApiError] = useState("");
-  const [isloading, setIsLoading] = useState(false);
-  const navigate = useNavigate();
-  
-  const { user, login, forcedLogoutReason } = useAuth(); 
+  const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    if (user) {
-      navigate("/admin/dashboard", { replace: true });
-      // console.log(user);
-    }
-  }, [user]);
+  const navigate = useNavigate();
+  const { user, login, forcedLogoutReason, socketReady } = useAuth();
+
+useEffect(() => {
+  if (user && socketReady) {
+    navigate("/admin/dashboard", { replace: true });
+  }
+}, [user, socketReady]);
 
   useEffect(() => {
     if (forcedLogoutReason) {
@@ -46,10 +45,7 @@ const Login = () => {
     const { success, message } = await login(credentials);
     setIsLoading(false);
 
-    if (success) {
-      navigate("/admin/dashboard");
-    } else {
-      // If error is validation (simple string), show inline
+    if (!success) {
       if (
         message &&
         (message.toLowerCase().includes("password") ||
@@ -63,11 +59,9 @@ const Login = () => {
     }
   };
 
+
   return (
-    <div className="flex  flex-col w-screen  min-w-fit h-[98.5vh]" 
-        // style={{ backgroundImage: `url(${bg})` }}
-      
-      >
+    <div className="flex flex-col w-screen min-w-fit h-[98.5vh]">
       <NavLink
         className="group flex items-center cursor-pointer font-semibold ml-1 mt-1 w-fit rounded-md px-1 hover:text-gray-500"
         to="/"
@@ -92,9 +86,8 @@ const Login = () => {
       <div className="w-full flex my-auto select-none justify-center">
         <form
           onSubmit={handleSubmit}
-          className="  px-8 pt-8 pb-6  rounded-lg shadow-2xl w-full max-w-xl"
+          className="px-8 pt-8 pb-6 rounded-lg shadow-2xl w-full max-w-xl"
         >
-          {/* <h2 className="text-2xl font-semibold mb-6 text-center text-white">Login</h2> */}
           <div className="mb-7 w-full h-fit flex flex-col items-center gap-y-4">
             <div className="flex gap-x-2 items-center">
               <img src={Logo} className="w-15" alt="Museo Bulawan Logo" />
@@ -125,7 +118,7 @@ const Login = () => {
               placeholder="username or email"
               value={credentials.username}
               onChange={handleChange}
-              className="w-full px-3 py-2   border border-gray-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500"
+              className="w-full px-3 py-2 border border-gray-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500"
               required
             />
           </div>
@@ -155,10 +148,10 @@ const Login = () => {
 
           <button
             type="submit"
-            disabled={isloading}
+            disabled={isLoading}
             className="cursor-pointer w-full bg-black hover:bg-gray-500 text-white py-2 text-2xl rounded-lg transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isloading ? "Logging in..." : "Login"}
+            {isLoading ? "Logging in..." : "Login"}
           </button>
 
           <div className="mt-2 w-full h-6 flex items-center">
@@ -170,6 +163,7 @@ const Login = () => {
           </div>
         </form>
       </div>
+
       <PopupModal
         isOpen={!!apiError}
         onClose={() => setApiError("")}

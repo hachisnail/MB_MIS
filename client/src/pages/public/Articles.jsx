@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import bgImage1 from "@/assets/Fernando-Amorsolo-Women-Bathing-and-Washing Clothes-7463.png";
+import bgImage1 from "@/assets/Fernando-Amorsolo-Women-Bathing-and-Washing Clothes-7463.svg";
 import { FaImage } from "react-icons/fa";
 import axios from "axios";
 

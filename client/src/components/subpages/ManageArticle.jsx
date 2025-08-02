@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef, useMemo } from "react";
-import { useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+import axiosClient from "../../lib/axiosClient";
 import { EditorContent } from "@tiptap/react";
 import {
   Bold,
@@ -24,11 +25,6 @@ import Underline from "@tiptap/extension-underline";
 import Image from "@tiptap/extension-image";
 import TextStyle from "@tiptap/extension-text-style";
 import {ColumnBlock,Column,} from "../../components/articleComponents/ColumBlock";
-import axiosClient from "../../lib/axiosClient";
-
-
-
-
 import Placeholder from "@tiptap/extension-placeholder";
 import Link from "@tiptap/extension-link";
 import Table from "@tiptap/extension-table";
@@ -39,6 +35,7 @@ import Highlight from "@tiptap/extension-highlight";
 import Youtube from "@tiptap/extension-youtube";
 // import { HardBreak } from '@tiptap/extension-hard-break';
 
+import ConfirmDialog from "../modals/ConfirmDialog";
 import FontSize from "../../lib/axiosClient"
 
 
@@ -48,7 +45,7 @@ const ArticleEditorForm = () => {
   const BASE_URL = import.meta.env.VITE_API_BASE_URL;
   const SERVER_ORIGIN = BASE_URL.replace(/\/api$/, ""); // "http://localhost:5000"
   const UPLOAD_PATH = `${SERVER_ORIGIN}/uploads/pictures/`;
-  
+  const navigate = useNavigate();
     // Initialize TipTap editor
   const editor = useEditor({
     extensions: [
@@ -149,21 +146,32 @@ try {
     formData.append("author", author);
     formData.append("address", address);
     formData.append("selectedDate", selectedDate);
-    formData.append("content_images", JSON.stringify(contentImages));
-    formData.append("barangay", barangay); // <-- Add this line
+    formData.append("editImages", JSON.stringify(contentImages));
+    formData.append("barangay", barangay);
 
+    // Only append thumbnail if it's a File object
     if (thumbnail && thumbnail instanceof File) {
-      formData.append("thumbnail", thumbnail);
+    formData.append("thumbnail", thumbnail);
     }
-
+    
+console.log("Submitting with thumbnail:", thumbnail);
     try {
       let response;
       if (isEditing) {
         // Update existing
         response = await axiosClient.put(
           `/auth/article/${articleId}`,
-          formData
+          formData,
+          {
+          headers: { "Content-Type": "multipart/form-data" },
+        }
         );
+        // Fetch updated article to get new thumbnail filename
+        const updated = await axiosClient.get(`/auth/articles/${articleId}`);
+        if (updated.data.images) {
+          setPreviewImage(`${UPLOAD_PATH}${updated.data.images}`);
+        }
+        setThumbnail(null); // Reset thumbnail to null after update
         console.log("Article updated successfully!", response.data);
       } else {
         // Create new
@@ -171,6 +179,8 @@ try {
           headers: { "Content-Type": "multipart/form-data" },
           withCredentials: true,
         });
+        setThumbnail(null);
+        setPreviewImage(null);
         console.log("Article created successfully!", response.data);
       }
 
@@ -182,6 +192,7 @@ try {
         err.response?.data || err.message
       );
     }
+    navigate(-1);
   };
     // Handle new thumbnail in <input type="file" />
   const handleThumbnailChange = (e) => {
@@ -208,7 +219,7 @@ try {
     setIsEditing(false);
     setEditingArticleId(null);
     setArticle(null);
-   
+   navigate(-1);
   };
     const [contentImages, setContentImages] = useState([]);
     const [barangay, setBarangay] = useState(""); // <-- Add this line
@@ -239,19 +250,23 @@ try {
         setBarangay(data.barangay || "");
 
         if (data.upload_date) {
-      const date = new Date(data.upload_date);
-      const formattedDate = date.toISOString().split('T')[0];
-      setSelectedDate(formattedDate);
-    } else {
-      setSelectedDate("");
-    }
+          const date = new Date(data.upload_date);
+          const formattedDate = date.toISOString().split('T')[0];
+          setSelectedDate(formattedDate);
+        } else {
+          setSelectedDate("");
+        }
 
-    if (editor && data.description) {
-      editor.commands.setContent(data.description);
-    }
-       
+        if (editor && data.description) {
+          editor.commands.setContent(data.description);
+        }
+
         if (data.images) {
           setPreviewImage(`${UPLOAD_PATH}${data.images}`);
+          setThumbnail(null); // <-- Always null unless user selects a new file
+        } else {
+          setPreviewImage(null);
+          setThumbnail(null);
         }
       } catch (err) {
         console.error("Failed to fetch article:", err);
@@ -531,7 +546,7 @@ useEffect(() => {
 
           <h2 className="text-3xl font-bold mb-6">Header</h2>
 
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleFormSubmit} className="space-y-6">
   {/* Title */}
   <input
     className={`w-full px-4 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 placeholder-gray-500 ${
@@ -1127,6 +1142,32 @@ useEffect(() => {
             {/* RIGHT SPACER */}
           <div className="hidden 2xl:block 2xl:w-1/5" />
       </div>
+
+      {/* Cancel Confirmation Dialog */}
+      <ConfirmDialog
+        visible={showCancelConfirm}
+        title="Discard Changes?"
+        message="You have unsaved changes. Discard them?"
+        onConfirm={() => {
+          resetForm();
+          setShowCancelConfirm(false);
+          setErrors({});
+        }}
+        onCancel={() => setShowCancelConfirm(false)}
+      />
+
+      {/* Submit Confirmation Dialog */}
+      <ConfirmDialog
+        visible={showSubmitConfirm}
+        title={isEditing ? 'Save Changes?' : 'Submit Article?'}
+        message="Are you sure you want to proceed?"
+        onConfirm={() => {
+          handleSubmit({ preventDefault: () => {} }, removeThumbnail);
+          setShowSubmitConfirm(false);
+          setErrors({});
+        }}
+        onCancel={() => setShowSubmitConfirm(false)}
+      />
       </>
   );
 };

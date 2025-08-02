@@ -36,7 +36,7 @@ const Articleslist = ({ article, handleStatusChange, userRole, getStatusBadge })
       </div>
 
       <div className="px-4 py-3 border-b-1 border-gray-400">
-        {userRole === "admin" ? (
+        {userRole == 1 ? (
           <select
             value={article.status}
             onChange={(e) => {
@@ -48,6 +48,8 @@ const Articleslist = ({ article, handleStatusChange, userRole, getStatusBadge })
               border rounded px-2 py-1 font-semibold
               ${article.status === "posted" ? "bg-green-100 text-green-700" : ""}
               ${article.status === "pending" ? "bg-yellow-100 text-yellow-700" : ""}
+              ${article.status === "rejected" ? "bg-red-100 text-red-700" : ""}
+              ${article.status === "archived" ? "bg-gray-100 text-gray-700" : ""}
             `}
             style={{
               minWidth: "7rem",
@@ -59,6 +61,13 @@ const Articleslist = ({ article, handleStatusChange, userRole, getStatusBadge })
             </option>
             <option value="posted" className="text-green-700 bg-green-100">
               Posted
+            </option>
+            {/* Add new options for the other statuses */}
+            <option value="rejected" className="text-red-700 bg-red-100">
+              Rejected
+            </option>
+            <option value="archived" className="text-gray-700 bg-gray-100">
+              Archived
             </option>
           </select>
         ) : (

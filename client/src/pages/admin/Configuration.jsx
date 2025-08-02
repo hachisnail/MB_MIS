@@ -7,7 +7,7 @@ import FlagItem from "../../components/list/Flagslist";
 import Toast from "../../features/Toast";
 import StyledToggleSwitch from "../../components/buttons/StyledToggleSwitch";
 import PopupModal from "../../components/modals/PopupModal";
-import TooltipButton from "../../components/buttons/TooltipButton";
+import StyledButton from "../../components/buttons/StyledButton";
 import {
   LoadingSpinner,
   ErrorBox,
@@ -60,30 +60,28 @@ const Configuration = () => {
   const getErrorMessage = (err) =>
     err.response?.data?.message || err.message || "Unexpected error occurred";
 
-const fetchFlags = async () => {
-  try {
-    setFlagsLoading(true);
-    const { data } = await axiosClient.get("/auth/admin-flags");  
+  const fetchFlags = async () => {
+    try {
+      setFlagsLoading(true);
+      const { data } = await axiosClient.get("/auth/admin-flags");
 
-    if (!data || !data.flags || data.flags.length === 0) {
-      setFlagsError("No flags found.");
-      return;
+      if (!data || !data.flags || data.flags.length === 0) {
+        setFlagsError("No flags found.");
+        return;
+      }
+
+      setAvailableFlags(data.flags);
+    } catch (err) {
+      console.error("Failed to load flags", err);
+      setFlagsError("Failed to load flags");
+    } finally {
+      setFlagsLoading(false);
     }
+  };
 
-    setAvailableFlags(data.flags);  
-  } catch (err) {
-    console.error("Failed to load flags", err);
-    setFlagsError("Failed to load flags");
-  } finally {
-    setFlagsLoading(false);
-  }
-};
-
-useEffect(() => {
-  fetchFlags();
-}, []);
-
-
+  useEffect(() => {
+    fetchFlags();
+  }, []);
 
   useEffect(() => {
     if (!socket) return;
@@ -222,8 +220,11 @@ useEffect(() => {
   return (
     <>
       <div className="w-full min-w-fit h-full p-5 max-w-[137rem] 1xl:max-h-[69rem] 2xl:max-h-[81rem] 3xl:max-w-[175rem] 3xl:max-h-[88rem]">
-        <div className="w-full h-full justify-between  pt-5 flex border-t border-[#373737] gap-y-[2rem]">
-          <div className="w-[81.5rem] space-y-5 h-full pt-1">
+        <div className="w-full h-full justify-center gap-x-5  pt-5 flex border-t border-[#373737] gap-y-[2rem]">
+          <div className="w-[81.5rem] flex flex-col justify-between space-y-5 h-full pt-1">
+            <div className="h-20 border border-[#373737] flex items-center justify-center">
+              <span className="text-xl">Some Buttons for editong about and other misc.</span>
+            </div>
             <div className="flex justify-between items-center w-full border-b border-[#373737] pb-5">
               <div className="flex flex-col">
                 <span className="text-2xl font-semibold mb-2">
@@ -254,7 +255,7 @@ useEffect(() => {
               </div>
             </div>
 
-            <div className="w-full min-w-fit min-h-fit h-[47.5rem] flex flex-wrap gap-x-2 gap-y-2  items-start content-start">
+            <div className="w-full min-w-fit min-h-fit h-[49rem] flex flex-wrap gap-2 items-start justify-center">
               {flagsLoading ? (
                 <LoadingSpinner />
               ) : flagsError ? (
@@ -288,25 +289,62 @@ useEffect(() => {
             </div>
 
             {/* Pagination Controls */}
-            <div className="flex justify-between w-full mt-4">
-              <button
+            <div className="flex justify-between px-5 w-full mt-4 pt-2 border-t border-[#373737]">
+              <StyledButton
+                buttonColor="bg-gray-600"
+                hoverColor = "hover:bg-gray-800"
                 onClick={handlePreviousPage}
                 disabled={currentPage === 1}
-                className="px-4 py-2 bg-gray-600 text-white rounded-md disabled:opacity-50"
               >
-                Previous Page
-              </button>
-              <button
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M4 12l10 0" />
+                  <path d="M4 12l4 4" />
+                  <path d="M4 12l4 -4" />
+                  <path d="M20 4l0 16" />
+                </svg>
+              </StyledButton>
+
+              <span className="text-xl font-semibold text-gray-400">Page <span className="text-white">{currentPage}</span> of  {Math.ceil(filteredFlags.length / itemsPerPage)}</span>
+
+              <StyledButton
+                buttonColor="bg-gray-600"
+                hoverColor = "hover:bg-gray-800"
                 onClick={handleNextPage}
                 disabled={currentPage * itemsPerPage >= filteredFlags.length}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md disabled:opacity-50"
               >
-                Next Page
-              </button>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M20 12l-10 0" />
+                  <path d="M20 12l-4 4" />
+                  <path d="M20 12l-4 -4" />
+                  <path d="M4 4l0 16" />
+                </svg>
+              </StyledButton>
+
+
             </div>
           </div>
 
-          <div className="w-[40rem] border-[#373737] border rounded-sm items-center justify-center h-full flex flex-col gap-y-5">
+          <div className="w-[47rem] border-[#373737] border rounded-sm items-center justify-center h-full flex flex-col gap-y-5">
             <span className="text-2xl font-semibold">
               Logs spcific to flags will bre displayed here
             </span>

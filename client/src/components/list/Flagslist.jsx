@@ -42,6 +42,18 @@ const FlagItem = ({
   };
 
   const flagIcons = {
+    about: (
+      <svg
+        className="w-6 h-6 text-white"
+  fill="none"
+  viewBox="0 0 24 24"
+  stroke="currentColor"
+>
+  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
+  <line x1="12" y1="16" x2="12" y2="12" stroke="currentColor" strokeWidth="2" />
+  <circle cx="12" cy="8" r="1" fill="currentColor" />
+</svg>
+    ),
     login: (
       <svg
         className="w-6 h-6 text-white"
@@ -226,7 +238,7 @@ const FlagItem = ({
 
   return (
     <div
-      className={`hover:border-1 border-gray-500 flex-shrink-0 min-w-fit min-h-fit h-[15.5rem] w-[20rem] p-5 rounded-sm shadow-2xl transition flex flex-col justify-between ${
+      className={`hover:border-1 border-gray-500 flex-shrink-0 min-w-fit min-h-fit h-[16rem] w-[20rem] p-5 rounded-sm shadow-2xl transition flex flex-col justify-between ${
         is_enabled ? "bg-neutral-800" : "bg-neutral-900"
       }`}
     >

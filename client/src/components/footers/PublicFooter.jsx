@@ -24,7 +24,7 @@ const PublicFooter = () => {
             </div>
           )}
 
-          {flags["article"] && (
+          {flags["articles_public"] && (
             <div className="h-full flex items-center border-r border-white justify-center px-4">
               <NavLink
                 onClick={(e) => {
@@ -39,7 +39,7 @@ const PublicFooter = () => {
             </div>
           )}
 
-          {flags["catalogs"] && (
+          {flags["catalogs_public"] && (
             <div className="h-full flex items-center border-r border-white justify-center px-4">
               <NavLink
                 onClick={(e) => {
@@ -96,15 +96,16 @@ const PublicFooter = () => {
                   reserved.
                 </span>
               </div>
-
-              <div className="h-[5rem] flex items-center justify-center w-full max-w-[20rem]">
-                <NavLink
-                  to="/about/support"
-                  className="w-[17rem] flex items-center justify-center font-semibold bg-white h-[4rem]"
-                >
-                  <span className="text-3xl">Contribute</span>
-                </NavLink>
-              </div>
+              {flags["about"] && (
+                <div className="h-[5rem] flex items-center justify-center w-full max-w-[20rem]">
+                  <NavLink
+                    to="/about/support"
+                    className="w-[17rem] flex items-center justify-center font-semibold bg-white h-[4rem]"
+                  >
+                    <span className="text-3xl">Contribute</span>
+                  </NavLink>
+                </div>
+              )}
             </div>
           </div>
 
@@ -122,18 +123,20 @@ const PublicFooter = () => {
                 </NavLink>
               )}
 
-              {flags["appointment"] && (
+              {flags["appointment_public"] && (
                 <NavLink to="/appointment">
                   <span className="text-2xl underline text-white w-fit">
                     Book a Tour
                   </span>
                 </NavLink>
               )}
+              {flags["about"] && (
               <NavLink to="/about/support">
                 <span className="text-2xl underline text-white w-fit">
                   Contact Us
                 </span>
               </NavLink>
+              )}
             </div>
 
             <div className="w-full h-full flex flex-col gap-y-3 justify-start pl-5 sm:pl-30">

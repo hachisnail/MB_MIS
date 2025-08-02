@@ -14,7 +14,7 @@ export const getFlags = async (req, res) => {
     }
 
     const { encoded, keys } = mapAndObfuscateFlags(flags);
-    console.log("Encoded Flags: ", encoded); // Log encoded flags
+    // console.log("Encoded Flags: ", encoded); // Log encoded flags
 
     res.json({ encoded, keys });  
   } catch (error) {

@@ -18,16 +18,16 @@ const Login = () => {
   const { user, login, forcedLogoutReason, socketReady } = useAuth();
 
 useEffect(() => {
+  if (forcedLogoutReason) {
+    setError(forcedLogoutReason);
+  }
+}, [forcedLogoutReason]);
+
+useEffect(() => {
   if (user && socketReady) {
     navigate("/admin/dashboard", { replace: true });
   }
 }, [user, socketReady]);
-
-  useEffect(() => {
-    if (forcedLogoutReason) {
-      setError(forcedLogoutReason);
-    }
-  }, [forcedLogoutReason]);
 
   const handleChange = (e) => {
     setCredentials({

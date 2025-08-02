@@ -193,7 +193,7 @@ const Articles = () => {
       {/* Articles Section - now directly below the hero section */}
       {/* Removed `h-screen` and `min-h-fit` from this div to allow it to grow */}
       <div className="w-full min-w-fit flex justify-center items-start py-10"> {/* Changed items-center to items-start for better flow */}
-        <div className="w-full px-4 mx-auto flex justify-around">
+        <div className="w-full p-20 mx-auto flex justify-around">
           {loading && (
             <div className="text-center text-black text-xl">
               Loading articles...

@@ -1,19 +1,54 @@
 import RouterFlag from "../models/routerFlags.js";
 import { createLog } from "../services/logService.js";
 import { Op } from "sequelize";
-
+import { mapAndObfuscateFlags } from "../services/obfuscateFlags.js";
 
 export const getFlags = async (req, res) => {
   try {
-    const flags = await RouterFlag.findAll({
-      attributes: { exclude: ['role'] },
-    });
-    res.json(flags);
+    const flags = await RouterFlag.findAll({ attributes: ['route_key', 'is_enabled', 'is_public'] });
+    console.log("Fetched Flags: ", flags); // Log fetched flags
+
+    if (!flags || flags.length === 0) {
+      console.log("No flags found.");
+      return res.status(404).json({ message: "No flags found in the database" });
+    }
+
+    const { encoded, keys } = mapAndObfuscateFlags(flags);
+    console.log("Encoded Flags: ", encoded); // Log encoded flags
+
+    res.json({ encoded, keys });  
   } catch (error) {
-    console.error(error);
+    console.error("Error fetching flags:", error);
     res.status(500).json({ message: "Failed to fetch router flags" });
   }
 };
+
+
+export const getFlagsForAdmin = async (req, res) => {
+  try {
+    // Fetch all flags from the database, including 'route_key', 'is_enabled', and 'is_public' attributes
+    const flags = await RouterFlag.findAll({
+      attributes: ['route_key', 'is_enabled', 'is_public']
+    });
+
+    console.log("Fetched Flags for Admin: ", flags); // Log fetched flags for verification
+
+    if (!flags || flags.length === 0) {
+      console.log("No flags found.");
+      return res.status(404).json({ message: "No flags found in the database" });
+    }
+
+    // Return the flags data directly without encoding
+    return res.json({ flags });
+  } catch (error) {
+    console.error("Error fetching flags for Admin:", error);
+    res.status(500).json({ message: "Failed to fetch router flags for Admin" });
+  }
+};
+
+
+
+
 
 export const setFlag = async (req, res) => {
   const { route_key, is_enabled } = req.body;

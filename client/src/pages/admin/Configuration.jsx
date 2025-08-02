@@ -16,7 +16,15 @@ import {
 
 const Configuration = () => {
   const socket = useSocketClient();
-  const publicFlags = ["home", "catalogs", "recover", "parser"];
+  const publicFlags = [
+    "home",
+    "catalogs_public",
+    "acquisition_public",
+    "articles_public",
+    "appointment_public",
+    "recover",
+    "parser",
+  ];
 
   const [availableFlags, setAvailableFlags] = useState([]);
   const [flagsLoading, setFlagsLoading] = useState(false);
@@ -52,21 +60,30 @@ const Configuration = () => {
   const getErrorMessage = (err) =>
     err.response?.data?.message || err.message || "Unexpected error occurred";
 
-  const fetchFlags = async () => {
-    try {
-      setFlagsLoading(true);
-      const { data } = await axiosClient.get("/auth/router-flags");
-      setAvailableFlags(data || []);
-    } catch {
-      setFlagsError("Failed to load flags");
-    } finally {
-      setFlagsLoading(false);
-    }
-  };
+const fetchFlags = async () => {
+  try {
+    setFlagsLoading(true);
+    const { data } = await axiosClient.get("/auth/admin-flags");  
 
-  useEffect(() => {
-    fetchFlags();
-  }, []);
+    if (!data || !data.flags || data.flags.length === 0) {
+      setFlagsError("No flags found.");
+      return;
+    }
+
+    setAvailableFlags(data.flags);  
+  } catch (err) {
+    console.error("Failed to load flags", err);
+    setFlagsError("Failed to load flags");
+  } finally {
+    setFlagsLoading(false);
+  }
+};
+
+useEffect(() => {
+  fetchFlags();
+}, []);
+
+
 
   useEffect(() => {
     if (!socket) return;
@@ -173,6 +190,35 @@ const Configuration = () => {
     }
   };
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 12; // 12 flags per page
+
+  // Filter out the unwanted flags before pagination (like 'login', 'down', 'nomatch', 'maintenance')
+  const filteredFlags = availableFlags.filter(
+    ({ route_key }) =>
+      !["login", "down", "nomatch", "maintenance"].includes(route_key)
+  );
+
+  // Slice the available flags based on pagination
+  const currentFlags = filteredFlags.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  // Handle Next Page
+  const handleNextPage = () => {
+    if (currentPage * itemsPerPage < filteredFlags.length) {
+      setCurrentPage((prevPage) => prevPage + 1);
+    }
+  };
+
+  // Handle Previous Page
+  const handlePreviousPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage((prevPage) => prevPage - 1);
+    }
+  };
+
   return (
     <>
       <div className="w-full min-w-fit h-full p-5 max-w-[137rem] 1xl:max-h-[69rem] 2xl:max-h-[81rem] 3xl:max-w-[175rem] 3xl:max-h-[88rem]">
@@ -202,48 +248,68 @@ const Configuration = () => {
                     off: "translate-x-1 bg-white",
                   }}
                 />
-                <span  className="text-lg text-[#9C9C9C]">
+                <span className="text-lg text-[#9C9C9C]">
                   Disables public pages.
                 </span>
               </div>
-
-
             </div>
 
-            <div className="w-full min-w-fit min-h-fit h-[60.5rem] flex flex-wrap gap-x-2 gap-y-2  items-start content-start">
+            <div className="w-full min-w-fit min-h-fit h-[47.5rem] flex flex-wrap gap-x-2 gap-y-2  items-start content-start">
               {flagsLoading ? (
                 <LoadingSpinner />
               ) : flagsError ? (
                 <ErrorBox message={flagsError} />
-              ) : availableFlags.length > 0 ? (
-                availableFlags.map(({ route_key, is_enabled, is_public }) => {
-                  const isMaintenanceOn = availableFlags.find(
-                    (f) => f.route_key === "maintenance"
-                  )?.is_enabled;
-                  const isToggleable = route_key !== "maintenance";
+              ) : currentFlags.length > 0 ? (
+                // Sorting the currentFlags array by 'is_public' before rendering
+                currentFlags
+                  .sort((a, b) => b.is_public - a.is_public) // Sort in descending order (public first)
+                  .map(({ route_key, is_enabled, is_public }) => {
+                    const isMaintenanceOn = availableFlags.find(
+                      (f) => f.route_key === "maintenance"
+                    )?.is_enabled;
+                    const isToggleable = route_key !== "maintenance";
 
-                  return (
-                    <FlagItem
-                      key={route_key}
-                      route_key={route_key}
-                      is_enabled={is_enabled}
-                      is_public={is_public}
-                      updatingFlag={updatingFlag}
-                      handleToggle={handleFlagClick}
-                      disabled={isMaintenanceOn && isToggleable}
-                      onDisabledClick={handleDisabledClick}
-                    />
-                  );
-                })
+                    return (
+                      <FlagItem
+                        key={route_key}
+                        route_key={route_key}
+                        is_enabled={is_enabled}
+                        is_public={is_public}
+                        updatingFlag={updatingFlag}
+                        handleToggle={handleFlagClick}
+                        disabled={isMaintenanceOn && isToggleable}
+                        onDisabledClick={handleDisabledClick}
+                      />
+                    );
+                  })
               ) : (
                 <EmptyMessage message="Empty flags!" />
               )}
             </div>
+
+            {/* Pagination Controls */}
+            <div className="flex justify-between w-full mt-4">
+              <button
+                onClick={handlePreviousPage}
+                disabled={currentPage === 1}
+                className="px-4 py-2 bg-gray-600 text-white rounded-md disabled:opacity-50"
+              >
+                Previous Page
+              </button>
+              <button
+                onClick={handleNextPage}
+                disabled={currentPage * itemsPerPage >= filteredFlags.length}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md disabled:opacity-50"
+              >
+                Next Page
+              </button>
+            </div>
           </div>
 
           <div className="w-[40rem] border-[#373737] border rounded-sm items-center justify-center h-full flex flex-col gap-y-5">
-            <span className="text-2xl font-semibold">Logs spcific to flags will bre displayed here</span>
-
+            <span className="text-2xl font-semibold">
+              Logs spcific to flags will bre displayed here
+            </span>
           </div>
         </div>
       </div>

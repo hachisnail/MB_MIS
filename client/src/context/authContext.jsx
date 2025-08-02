@@ -20,11 +20,60 @@ export function AuthProvider({ children }) {
     }
   };
 
+const initializeSocket = (userId = null) => {
+  const socketClient = new SocketClient(import.meta.env.VITE_SERVER_URL);
+  socketRef.current = socketClient;
+
+  socketClient.onReady(() => {
+    socketClient.registerUser(userId); // null means guest
+    setSocketReady(true);
+  });
+
+  socketClient.onForceLogout(async (data) => {
+    console.warn("[Socket] Forced logout received:", data);
+    setForcedLogoutReason(data.reason || "You have been logged out.");
+
+    // Disconnect and destroy current socket
+    if (socketRef.current) {
+      socketRef.current.leaveAllRooms?.();
+      socketRef.current.disconnect();
+      socketRef.current = null;
+    }
+
+    setSocketReady(false);
+    setUser(null);
+    localStorage.setItem("logout-event", Date.now());
+
+    // Reinitialize as guest
+    const guestSocket = new SocketClient(import.meta.env.VITE_SERVER_URL);
+    socketRef.current = guestSocket;
+
+    guestSocket.onReady(() => {
+      guestSocket.registerUser(null); // guest mode
+      setSocketReady(true);
+    });
+  });
+};
+
+
+  useEffect(() => {
+    initializeSocket();
+
+    const init = async () => {
+      await fetchCurrentUser();
+      if (user?.id) {
+        socketRef.current?.registerUser(user.id);
+      }
+    };
+    init();
+  }, []);
+
   const login = async (credentials) => {
     setLoading(true);
     try {
       const res = await axiosClient.post("/auth/login", credentials);
       await fetchCurrentUser();
+      socketRef.current?.registerUser(res.data.user?.id);
       return { success: true };
     } catch (err) {
       const message = err.response?.data?.message || "Login failed";
@@ -34,20 +83,33 @@ export function AuthProvider({ children }) {
     }
   };
 
-  const logout = async () => {
+  const logout = async (skipServer = false) => {
     try {
-      await axiosClient.post("/auth/logout");
+      if (!skipServer) {
+        await axiosClient.post("/auth/logout");
+      }
     } catch (err) {
       console.error("Logout failed:", err.message);
     } finally {
       setUser(null);
       localStorage.setItem("logout-event", Date.now());
-      socketRef.current?.disconnect();
-      socketRef.current = null;
+
+      if (socketRef.current) {
+        socketRef.current.leaveAllRooms?.();
+        socketRef.current.disconnect();
+        socketRef.current = null;
+      }
+
       setSocketReady(false);
+
+      // Initialize guest socket after logout
+      if (skipServer) {
+        initializeSocket(null); // guest mode
+      }
     }
   };
 
+  // Cross-tab logout sync
   useEffect(() => {
     const syncLogout = (event) => {
       if (event.key === "logout-event") {
@@ -61,29 +123,6 @@ export function AuthProvider({ children }) {
     window.addEventListener("storage", syncLogout);
     return () => window.removeEventListener("storage", syncLogout);
   }, []);
-
-  useEffect(() => {
-    if (!user) return;
-
-    if (!socketRef.current) {
-      const socketClient = new SocketClient(import.meta.env.VITE_SOCKET_URL);
-      socketRef.current = socketClient;
-
-      socketClient.onReady(() => {
-        setSocketReady(true);
-      });
-
-      socketClient.onMessage((data) => {
-        if (data.type === "forceLogout") {
-          console.warn("[Socket] Forced logout received:", data);
-          setForcedLogoutReason(data.reason || "You have been logged out.");
-          logout();
-        }
-      });
-    }
-
-    socketRef.current.registerUser(user.id);
-  }, [user]);
 
   return (
     <AuthContext.Provider

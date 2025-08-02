@@ -11,21 +11,42 @@ export const RouterFlagProvider = ({ children }) => {
   const POLLING_INTERVAL = 15 * 60 * 1000; // 15 minutes
 
 
-  const fetchFlags = async () => {
-    try {
-      const res = await axiosClient.get("/auth/router-flags");
-      const flagMap = {};
-      res.data.forEach((flag) => {
-        flagMap[flag.route_key] = flag.is_enabled;
-      });
-      setFlags(flagMap);
-    } catch (error) {
-      console.error("Failed to fetch router flags", error);
-      setFlags({ down: true });
-    } finally {
-      setLoading(false);
+function xorDecode(encoded, key) {
+  const buffer = Uint8Array.from(atob(encoded), c => c.charCodeAt(0));
+  const decoded = buffer.map((b, i) => b ^ key.charCodeAt(i % key.length));
+  return JSON.parse(new TextDecoder().decode(decoded));
+}
+
+const fetchFlags = async () => {
+  try {
+    const res = await axiosClient.get("/auth/router-flags");
+
+    const rawFlags = xorDecode(res.data.encoded, "museo");
+    const rawKeyMap = xorDecode(res.data.keys, "museo");
+
+    // Reverse the key map
+    const reverseMap = Object.entries(rawKeyMap).reduce((acc, [original, alias]) => {
+      acc[alias] = original;
+      return acc;
+    }, {});
+
+    const flagMap = {};
+    for (const alias in rawFlags) {
+      const realKey = reverseMap[alias];
+      flagMap[realKey] = rawFlags[alias];
     }
-  };
+
+    setFlags(flagMap);
+  } catch (error) {
+    console.error("Failed to fetch router flags", error);
+    setFlags({ down: true });
+  } finally {
+    setLoading(false);
+  }
+};
+
+
+
 
   useEffect(() => {
     fetchFlags();

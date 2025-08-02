@@ -76,7 +76,7 @@ const PublicLayout = () => {
         </nav>
       )}
 
-      <main className="flex-1 z-10 h-auto flex flex-col items-center min-h-fit overflow-y-auto pb-5 w-full">
+      <main className="flex-1 z-10 h-auto flex flex-col items-center min-h-fit overflow-y-auto  w-full">
         <Outlet />
       </main>
 

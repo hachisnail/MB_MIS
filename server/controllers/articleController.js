@@ -143,6 +143,8 @@ export const getPublicArticle = async (req, res) => {
 
 // Update an existing article
 export const updateArticle = async (req, res) => {
+  console.log('Update request body:', req.body);
+  console.log('Update request file:', req.file);
   try {
     const { id } = req.params;
     const {

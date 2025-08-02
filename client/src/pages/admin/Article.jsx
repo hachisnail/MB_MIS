@@ -4,10 +4,10 @@ import axiosClient from "../../lib/axiosClient";
 import TimelineDatePicker from "../../features/TimelineDatePicker";
 import { SearchBar, CardDropdownPicker } from "../../features/Utilities";
 import Articleslist from "../../components/list/Articleslist";
+import { useAuth } from "../../context/authContext";
+
 
 const ArticleForm = () => {
-
-  // Articles and filters
   const [articles, setArticles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -20,7 +20,6 @@ const ArticleForm = () => {
   const SERVER_ORIGIN = BASE_URL.replace(/\/api$/, ""); // "http://localhost:5000"
   const UPLOAD_PATH = `${SERVER_ORIGIN}/uploads/pictures/`;
 
- 
   useEffect(() => {
     fetchArticles();
   }, []);
@@ -115,40 +114,35 @@ const ArticleForm = () => {
     }
     return (
       <span
-        className={`px-3 py-1 rounded-full font-semibold text-base ${color} ${bg}`}
+        className={`px-3 py-1 font-semibold text-base ${color} ${bg}`}
       >
         {label}
       </span>
     );
   };
 
-  const encodedProfile = localStorage.getItem("userProfile");
-  let userRole = "";
-  if (encodedProfile) {
-    try {
-      const profile = JSON.parse(atob(encodedProfile));
-      userRole = profile.role;
-    } catch (e) {
-      userRole = "";
-    }
-  }
+  const { user } = useAuth();
+const userRole = user.roleId; 
+const userPosition = user.position
 
-  const filterStatus = [
-    { label: "Pending", value: "pending" },
-    { label: "Posted", value: "posted" },
-    { label: "Rejected", value: "rejected" },
-    { label: "Archived", value: "archived" },
-  ];
 
- 
+const filterStatus = [
+  { label: "Status", value: "" }, 
+  { label: "Pending", value: "pending" },
+  { label: "Posted", value: "posted" },
+  { label: "Rejected", value: "rejected" },
+  { label: "Archived", value: "archived" },
+];
 
-  const CatOptions = [
-    { label: "Article", value: "Article" },
-    { label: "Education", value: "Education" },
-    { label: "Exhibit", value: "Exhibit" },
-    { label: "Contests", value: "Contests" },
-    { label: "Other", value: "Other" },
-  ];
+
+const CatOptions = [
+  { label: "Category", value: "" }, 
+  { label: "Article", value: "Article" },
+  { label: "Education", value: "Education" },
+  { label: "Exhibit", value: "Exhibit" },
+  { label: "Contests", value: "Contests" },
+  { label: "Other", value: "Other" },
+];
 
   
 
@@ -211,7 +205,7 @@ const ArticleForm = () => {
 
           {/* Right: Filters and List */}
           <div className="w-full h-full flex flex-col gap-y-7">
-            <div className="w-full py-2 flex flex-wrap items-center gap-x-2 min-w-[20rem] sm:min-w-[28rem] md:min-w-[32rem] lg:min-w-[38rem] xl:min-w-[40rem]">
+            <div className="w-full h-fit flex gap-x-3 items-center">     
               <TimelineDatePicker onDateChange={setFilterDate} theme="light" />
               <SearchBar theme="light" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
               <CardDropdownPicker value={selectedCat} onChange={setSelectedCat} placeholder="Categories" theme="light" options={CatOptions} />

@@ -47,8 +47,12 @@ app.use(session({
   },
 }));
 
-app.use("/uploads", express.static(UPLOAD_BASE_DIR));
-// console.log("Serving static files from:", path.join(UPLOAD_BASE_DIR, "assets"));
+// Add CORS headers for static files
+app.use("/uploads", (req, res, next) => {
+  res.header("Access-Control-Allow-Origin", process.env.CLIENT_URL);
+  res.header("Access-Control-Allow-Credentials", "true");
+  next();
+}, express.static(UPLOAD_BASE_DIR));
 
 // API routes
 app.use("/api", uploadRoutes);
@@ -67,11 +71,6 @@ if (process.env.NODE_ENV === "production" ) {
     console.warn("Frontend build not found. Skipping static fallback.");
   }
 }
-
-
-
-
-
 
 const server = http.createServer(app);
 

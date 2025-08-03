@@ -6,7 +6,6 @@ import { RouterFlagProvider } from "@/context/routerFlagProvider";
 import { ScrollToTop } from "@/lib/ScrollToTop";
 import bg from "@/assets/Image-1-1.jpg";
 
-
 import Router from "./router";
 
 function App() {
@@ -42,35 +41,15 @@ function App() {
   // }, []);
 
   return (
-    <AuthProvider>
-    <RouterFlagProvider>
-
-      <AppContent />
-    </RouterFlagProvider>
-
-    </AuthProvider>
-  );
-}
-
-function AppContent() {
-  const { loading } = useAuth();
-
-  if (loading) {
-    return (
-      <div 
-      
-      className="flex flex-col items-center justify-center h-screen">
-            <div className="w-7 h-7 mx-auto border-2 border-black border-t-transparent animate-spin rounded-full" />
-            <span>Checking Server!</span>
-      </div>
-    );
-  }
-
-  return (
     <BrowserRouter>
-      <ScrollToTop/>
+      <ScrollToTop />
+      <AuthProvider>
+        <RouterFlagProvider>
+          <ScrollToTop />
 
-      <Router />
+          <Router />
+        </RouterFlagProvider>
+      </AuthProvider>
     </BrowserRouter>
   );
 }

@@ -48,7 +48,7 @@ const user = await User.findOne({
         const io = getIO();
 
         io.to(`user:${user.id}`).emit("forceLogout", {
-          reason: "You have been logged in from another device.",
+          reason: "Your account was accessed from another device.",
         });
 
         await UserSession.update(

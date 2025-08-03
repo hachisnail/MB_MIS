@@ -42,6 +42,18 @@ const FlagItem = ({
   };
 
   const flagIcons = {
+    about: (
+      <svg
+        className="w-6 h-6 text-white"
+  fill="none"
+  viewBox="0 0 24 24"
+  stroke="currentColor"
+>
+  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
+  <line x1="12" y1="16" x2="12" y2="12" stroke="currentColor" strokeWidth="2" />
+  <circle cx="12" cy="8" r="1" fill="currentColor" />
+</svg>
+    ),
     login: (
       <svg
         className="w-6 h-6 text-white"
@@ -54,6 +66,17 @@ const FlagItem = ({
       </svg>
     ),
     catalogs: (
+      <svg
+        className="w-6 h-6 text-white"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        viewBox="0 0 24 24"
+      >
+        <path d="M5 4v16l7-3 7 3V4L12 7z" />
+      </svg>
+    ),
+    catalogs_public: (
       <svg
         className="w-6 h-6 text-white"
         fill="none"
@@ -97,6 +120,17 @@ const FlagItem = ({
         <path d="M9 12h6M12 9v6M5 20h14a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v14a1 1 0 001 1z" />
       </svg>
     ),
+        acquisition_public: (
+      <svg
+        className="w-6 h-6 text-white"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        viewBox="0 0 24 24"
+      >
+        <path d="M9 12h6M12 9v6M5 20h14a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v14a1 1 0 001 1z" />
+      </svg>
+    ),
     schedule: (
       <svg
         className="w-6 h-6 text-white"
@@ -119,7 +153,29 @@ const FlagItem = ({
         <path d="M4 4h16v16H4z M8 8h8M8 12h8M8 16h4" />
       </svg>
     ),
+    articles_public: (
+      <svg
+        className="w-6 h-6 text-white"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        viewBox="0 0 24 24"
+      >
+        <path d="M4 4h16v16H4z M8 8h8M8 12h8M8 16h4" />
+      </svg>
+    ),
     appointment: (
+      <svg
+        className="w-6 h-6 text-white"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        viewBox="0 0 24 24"
+      >
+        <path d="M8 7V3M16 7V3M4 11h16M5 21h14a2 2 0 002-2V7H3v12a2 2 0 002 2z" />
+      </svg>
+    ),
+    appointment_public: (
       <svg
         className="w-6 h-6 text-white"
         fill="none"
@@ -182,7 +238,7 @@ const FlagItem = ({
 
   return (
     <div
-      className={`hover:border-1 border-gray-500 flex-shrink-0 min-w-fit min-h-fit h-[15.5rem] w-[20rem] p-5 rounded-sm shadow-2xl transition flex flex-col justify-between ${
+      className={`hover:border-1 border-gray-500 flex-shrink-0 min-w-fit min-h-fit h-[16rem] w-[20rem] p-5 rounded-sm shadow-2xl transition flex flex-col justify-between ${
         is_enabled ? "bg-neutral-800" : "bg-neutral-900"
       }`}
     >

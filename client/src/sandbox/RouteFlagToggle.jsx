@@ -15,7 +15,7 @@ const socket = useSocketClient();
 
   const fetchFlags = async () => {
     try {
-      const { data } = await axiosClient.get("/auth/router-flags");
+      const { data } = await axiosClient.get("/auth/admin-flags");
       setAvailableFlags(data || []);
     } catch (err) {
       setFlagsError("Failed to load flags");
@@ -100,7 +100,7 @@ const socket = useSocketClient();
 
           {/* Flex container for cards */}
           <div className="flex flex-wrap gap-6">
-            {availableFlags.map(({ route_key, is_enabled }) => (
+            {/* {availableFlags.map(({ route_key, is_enabled }) => (
               <div
                 key={route_key}
                 className="flex-shrink-0 w-full sm:w-[48%] md:w-[31%] lg:w-[23%] bg-white p-5 rounded-lg shadow hover:shadow-lg transition flex flex-col justify-between"
@@ -133,7 +133,7 @@ const socket = useSocketClient();
                     : "Enable"}
                 </button>
               </div>
-            ))}
+            ))} */}
           </div>
         </>
       )}

@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { scrollToElementById } from "@/components/list/commons";
+import { useRouterFlags } from "@/context/routerFlagProvider";
+
 
 
 function getHeaderThemeClasses(theme, isScrolled) {
@@ -25,6 +27,8 @@ function getHeaderThemeClasses(theme, isScrolled) {
 const PublicHeader = ({ theme = "light" }) => {
   const location = useLocation();
   const [isScrolled, setIsScrolled] = useState(false);
+  const { flags } = useRouterFlags();
+
 
   const handleScroll = () => {
     const currentScrollY = window.scrollY;
@@ -52,52 +56,61 @@ const PublicHeader = ({ theme = "light" }) => {
         <div className="w-auto flex items-center">
           {isScrolled && (
             <div className="inline-block animate-slide-in-right">
-              <NavLink
-                to="/"
-                onClick={(e) => {
-                  scrollToElementById("main-navbar-top", 50);
-                }}
+              {flags["home"] && (
+                <NavLink
+                  to="/"
+                  onClick={(e) => {
+                    scrollToElementById("main-navbar-top", 50);
+                  }}
 
-                className={({ isActive }) =>
-                  `mx-2 text-xs my-auto cursor-pointer ${
-                    isActive
-                      ? `underline underline-offset-4 decoration-1 ${textClass}`
-                      : textClass
-                  }`
-                }
-              >
-                Home
-              </NavLink>
-              <NavLink
-                to="/catalogs"
-                onClick={(e) => {
-                  scrollToElementById("main-navbar-top", 50);
-                }}
-                className={({ isActive }) =>
-                  `mx-2 text-xs my-auto cursor-pointer ${
-                    isActive
-                      ? `underline underline-offset-4 decoration-1 ${textClass}`
-                      : textClass
-                  }`
-                }
-              >
-                Catalogs
-              </NavLink>
-              <NavLink
-                to="/articles"
-                onClick={(e) => {
-                  scrollToElementById("main-navbar-top", 50);
-                }}
-                className={({ isActive }) =>
-                  `mx-2 text-xs my-auto cursor-pointer ${
-                    isActive
-                      ? `underline underline-offset-4 decoration-1 ${textClass}`
-                      : textClass
-                  }`
-                }
-              >
-                News & Events
-              </NavLink>
+                  className={({ isActive }) =>
+                    `mx-2 text-xs my-auto cursor-pointer ${
+                      isActive
+                        ? `underline underline-offset-4 decoration-1 ${textClass}`
+                        : textClass
+                    }`
+                  }
+                >
+                  Home
+                </NavLink>
+              )}
+
+              {flags["catalogs_public"] && (
+                <NavLink
+                  to="/catalogs"
+                  onClick={(e) => {
+                    scrollToElementById("main-navbar-top", 50);
+                  }}
+                  className={({ isActive }) =>
+                    `mx-2 text-xs my-auto cursor-pointer ${
+                      isActive
+                        ? `underline underline-offset-4 decoration-1 ${textClass}`
+                        : textClass
+                    }`
+                  }
+                >
+                  Catalogs
+                </NavLink>
+              )}
+              {flags["articles_public"] && (
+                <NavLink
+                  to="/articles"
+                  onClick={(e) => {
+                    scrollToElementById("main-navbar-top", 50);
+                  }}
+                  className={({ isActive }) =>
+                    `mx-2 text-xs my-auto cursor-pointer ${
+                      isActive
+                        ? `underline underline-offset-4 decoration-1 ${textClass}`
+                        : textClass
+                    }`
+                  }
+                >
+                  News & Events
+                </NavLink>
+              )}
+
+              {flags["about"] && (
               <NavLink
                 to="/about"
                   onClick={(e) => {
@@ -113,6 +126,7 @@ const PublicHeader = ({ theme = "light" }) => {
               >
                 About
               </NavLink>
+              )}
             </div>
           )}
 

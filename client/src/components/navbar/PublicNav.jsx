@@ -165,10 +165,10 @@ const PublicNav = ({ theme = "light" }) => {
             ]}
           />
         )}
-        {flags["catalogs"] && (
+        {flags["catalogs_public"] && (
           <NavItem to="/catalogs" label="Catalogs" title="View Artifacts Catalog" />
         )}
-        {flags["article"] && (
+        {flags["articles_public"] && (
           <NavItem to="/articles" label="News & Events" title="View News & Events" />
         )}
         {flags["about"] && (

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { NavLink } from "react-router-dom";
+import ConfigLogslist from "../../components/list/ConfigLogslist";
 import axiosClient from "../../lib/axiosClient";
 import { useSocketClient } from "../../context/authContext";
 import ConfirmationModal from "../../components/modals/ConfirmationModal";
@@ -7,7 +7,7 @@ import FlagItem from "../../components/list/Flagslist";
 import Toast from "../../features/Toast";
 import StyledToggleSwitch from "../../components/buttons/StyledToggleSwitch";
 import PopupModal from "../../components/modals/PopupModal";
-import TooltipButton from "../../components/buttons/TooltipButton";
+import StyledButton from "../../components/buttons/StyledButton";
 import {
   LoadingSpinner,
   ErrorBox,
@@ -16,13 +16,14 @@ import {
 
 const Configuration = () => {
   const socket = useSocketClient();
-  const publicFlags = ["home", "catalogs", "recover", "parser"];
-
   const [availableFlags, setAvailableFlags] = useState([]);
   const [flagsLoading, setFlagsLoading] = useState(false);
   const [flagsError, setFlagsError] = useState("");
   const [updatingFlag, setUpdatingFlag] = useState(null);
   const [message, setMessage] = useState("");
+  const [availableLogs, setLogs] = useState([]);
+  const [logsLoading, setLogLoading] = useState();
+  const [logsError, setLogsError] = useState();
 
   const [maintenanceConfirm, setMaintenanceConfirm] = useState({
     isOpen: false,
@@ -54,23 +55,51 @@ const Configuration = () => {
 
   const fetchFlags = async () => {
     try {
-      setFlagsLoading(true);
-      const { data } = await axiosClient.get("/auth/router-flags");
-      setAvailableFlags(data || []);
-    } catch {
+      // setFlagsLoading(true);
+      const { data } = await axiosClient.get("/auth/admin-flags");
+
+      if (!data || !data.flags || data.flags.length === 0) {
+        setFlagsError("No flags found.");
+        return;
+      }
+
+      setAvailableFlags(data.flags);
+    } catch (err) {
+      console.error("Failed to load flags", err);
       setFlagsError("Failed to load flags");
     } finally {
-      setFlagsLoading(false);
+      // setFlagsLoading(false);
+    }
+  };
+
+  const fetchLogs = async () => {
+    try {
+      setLogsError(null);
+      // setLogLoading(true);
+      const response = await axiosClient.get(`/auth/logs?model=RouterFlag`, {
+        withCredentials: true,
+      });
+      setLogs(response.data);
+      console.log(response.data);
+    } catch (error) {
+      console.error("Failed to fetch logs!", error);
+      setLogsError("Failed to fetch logs!\n" + error);
+    } finally {
+      // setLogLoading(false);
     }
   };
 
   useEffect(() => {
     fetchFlags();
+    fetchLogs();
   }, []);
 
   useEffect(() => {
     if (!socket) return;
-    const handleFlagChange = () => fetchFlags();
+    const handleFlagChange = () => {
+      fetchFlags();
+      fetchLogs();
+    };
     socket.onDbChange("Log", "*", handleFlagChange);
     return () => socket.offDbChange("Log", "*", handleFlagChange);
   }, [socket]);
@@ -173,11 +202,45 @@ const Configuration = () => {
     }
   };
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 12; // 12 flags per page
+
+  // Filter out the unwanted flags before pagination (like 'login', 'down', 'nomatch', 'maintenance')
+  const filteredFlags = availableFlags.filter(
+    ({ route_key }) =>
+      !["login", "down", "nomatch", "maintenance"].includes(route_key)
+  );
+
+  // Slice the available flags based on pagination
+  const currentFlags = filteredFlags.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  // Handle Next Page
+  const handleNextPage = () => {
+    if (currentPage * itemsPerPage < filteredFlags.length) {
+      setCurrentPage((prevPage) => prevPage + 1);
+    }
+  };
+
+  // Handle Previous Page
+  const handlePreviousPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage((prevPage) => prevPage - 1);
+    }
+  };
+
   return (
     <>
-      <div className="w-full min-w-fit h-full p-5 max-w-[137rem] 1xl:max-h-[69rem] 2xl:max-h-[81rem] 3xl:max-w-[175rem] 3xl:max-h-[88rem]">
-        <div className="w-full h-full justify-between  pt-5 flex border-t border-[#373737] gap-y-[2rem]">
-          <div className="w-[81.5rem] space-y-5 h-full pt-1">
+      <div className="w-full min-w-fit h-full p-5  1xl:max-h-[69rem] 2xl:max-h-[81rem] 3xl:max-h-[88rem]">
+        <div className="w-full h-full justify-center gap-x-5  pt-5 flex border-t border-[#373737] gap-y-[2rem]">
+          <div className="w-[81.5rem] flex flex-col justify-between space-y-5 h-full pt-1">
+            <div className="h-20 border border-[#373737] flex items-center justify-center">
+              <span className="text-xl">
+                Some Buttons for editong about and other misc.
+              </span>
+            </div>
             <div className="flex justify-between items-center w-full border-b border-[#373737] pb-5">
               <div className="flex flex-col">
                 <span className="text-2xl font-semibold mb-2">
@@ -202,48 +265,128 @@ const Configuration = () => {
                     off: "translate-x-1 bg-white",
                   }}
                 />
-                <span  className="text-lg text-[#9C9C9C]">
+                <span className="text-lg text-[#9C9C9C]">
                   Disables public pages.
                 </span>
               </div>
-
-
             </div>
 
-            <div className="w-full min-w-fit min-h-fit h-[60.5rem] flex flex-wrap gap-x-2 gap-y-2  items-start content-start">
+            <div className="w-full min-w-fit min-h-fit h-[49rem] flex flex-wrap gap-2 items-start justify-center">
               {flagsLoading ? (
                 <LoadingSpinner />
               ) : flagsError ? (
                 <ErrorBox message={flagsError} />
-              ) : availableFlags.length > 0 ? (
-                availableFlags.map(({ route_key, is_enabled, is_public }) => {
-                  const isMaintenanceOn = availableFlags.find(
-                    (f) => f.route_key === "maintenance"
-                  )?.is_enabled;
-                  const isToggleable = route_key !== "maintenance";
+              ) : currentFlags.length > 0 ? (
+                // Sorting the currentFlags array by 'is_public' before rendering
+                currentFlags
+                  .sort((a, b) => b.is_public - a.is_public) // Sort in descending order (public first)
+                  .map(({ route_key, is_enabled, is_public }) => {
+                    const isMaintenanceOn = availableFlags.find(
+                      (f) => f.route_key === "maintenance"
+                    )?.is_enabled;
+                    const isToggleable = route_key !== "maintenance";
 
-                  return (
-                    <FlagItem
-                      key={route_key}
-                      route_key={route_key}
-                      is_enabled={is_enabled}
-                      is_public={is_public}
-                      updatingFlag={updatingFlag}
-                      handleToggle={handleFlagClick}
-                      disabled={isMaintenanceOn && isToggleable}
-                      onDisabledClick={handleDisabledClick}
-                    />
-                  );
-                })
+                    return (
+                      <FlagItem
+                        key={route_key}
+                        route_key={route_key}
+                        is_enabled={is_enabled}
+                        is_public={is_public}
+                        updatingFlag={updatingFlag}
+                        handleToggle={handleFlagClick}
+                        disabled={isMaintenanceOn && isToggleable}
+                        onDisabledClick={handleDisabledClick}
+                      />
+                    );
+                  })
               ) : (
                 <EmptyMessage message="Empty flags!" />
               )}
             </div>
+
+            {/* Pagination Controls */}
+            <div className="flex justify-between px-5 w-full mt-4 pt-2 border-t border-[#373737]">
+              <StyledButton
+                buttonColor="bg-gray-600"
+                hoverColor="hover:bg-gray-800"
+                onClick={handlePreviousPage}
+                disabled={currentPage === 1}
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M4 12l10 0" />
+                  <path d="M4 12l4 4" />
+                  <path d="M4 12l4 -4" />
+                  <path d="M20 4l0 16" />
+                </svg>
+              </StyledButton>
+
+              <span className="text-xl font-semibold text-gray-400">
+                Page <span className="text-white">{currentPage}</span> of{" "}
+                {Math.ceil(filteredFlags.length / itemsPerPage)}
+              </span>
+
+              <StyledButton
+                buttonColor="bg-gray-600"
+                hoverColor="hover:bg-gray-800"
+                onClick={handleNextPage}
+                disabled={currentPage * itemsPerPage >= filteredFlags.length}
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M20 12l-10 0" />
+                  <path d="M20 12l-4 4" />
+                  <path d="M20 12l-4 -4" />
+                  <path d="M4 4l0 16" />
+                </svg>
+              </StyledButton>
+            </div>
           </div>
 
-          <div className="w-[40rem] border-[#373737] border rounded-sm items-center justify-center h-full flex flex-col gap-y-5">
-            <span className="text-2xl font-semibold">Logs spcific to flags will bre displayed here</span>
+          <div className="w-[47rem]  rounded-sm items-start justify-start h-full flex flex-col space-y-[2rem] border-r border-[#373737]">
+            {/* <span className="text-2xl font-semibold">
+              Logs spcific to flags will bre displayed here
+            </span> */}
 
+            <span className="text-2xl font-semibold w-fit ">Logs</span>
+            <div className="w-full min-w-fit min-h-fit grid text-xl grid-cols-4">
+              <div className="py-2 pl-2 border-gray-600">TimeStamp</div>
+              <div className="py-2 pl-2 border-gray-600">Flag</div>
+              <div className="py-2 pl-2 border-gray-600">Status</div>
+              <div className="py-2 pl-2 border-gray-600">Actor</div>
+            </div>
+
+            <div className="w-full h-[58rem] overflow-y-scroll border-t border-gray-700">
+              {logsLoading ? (
+                <LoadingSpinner />
+              ) : logsError ? (
+                <ErrorBox message={logsError} />
+              ) : availableLogs.length > 0 ? (
+                availableLogs.map((log, index) => (
+                  <ConfigLogslist key={index} log={log} />
+                ))
+              ) : (
+                <EmptyMessage message="Empty logs!" />
+              )}
+            </div>
           </div>
         </div>
       </div>

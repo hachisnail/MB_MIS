@@ -266,126 +266,86 @@ const Home = () => {
 
       </section>
 
-      <section
-        id="news_events"
-               className="pt-15 w-full min-h-screen h-auto px-30 flex flex-col justify-center items-center"
+<section
+  id="news_events"
+  className="pt-15 w-full min-h-screen px-30 flex flex-col justify-center items-center"
+>
+  <ScrollButton
+    pt="0"
+    title="Whats On?"
+    targetId="whats_on"
+    direction="left"
+    textColor="text-gray-300"
+    hoverTextColor="hover:text-gray-600"
+  />
 
+  <div className="w-full flex-col py-10 px-20 gap-y-20 xl:gap-y-0 flex overflow-hidden">
+    <div className="flex items-center justify-start w-full text-gray-500">
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="32"
+        height="32"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1"
+        strokeLinecap="round"
+        strokeLinejoin="round"
       >
-        <ScrollButton
-          pt="0"
-          title="Whats On?"
-          targetId="whats_on"
-          direction="left"
-          textColor="text-gray-300"
-          hoverTextColor="hover:text-gray-600"
-        />
+        <line x1="5" y1="12" x2="19" y2="12" />
+      </svg>
+      <span className="text-xl font-hind font-extralight pt-1">DONT MISS</span>
+    </div>
+    <span className="text-white text-7xl font-hina">News & Events</span>
 
-
-
-
-         <div className="w-full flex-col py-10 px-20 min-h-[85vh] gap-y-20 xl:gap-y-0 h-auto flex flex-coloverflow-hidden">
-          <div className="flex items-center justify-start w-full text-gray-500">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="32"
-              height="32"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <line x1="5" y1="12" x2="19" y2="12" />
-            </svg>
-            <span className=" text-xl font-hind font-extralight pt-1">DONT MISS</span>
-          </div>
-          <span className="text-white text-7xl font-hina">News & Events</span>
-
-
-
-
-          <div className="w-full h-[53rem] my-[1rem] flex flex-wrap items-center justify-center gap-2">
-            {/* render top 4 news and events card here */}
-
-            <div className="w-[63rem] h-[26rem] border border-white flex items-center justify-center">
-            {/* this is the absolute size of the cards */}
-
-            <span className="text-3xl text-white">News & Events 1</span>
-
-            </div>
-
-
-            <div className="w-[63rem] h-[26rem] border border-white flex items-center justify-center">
-            <span className="text-3xl text-white">News & Events 2</span>
-
-
-            {/* this is the absolute size of the cards */}
-
-            </div>
-            
-
-
-            <div className="w-[63rem] h-[26rem] border border-white flex items-center justify-center">
-            <span className="text-3xl text-white">News & Events 3</span>
-
-
-            {/* this is the absolute size of the cards */}
-
-            </div>
-
-
-            <div className="w-[63rem] h-[26rem] border border-white flex items-center justify-center">
-            <span className="text-3xl text-white">News & Events 4</span>
-
-
-            {/* this is the absolute size of the cards */}
-
-            </div>
-            
-
-
-          </div>
-          
-          <div className="flex  justify-end w-full text-gray-300 hover:text-gray-500 ">
-            <button
-              className="flex items-center cursor-pointer"
-              onClick={()=>{navigate('articles')}}>
-            <span className=" text-xl font-hind font-extralight pt-1">See All Events</span>
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="72"
-              height="32"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <line x1="-10" y1="12" x2="19" y2="12" />
-              <polyline points="12 8 19 12 12 16" />
-            </svg>
-            </button>
-          </div>
-
-
+    <div className="w-full flex flex-wrap items-center justify-center gap-2">
+      {/* render top 4 news and events card here */}
+      {[1, 2, 3, 4].map((i) => (
+        <div
+          key={i}
+          className="w-[63rem] h-[26rem] border border-white flex items-center justify-center"
+        >
+          <span className="text-3xl text-white">News & Events {i}</span>
         </div>
+      ))}
+    </div>
 
+    <div className="flex justify-end w-full text-gray-300 hover:text-gray-500">
+      <button
+        className="flex items-center cursor-pointer"
+        onClick={() => {
+          navigate("articles");
+        }}
+      >
+        <span className="text-xl font-hind font-extralight pt-1">See All Events</span>
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="72"
+          height="32"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <line x1="-10" y1="12" x2="19" y2="12" />
+          <polyline points="12 8 19 12 12 16" />
+        </svg>
+      </button>
+    </div>
+  </div>
 
+  <ScrollButton
+    pt="0"
+    title="Support Us"
+    targetId="support"
+    direction="right"
+    textColor="text-gray-300"
+    hoverTextColor="hover:text-gray-600"
+  />
+</section>
 
-
-        <ScrollButton
-          pt="0"
-          title="Support Us"
-          targetId="support"
-          direction="right"
-          textColor="text-gray-300"
-          hoverTextColor="hover:text-gray-600"
-        />
-
-
-      </section>
       <section
         id="support"
         className="pt-15 bg-white w-full min-h-screen h-auto px-30 flex flex-col justify-center items-center"

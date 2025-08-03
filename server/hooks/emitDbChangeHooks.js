@@ -1,46 +1,49 @@
 import { getIO } from "../configs/socketServer.js";
 
-/**
- * Emits a Socket.io event for DB changes
- * @param {string} modelName
- * @param {string} action - "create" | "update" | "delete"
- * @param {Sequelize.Instance} instance
- */
-  export function emitDbChange(modelName, action, instance, options = {}) {
-    try {
-      const io = getIO();
-      const payload = {
-        model: modelName,
-        action,
-        data: instance.toJSON(),
-      };
+const ALLOWED_GUEST_MODELS = new Set(["RouterFlag"]);
 
-      const { toUserId = null, event = "dbChange", room = null } = options;
+export function emitDbChange(modelName, action, instance, options = {}) {
+  try {
+    const io = getIO();
+    // const payload = {
+    //   model: modelName,
+    //   action,
+    //   data: "instance.toJSON()",
+    // };
 
-      console.log(
-        `[Socket Emit] Emitting event="${event}" for model="${modelName}", action="${action}" to ${room || (toUserId ? `user:${toUserId}` : "all")} with data:`,
-        payload.data
-      );
+    const payload = {
+      model: modelName,
+      action,
+      data: null,
+    };
 
-      if (room) {
-        io.to(room).emit(event, payload);
-      } else if (toUserId) {
-        io.to(`user:${toUserId}`).emit(event, payload);
-      } else {
-        io.emit(event, payload);
-      }
+    const {
+      toUserId = null,
+      event = "dbChange",
+      room = null,
+    } = options;
 
-    } catch (err) {
-      console.error(`Socket emit error for ${modelName}:${action}:`, err.message);
+    const safeLogTarget = () => {
+      if (room) return `room: ${room}`;
+      if (toUserId) return `user:${toUserId}`;
+      return "authenticated users";
+    };
+
+    // Guest-safe emit
+    if (ALLOWED_GUEST_MODELS.has(modelName)) {
+      io.to("guestRoom").emit(event, payload);
+      console.log(`[Socket Emit] Sent guest-safe model "${modelName}" to guestRoom`);
     }
+
+    // Authenticated-only broadcast to realtimeDB
+    io.to("realtimeDB").emit(event, payload);
+    console.log(`[Socket Emit] Sent "${modelName}" to realtimeDB (${safeLogTarget()})`);
+
+  } catch (err) {
+    console.error(`Socket emit error for ${modelName}:${action}:`, err.message);
   }
+}
 
-
-/**
- * Attach hooks for create, update, delete that call emitDbChange automatically
- * @param {import("sequelize").Model} model Sequelize model
- * @param {string} modelName
- */
 export function addDbChangeHooks(model, modelName) {
   model.afterCreate((instance, options) => {
     console.log(`[Hook] afterCreate triggered for ${modelName}`);

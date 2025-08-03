@@ -63,7 +63,13 @@ const Router = () => {
   const { login } = useAuth();
   const { flags, loading } = useRouterFlags();
 
-  if (loading) return <div>Loading routes...</div>;
+  if (loading) return (
+  <div className="w-screen h-screen flex items-center justify-center fkex-col">  
+ <div className="flex flex-col">
+  <div className="w-7 h-7 mx-auto border-2 border-black border-t-transparent animate-spin rounded-full" /> 
+  <span> Loading routes... </span>
+  </div>
+  </div>)
   return (
     <Routes>
       {/* Public routes */}

@@ -56,7 +56,7 @@
       this.socket.on("dbChange", (payload) => this.handleDbChange(payload));
 
       this.socket.on("forceLogout", (data) => {
-        console.warn("[Socket] Force logout received:", data);
+        // console.warn("[Socket] Force logout received:", data);
         this.handleMessage({ type: "forceLogout", ...data }); 
       });
 
@@ -165,13 +165,6 @@
       notify(wildcardKey);
     }
 
-    handleMessage(data) {
-      if (this.listeners.has("message")) {
-        for (const cb of this.listeners.get("message")) {
-          cb(data);
-        }
-      }
-    }
 
     onMessage(callback) {
       if (!this.listeners.has("message")) {

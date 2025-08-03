@@ -3,9 +3,19 @@ import { User } from "../models/authModels.js";
 
 export const fetchLogs = async (req, res, next) => {
   try {
+    // Define the fields you allow filtering on
+    const allowedFilters = ['userId', 'routerflag', 'action', 'createdAt', 'model'];
+
+    const filters = Object.fromEntries(
+      Object.entries(req.query).filter(([key]) => allowedFilters.includes(key))
+    );
+
+    if (filters.userId) filters.userId = Number(filters.userId);
+
     const logs = await Log.findAll({
+      where: filters,
       order: [['createdAt', 'DESC']],
-      raw: true, 
+      raw: true,
     });
 
     const userIds = [...new Set(logs.map(log => log.userId))];
@@ -24,11 +34,13 @@ export const fetchLogs = async (req, res, next) => {
     }));
 
     res.json(enrichedLogs);
-  } catch (error) {
-    console.error("Failed to fetch logs:", error);
-    res.status(500).json({ message: "Failed to fetch logs" });
-  }
+  }catch (error) {
+  console.error("Failed to fetch logs:", error.stack || error); 
+  res.status(500).json({ message: "Failed to fetch logs" });
+}
+
 };
+
 
 
 export const fetchLog = async (req, res, next) => {

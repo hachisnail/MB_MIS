@@ -5,10 +5,16 @@ const ALLOWED_GUEST_MODELS = new Set(["RouterFlag"]);
 export function emitDbChange(modelName, action, instance, options = {}) {
   try {
     const io = getIO();
+    // const payload = {
+    //   model: modelName,
+    //   action,
+    //   data: "instance.toJSON()",
+    // };
+
     const payload = {
       model: modelName,
       action,
-      data: instance.toJSON(),
+      data: null,
     };
 
     const {

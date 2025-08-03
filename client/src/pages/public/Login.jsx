@@ -15,19 +15,19 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   const navigate = useNavigate();
-  const { user, login, forcedLogoutReason, socketReady } = useAuth();
+  const { user, login, forcedLogoutReason, resetForcedLogoutReason, socketReady } = useAuth(); 
 
-useEffect(() => {
-  if (forcedLogoutReason) {
-    setError(forcedLogoutReason);
-  }
-}, [forcedLogoutReason]);
+  useEffect(() => {
+    if (forcedLogoutReason) {
+      setError(forcedLogoutReason);
+    }
+  }, [forcedLogoutReason]);
 
-useEffect(() => {
-  if (user && socketReady) {
-    navigate("/admin/dashboard", { replace: true });
-  }
-}, [user, socketReady]);
+  useEffect(() => {
+    if (user && socketReady) {
+      navigate("/admin/dashboard", { replace: true });
+    }
+  }, [user, socketReady]);
 
   const handleChange = (e) => {
     setCredentials({
@@ -59,6 +59,16 @@ useEffect(() => {
     }
   };
 
+  // New handler to close the "You've been logged out" modal and clear the reason
+  const handleForcedLogoutModalClose = () => {
+    setError("");
+    resetForcedLogoutReason(); // Reset the state in the AuthContext
+  };
+
+  // New handler to close the API error modal
+  const handleApiErrorModalClose = () => {
+    setApiError("");
+  };
 
   return (
     <div className="flex flex-col w-screen min-w-fit h-[98.5vh]">
@@ -153,24 +163,25 @@ useEffect(() => {
           >
             {isLoading ? "Logging in..." : "Login"}
           </button>
-
-          <div className="mt-2 w-full h-6 flex items-center">
-            {error && (
-              <span className="text-red-400 mt-4 w-full text-xl text-center bg-gray-100 rounded px-2 py-1 border border-gray-300">
-                {error}
-              </span>
-            )}
-          </div>
         </form>
       </div>
 
       <PopupModal
         isOpen={!!apiError}
-        onClose={() => setApiError("")}
+        onClose={handleApiErrorModalClose} // Use the new handler
         title="Login Error"
         message={apiError}
         buttonText="Close"
         type="error"
+        theme="light"
+      />
+      <PopupModal
+        isOpen={!!error}
+        onClose={handleForcedLogoutModalClose} // Use the new handler
+        title="You’ve been logged out"
+        message={error}
+        buttonText="Okay"
+        type="warning"
         theme="light"
       />
     </div>

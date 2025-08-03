@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { NavLink } from "react-router-dom";
+import ConfigLogslist from "../../components/list/ConfigLogslist";
 import axiosClient from "../../lib/axiosClient";
 import { useSocketClient } from "../../context/authContext";
 import ConfirmationModal from "../../components/modals/ConfirmationModal";
@@ -16,21 +16,14 @@ import {
 
 const Configuration = () => {
   const socket = useSocketClient();
-  const publicFlags = [
-    "home",
-    "catalogs_public",
-    "acquisition_public",
-    "articles_public",
-    "appointment_public",
-    "recover",
-    "parser",
-  ];
-
   const [availableFlags, setAvailableFlags] = useState([]);
   const [flagsLoading, setFlagsLoading] = useState(false);
   const [flagsError, setFlagsError] = useState("");
   const [updatingFlag, setUpdatingFlag] = useState(null);
   const [message, setMessage] = useState("");
+  const [availableLogs, setLogs] = useState([]);
+  const [logsLoading, setLogLoading] = useState();
+  const [logsError, setLogsError] = useState();
 
   const [maintenanceConfirm, setMaintenanceConfirm] = useState({
     isOpen: false,
@@ -62,7 +55,7 @@ const Configuration = () => {
 
   const fetchFlags = async () => {
     try {
-      setFlagsLoading(true);
+      // setFlagsLoading(true);
       const { data } = await axiosClient.get("/auth/admin-flags");
 
       if (!data || !data.flags || data.flags.length === 0) {
@@ -75,17 +68,38 @@ const Configuration = () => {
       console.error("Failed to load flags", err);
       setFlagsError("Failed to load flags");
     } finally {
-      setFlagsLoading(false);
+      // setFlagsLoading(false);
+    }
+  };
+
+  const fetchLogs = async () => {
+    try {
+      setLogsError(null);
+      // setLogLoading(true);
+      const response = await axiosClient.get(`/auth/logs?model=RouterFlag`, {
+        withCredentials: true,
+      });
+      setLogs(response.data);
+      console.log(response.data);
+    } catch (error) {
+      console.error("Failed to fetch logs!", error);
+      setLogsError("Failed to fetch logs!\n" + error);
+    } finally {
+      // setLogLoading(false);
     }
   };
 
   useEffect(() => {
     fetchFlags();
+    fetchLogs();
   }, []);
 
   useEffect(() => {
     if (!socket) return;
-    const handleFlagChange = () => fetchFlags();
+    const handleFlagChange = () => {
+      fetchFlags();
+      fetchLogs();
+    };
     socket.onDbChange("Log", "*", handleFlagChange);
     return () => socket.offDbChange("Log", "*", handleFlagChange);
   }, [socket]);
@@ -219,11 +233,13 @@ const Configuration = () => {
 
   return (
     <>
-      <div className="w-full min-w-fit h-full p-5 max-w-[137rem] 1xl:max-h-[69rem] 2xl:max-h-[81rem] 3xl:max-w-[175rem] 3xl:max-h-[88rem]">
+      <div className="w-full min-w-fit h-full p-5  1xl:max-h-[69rem] 2xl:max-h-[81rem] 3xl:max-h-[88rem]">
         <div className="w-full h-full justify-center gap-x-5  pt-5 flex border-t border-[#373737] gap-y-[2rem]">
           <div className="w-[81.5rem] flex flex-col justify-between space-y-5 h-full pt-1">
             <div className="h-20 border border-[#373737] flex items-center justify-center">
-              <span className="text-xl">Some Buttons for editong about and other misc.</span>
+              <span className="text-xl">
+                Some Buttons for editong about and other misc.
+              </span>
             </div>
             <div className="flex justify-between items-center w-full border-b border-[#373737] pb-5">
               <div className="flex flex-col">
@@ -292,7 +308,7 @@ const Configuration = () => {
             <div className="flex justify-between px-5 w-full mt-4 pt-2 border-t border-[#373737]">
               <StyledButton
                 buttonColor="bg-gray-600"
-                hoverColor = "hover:bg-gray-800"
+                hoverColor="hover:bg-gray-800"
                 onClick={handlePreviousPage}
                 disabled={currentPage === 1}
               >
@@ -314,11 +330,14 @@ const Configuration = () => {
                 </svg>
               </StyledButton>
 
-              <span className="text-xl font-semibold text-gray-400">Page <span className="text-white">{currentPage}</span> of  {Math.ceil(filteredFlags.length / itemsPerPage)}</span>
+              <span className="text-xl font-semibold text-gray-400">
+                Page <span className="text-white">{currentPage}</span> of{" "}
+                {Math.ceil(filteredFlags.length / itemsPerPage)}
+              </span>
 
               <StyledButton
                 buttonColor="bg-gray-600"
-                hoverColor = "hover:bg-gray-800"
+                hoverColor="hover:bg-gray-800"
                 onClick={handleNextPage}
                 disabled={currentPage * itemsPerPage >= filteredFlags.length}
               >
@@ -339,15 +358,35 @@ const Configuration = () => {
                   <path d="M4 4l0 16" />
                 </svg>
               </StyledButton>
-
-
             </div>
           </div>
 
-          <div className="w-[47rem] border-[#373737] border rounded-sm items-center justify-center h-full flex flex-col gap-y-5">
-            <span className="text-2xl font-semibold">
+          <div className="w-[47rem]  rounded-sm items-start justify-start h-full flex flex-col space-y-[2rem] border-r border-[#373737]">
+            {/* <span className="text-2xl font-semibold">
               Logs spcific to flags will bre displayed here
-            </span>
+            </span> */}
+
+            <span className="text-2xl font-semibold w-fit ">Logs</span>
+            <div className="w-full min-w-fit min-h-fit grid text-xl grid-cols-4">
+              <div className="py-2 pl-2 border-gray-600">TimeStamp</div>
+              <div className="py-2 pl-2 border-gray-600">Flag</div>
+              <div className="py-2 pl-2 border-gray-600">Status</div>
+              <div className="py-2 pl-2 border-gray-600">Actor</div>
+            </div>
+
+            <div className="w-full h-[58rem] overflow-y-scroll border-t border-gray-700">
+              {logsLoading ? (
+                <LoadingSpinner />
+              ) : logsError ? (
+                <ErrorBox message={logsError} />
+              ) : availableLogs.length > 0 ? (
+                availableLogs.map((log, index) => (
+                  <ConfigLogslist key={index} log={log} />
+                ))
+              ) : (
+                <EmptyMessage message="Empty logs!" />
+              )}
+            </div>
           </div>
         </div>
       </div>

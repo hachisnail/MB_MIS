@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import bgImage1 from "@/assets/Fernando-Amorsolo-Women-Bathing-and-Washing Clothes-7463.svg";
-import { FaImage } from "react-icons/fa";
 import axios from "axios";
 
 const municipalities = [
@@ -247,7 +246,6 @@ const Articles = () => {
                         />
                       ) : (
                         <div className="flex flex-col items-center justify-center">
-                          <FaImage className="text-gray-300 text-5xl" />
                           <p className="text-gray-300 mt-2">No Image</p>
                         </div>
                       )}

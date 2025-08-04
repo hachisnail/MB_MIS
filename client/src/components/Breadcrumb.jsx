@@ -1,8 +1,4 @@
-import {
-  useLocation,
-  NavLink,
-  matchPath,
-} from "react-router-dom";
+import { useLocation, NavLink, matchPath } from "react-router-dom";
 
 const routeMeta = [
   { path: "/admin/inventory", title: "Inventory of Artifact" },
@@ -63,12 +59,20 @@ function safeDecodeBase64(str) {
 
 const Breadcrumb = () => {
   const location = useLocation();
-const isPreview = matchPath(
-  { path: "**/preview/:encoded", end: true },
-  location.pathname
-);
   const pathSegments = location.pathname.split("/").filter(Boolean);
 
+  // Detect if URL ends with /preview/:encoded
+  let isPreview = false;
+  let encodedParam = null;
+  if (
+    pathSegments.length >= 2 &&
+    pathSegments[pathSegments.length - 2] === "preview"
+  ) {
+    isPreview = true;
+    encodedParam = pathSegments[pathSegments.length - 1];
+  }
+
+  // Find route metadata for page title
   let pageTitle = "Sandbox/Unassigned";
   const matchedRoute = routeMeta.find(({ path }) =>
     matchPath({ path, end: true }, location.pathname)
@@ -78,13 +82,7 @@ const isPreview = matchPath(
     pageTitle = matchedRoute.title;
   }
 
-  // // Override title if it's a preview route
-  // if (isPreview) {
-  //   const encoded = isPreview.params.encoded;
-  //   const decoded = safeDecodeBase64(decodeURIComponent(encoded));
-  //   const filename = decoded.split("/").pop();
-  //   pageTitle = filename;
-  // }
+  // Don't override pageTitle for preview routes (filename should NOT be title)
 
   const theme = matchedRoute?.theme || "text-gray-700";
 
@@ -94,6 +92,7 @@ const isPreview = matchPath(
     .map((segment, index, arr) => {
       currentLink += `/${segment}`;
 
+      // Skip these segments in breadcrumb display
       if (
         ["admin", "preview", "files", "pictures", "edit-article"].includes(
           segment
@@ -102,11 +101,17 @@ const isPreview = matchPath(
         return null;
       }
 
-      const raw = decodeURIComponent(segment);
-      const decoded = safeDecodeBase64(raw);
+      let raw = decodeURIComponent(segment);
+      let decoded = safeDecodeBase64(raw);
       let label = decoded;
 
-      if (isPreview && index === arr.length - 1) {
+      // For preview route, use filename from decoded encoded param for last crumb
+      if (
+        isPreview &&
+        index === arr.length - 1 &&
+        segment === encodedParam
+      ) {
+        // If decoded includes slashes (folders), take only last part (filename)
         label = decoded.split("/").pop();
       }
 

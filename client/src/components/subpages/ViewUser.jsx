@@ -1,16 +1,11 @@
 import axiosClient from "../../lib/axiosClient";
 import { useState, useEffect, useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
- import PopupModal from "../modals/PopupModal";
+import PopupModal from "../modals/PopupModal";
 import { useSocketClient } from "../../context/authContext";
 import BackButton from "../buttons/BackButton";
-import {
-  EmptyMessage,
-  ErrorBox,
-  LoadingSpinner,
-} from "../list/commons";
-import {ViewUserItem, ViewUserSessionItem} from "../list/ViewUserlist";
-
+import { EmptyMessage, ErrorBox, LoadingSpinner } from "../list/commons";
+import { ViewUserItem, ViewUserSessionItem } from "../list/ViewUserlist";
 
 const ViewUser = () => {
   const [userData, setUserData] = useState(null);
@@ -25,7 +20,9 @@ const ViewUser = () => {
   const socket = useSocketClient();
 
   const pathSegments = location.pathname.split("/").filter(Boolean);
-  const codedFullName = decodeURIComponent(pathSegments[pathSegments.length - 1]);
+  const codedFullName = decodeURIComponent(
+    pathSegments[pathSegments.length - 1]
+  );
   const fullName = atob(codedFullName);
 
   const fetchSessions = async () => {
@@ -48,29 +45,27 @@ const ViewUser = () => {
     }
   };
 
-useEffect(() => {
-  fetchSessions();
-}, []);
-
-useEffect(() => {
-  if (!socket) return;
-
-  const handleUserChange = () => {
-    // console.log("[Socket] UserSession dbChange received – fetching sessions");
+  useEffect(() => {
     fetchSessions();
-  };
+  }, []);
 
-  socket.onDbChange("UserSession", "*", handleUserChange);
+  useEffect(() => {
+    if (!socket) return;
 
-  return () => {
-    socket.offDbChange("UserSession", "*", handleUserChange);
-  };
-}, [socket]);
+    const handleUserChange = () => {
+      // console.log("[Socket] UserSession dbChange received – fetching sessions");
+      fetchSessions();
+    };
 
+    socket.onDbChange("UserSession", "*", handleUserChange);
+
+    return () => {
+      socket.offDbChange("UserSession", "*", handleUserChange);
+    };
+  }, [socket]);
 
   const user = useMemo(() => userData, [userData]);
   const sessions = useMemo(() => user?.sessions || [], [user]);
-
 
   const handleDetails = (session) => {
     setSelectedSession(session);
@@ -101,15 +96,15 @@ useEffect(() => {
       <div className="w-full h-full p-5 flex 1xl:h-[69rem] 2xl:max-h-[81rem] 3xl:max-h-[88rem]">
         <div className="flex flex-col lg:flex-row w-full h-full border-t border-[#373737] pt-5 overflow-scroll">
           <div className="w-full min-w-fit h-full border-b border-[#373737] flex flex-col pt-4 px-10 gap-y-10">
-
-            <BackButton/>
+            <BackButton />
             {sessionError ? (
-              <ErrorBox message={sessionError}/>
+              <ErrorBox message={sessionError} />
             ) : (
               <>
-                {!user ? (<EmptyMessage message="N/A"/>):(
-     
-                  <ViewUserItem user={user}/>
+                {!user ? (
+                  <EmptyMessage message="N/A" />
+                ) : (
+                  <ViewUserItem user={user} />
                 )}
               </>
             )}
@@ -125,32 +120,31 @@ useEffect(() => {
             </div>
 
             <div className="w-full h-[59rem] overflow-y-auto flex flex-col border-t-1 border-gray-600">
-             <div className="relative w-full h-full">
-  {/* Overlayed Spinner */}
-  {isLoading && (
-    <div className="absolute inset-0 z-10 flex items-center justify-center ">
-      <LoadingSpinner />
-    </div>
-  )}
+              <div className="relative w-full h-full">
+                {/* Overlayed Spinner */}
+                {isLoading && (
+                  <div className="absolute inset-0 z-10 flex items-center justify-center ">
+                    <LoadingSpinner />
+                  </div>
+                )}
 
-  {/* Error State */}
-  {sessionError ? (
-    <ErrorBox message={sessionError} />
-  ) : sessions.length > 0 ? (
-    sessions
-      .sort((a, b) => new Date(b.loginAt) - new Date(a.loginAt))
-      .map((session) => (
-        <ViewUserSessionItem
-          key={session.id}
-          session={session}
-          onClick={() => handleDetails(session)}
-        />
-      ))
-  ) : !isLoading && sessions.length === 0 ? (
-    <EmptyMessage message="Empty user sessions!" />
-  ) : null}
-</div>
-
+                {/* Error State */}
+                {sessionError ? (
+                  <ErrorBox message={sessionError} />
+                ) : sessions.length > 0 ? (
+                  sessions
+                    .sort((a, b) => new Date(b.loginAt) - new Date(a.loginAt))
+                    .map((session) => (
+                      <ViewUserSessionItem
+                        key={session.id}
+                        session={session}
+                        onClick={() => handleDetails(session)}
+                      />
+                    ))
+                ) : !isLoading && sessions.length === 0 ? (
+                  <EmptyMessage message="Empty user sessions!" />
+                ) : null}
+              </div>
             </div>
           </div>
         </div>
@@ -160,14 +154,32 @@ useEffect(() => {
         isOpen={isDetailsOpen}
         onClose={handleSessionFilter}
         title="Session Details"
-        message={selectedSession ? (
-          `Session #${selectedSession.id ?? "N/A"}` +
-          `\nStart: ${selectedSession.loginAt ? new Date(selectedSession.loginAt).toLocaleString() : "N/A"}` +
-          `\nEnd: ${selectedSession.logoutAt ? new Date(selectedSession.logoutAt).toLocaleString() : "Active"}` +
-          `\nTotal Duration: ${selectedSession.logoutAt && selectedSession.loginAt
-            ? `${Math.round((new Date(selectedSession.logoutAt) - new Date(selectedSession.loginAt)) / 60000)} min`
-            : (selectedSession.loginAt ? "Ongoing" : "N/A")}`
-        ) : "Select a session to view details."}
+        message={
+          selectedSession
+            ? `Session #${selectedSession.id ?? "N/A"}` +
+              `\nStart: ${
+                selectedSession.loginAt
+                  ? new Date(selectedSession.loginAt).toLocaleString()
+                  : "N/A"
+              }` +
+              `\nEnd: ${
+                selectedSession.logoutAt
+                  ? new Date(selectedSession.logoutAt).toLocaleString()
+                  : "Active"
+              }` +
+              `\nTotal Duration: ${
+                selectedSession.logoutAt && selectedSession.loginAt
+                  ? `${Math.round(
+                      (new Date(selectedSession.logoutAt) -
+                        new Date(selectedSession.loginAt)) /
+                        60000
+                    )} min`
+                  : selectedSession.loginAt
+                  ? "Ongoing"
+                  : "N/A"
+              }`
+            : "Select a session to view details."
+        }
         buttonText="View Logs for this Session"
         type="info"
         theme="dark"

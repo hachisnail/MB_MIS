@@ -83,9 +83,10 @@ const PORT = process.env.PORT;
     await sessionStore.sync();
     await mainDb.sync();
 
-    server.listen(PORT, () => {
-      console.log(`API Server running on port ${PORT}`);
-    });
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`API Server running on port ${PORT}`);
+});
+
   } catch (err) {
     console.error("Unable to connect to DB:", err);
   }

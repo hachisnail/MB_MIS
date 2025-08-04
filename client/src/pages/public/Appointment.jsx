@@ -1,14 +1,27 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import axiosClient from '../../lib/axiosClient';
 import useAddressLogic from '../../hooks/useAddressLogic';
 import TimelineDatePicker from '../../features/TimelineDatePicker';
+import AppointmentDatePicker from '../../components/appointment/AppointmentDatePicker';
 import StyledButton from '../../components/buttons/StyledButton';
 import ConfirmationModal from '../../components/modals/ConfirmationModal';
 import PopupModal from '../../components/modals/PopupModal';
 import Toast from '../../features/Toast';
+import usePrompt from '../../hooks/usePrompt';
+import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
+import {
+  StyledInput,
+  LabeledInput,
+  StyledSelect,
+} from '../../features/Utilities';
+import {
+  timeStringToMinutes,
+  countOverlappingEvents
+} from '../../utils/scheduleUtils';
+import { useSocketClient } from '../../context/authContext';
 
-// Enhanced TypedDropdown component for address selection with improved search
+// Enhanced TypedDropdown component for address selection
 function TypedDropdown({
   placeholder,
   options,
@@ -28,18 +41,15 @@ function TypedDropdown({
   const wrapperRef = useRef(null);
   const inputRef = useRef(null);
 
-  // Update input text when selected item changes
   useEffect(() => {
     setInputText(selectedItem?.name || '');
   }, [selectedItem]);
 
-  // Update filtered options when options or input text changes
   useEffect(() => {
     if (filterFunction && typeof filterFunction === 'function') {
       const filtered = filterFunction(inputText);
       setFilteredOptions(filtered.slice(0, maxSuggestions));
     } else {
-      // Fallback to basic filtering
       const filtered = options.filter((o) =>
         o.name.toLowerCase().includes(inputText.toLowerCase())
       );
@@ -47,7 +57,6 @@ function TypedDropdown({
     }
   }, [options, inputText, filterFunction, maxSuggestions]);
 
-  // Handle click outside to close dropdown
   useEffect(() => {
     function handleClickOutside(e) {
       if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
@@ -64,13 +73,9 @@ function TypedDropdown({
 
     if (!disabled) {
       setShowDropdown(true);
-
-      // Call external input change handler if provided
       if (onInputChange) {
         onInputChange(value);
       }
-
-      // Clear selection if input doesn't match selected item
       if (selectedItem && value !== selectedItem.name) {
         onChange(null);
       }
@@ -117,16 +122,17 @@ function TypedDropdown({
   return (
     <div ref={wrapperRef} className="relative w-full">
       <div
-        className={`flex border rounded-lg px-4 py-3 transition-colors ${disabled
+        className={`flex border rounded-full px-4 py-1 transition-colors ${disabled
           ? 'bg-gray-100 cursor-not-allowed border-gray-300'
           : error
-            ? 'bg-white border-red-300 focus-within:border-red-500 focus-within:ring-1 focus-within:ring-red-500'
-            : 'bg-white border-gray-300 focus-within:border-[#524433] focus-within:ring-1 focus-within:ring-[#524433]'
+            ? 'bg-white border-red-500 focus-within:ring-2 focus-within:ring-gray-300'
+            : 'bg-white border-black focus-within:ring-2 focus-within:ring-gray-300'
           }`}
+        style={{ boxShadow: "inset 0 1px 1px rgba(1, 1, 1, 0.50)" }}
       >
         <input
           ref={inputRef}
-          className="outline-none flex-grow placeholder-gray-400 text-base bg-transparent"
+          className="outline-none flex-grow placeholder-gray-400 text-md bg-transparent"
           placeholder={disabled ? 'Please select previous field first' : placeholder}
           value={inputText}
           disabled={disabled}
@@ -136,14 +142,12 @@ function TypedDropdown({
           autoComplete="off"
         />
 
-        {/* Loading indicator */}
         {isLoading && (
           <div className="ml-2 flex items-center">
             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[#524433]"></div>
           </div>
         )}
 
-        {/* Clear button */}
         {selectedItem && !disabled && !isLoading && (
           <button
             type="button"
@@ -156,12 +160,10 @@ function TypedDropdown({
         )}
       </div>
 
-      {/* Error message */}
       {error && (
         <p className="mt-1 text-sm text-red-600">{error}</p>
       )}
 
-      {/* Dropdown */}
       {showDropdown && !disabled && showSuggestions && (
         <div className="absolute z-20 mt-1 w-full max-h-60 overflow-auto bg-white border border-gray-300 shadow-lg rounded-md">
           {isLoading ? (
@@ -210,127 +212,133 @@ function TypedDropdown({
   );
 }
 
-// Step Components - Moved outside to prevent recreation on each render
-function MuseumInfoStep() {
+const Notice = () => {
   return (
-    <div className="space-y-6">
-      <h2 className="text-3xl font-bold text-center mb-8">Appointment Form</h2>
+    <div className="w-[35rem] h-fit flex flex-col justify-center gap-y-5">
+      <span className="text-6xl font-hina font-extralight">NOTICE</span>
+      <span className="text-xl font-hind font-medium text-justify">
+        &nbsp; &nbsp; &nbsp; &nbsp; Welcome to our online booking system! Scheduling your
+        appointment is quick and easy. Simply fill out the form ahead with your
+        details and preferred date/time, and we'll confirm your appointment
+        shortly. Please ensure all required information is provided for a smooth booking process.
+      </span>
 
-      <div className="bg-gray-50 rounded-lg p-6 space-y-4 flex flex-col items-center text-center mx-auto max-w-md">
-        <div className="flex items-center gap-x-3 justify-center">
-          <i className="text-4xl fa-solid fa-clock text-[#524433]"></i>
+      <div className="space-y-4">
+        <div className="flex items-start gap-x-3">
+          <i className="text-2xl fa-solid fa-clock text-[#524433] mt-1"></i>
           <div>
-            <h3 className="font-bold text-xl">Museo Bulawan</h3>
+            <h3 className="font-bold text-lg">Museum Hours</h3>
             <p className="text-gray-600">Open Daily 9:00am-5:00pm, Monday-Friday</p>
           </div>
         </div>
 
-        <div className="flex items-center gap-x-3 justify-center">
-          <i className="text-4xl fa-solid fa-location-dot text-[#524433]"></i>
+        <div className="flex items-start gap-x-3">
+          <i className="text-2xl fa-solid fa-location-dot text-[#524433] mt-1"></i>
           <div>
-            <h3 className="font-bold text-xl">Museum Location</h3>
+            <h3 className="font-bold text-lg">Location</h3>
             <p className="text-gray-600">Camarines Norte Provincial Capitol Grounds, Daet Philippines</p>
           </div>
         </div>
       </div>
 
-      <div className="bg-blue-50 border-l-4 border-blue-400 p-4">
-        <p className="text-sm text-blue-700">
-          Please fill out all required fields in the following steps to complete your appointment request.
-        </p>
-      </div>
+      <span className="text-2xl font-hina font-light text-right">
+        "Welcome to Museo Bulawan"
+      </span>
     </div>
   );
-}
+};
 
-function PersonalInfoStep({ formData, updateFormData }) {
+const PersonalInfo = ({ value, onChange, errors, validateField }) => {
+  const handleChange = (field) => (e) => {
+    onChange({ ...value, [field]: e.target.value });
+  };
+
+  const handleBlur = (field) => () => {
+    validateField("personalInfo", field, value[field]);
+  };
+
   return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold mb-6">Tell Us About Yourself</h2>
+    <div className="w-[50rem] h-fit flex flex-col justify-center gap-y-5">
+      <div className="w-full h-fit pb-4 border-b">
+        <span className="text-5xl font-hina font-extralight">
+          Tell us about yourself.
+        </span>
+      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* First Name */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            First Name {!formData.firstName && <span className="text-red-500">*</span>}
-          </label>
-          <input
-            type="text"
-            placeholder="First Name"
-            value={formData.firstName}
-            onChange={(e) => updateFormData('firstName', e.target.value)}
-            style={{ textTransform: 'capitalize' }}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#524433] focus:border-transparent"
-            required
+      {/* First Row: First Name and Last Name */}
+      <div className="w-full h-fit flex justify-between gap-x-5">
+        <div className="w-[28.5rem] flex flex-col h-fit gap-y-5">
+          <LabeledInput
+            placeholder="Juan"
+            label="First Name"
+            value={value.firstName}
+            onChange={handleChange("firstName")}
+            onBlur={handleBlur("firstName")}
+            error={errors.firstName}
+            isRequired={true}
           />
         </div>
 
-        {/* Last Name */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Last Name {!formData.lastName && <span className="text-red-500">*</span>}
-          </label>
-          <input
-            type="text"
-            placeholder="Last Name"
-            value={formData.lastName}
-            onChange={(e) => updateFormData('lastName', e.target.value)}
-            style={{ textTransform: 'capitalize' }}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#524433] focus:border-transparent"
-            required
-          />
-        </div>
-
-        {/* Email */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Email {!formData.email && <span className="text-red-500">*</span>}
-          </label>
-          <input
-            type="email"
-            placeholder="example@gmail.com"
-            value={formData.email}
-            onChange={(e) => updateFormData('email', e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#524433] focus:border-transparent"
-            required
-          />
-        </div>
-
-        {/* Phone */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Phone
-          </label>
-          <input
-            type="tel"
-            placeholder="+639123456789"
-            value={formData.phone}
-            onChange={(e) => updateFormData('phone', e.target.value)}
-            pattern="^(09|\+639)\d{9}$"
-            title="Please enter a valid PH phone number starting with 09 or +639"
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#524433] focus:border-transparent"
-          />
-        </div>
-
-        {/* Organization */}
-        <div className="md:col-span-2">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Organization
-          </label>
-          <input
-            type="text"
-            placeholder="School/Institution/etc"
-            value={formData.organization}
-            onChange={(e) => updateFormData('organization', e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#524433] focus:border-transparent"
+        <div className="w-[28.5rem] h-fit gap-y-5 flex flex-col">
+          <LabeledInput
+            placeholder="Dela Cruz"
+            label="Last Name"
+            value={value.lastName}
+            onChange={handleChange("lastName")}
+            onBlur={handleBlur("lastName")}
+            error={errors.lastName}
+            isRequired={true}
           />
         </div>
       </div>
+
+      {/* Second Row: Email and Phone Number */}
+      <div className="w-full h-fit flex justify-between gap-x-5">
+        <div className="w-[28.5rem] flex flex-col h-fit gap-y-5">
+          <LabeledInput
+            label="Email"
+            placeholder="example@gmail.com"
+            value={value.email}
+            onChange={handleChange("email")}
+            onBlur={handleBlur("email")}
+            error={errors.email}
+            isRequired={true}
+          />
+        </div>
+
+        <div className="w-[28.5rem] h-fit gap-y-5 flex flex-col">
+          <LabeledInput
+            label="Phone Number"
+            placeholder="+639123456789"
+            value={value.phone}
+            onChange={handleChange("phone")}
+            onBlur={handleBlur("phone")}
+            error={errors.phone}
+            isRequired={false}
+          />
+        </div>
+      </div>
+
+      {/* Third Row: Organization */}
+      <LabeledInput
+        label="Organization"
+        placeholder="School/Institution/etc"
+        value={value.organization}
+        onChange={handleChange("organization")}
+        onBlur={handleBlur("organization")}
+        error={errors.organization}
+        width="w-[41.25rem]"
+        isRequired={false}
+      />
     </div>
   );
-}
+};
 
-function AddressInfoStep({
+const AddressInfo = ({
+  value,
+  onChange,
+  errors,
+  validateField,
   provinces,
   cities,
   barangays,
@@ -340,9 +348,6 @@ function AddressInfoStep({
   setSelectedCity,
   selectedBarangay,
   setSelectedBarangay,
-  formData,
-  updateFormData,
-  // Enhanced address logic props
   getFilteredProvinces,
   getFilteredCities,
   getFilteredBarangays,
@@ -352,142 +357,138 @@ function AddressInfoStep({
   provincesError,
   citiesError,
   barangaysError
-}) {
+}) => {
+  const handleChange = (field) => (e) => {
+    onChange({ ...value, [field]: e.target.value });
+  };
+
+  const handleBlur = (field) => () => {
+    validateField("addressInfo", field, value[field]);
+  };
+
   return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold mb-6">Address Information</h2>
-
-      {/* Helper text */}
-      <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-6">
-        <p className="text-sm text-blue-700">
-          <i className="fa-solid fa-info-circle mr-2"></i>
-          Start typing to search for your location. The system will show relevant matches as you type.
-        </p>
+    <div className="w-[50rem] h-fit flex flex-col justify-center gap-y-5">
+      <div className="w-full h-fit pb-4 border-b">
+        <span className="text-5xl font-hina font-extralight">
+          Address Information.
+        </span>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Province */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Province {!selectedProvince && <span className="text-red-500">*</span>}
-          </label>
-          <TypedDropdown
-            placeholder="Type to search provinces..."
-            options={provinces}
-            selectedItem={selectedProvince}
-            onChange={setSelectedProvince}
-            isLoading={isLoadingProvinces}
-            error={provincesError}
-            filterFunction={getFilteredProvinces}
-            maxSuggestions={10}
-          />
-          {selectedProvince && (
-            <p className="mt-1 text-sm text-green-600">
-              <i className="fa-solid fa-check-circle mr-1"></i>
-              Selected: {selectedProvince.name}
-            </p>
-          )}
+      <div className="w-full h-fit flex justify-between gap-x-5">
+        <div className="w-[28.5rem] flex flex-col h-fit gap-y-5">
+          <div className="flex w-full items-center justify-between">
+            <span className="text-md font-medium">
+              Province<span className="text-red-500 ml-1">*</span>
+            </span>
+            <div className="w-60">
+              <TypedDropdown
+                placeholder="Type to search..."
+                options={provinces}
+                selectedItem={selectedProvince}
+                onChange={setSelectedProvince}
+                isLoading={isLoadingProvinces}
+                error={errors.province}
+                filterFunction={getFilteredProvinces}
+                maxSuggestions={10}
+              />
+            </div>
+          </div>
+
+          <div className="flex w-full items-center justify-between">
+            <span className="text-md font-medium">
+              Barangay<span className="text-red-500 ml-1">*</span>
+            </span>
+            <div className="w-60">
+              <TypedDropdown
+                placeholder={selectedCity ? "Type to search..." : "Select city first"}
+                options={barangays}
+                selectedItem={selectedBarangay}
+                onChange={setSelectedBarangay}
+                disabled={!selectedCity}
+                isLoading={isLoadingBarangays}
+                error={errors.barangay}
+                filterFunction={getFilteredBarangays}
+                maxSuggestions={12}
+              />
+            </div>
+          </div>
         </div>
 
-        {/* City/Municipality */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            City/Municipality {!selectedCity && <span className="text-red-500">*</span>}
-          </label>
-          <TypedDropdown
-            placeholder={selectedProvince ? "Type to search cities..." : "Select province first"}
-            options={cities}
-            selectedItem={selectedCity}
-            onChange={setSelectedCity}
-            disabled={!selectedProvince}
-            isLoading={isLoadingCities}
-            error={citiesError}
-            filterFunction={getFilteredCities}
-            maxSuggestions={10}
-          />
-          {selectedCity && (
-            <p className="mt-1 text-sm text-green-600">
-              <i className="fa-solid fa-check-circle mr-1"></i>
-              Selected: {selectedCity.name}
-            </p>
-          )}
-        </div>
+        <div className="w-[28.5rem] h-fit gap-y-5 flex flex-col">
+          <div className="flex w-full items-center justify-between">
+            <span className="text-md font-medium">
+              City/Municipality<span className="text-red-500 ml-1">*</span>
+            </span>
+            <div className="w-60">
+              <TypedDropdown
+                placeholder={selectedProvince ? "Type to search..." : "Select province first"}
+                options={cities}
+                selectedItem={selectedCity}
+                onChange={setSelectedCity}
+                disabled={!selectedProvince}
+                isLoading={isLoadingCities}
+                error={errors.city}
+                filterFunction={getFilteredCities}
+                maxSuggestions={10}
+              />
+            </div>
+          </div>
 
-        {/* Barangay */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Barangay {!selectedBarangay && <span className="text-red-500">*</span>}
-          </label>
-          <TypedDropdown
-            placeholder={selectedCity ? "Type to search barangays..." : "Select city first"}
-            options={barangays}
-            selectedItem={selectedBarangay}
-            onChange={setSelectedBarangay}
-            disabled={!selectedCity}
-            isLoading={isLoadingBarangays}
-            error={barangaysError}
-            filterFunction={getFilteredBarangays}
-            maxSuggestions={12}
-          />
-          {selectedBarangay && (
-            <p className="mt-1 text-sm text-green-600">
-              <i className="fa-solid fa-check-circle mr-1"></i>
-              Selected: {selectedBarangay.name}
-            </p>
-          )}
-        </div>
-
-        {/* Street */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Street Address
-          </label>
-          <input
-            type="text"
-            placeholder="House number, street name, subdivision, etc."
-            value={formData.street}
-            onChange={(e) => updateFormData('street', e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#524433] focus:border-transparent transition-colors"
-          />
-          <p className="mt-1 text-xs text-gray-500">
-            Optional: Provide specific street address for more accurate location
-          </p>
+          <div className="flex w-full items-center justify-between">
+            <span className="text-md font-medium">
+              Street
+            </span>
+            <div className="w-60">
+              <StyledInput
+                placeholder="House number, street name, etc."
+                value={value.street}
+                onChange={handleChange("street")}
+                onBlur={handleBlur("street")}
+                error={errors.street}
+              />
+            </div>
+          </div>
         </div>
       </div>
-
-      {/* Address Summary */}
-      {(selectedProvince || selectedCity || selectedBarangay || formData.street) && (
-        <div className="mt-6 p-4 bg-gray-50 rounded-lg border">
-          <h4 className="font-medium text-gray-700 mb-2">Address Summary:</h4>
-          <p className="text-sm text-gray-600">
-            {[
-              formData.street,
-              selectedBarangay?.name,
-              selectedCity?.name,
-              selectedProvince?.name
-            ].filter(Boolean).join(', ') || 'No address selected yet'}
-          </p>
-        </div>
-      )}
     </div>
   );
-}
+};
 
-function VisitDetailsStep({ formData, updateFormData, showPurposeInfo, setShowPurposeInfo }) {
+const VisitDetails = ({ value, onChange, errors, validateField, showPurposeInfo, setShowPurposeInfo }) => {
+  const handleChange = (field) => (e) => {
+    onChange({ ...value, [field]: e.target.value });
+  };
+
+  const handleBlur = (field) => () => {
+    validateField("visitDetails", field, value[field]);
+  };
+
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold">Visit Details</h2>
-        <button
+    <div className="w-[50rem] h-fit flex flex-col justify-center gap-y-3">
+      <div className="w-full h-fit pb-4 border-b flex justify-between">
+        <span className="text-5xl font-hina font-extralight">
+          Visit Details.
+        </span>
+
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="12"
+          height="12"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="#000000"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="cursor-pointer"
           onClick={() => setShowPurposeInfo(!showPurposeInfo)}
-          className="w-10 h-10 flex items-center justify-center border-2 border-gray-400 rounded-full text-xl font-bold hover:bg-gray-100"
-          title="View purpose details"
         >
-          ?
-        </button>
+          <path d="M12 9h.01" />
+          <path d="M11 12h1v4h1" />
+          <path d="M12 3c7.2 0 9 1.8 9 9s-1.8 9 -9 9s-9 -1.8 -9 -9s1.8 -9 9 -9z" />
+        </svg>
       </div>
 
-      {/* Purpose Info Modal */}
       <PopupModal
         isOpen={showPurposeInfo}
         onClose={() => setShowPurposeInfo(false)}
@@ -519,118 +520,150 @@ function VisitDetailsStep({ formData, updateFormData, showPurposeInfo, setShowPu
         theme="light"
       />
 
-      <div className="space-y-6">
-        {/* Purpose of Visit */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Purpose of Visit {!formData.purpose && <span className="text-red-500">*</span>}
-          </label>
-          <select
-            value={formData.purpose}
-            onChange={(e) => updateFormData('purpose', e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#524433] focus:border-transparent"
-            required
-          >
-            <option value="">Choose Purpose</option>
-            <optgroup label="Document Access Request">
-              <option>Research Paper</option>
-            </optgroup>
-            <optgroup label="Engagements">
-              <option>School Field Trip</option>
-              <option>Museum Group Tour</option>
-              <option>Interviews</option>
-              <option>Collaboration Meetings</option>
-              <option>Photography or Media Projects</option>
-              <option>Conservation Consultation</option>
-            </optgroup>
-          </select>
+      <div className="flex flex-col w-full gap-y-3 items-end justify-between">
+        <div className="w-full">
+          <span className="text-md font-medium">
+            Purpose of Visit<span className="text-red-500 ml-1">*</span>
+          </span>
         </div>
-
-        {/* Population Count */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Population Count {!formData.populationCount && <span className="text-red-500">*</span>}
-          </label>
-          <input
-            type="number"
-            min="1"
-            value={formData.populationCount}
-            onChange={(e) => updateFormData('populationCount', e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#524433] focus:border-transparent"
-            placeholder="Number of visitors"
-            required
+        <div className="w-180">
+          <StyledSelect
+            value={value.purpose}
+            onChange={(selectedValue) => {
+              onChange({ ...value, purpose: selectedValue });
+              validateField("visitDetails", "purpose", selectedValue);
+            }}
+            onBlur={() => validateField("visitDetails", "purpose", value.purpose)}
+            error={errors.purpose}
+            placeholder="Choose Purpose"
+            options={[
+              { label: "-- Document Access Request --", value: "", disabled: true },
+              { label: "Research Paper", value: "Research Paper" },
+              { label: "-- Engagements --", value: "", disabled: true },
+              { label: "School Field Trip", value: "School Field Trip" },
+              { label: "Museum Group Tour", value: "Museum Group Tour" },
+              { label: "Interviews", value: "Interviews" },
+              { label: "Collaboration Meetings", value: "Collaboration Meetings" },
+              { label: "Photography or Media Projects", value: "Photography or Media Projects" },
+              { label: "Conservation Consultation", value: "Conservation Consultation" },
+            ].filter(opt => !opt.disabled)}
           />
         </div>
       </div>
+
+      <LabeledInput
+        width="w-180"
+        style="2"
+        label="Population Count"
+        value={value.populationCount}
+        onChange={handleChange("populationCount")}
+        onBlur={handleBlur("populationCount")}
+        error={errors.populationCount}
+        placeholder="Number of visitors"
+        isRequired={true}
+      />
     </div>
   );
-}
+};
 
-function ScheduleNotesStep({
-  formData,
-  updateFormData,
+const ScheduleNotes = ({
+  value,
+  onChange,
+  errors,
+  validateField,
   shouldShowTimeOptions,
   isTimeRequired,
   timeSlotExclusive,
   confirmedSlots,
-  isLoadingTimeSlots
-}) {
-  return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold mb-6">Schedule & Additional Information</h2>
+  isLoadingTimeSlots,
+  timeSlotCounts,
+  disabledDates,
+  isLoadingDateAvailability,
+  onAvailabilityRefresh
+}) => {
+  const handleChange = (field) => (e) => {
+    onChange({ ...value, [field]: e.target.value });
+  };
 
-      {/* Preferred Date */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Preferred Date {!formData.selectedDate && <span className="text-red-500">*</span>}
-        </label>
-        <div className="flex items-center gap-4">
-          <TimelineDatePicker
+  const handleBlur = (field) => () => {
+    validateField("scheduleNotes", field, value[field]);
+  };
+
+  return (
+    <div className="w-[50rem] h-fit flex flex-col justify-center gap-y-3">
+      <div className="w-full h-fit pb-4 border-b">
+        <span className="text-5xl font-hina font-extralight">
+          Schedule & Additional Information.
+        </span>
+      </div>
+
+      <div className="flex flex-col w-full gap-y-3 items-end justify-between">
+        <div className="w-full">
+          <span className="text-md font-medium">
+            Preferred Date<span className="text-red-500 ml-1">*</span>
+          </span>
+          {value.selectedDate && (
+            <div className="mt-1 text-sm text-gray-600">
+              Selected: <span className="font-semibold">{format(value.selectedDate, 'MMMM d, yyyy')}</span>
+            </div>
+          )}
+        </div>
+        <div className="w-180">
+          <AppointmentDatePicker
             onDateChange={(dateStr) => {
               const date = dateStr ? new Date(dateStr) : null;
-              updateFormData('selectedDate', date);
+              onChange({ ...value, selectedDate: date });
+              validateField("scheduleNotes", "selectedDate", date);
             }}
-            defaultValue={formData.selectedDate ? format(formData.selectedDate, 'yyyy-MM-dd') : ''}
+            defaultValue={value.selectedDate ? format(value.selectedDate, 'yyyy-MM-dd') : ''}
             theme="light"
+            disabledDates={disabledDates}
+            isLoadingAvailability={isLoadingDateAvailability}
+            onAvailabilityRefresh={onAvailabilityRefresh}
           />
-          {formData.selectedDate && (
-            <span className="text-gray-600">
-              {format(formData.selectedDate, 'MMMM d, yyyy')}
-            </span>
+          {errors.selectedDate && (
+            <p className="mt-1 text-sm text-red-600">Please select a date</p>
           )}
         </div>
       </div>
 
-      {/* Time Selection */}
-      {shouldShowTimeOptions(formData.purpose) && (
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Select your preferred Time
-            {isTimeRequired(formData.purpose) && <span className="text-red-500"> *</span>}
-          </label>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      {shouldShowTimeOptions && (
+        <>
+          <div className="w-full mt-4">
+            <span className="text-md font-medium">
+              Select your preferred Time
+              {isTimeRequired && <span className="text-red-500 ml-1">*</span>}
+            </span>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 w-full">
             {['09:00-10:29', '10:30-11:59', '01:00-02:29', '02:30-04:00'].map((time) => {
               const isExclusive = timeSlotExclusive[time];
               const hasConfirmedAppointment = confirmedSlots[time];
-              const isUnavailable = isExclusive || hasConfirmedAppointment;
-
-              // Additional logic: cross out if fully booked (exclusive or max confirmed)
+              const slotOverlapCount = timeSlotCounts[time] || 0;
+              const isOverLimit = slotOverlapCount >= 5;
+              const isUnavailable = isExclusive || hasConfirmedAppointment || isOverLimit;
               const crossOut = isUnavailable;
 
               return (
                 <div key={time} className="relative group">
                   <label
                     className={`cursor-pointer border-2 border-gray-300 px-4 py-2 rounded-lg flex items-center justify-center hover:bg-gray-100 transition-colors
-                      ${formData.selectedTime === time ? 'bg-[#cfdac8] border-[#524433]' : ''} 
+                      ${value.selectedTime === time ? 'bg-[#f0b001] border-[#f0b001]' : ''} 
                       ${crossOut ? 'opacity-50 cursor-not-allowed line-through' : ''}`}
+
                   >
                     <input
                       type="radio"
                       name="preferredTime"
                       value={time}
-                      required={isTimeRequired(formData.purpose)}
+                      required={isTimeRequired}
                       className="hidden"
-                      onChange={() => !crossOut && updateFormData('selectedTime', time)}
+                      onChange={() => {
+                        if (!crossOut) {
+                          onChange({ ...value, selectedTime: time });
+                          validateField("scheduleNotes", "selectedTime", time);
+                        }
+                      }}
                       disabled={crossOut}
                     />
                     <span className="text-sm font-medium">{time}</span>
@@ -643,51 +676,61 @@ function ScheduleNotesStep({
 
                   {crossOut && (
                     <div className="absolute z-10 bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-48 p-2 bg-gray-800 text-white text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
-                      {isExclusive ? 'This time slot has an exclusive schedule' : 'This time slot already has a confirmed appointment'}
+                      {isExclusive ? 'This time slot has an exclusive schedule' :
+                        hasConfirmedAppointment ? 'This time slot already has a confirmed appointment' :
+                          isOverLimit ? 'This time slot has reached the maximum limit of 5 overlapping events' :
+                            'This time slot is unavailable'}
                     </div>
                   )}
                 </div>
               );
             })}
-
           </div>
           {isLoadingTimeSlots && (
             <p className="text-sm text-gray-500 mt-2">Checking availability...</p>
           )}
-        </div>
+        </>
       )}
 
-      {/* Additional Notes */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Additional Notes
-        </label>
-        <textarea
-          rows="4"
-          placeholder="Any extra info or requests"
-          value={formData.additionalNotes}
-          onChange={(e) => updateFormData('additionalNotes', e.target.value)}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#524433] focus:border-transparent resize-none"
-        />
+      <div className="flex flex-col w-full gap-y-3 items-end justify-between">
+        <div className="w-full">
+          <span className="text-md font-medium">
+            Additional Notes (Optional)
+          </span>
+        </div>
+        <div className="w-180">
+          <textarea
+            rows="4"
+            placeholder="Any extra info or requests"
+            value={value.additionalNotes}
+            onChange={handleChange("additionalNotes")}
+            onBlur={handleBlur("additionalNotes")}
+            className="w-full px-4 py-2 border border-black rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-300 resize-none"
+            style={{ boxShadow: "inset 0 1px 1px rgba(1, 1, 1, 0.50)" }}
+          />
+          {errors.additionalNotes && (
+            <p className="mt-1 text-sm text-red-600">{errors.additionalNotes}</p>
+          )}
+        </div>
       </div>
     </div>
   );
-}
+};
 
 const Appointment = () => {
-  // Multi-step form state
-  const [currentStep, setCurrentStep] = useState(0);
+  const [step, setStep] = useState(0);
   const [showPurposeInfo, setShowPurposeInfo] = useState(false);
   const [showConfirmationModal, setShowConfirmationModal] = useState(false);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const navigate = useNavigate();
 
-  // Toast state management
+  const socket = useSocketClient();
+
   const [toast, setToast] = useState({
     type: 'info',
     message: ''
   });
-  const toastTimerRef = useRef(null);
 
-  // Enhanced address logic hook
   const {
     provinces,
     cities,
@@ -698,94 +741,66 @@ const Appointment = () => {
     setSelectedCity,
     selectedBarangay,
     setSelectedBarangay,
-    // Enhanced filtering functions
     getFilteredProvinces,
     getFilteredCities,
     getFilteredBarangays,
-    // Loading states
     isLoadingProvinces,
     isLoadingCities,
     isLoadingBarangays,
-    // Error states
     provincesError,
     citiesError,
     barangaysError
   } = useAddressLogic();
 
-  // Form data state
-  const [formData, setFormData] = useState({
-    // Personal Information
-    firstName: '',
-    lastName: '',
-    email: '',
-    phone: '',
-    organization: '',
-    street: '',
+  const initialFormData = {
+    personalInfo: {
+      firstName: '',
+      lastName: '',
+      email: '',
+      phone: '',
+      organization: '',
+    },
+    addressInfo: {
+      street: '',
+    },
+    visitDetails: {
+      purpose: '',
+      populationCount: '',
+    },
+    scheduleNotes: {
+      selectedDate: null,
+      selectedTime: '',
+      additionalNotes: ''
+    }
+  };
 
-    // Visit Details
-    purpose: '',
-    populationCount: '',
-    selectedDate: null,
-    selectedTime: '',
-    additionalNotes: ''
-  });
+  const [formData, setFormData] = useState(initialFormData);
+  const [formErrors, setFormErrors] = useState({});
 
-  // Time slot availability state
   const [timeSlotCounts, setTimeSlotCounts] = useState({});
   const [timeSlotExclusive, setTimeSlotExclusive] = useState({});
   const [isLoadingTimeSlots, setIsLoadingTimeSlots] = useState(false);
   const [confirmedSlots, setConfirmedSlots] = useState({});
 
-  // Steps configuration
-  const steps = [
-    { id: 0, title: 'Museum Information' },
-    { id: 1, title: 'Personal Information' },
-    { id: 2, title: 'Address Information' },
-    { id: 3, title: 'Visit Details' },
-    { id: 4, title: 'Schedule & Notes' }
-  ];
+  // New state for date availability
+  const [disabledDates, setDisabledDates] = useState([]);
+  const [dateAvailability, setDateAvailability] = useState({});
+  const [isLoadingDateAvailability, setIsLoadingDateAvailability] = useState(false);
+  const [monthlySchedules, setMonthlySchedules] = useState([]);
+  const [monthlyAppointments, setMonthlyAppointments] = useState([]);
 
-  // Navigation functions
-  const handleNext = () => {
-    if (currentStep < steps.length - 1) {
-      setCurrentStep(currentStep + 1);
-      showToast(`Step ${currentStep + 2} of ${steps.length}`, 'info', 2000);
-    }
-  };
+  const isDirty = JSON.stringify(formData) !== JSON.stringify(initialFormData) ||
+    selectedProvince || selectedCity || selectedBarangay;
 
-  const handlePrev = () => {
-    if (currentStep > 0) {
-      setCurrentStep(currentStep - 1);
-      showToast(`Step ${currentStep} of ${steps.length}`, 'info', 2000);
-    }
-  };
+  const { PromptModal } = usePrompt(
+    "You have unsaved changes. Are you sure you want to leave?",
+    isDirty,
+    "light"
+  );
 
-  // Validation for each step
-  const isStepValid = () => {
-    switch (currentStep) {
-      case 0:
-        return true; // Museum info step, no validation needed
-      case 1:
-        return formData.firstName && formData.lastName && formData.email;
-      case 2:
-        return selectedProvince && selectedCity && selectedBarangay;
-      case 3:
-        return formData.purpose && formData.populationCount;
-      case 4:
-        return formData.selectedDate && (
-          !isTimeRequired(formData.purpose) || formData.selectedTime
-        );
-      default:
-        return true;
-    }
-  };
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const phoneRegex = /^(09|\+639)\d{9}$/;
 
-  // Update form data
-  const updateFormData = (field, value) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-  };
-
-  // Toast management functions
   const showToast = useCallback((message, type = 'info') => {
     setToast({
       type,
@@ -797,16 +812,17 @@ const Appointment = () => {
     setToast(prev => ({ ...prev, message: '' }));
   }, []);
 
-  // Cleanup timer on unmount
+  // Automatically hide toast after 3 seconds when message changes
   useEffect(() => {
-    return () => {
-      if (toastTimerRef.current) {
-        clearTimeout(toastTimerRef.current);
-      }
-    };
-  }, []);
+    if (toast.message) {
+      const timer = setTimeout(() => {
+        setToast(prev => ({ ...prev, message: '' }));
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast.message]);
 
-  // Helper functions
+
   const isTimeRequired = (purp) =>
     purp === 'School Field Trip' || purp === 'Workshops or Classes';
 
@@ -815,12 +831,11 @@ const Appointment = () => {
     purp === 'Workshops or Classes' ||
     purp === 'Others';
 
-  // Time slot availability checking
   const checkTimeSlotAvailability = async (date) => {
     if (!date) return;
 
     setIsLoadingTimeSlots(true);
-    showToast('Checking time slot availability...', 'info', 2000);
+    showToast('Checking time slot availability...', 'info');
 
     try {
       const year = date.getFullYear();
@@ -839,13 +854,13 @@ const Appointment = () => {
         confirmed[slot] = false;
       });
 
-      // Fetch appointments and schedules
+      // Fetch both appointments and schedules
       const [appointmentResponse, scheduleResponse] = await Promise.all([
         axiosClient.get('/auth/appointment'),
-        axiosClient.get(`/auth/schedules/public/availability?date=${formattedDate}`)
+        axiosClient.get(`/auth/schedules?date=${formattedDate}`)
       ]);
 
-      // Process appointments
+      // Process confirmed appointments for this date
       const todayAppointments = appointmentResponse.data.filter(appointment => {
         const appointmentDate = appointment.preferred_date.split('T')[0];
         return appointmentDate === formattedDate;
@@ -857,7 +872,6 @@ const Appointment = () => {
           let startTime = appointment.start_time.substring(0, 5);
           let endTime = appointment.end_time.substring(0, 5);
 
-          // Convert to UI format if needed
           const startHour = parseInt(startTime.split(':')[0], 10);
           const endHour = parseInt(endTime.split(':')[0], 10);
 
@@ -875,9 +889,11 @@ const Appointment = () => {
         }
       });
 
-      // Process schedules
+      // Process schedules for this date using the same logic as Schedule.jsx
       if (scheduleResponse.data && Array.isArray(scheduleResponse.data)) {
-        scheduleResponse.data.filter(schedule => schedule.status !== 'COMPLETED').forEach(schedule => {
+        const activeSchedules = scheduleResponse.data.filter(schedule => schedule.status !== 'COMPLETED');
+
+        activeSchedules.forEach(schedule => {
           if (schedule.start_time && schedule.end_time) {
             timeSlots.forEach(slot => {
               const [slotStart, slotEnd] = slot.split('-');
@@ -897,17 +913,16 @@ const Appointment = () => {
       setTimeSlotExclusive(exclusive);
       setConfirmedSlots(confirmed);
 
-      // Show availability summary
-      const availableSlots = timeSlots.filter(slot => !exclusive[slot] && !confirmed[slot]);
+      const availableSlots = timeSlots.filter(slot => !exclusive[slot] && !confirmed[slot] && counts[slot] < 5);
       if (availableSlots.length === 0) {
-        showToast('No time slots available for this date', 'warning', 4000);
+        showToast('No time slots available for this date', 'warning');
       } else {
-        showToast(`${availableSlots.length} time slots available`, 'success', 3000);
+        showToast(`${availableSlots.length} time slots available`, 'success');
       }
 
     } catch (error) {
       console.error('Error checking time slot availability:', error);
-      showToast('Failed to check time slot availability', 'error', 4000);
+      showToast('Failed to check time slot availability', 'error');
     } finally {
       setIsLoadingTimeSlots(false);
     }
@@ -936,22 +951,425 @@ const Appointment = () => {
     return s1 < e2 && s2 < e1;
   };
 
-  useEffect(() => {
-    if (formData.selectedDate) {
-      checkTimeSlotAvailability(formData.selectedDate);
-    }
-  }, [formData.selectedDate]);
+  // Function to check if a specific date should be disabled
+  const checkDateAvailability = async (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const formattedDate = `${year}-${month}-${day}`;
 
-  // Submit handler
+    const timeSlots = ['09:00-10:29', '10:30-11:59', '01:00-02:29', '02:30-04:00'];
+    let availableSlots = 0;
+
+    try {
+      const [appointmentResponse, scheduleResponse] = await Promise.all([
+        axiosClient.get('/auth/appointment'),
+        axiosClient.get(`/auth/schedules/public/availability?date=${formattedDate}`)
+      ]);
+
+      // Check each time slot
+      for (const slot of timeSlots) {
+        let isSlotAvailable = true;
+        let slotCount = 0;
+
+        // Check appointments for this date and slot
+        const todayAppointments = appointmentResponse.data.filter(appointment => {
+          const appointmentDate = appointment.preferred_date.split('T')[0];
+          return appointmentDate === formattedDate;
+        });
+
+        // Check if any confirmed appointment blocks this slot
+        const confirmedInSlot = todayAppointments.some(appointment => {
+          const status = (appointment.AppointmentStatus?.status || '').toUpperCase();
+          if (status === 'CONFIRMED' && appointment.start_time && appointment.end_time) {
+            let startTime = appointment.start_time.substring(0, 5);
+            let endTime = appointment.end_time.substring(0, 5);
+
+            const startHour = parseInt(startTime.split(':')[0], 10);
+            const endHour = parseInt(endTime.split(':')[0], 10);
+
+            if (startHour >= 13) {
+              startTime = `${(startHour - 12).toString().padStart(2, '0')}:${startTime.split(':')[1]}`;
+            }
+            if (endHour >= 13) {
+              endTime = `${(endHour - 12).toString().padStart(2, '0')}:${endTime.split(':')[1]}`;
+            }
+
+            const timeKey = `${startTime}-${endTime}`;
+            return timeKey === slot;
+          }
+          return false;
+        });
+
+        if (confirmedInSlot) {
+          isSlotAvailable = false;
+        } else {
+          // Check schedules for this slot
+          if (scheduleResponse.data && Array.isArray(scheduleResponse.data)) {
+            const activeSchedules = scheduleResponse.data.filter(schedule => schedule.status !== 'COMPLETED');
+
+            for (const schedule of activeSchedules) {
+              if (schedule.start_time && schedule.end_time) {
+                const [slotStart, slotEnd] = slot.split('-');
+                if (checkTimeOverlap(schedule.start_time, schedule.end_time, slotStart, slotEnd)) {
+                  if (schedule.availability === 'EXCLUSIVE') {
+                    isSlotAvailable = false;
+                    break;
+                  } else {
+                    slotCount += 1;
+                  }
+                }
+              }
+            }
+
+            // Check if slot count exceeds limit (5)
+            if (slotCount >= 5) {
+              isSlotAvailable = false;
+            }
+          }
+        }
+
+        if (isSlotAvailable) {
+          availableSlots++;
+        }
+      }
+
+      return availableSlots > 0;
+    } catch (error) {
+      console.error('Error checking date availability:', error);
+      return true; // Default to available if error occurs
+    }
+  };
+
+  // Function to check multiple dates and update disabled dates
+  const checkMonthlyAvailability = async (year, month) => {
+    setIsLoadingDateAvailability(true);
+    const unavailableDates = [];
+
+    try {
+      // Fetch all appointments once for the month
+      const appointmentResponse = await axiosClient.get('/auth/appointment');
+      setMonthlyAppointments(appointmentResponse.data);
+
+      // Get first and last day of the month
+      const firstDay = new Date(year, month, 1);
+      const lastDay = new Date(year, month + 1, 0);
+
+      // Check each day of the month
+      for (let day = 1; day <= lastDay.getDate(); day++) {
+        const currentDate = new Date(year, month, day);
+        const formattedDate = format(currentDate, 'yyyy-MM-dd');
+
+        const timeSlots = ['09:00-10:29', '10:30-11:59', '01:00-02:29', '02:30-04:00'];
+        let availableSlots = 0;
+
+        try {
+          // Fetch schedules for this specific date
+          const scheduleResponse = await axiosClient.get(`/auth/schedules?date=${formattedDate}`);
+          setMonthlySchedules(prev => [...prev, ...scheduleResponse.data]);
+
+          // Check each time slot for this date
+          for (const slot of timeSlots) {
+            let isSlotAvailable = true;
+            let slotCount = 0;
+
+            // Check appointments for this date and slot
+            const todayAppointments = appointmentResponse.data.filter(appointment => {
+              const appointmentDate = appointment.preferred_date.split('T')[0];
+              return appointmentDate === formattedDate;
+            });
+
+            // Check if any confirmed appointment blocks this slot
+            const confirmedInSlot = todayAppointments.some(appointment => {
+              const status = (appointment.AppointmentStatus?.status || '').toUpperCase();
+              if (status === 'CONFIRMED' && appointment.start_time && appointment.end_time) {
+                let startTime = appointment.start_time.substring(0, 5);
+                let endTime = appointment.end_time.substring(0, 5);
+
+                const startHour = parseInt(startTime.split(':')[0], 10);
+                const endHour = parseInt(endTime.split(':')[0], 10);
+
+                if (startHour >= 13) {
+                  startTime = `${(startHour - 12).toString().padStart(2, '0')}:${startTime.split(':')[1]}`;
+                }
+                if (endHour >= 13) {
+                  endTime = `${(endHour - 12).toString().padStart(2, '0')}:${endTime.split(':')[1]}`;
+                }
+
+                const timeKey = `${startTime}-${endTime}`;
+                return timeKey === slot;
+              }
+              return false;
+            });
+
+            if (confirmedInSlot) {
+              isSlotAvailable = false;
+            } else {
+              // Check schedules for this slot using the same logic as checkTimeSlotAvailability
+              if (scheduleResponse.data && Array.isArray(scheduleResponse.data)) {
+                const activeSchedules = scheduleResponse.data.filter(schedule => schedule.status !== 'COMPLETED');
+
+                for (const schedule of activeSchedules) {
+                  if (schedule.start_time && schedule.end_time) {
+                    const [slotStart, slotEnd] = slot.split('-');
+                    if (checkTimeOverlap(schedule.start_time, schedule.end_time, slotStart, slotEnd)) {
+                      if (schedule.availability === 'EXCLUSIVE') {
+                        isSlotAvailable = false;
+                        break;
+                      } else {
+                        slotCount += 1;
+                      }
+                    }
+                  }
+                }
+
+                // Check if slot count exceeds limit (5)
+                if (slotCount >= 5) {
+                  isSlotAvailable = false;
+                }
+              }
+            }
+
+            if (isSlotAvailable) {
+              availableSlots++;
+            }
+          }
+        } catch (dateError) {
+          console.error(`Error checking availability for ${formattedDate}:`, dateError);
+          // If there's an error fetching schedules for this date, assume it's available
+          availableSlots = timeSlots.length;
+        }
+
+        // If no slots are available for this date, mark it as disabled
+        if (availableSlots === 0) {
+          unavailableDates.push(formattedDate);
+        }
+      }
+
+      setDisabledDates(unavailableDates);
+    } catch (error) {
+      console.error('Error checking monthly availability:', error);
+    } finally {
+      setIsLoadingDateAvailability(false);
+    }
+  };
+
+  useEffect(() => {
+    if (formData.scheduleNotes.selectedDate) {
+      checkTimeSlotAvailability(formData.scheduleNotes.selectedDate);
+    }
+  }, [formData.scheduleNotes.selectedDate]);
+
+  // Check monthly availability when component mounts or when month changes
+  useEffect(() => {
+    const currentDate = new Date();
+    checkMonthlyAvailability(currentDate.getFullYear(), currentDate.getMonth());
+  }, []);
+
+  // Create a proper callback function for availability refresh
+  const handleAvailabilityRefresh = useCallback(() => {
+    // Refresh time slot availability for selected date
+    if (formData.scheduleNotes.selectedDate) {
+      checkTimeSlotAvailability(formData.scheduleNotes.selectedDate);
+    }
+
+    // Refresh monthly availability when socket events occur
+    const currentDate = new Date();
+    checkMonthlyAvailability(currentDate.getFullYear(), currentDate.getMonth());
+  }, [formData.scheduleNotes.selectedDate]);
+
+  // Socket listeners for real-time updates
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleAppointmentChange = () => {
+      handleAvailabilityRefresh();
+      showToast('Appointment data updated - availability refreshed', 'info');
+    };
+
+    const handleScheduleChange = () => {
+      handleAvailabilityRefresh();
+      showToast('Schedule updated - availability refreshed', 'info');
+    };
+
+    // Listen for database changes
+    socket.onDbChange("Appointment", "*", handleAppointmentChange);
+    socket.onDbChange("AppointmentStatus", "*", handleAppointmentChange);
+    socket.onDbChange("Schedule", "*", handleScheduleChange);
+
+    return () => {
+      socket.offDbChange("Appointment", "*", handleAppointmentChange);
+      socket.offDbChange("AppointmentStatus", "*", handleAppointmentChange);
+      socket.offDbChange("Schedule", "*", handleScheduleChange);
+    };
+  }, [socket, handleAvailabilityRefresh, showToast]);
+
+  const validateField = useCallback(
+    (section, fieldName, valueToValidate) => {
+      setFormErrors((prev) => {
+        const errors = { ...prev };
+
+        switch (section) {
+          case "personalInfo":
+            const personalValue = valueToValidate != null ? String(valueToValidate) : "";
+            let isPersonalFieldInvalid = false;
+
+            if (["firstName", "lastName"].includes(fieldName) && !personalValue.trim()) {
+              isPersonalFieldInvalid = true;
+            } else if (fieldName === "email" && (!personalValue || !emailRegex.test(personalValue))) {
+              isPersonalFieldInvalid = true;
+            } else if (fieldName === "phone" && personalValue && !phoneRegex.test(personalValue)) {
+              isPersonalFieldInvalid = true;
+            }
+
+            if (isPersonalFieldInvalid) {
+              errors[fieldName] = true;
+            } else {
+              delete errors[fieldName];
+            }
+            break;
+
+          case "addressInfo":
+            if (fieldName === "province" && !selectedProvince) {
+              errors.province = true;
+            } else if (fieldName === "city" && !selectedCity) {
+              errors.city = true;
+            } else if (fieldName === "barangay" && !selectedBarangay) {
+              errors.barangay = true;
+            } else {
+              delete errors[fieldName];
+            }
+            break;
+
+          case "visitDetails":
+            const visitValue = valueToValidate != null ? String(valueToValidate) : "";
+            let isVisitFieldInvalid = false;
+
+            if (fieldName === "purpose" && !visitValue) {
+              isVisitFieldInvalid = true;
+            } else if (fieldName === "populationCount" && (!visitValue || isNaN(visitValue) || parseInt(visitValue) <= 0)) {
+              isVisitFieldInvalid = true;
+            }
+
+            if (isVisitFieldInvalid) {
+              errors[fieldName] = true;
+            } else {
+              delete errors[fieldName];
+            }
+            break;
+
+          case "scheduleNotes":
+            if (fieldName === "selectedDate" && !valueToValidate) {
+              errors.selectedDate = true;
+            } else if (fieldName === "selectedTime" && isTimeRequired(formData.visitDetails.purpose) && !valueToValidate) {
+              errors.selectedTime = true;
+            } else {
+              delete errors[fieldName];
+            }
+            break;
+
+          default:
+            break;
+        }
+        return errors;
+      });
+    },
+    [formData.visitDetails.purpose, selectedProvince, selectedCity, selectedBarangay, emailRegex, phoneRegex]
+  );
+
+  const validateCurrentStep = useCallback(() => {
+    let currentStepErrors = {};
+    let hasErrors = false;
+
+    if (step === 1) {
+      // Personal Info
+      const personalFields = ["firstName", "lastName", "email"];
+      personalFields.forEach((field) => {
+        const valueToCheck = formData.personalInfo[field] != null ? String(formData.personalInfo[field]) : "";
+        let isFieldInvalid = false;
+
+        if (field === "email" && (!valueToCheck || !emailRegex.test(valueToCheck))) {
+          isFieldInvalid = true;
+        } else if (valueToCheck.trim() === "") {
+          isFieldInvalid = true;
+        }
+
+        if (isFieldInvalid) {
+          currentStepErrors[field] = true;
+          hasErrors = true;
+        }
+      });
+
+      // Optional phone validation
+      if (formData.personalInfo.phone && !phoneRegex.test(formData.personalInfo.phone)) {
+        currentStepErrors.phone = true;
+        hasErrors = true;
+      }
+    } else if (step === 2) {
+      // Address Info
+      if (!selectedProvince) {
+        currentStepErrors.province = true;
+        hasErrors = true;
+      }
+      if (!selectedCity) {
+        currentStepErrors.city = true;
+        hasErrors = true;
+      }
+      if (!selectedBarangay) {
+        currentStepErrors.barangay = true;
+        hasErrors = true;
+      }
+    } else if (step === 3) {
+      // Visit Details
+      if (!formData.visitDetails.purpose) {
+        currentStepErrors.purpose = true;
+        hasErrors = true;
+      }
+      if (!formData.visitDetails.populationCount || parseInt(formData.visitDetails.populationCount) <= 0) {
+        currentStepErrors.populationCount = true;
+        hasErrors = true;
+      }
+    } else if (step === 4) {
+      // Schedule & Notes
+      if (!formData.scheduleNotes.selectedDate) {
+        currentStepErrors.selectedDate = true;
+        hasErrors = true;
+      }
+      if (isTimeRequired(formData.visitDetails.purpose) && !formData.scheduleNotes.selectedTime) {
+        currentStepErrors.selectedTime = true;
+        hasErrors = true;
+      }
+    }
+
+    setFormErrors((prev) => ({ ...prev, ...currentStepErrors }));
+    return !hasErrors;
+  }, [step, formData, selectedProvince, selectedCity, selectedBarangay]);
+
+  const handleNext = () => {
+    if (validateCurrentStep()) {
+      setStep((prev) => prev + 1);
+    }
+  };
+
+  const handlePrevious = () => {
+    setStep((prev) => prev - 1);
+  };
+
   const handleSubmit = async () => {
+    if (validateCurrentStep()) {
+      setShowConfirmationModal(true);
+    }
+  };
+
+  const confirmSubmit = async () => {
     setShowConfirmationModal(false);
-    showToast('Submitting appointment...', 'info', 2000);
+    showToast('Submitting appointment...', 'info');
 
     let startTimeValue = null;
     let endTimeValue = null;
 
-    if (formData.selectedTime) {
-      const [startTime, endTime] = formData.selectedTime.split('-');
+    if (formData.scheduleNotes.selectedTime) {
+      const [startTime, endTime] = formData.scheduleNotes.selectedTime.split('-');
       const convertTo24Hour = (timeStr) => {
         const [hourStr, minuteStr] = timeStr.split(':');
         let hour = parseInt(hourStr, 10);
@@ -966,210 +1384,281 @@ const Appointment = () => {
     }
 
     const payload = {
-      first_name: formData.firstName,
-      last_name: formData.lastName,
-      email: formData.email,
-      phone: formData.phone,
-      organization: formData.organization,
+      first_name: formData.personalInfo.firstName,
+      last_name: formData.personalInfo.lastName,
+      email: formData.personalInfo.email,
+      phone: formData.personalInfo.phone,
+      organization: formData.personalInfo.organization,
       province: selectedProvince?.name || '',
       barangay: selectedBarangay?.name || '',
       city_municipality: selectedCity?.name || '',
-      street: formData.street,
-      purpose_of_visit: formData.purpose,
-      population_count: formData.populationCount,
-      preferred_date: formData.selectedDate
-        ? format(formData.selectedDate, 'yyyy-MM-dd')
+      street: formData.addressInfo.street,
+      purpose_of_visit: formData.visitDetails.purpose,
+      population_count: formData.visitDetails.populationCount,
+      preferred_date: formData.scheduleNotes.selectedDate
+        ? format(formData.scheduleNotes.selectedDate, 'yyyy-MM-dd')
         : null,
-      preferred_time: formData.selectedTime,
+      preferred_time: formData.scheduleNotes.selectedTime,
       start_time: startTimeValue,
       end_time: endTimeValue,
-      additional_notes: formData.additionalNotes
+      additional_notes: formData.scheduleNotes.additionalNotes
     };
 
     try {
-      const response = await axiosClient.post(
-        '/auth/appointment',
-        payload
-      );
+      const response = await axiosClient.post('/auth/appointment', payload);
 
       if (response.status === 201) {
-        // Show success toast first
-        showToast('Appointment submitted successfully! You will receive a confirmation email shortly.', 'success', 5000);
-
-        // Delay form reset to allow toast to be visible
-        setTimeout(() => {
-          // Reset form
-          setFormData({
-            firstName: '',
-            lastName: '',
-            email: '',
-            phone: '',
-            organization: '',
-            street: '',
-            purpose: '',
-            populationCount: '',
-            selectedDate: null,
-            selectedTime: '',
-            additionalNotes: ''
-          });
-          setSelectedProvince(null);
-          setSelectedCity(null);
-          setSelectedBarangay(null);
-          setCurrentStep(0);
-        }, 2000); // Wait 2 seconds before resetting
+        showToast('Appointment submitted successfully! You will receive a confirmation email shortly.', 'success');
+        resetForm();
+        setStep(0);
       }
     } catch (error) {
       console.error('Request failed:', error);
 
-      // Handle different types of errors
       if (error.response) {
-        // Server responded with error status
         const status = error.response.status;
         const message = error.response.data?.message || 'Unknown error occurred';
 
         if (status === 400) {
-          showToast(`Validation Error: ${message}`, 'error', 5000);
+          showToast(`Validation Error: ${message}`, 'error');
         } else if (status === 409) {
-          showToast('Time slot conflict: Please select a different time', 'error', 5000);
+          showToast('Time slot conflict: Please select a different time', 'error');
         } else if (status === 500) {
-          showToast('Server error: Please try again later', 'error', 5000);
+          showToast('Server error: Please try again later', 'error');
         } else {
-          showToast(`Error ${status}: ${message}`, 'error', 5000);
+          showToast(`Error ${status}: ${message}`, 'error');
         }
       } else if (error.request) {
-        // Network error
-        showToast('Network error: Please check your connection and try again', 'error', 5000);
+        showToast('Network error: Please check your connection and try again', 'error');
       } else {
-        // Other error
-        showToast('Failed to submit appointment. Please try again.', 'error', 5000);
+        showToast('Failed to submit appointment. Please try again.', 'error');
       }
     }
   };
 
+  const cancelSubmit = () => setShowConfirmationModal(false);
 
-  // Render current step content
-  const renderStepContent = () => {
-    switch (currentStep) {
-      case 0:
-        return <MuseumInfoStep />;
-      case 1:
-        return (
-          <PersonalInfoStep
-            formData={formData}
-            updateFormData={updateFormData}
-          />
-        );
-      case 2:
-        return (
-          <AddressInfoStep
-            provinces={provinces}
-            cities={cities}
-            barangays={barangays}
-            selectedProvince={selectedProvince}
-            setSelectedProvince={setSelectedProvince}
-            selectedCity={selectedCity}
-            setSelectedCity={setSelectedCity}
-            selectedBarangay={selectedBarangay}
-            setSelectedBarangay={setSelectedBarangay}
-            formData={formData}
-            updateFormData={updateFormData}
-            // Enhanced address logic props
-            getFilteredProvinces={getFilteredProvinces}
-            getFilteredCities={getFilteredCities}
-            getFilteredBarangays={getFilteredBarangays}
-            isLoadingProvinces={isLoadingProvinces}
-            isLoadingCities={isLoadingCities}
-            isLoadingBarangays={isLoadingBarangays}
-            provincesError={provincesError}
-            citiesError={citiesError}
-            barangaysError={barangaysError}
-          />
-        );
-      case 3:
-        return (
-          <VisitDetailsStep
-            formData={formData}
-            updateFormData={updateFormData}
-            showPurposeInfo={showPurposeInfo}
-            setShowPurposeInfo={setShowPurposeInfo}
-          />
-        );
-      case 4:
-        return (
-          <ScheduleNotesStep
-            formData={formData}
-            updateFormData={updateFormData}
-            shouldShowTimeOptions={shouldShowTimeOptions}
-            isTimeRequired={isTimeRequired}
-            timeSlotExclusive={timeSlotExclusive}
-            confirmedSlots={confirmedSlots}
-            isLoadingTimeSlots={isLoadingTimeSlots}
-          />
-        );
-      default:
-        return null;
-    }
+  const resetForm = () => {
+    setFormData(initialFormData);
+    setFormErrors({});
+    setSelectedProvince(null);
+    setSelectedCity(null);
+    setSelectedBarangay(null);
   };
 
+  const clearInputs = () => {
+    isDirty ? setShowClearConfirm(true) : resetForm();
+  };
+
+  const confirmClear = () => {
+    resetForm();
+    setShowClearConfirm(false);
+  };
+
+  const cancelClear = () => setShowClearConfirm(false);
+
+  const steps = [
+    {
+      name: "notice",
+      component: <Notice />,
+    },
+    {
+      name: "personalInfo",
+      component: (
+        <PersonalInfo
+          value={formData.personalInfo}
+          onChange={(val) => setFormData((prev) => ({ ...prev, personalInfo: val }))}
+          errors={formErrors}
+          validateField={validateField}
+        />
+      ),
+    },
+    {
+      name: "addressInfo",
+      component: (
+        <AddressInfo
+          value={formData.addressInfo}
+          onChange={(val) => setFormData((prev) => ({ ...prev, addressInfo: val }))}
+          errors={formErrors}
+          validateField={validateField}
+          provinces={provinces}
+          cities={cities}
+          barangays={barangays}
+          selectedProvince={selectedProvince}
+          setSelectedProvince={setSelectedProvince}
+          selectedCity={selectedCity}
+          setSelectedCity={setSelectedCity}
+          selectedBarangay={selectedBarangay}
+          setSelectedBarangay={setSelectedBarangay}
+          getFilteredProvinces={getFilteredProvinces}
+          getFilteredCities={getFilteredCities}
+          getFilteredBarangays={getFilteredBarangays}
+          isLoadingProvinces={isLoadingProvinces}
+          isLoadingCities={isLoadingCities}
+          isLoadingBarangays={isLoadingBarangays}
+          provincesError={provincesError}
+          citiesError={citiesError}
+          barangaysError={barangaysError}
+        />
+      ),
+    },
+    {
+      name: "visitDetails",
+      component: (
+        <VisitDetails
+          value={formData.visitDetails}
+          onChange={(val) => setFormData((prev) => ({ ...prev, visitDetails: val }))}
+          errors={formErrors}
+          validateField={validateField}
+          showPurposeInfo={showPurposeInfo}
+          setShowPurposeInfo={setShowPurposeInfo}
+        />
+      ),
+    },
+    {
+      name: "scheduleNotes",
+      component: (
+        <ScheduleNotes
+          value={formData.scheduleNotes}
+          onChange={(val) => setFormData((prev) => ({ ...prev, scheduleNotes: val }))}
+          errors={formErrors}
+          validateField={validateField}
+          shouldShowTimeOptions={shouldShowTimeOptions(formData.visitDetails.purpose)}
+          isTimeRequired={isTimeRequired(formData.visitDetails.purpose)}
+          timeSlotExclusive={timeSlotExclusive}
+          confirmedSlots={confirmedSlots}
+          isLoadingTimeSlots={isLoadingTimeSlots}
+          timeSlotCounts={timeSlotCounts}
+          disabledDates={disabledDates}
+          isLoadingDateAvailability={isLoadingDateAvailability}
+          onAvailabilityRefresh={handleAvailabilityRefresh}
+        />
+      ),
+    },
+  ];
+
+  const isLastStep = step === steps.length - 1;
+  const isNoticeStep = step === 0;
+
   return (
-    <div className="w-screen min-w-fit min-h-screen flex flex-col pt-20 px-4 md:px-20 justify-center">
-      <div className="max-w-4xl mx-auto w-full">
-        {/* Step content */}
-        {renderStepContent()}
+    <>
+      <ConfirmationModal
+        isOpen={showClearConfirm}
+        onClose={cancelClear}
+        onConfirm={confirmClear}
+        title="Clear Form?"
+        message="You have unsaved changes. Are you sure you want to clear the form?"
+        type="question"
+        theme="light"
+      />
+      <ConfirmationModal
+        isOpen={showConfirmationModal}
+        onClose={cancelSubmit}
+        onConfirm={confirmSubmit}
+        title="Confirm Submission?"
+        message="Are you sure you want to submit this appointment?"
+        type="question"
+        theme="light"
+      />
+      {PromptModal}
+      <div className="w-screen min-w-fit items-center justify-center min-h-screen flex flex-col">
+        <div className="min-w-[30rem] w-fit h-fit flex gap-y-5 flex-col">
+          <div className="min-w-[30rem] p-10 min-h-[15rem] bg-white rounded-lg shadow-2xl shadow-black/80 flex flex-col items-center justify-center">
+            {steps[step].component}
+          </div>
+          <div className="flex justify-between">
+            {isNoticeStep ? (
+              <StyledButton
+                onClick={() => {
+                  navigate(-1);
+                }}
+                buttonColor="bg-black"
+                hoverColor="hover:bg-gray-900"
+                textColor="text-white"
+              >
+                Return
+              </StyledButton>
+            ) : (
+              <StyledButton
+                onClick={handlePrevious}
+                buttonColor="bg-black"
+                hoverColor="hover:bg-gray-900"
+                textColor="text-white"
+                disabled={step === 0}
+              >
+                Previous
+              </StyledButton>
+            )}
 
-        {/* Navigation buttons */}
-        <div className="flex justify-between mt-8">
-          <StyledButton
-            onClick={handlePrev}
-            disabled={currentStep === 0}
-            variant="outline"
-            size="lg"
-          >
-            Prev
-          </StyledButton>
+            <div className="flex gap-x-3">
+              {isNoticeStep ? (
+                <div className="h-full w-fit flex items-center">
+                  <span className="text-xl font-semibold">Proceed to the form.</span>
+                </div>
+              ) : null}
+              {isDirty && !isNoticeStep && (
+                <StyledButton
+                  onClick={clearInputs}
+                  buttonColor="bg-gray-600"
+                  hoverColor="hover:bg-gray-700"
+                  textColor="text-white"
+                >
+                  Clear Inputs
+                </StyledButton>
+              )}
 
-          {currentStep < steps.length - 1 ? (
-            <StyledButton
-              onClick={handleNext}
-              disabled={!isStepValid()}
-              variant="primary"
-              size="lg"
-            >
-              Next
-            </StyledButton>
-          ) : (
-            <StyledButton
-              onClick={() => setShowConfirmationModal(true)}
-              disabled={!isStepValid()}
-              variant="primary"
-              size="lg"
-            >
-              Submit
-            </StyledButton>
-          )}
+              {isLastStep ? (
+                <StyledButton
+                  onClick={handleSubmit}
+                  buttonColor="bg-green-700"
+                  hoverColor="hover:bg-green-800"
+                  textColor="text-white"
+                >
+                  Submit
+                </StyledButton>
+              ) : (
+                <StyledButton
+                  onClick={handleNext}
+                  buttonColor="bg-black"
+                  hoverColor="hover:bg-gray-900"
+                  textColor="text-white"
+                >
+                  {isNoticeStep ? (
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="12"
+                      height="12"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M20 12l-10 0" />
+                      <path d="M20 12l-4 4" />
+                      <path d="M20 12l-4 -4" />
+                      <path d="M4 4l0 16" />
+                    </svg>
+                  ) : (
+                    "Next"
+                  )}
+                </StyledButton>
+              )}
+            </div>
+          </div>
         </div>
-
-        {/* Confirmation Modal */}
-        <ConfirmationModal
-          isOpen={showConfirmationModal}
-          onClose={() => setShowConfirmationModal(false)}
-          onConfirm={handleSubmit}
-          title="Confirm Submission"
-          message="Are you sure you want to submit this appointment?"
-          theme="light"
-        />
-
-        {/* Toast Notifications */}
-        <Toast
-          type={toast.type}
-          message={toast.message}
-          duration={3000}
-          onClose={hideToast}
-        />
       </div>
-    </div>
+
+      {/* Toast Notifications */}
+      <Toast
+        type={toast.type}
+        message={toast.message}
+        duration={3000}
+        onClose={hideToast}
+      />
+    </>
   );
 };
-
 
 export default Appointment;

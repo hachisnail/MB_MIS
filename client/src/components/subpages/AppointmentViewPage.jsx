@@ -8,6 +8,12 @@ import PopupModal from '../modals/PopupModal';
 import Modal from '../modals/Modal';
 import StyledButton from '../buttons/StyledButton';
 import Toast from '../../features/Toast';
+import {
+  timeStringToMinutes,
+  countOverlappingEvents,
+  convertTo24Hour,
+  getLocalDateString
+} from '../../utils/scheduleUtils';
 
 export const AppointmentViewPage = ({
   showModal,
@@ -67,7 +73,6 @@ export const AppointmentViewPage = ({
       message: ''
     }));
   }, []);
-
 
   // Fetch appointment details when used as route
   const fetchAppointmentDetails = useCallback(async (appointmentId) => {
@@ -132,7 +137,6 @@ export const AppointmentViewPage = ({
       }
     }
   }, [propOnClose, navigate, location.state]);
-
 
   // Send handler
   const onSend = useCallback(() => {
@@ -199,6 +203,7 @@ export const AppointmentViewPage = ({
       socket.offDbChange("AppointmentStatus", "*", handleAppointmentChange);
     };
   }, [isRouteComponent, routeModalData, fetchAppointmentDetails, socket]);
+
   const [approveVisit, setApproveVisit] = useState('');
   const [message, setMessage] = useState("");
   const [messageError, setMessageError] = useState(false);
@@ -300,6 +305,140 @@ export const AppointmentViewPage = ({
   const isCompleted = modalData.status === 'COMPLETED' || modalData.status === 'Completed';
   const isCompletedOrFailed = isCompleted || isFailed;
 
+  // Schedule validation function - similar to the one in Schedule.jsx
+  const validateAppointmentSchedule = async (appointmentData) => {
+    try {
+      // Extract appointment time information
+      let startTime = "09:00";
+      let endTime = "10:00";
+
+      // Get time from appointment data
+      if (appointmentData.start_time && appointmentData.end_time) {
+        startTime = appointmentData.start_time;
+        endTime = appointmentData.end_time;
+      } else if (appointmentData.preferredTime && appointmentData.preferredTime.includes('-')) {
+        const [startPart, endPart] = appointmentData.preferredTime.split('-').map(t => t.trim());
+        if (startPart) startTime = convertTo24Hour(startPart);
+        if (endPart) endTime = convertTo24Hour(endPart);
+      }
+
+      const appointmentDate = appointmentData.preferredDate;
+      if (!appointmentDate) {
+        throw new Error('Appointment date is required for validation');
+      }
+
+      // Convert date to the format expected by the API
+      const dateString = appointmentDate.split('T')[0]; // Remove time portion if present
+
+      // Validation 1: Time constraints (7:00 AM to 5:00 PM)
+      const startMinutes = timeStringToMinutes(startTime);
+      const endMinutes = timeStringToMinutes(endTime);
+      const sevenAM = timeStringToMinutes('07:00');
+      const fivePM = timeStringToMinutes('17:00');
+
+      if (startMinutes < sevenAM || endMinutes > fivePM) {
+        throw new Error('Appointment must be scheduled between 7:00 AM and 5:00 PM');
+      }
+
+      // Validation 2: Start time must be earlier than end time
+      if (startMinutes >= endMinutes) {
+        throw new Error('Start time must be earlier than end time');
+      }
+
+      // Validation 3: Minimum duration of 15 minutes
+      const duration = endMinutes - startMinutes;
+      if (duration < 15) {
+        throw new Error('Appointment duration must be at least 15 minutes');
+      }
+
+      // Fetch existing schedules and appointments for the date
+      const [schedulesResponse, appointmentsResponse] = await Promise.all([
+        axiosClient.get(`/auth/schedules?date=${dateString}`),
+        axiosClient.get('/auth/appointment')
+      ]);
+
+      const existingSchedules = schedulesResponse.data || [];
+      const allAppointments = appointmentsResponse.data || [];
+
+      // Filter confirmed appointments for the same date (excluding current appointment)
+      const confirmedAppointments = allAppointments.filter(appt => {
+        if (!appt.preferred_date) return false;
+        if (appt.appointment_id === appointmentData.appointmentId) return false; // Exclude current appointment
+
+        const apptDate = appt.preferred_date.split('T')[0];
+        const status = (appt.AppointmentStatus?.status || '').toUpperCase();
+
+        return apptDate === dateString && status === 'CONFIRMED';
+      });
+
+      // Transform data to match the format expected by validation functions
+      const existingEvents = [];
+
+      // Add schedules (filter out completed ones)
+      existingSchedules
+        .filter(schedule => schedule.status !== 'COMPLETED')
+        .forEach(schedule => {
+          existingEvents.push({
+            id: `schedule-${schedule.schedule_id}`,
+            startTime: schedule.start_time,
+            endTime: schedule.end_time,
+            availability: schedule.availability || 'SHARED',
+            isSchedule: true,
+            date: schedule.date
+          });
+        });
+
+      // Add confirmed appointments
+      confirmedAppointments.forEach(appointment => {
+        let apptStartTime = "09:00";
+        let apptEndTime = "10:00";
+
+        if (appointment.start_time && appointment.end_time) {
+          apptStartTime = appointment.start_time;
+          apptEndTime = appointment.end_time;
+        } else if (appointment.preferred_time && appointment.preferred_time.includes('-')) {
+          const [startPart, endPart] = appointment.preferred_time.split('-').map(t => t.trim());
+          if (startPart) apptStartTime = convertTo24Hour(startPart);
+          if (endPart) apptEndTime = convertTo24Hour(endPart);
+        }
+
+        existingEvents.push({
+          id: `appointment-${appointment.appointment_id}`,
+          startTime: apptStartTime,
+          endTime: apptEndTime,
+          availability: 'SHARED',
+          isAppointment: true,
+          date: appointment.preferred_date.split('T')[0]
+        });
+      });
+
+      // Validation 4: Check for exclusive events conflicts
+      const existingExclusiveEvent = existingEvents.find(event => {
+        if (!event.isSchedule) return false;
+        if (event.availability === 'EXCLUSIVE' && event.date === dateString) {
+          const eventStart = timeStringToMinutes(event.startTime);
+          const eventEnd = timeStringToMinutes(event.endTime);
+          return (startMinutes < eventEnd && eventStart < endMinutes);
+        }
+        return false;
+      });
+
+      if (existingExclusiveEvent) {
+        throw new Error('Cannot confirm appointment during an exclusive event time slot');
+      }
+
+      // Validation 5: Check for overlapping events limits (max 5)
+      const overlappingCount = countOverlappingEvents(existingEvents, startTime, endTime);
+      if (overlappingCount >= 5) {
+        throw new Error('Maximum limit reached: Cannot confirm appointment as there are already 5 overlapping events at this time slot');
+      }
+
+      return true; // All validations passed
+    } catch (error) {
+      throw error;
+    }
+  };
+
   // This function will contain the actual logic to send email and update status
   const executeAppointmentAction = async () => {
     setIsLoading(true);
@@ -309,6 +448,18 @@ export const AppointmentViewPage = ({
 
     try {
       if (approveVisit === 'yes') {
+        // Perform schedule validation before confirming appointment
+        try {
+          await validateAppointmentSchedule(modalData);
+        } catch (validationError) {
+          console.error('Schedule validation failed:', validationError);
+          setPopupModalTitle('Validation Error');
+          setPopupModalMessage(validationError.message);
+          setPopupModalType('danger');
+          setShowPopupModal(true);
+          return; // Stop execution if validation fails
+        }
+
         newStatus = 'CONFIRMED';
         successMessage = 'Appointment confirmed successfully!';
       } else if (approveVisit === 'no') {

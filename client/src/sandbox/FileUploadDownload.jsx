@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, NavLink } from "react-router-dom";
 import axiosClient from "../lib/axiosClient";
 import TooltipButton from "../components/buttons/TooltipButton";
 import ContextMenu from "../components/modals/ContextMenu";
+import { handlePreview } from "../components/list/commons";
 
 const FileUploadDownload = () => {
   const [file, setFile] = useState(null);
@@ -52,10 +53,10 @@ const FileUploadDownload = () => {
     }
   };
 
-  const handlePreview = (category, filename) => {
-    const encoded = btoa(`${category}/${filename}`);
-    navigate(`/admin/preview/${encoded}`);
-  };
+  // const handlePreview = (category, filename) => {
+  //   const encoded = btoa(`${category}/${filename}`);
+  //   navigate(`/admin/preview/${encoded}`);
+  // };
 
   const handleDownload = (category, filename) => {
     const downloadUrl = `http://localhost:5000/api/download/${category}/${filename}`;
@@ -120,7 +121,7 @@ const FileUploadDownload = () => {
           <h3 className="text-lg font-semibold mb-2">
             {categoryData.category}
           </h3>
-          <div className="flex flex-wrap gap-4">
+          <div className="flex flex-wrap gap-4 h-[16em] overflow-auto">
             {categoryData.files.length === 0 && (
               <p className="text-sm text-gray-500">
                 No files in this category.
@@ -255,7 +256,7 @@ const FileUploadDownload = () => {
                 {
                   label: "Preview",
                   onClick: () =>
-                    handlePreview(categoryData.category, file.filename),
+                    handlePreview(navigate, categoryData.category, file.filename, "/admin/sandbox"),
                 },
                 {
                   label: "Download",

@@ -148,7 +148,7 @@ const FilePreviewer = () => {
         <img
           src={fileUrl}
           alt={filename}
-          className="h-[69rem] mx-auto rounded"
+          className="h-[64rem] mx-auto rounded"
         />
       );
     }
@@ -158,7 +158,7 @@ const FilePreviewer = () => {
         <iframe
           src={fileUrl}
           title="PDF Preview"
-          className="w-full h-[69rem] border rounded"
+          className="w-full h-[64rem] border rounded"
         />
       );
     }
@@ -167,14 +167,14 @@ const FilePreviewer = () => {
       return (
         <div
           ref={docxContainerRef}
-          className="prose h-[69rem] overflow-scroll max-w-full p-4 bg-white border rounded"
+          className="prose h-[64rem] overflow-scroll max-w-full p-4 bg-white border rounded"
         />
       );
     }
 
     if (["txt", "json", "js", "html", "css"].includes(fileType)) {
       return (
-        <pre className="bg-gray-100 text-sm p-4 rounded overflow-auto h-[69rem] whitespace-pre-wrap">
+        <pre className="bg-gray-100 text-sm p-4 rounded overflow-auto h-[64rem] whitespace-pre-wrap">
           {fileContent}
         </pre>
       );
@@ -182,7 +182,7 @@ const FilePreviewer = () => {
 
     if (["xlsx", "xls"].includes(fileType)) {
       return (
-        <div className="overflow-auto h-[69rem] border rounded p-2 bg-white text-sm">
+        <div className="overflow-auto h-[64rem] border rounded p-2 bg-white text-sm">
           <table className="w-full border-collapse">
             <tbody>
               {excelData.map((row, i) => (

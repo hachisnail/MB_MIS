@@ -23,39 +23,50 @@ const AdminLayout = () => {
 
   const theme = matchedTheme?.theme || "";
   const isDashboard = location.pathname === "/admin/dashboard";
-
   const isPreview = location.pathname.includes("/preview/");
   const isUnauthorized = location.pathname.includes("/unauthorized");
 
-
   return (
-    <div className="h-screen w-screen grid grid-rows-[auto_1fr] overflow-hidden">
+    <div
+      className={`h-screen w-screen grid grid-cols-[auto_1fr_1fr_1fr_1fr]   grid-rows-[auto_auto_1fr]  overflow-hidden`}
+    >
       {/* Header */}
-      <AdminHeader
-        onOpen={() => setSidebarOpen(true)}
-        onClose={() => setSidebarOpen(false)}
-        isSidebarOpen={isSidebarOpen}
-      />
-
-      {/* Sidebar + Main Content */}
-      <div className={`grid ${!isPreview && !isUnauthorized && "grid-cols-[auto_1fr]" } min-h-full overflow-hidden`}>
-        {/* Sidebar should be shown unless in preview */}
-        {!isPreview && !isUnauthorized && <AdminNav isOpen={isSidebarOpen} />}
-
-        {/* Main Content */}
-        <main className={`h-full w-full flex flex-col overflow-hidden overflow-x-scroll overflow-y-scroll ${theme} p-4`}>
-          {/* Breadcrumb is hidden only on dashboard and preview */}
-          {!isDashboard && !isPreview && !isUnauthorized && (
-            <div className={`w-full mb-4 ${theme}`}>
-              <div className="flex flex-col gap-y-1">
-                <Breadcrumb />
-              </div>
-            </div>
-          )}
-          <Outlet />
-        </main>
+      <div className="col-span-5 h-[4rem]">
+        <AdminHeader
+          onOpen={() => setSidebarOpen(true)}
+          onClose={() => setSidebarOpen(false)}
+          isSidebarOpen={isSidebarOpen}
+        />
       </div>
 
+      {/* Sidebar */}
+      {!isUnauthorized && (
+        <div
+          className={`row-span-4 row-start-2 col-start-1  ${
+            isSidebarOpen ? "w-75" : "w-23"
+          } `}
+        >
+          <AdminNav isOpen={isSidebarOpen} />
+        </div>
+      )}
+
+      {/* Breadcrumb */}
+      {!isDashboard && !isUnauthorized && (
+        <div
+          className={`col-span-4 col-start-2 row-start-2 h-[6rem] flex items-center pl-4 ${theme}`}
+        >
+          <div className="flex flex-col gap-y-1">
+            <Breadcrumb />
+          </div>
+        </div>
+      )}
+
+      {/* Main content */}
+      <main
+        className={`col-span-4 row-span-3 col-start-2 row-start-3 h-full w-full overflow-auto ${theme} p-4`}
+      >
+        <Outlet />
+      </main>
     </div>
   );
 };

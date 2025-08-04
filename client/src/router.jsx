@@ -189,6 +189,7 @@ const Router = () => {
           {flags["sandbox"] && (
             <>
             <Route path="sandbox" element={<FileUploadDownload />} />
+            <Route path="sandbox/preview/:encoded" element={<FilePreviewer />} />
             <Route path="sandbox/modal" element={<ModalsTest />} />
             <Route path="sandbox/router-flag" element={<RouteFlagToggle />} />
             <Route path="sandbox/socket-monitor" element={<SocketMonitor />} />

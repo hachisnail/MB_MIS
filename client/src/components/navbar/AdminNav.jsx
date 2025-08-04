@@ -20,7 +20,7 @@ const AdminNav = ({ isOpen }) => {
       title={title}
       to={to}
       className={({ isActive }) =>
-        ` rounded w-full h-15 flex items-center gap-x-2 hover:border-1 ${
+        ` rounded transition-none w-full h-15 flex items-center gap-x-2 hover:border-1 ${
           isOpen ? "pl-0 sm:pl-4" : "flex justify-center items-center"
         } ${
           isActive
@@ -30,7 +30,7 @@ const AdminNav = ({ isOpen }) => {
       }
     >
       {icon}
-      {isOpen && <span>{label}</span>}
+      {isOpen && <span className="transition-none">{label}</span>}
     </NavLink>
   );
 
@@ -39,8 +39,6 @@ const AdminNav = ({ isOpen }) => {
       <div
         className={`
         h-full bg-[#1C1B19] flex flex-col items-center justify-between py-7
-        transition-all duration-300 ease-in-out select-none
-        ${isOpen ? "w-75" : "w-23"}
       `}
       >
         <div className="w-full p-2 border-b border-gray-700 flex flex-col  gap-y-2">

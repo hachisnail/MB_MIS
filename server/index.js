@@ -26,16 +26,10 @@ if (!fs.existsSync(UPLOAD_BASE_DIR)) {
 const app = express();
 
 app.use(cors({
-  origin: function (origin, callback) {
-    if (!origin || origin === process.env.CLIENT_URL) {
-      callback(null, true);
-    } else {
-      console.warn("Blocked by CORS:", origin);
-      callback(new Error("Not allowed by CORS"));
-    }
-  },
-  credentials: true,
+  origin: process.env.CLIENT_URL,  
+  credentials: true,              
 }));
+
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));

@@ -45,7 +45,7 @@ import Configuration from "@/pages/admin/Configuration";
 // import ArticleModal from "./components/subpages/ArticleModal";
 
 // sandbox
-import FileUploadDownload from "@/sandbox/fileUploadDownload";
+import FileUploadDownload from "@/sandbox/FileUploadDownload";
 import FilePreviewer from "@/features/FilePreviewer";
 import ModalsTest from "@/sandbox/ModalsTest";
 import RouteFlagToggle from "@/sandbox/RouteFlagToggle";

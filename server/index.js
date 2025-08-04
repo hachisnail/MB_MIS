@@ -24,25 +24,16 @@ if (!fs.existsSync(UPLOAD_BASE_DIR)) {
 }
 
 const app = express();
-app.set("trust proxy", 1); // Essential for Heroku, AWS, and other proxy setups
+app.set("trust proxy", "loopback, linklocal, uniquelocal");
 
-// ✅ Fix: Configure CORS with explicit options for security and credentials
 app.use(cors({
   origin: process.env.CLIENT_URL,
   credentials: true,
 }));
 
-// This header configuration is now redundant because it's handled by the `cors` middleware
-// app.use((req, res, next) => {
-//   res.header("Access-Control-Allow-Origin", process.env.CLIENT_URL);
-//   res.header("Access-Control-Allow-Credentials", "true");
-//   next();
-// });
-
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// ✅ Fix: Robust session cookie configuration
 app.use(session({
   secret: process.env.SESSION_SECRET,
   store: sessionStore,
@@ -51,11 +42,9 @@ app.use(session({
   cookie: {
     maxAge: 24 * 60 * 60 * 1000,
     httpOnly: true,
-    // Explicitly set `secure: true` and `sameSite: 'none'` for production
-    // This is the most likely cause of your issue.
-    // Cookies with SameSite=None must be secure.
     secure: process.env.NODE_ENV === "production",
     sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+    domain: process.env.COOKIE_DOMAIN, // Using an environment variable for the domain
   },
 }));
 

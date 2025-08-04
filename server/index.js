@@ -78,26 +78,21 @@ const io = initializeSocket(server, process.env.CLIENT_URL);
 const PORT = process.env.PORT;
 
 (async () => {
-try {
-  console.log("⏳ Authenticating DB...");
-  await mainDb.authenticate();
-  console.log("✅ DB authenticated");
+  try {
+    await mainDb.authenticate();
+    await sessionStore.sync();
+    await mainDb.sync();
+    app.get('/api/health', (req, res) => {
+  res.json({ status: "ok" });
+});
 
-  console.log("⏳ Syncing session store...");
-  await sessionStore.sync();
-  console.log("✅ Session store synced");
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`API Server running on port ${PORT}`);
+});
 
-  console.log("⏳ Syncing main DB...");
-  await mainDb.sync();
-  console.log("✅ Main DB synced");
-
-  server.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 API Server running on port ${PORT}`);
-  });
-} catch (err) {
-  console.error("❌ Unable to start server:", err);
-}
-
+  } catch (err) {
+    console.error("Unable to connect to DB:", err);
+  }
 })();
 
 export { io };

@@ -1,5 +1,5 @@
 import AdminHeader from "../headers/AdminHeader";
-import AdminNav from "../navbar/adminNav";
+import AdminNav from "../navbar/AdminNav";
 import { Outlet, useLocation, matchPath } from "react-router-dom";
 import Breadcrumb from "../Breadcrumb";
 import { useState } from "react";

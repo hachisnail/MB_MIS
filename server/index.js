@@ -59,7 +59,8 @@ app.use("/api", uploadRoutes);
 app.use("/api/auth", authRoutes);
 
 if (process.env.NODE_ENV === "production" ) {
-  const CLIENT_BUILD_PATH = path.resolve(process.cwd(), "..", "client", "dist");
+const CLIENT_BUILD_PATH = path.resolve(__dirname, "client_dist");
+
 
   if (fs.existsSync(path.join(CLIENT_BUILD_PATH, "index.html"))) {
     app.use(express.static(CLIENT_BUILD_PATH));

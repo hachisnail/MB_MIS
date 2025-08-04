@@ -11,7 +11,6 @@ import { mainDb } from "./models/authModels.js";
 import sessionStore from "./configs/sessionStore.js";
 import authRoutes from "./routes/auth.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
-
 import { initializeSocket } from "./configs/socketServer.js";
 
 dotenv.config();
@@ -49,37 +48,32 @@ app.use(session({
   cookie: {
     maxAge: 24 * 60 * 60 * 1000,
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: process.env.NODE_ENV === "production" ? "true": "",
     sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
   },
 }));
 
-// ✅ Add CORS headers for static uploads
+// ✅ Serve static uploads only
 app.use("/uploads", (req, res, next) => {
   res.header("Access-Control-Allow-Origin", process.env.CLIENT_URL);
   res.header("Access-Control-Allow-Credentials", "true");
   next();
 }, express.static(UPLOAD_BASE_DIR));
 
-// ✅ API routes
+// ✅ Only mount API routes
 app.use("/api", uploadRoutes);
 app.use("/api/auth", authRoutes);
 
-// Serve frontend
-const CLIENT_BUILD_PATH = path.resolve(__dirname, "dist");
-if (fs.existsSync(path.join(CLIENT_BUILD_PATH, "index.html"))) {
-  app.use(express.static(CLIENT_BUILD_PATH));
-  app.get(/^\/(?!api|uploads).*/, (req, res) => {
-    res.sendFile(path.join(CLIENT_BUILD_PATH, "index.html"));
-  });
-}
-
+// 🚫 Catch-all fallback: return 404 for non-API routes
+app.use((req, res, next) => {
+  if (!req.path.startsWith("/api") && !req.path.startsWith("/uploads")) {
+    return res.status(404).json({ error: "Not Found" });
+  }
+  next();
+});
 
 const server = http.createServer(app);
-
-// ✅ Pass CORS config to socket
 const io = initializeSocket(server, process.env.CLIENT_URL);
-
 const PORT = process.env.PORT;
 
 (async () => {
@@ -89,7 +83,7 @@ const PORT = process.env.PORT;
     await mainDb.sync();
 
     server.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
+      console.log(`API Server running on port ${PORT}`);
     });
   } catch (err) {
     console.error("Unable to connect to DB:", err);

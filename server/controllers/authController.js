@@ -26,7 +26,7 @@ export async function login(req, res) {
     const isValid = await bcrypt.compare(password, user.password);
     if (!isValid) return res.status(401).json({ message: "Invalid credentials" });
 
-    // 🛡 Prevent re-login in same session
+    // 🛡 Prevent re-login in the same session
     if (req.session.userId && req.session.userId !== user.id) {
       return res.status(400).json({
         message: "A user is already logged in from this session.",
@@ -71,14 +71,15 @@ export async function login(req, res) {
       req.session.forceLogoutMessage = "Another session was logged out to allow this login.";
     }
 
-    // ✅ Use promise wrapper for regenerate
+    // ✅ Use promise wrapper for regenerate and add robust error logging
     await new Promise((resolve, reject) => {
       req.session.regenerate((err) => {
         if (err) {
-          reject(err);
-        } else {
-          resolve();
+          console.error("Session regeneration failed:", err);
+          return reject(err);
         }
+        console.log("Session regenerated successfully.");
+        resolve();
       });
     });
 
@@ -126,7 +127,6 @@ export async function login(req, res) {
     return res.status(500).json({ message: "Server error" });
   }
 }
-
   export async function logout(req, res) {
     try {
       const userId = req.session.userId;

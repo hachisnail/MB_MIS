@@ -26,10 +26,15 @@ if (!fs.existsSync(UPLOAD_BASE_DIR)) {
 const app = express();
 
 app.use(cors({
-  origin: process.env.CLIENT_URL,  
-  credentials: true,              
+  origin: process.env.CLIENT_URL,
+  credentials: true,
 }));
 
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", process.env.CLIENT_URL);
+  res.header("Access-Control-Allow-Credentials", "true");
+  next();
+});
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -42,24 +47,24 @@ app.use(session({
   cookie: {
     maxAge: 24 * 60 * 60 * 1000,
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production", 
-    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax", 
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
   },
 }));
 
+// Serve uploaded files
+app.use("/uploads", express.static(UPLOAD_BASE_DIR));
 
-// ✅ Serve static uploads only
-app.use("/uploads", (req, res, next) => {
-  res.header("Access-Control-Allow-Origin", process.env.CLIENT_URL);
-  res.header("Access-Control-Allow-Credentials", "true");
-  next();
-}, express.static(UPLOAD_BASE_DIR));
-
-// ✅ Only mount API routes
-app.use("/api", uploadRoutes);
+// API routes
 app.use("/api/auth", authRoutes);
+app.use("/api", uploadRoutes);
 
-// 🚫 Catch-all fallback: return 404 for non-API routes
+// Health check endpoint
+app.get("/api/health", (req, res) => {
+  res.json({ status: "ok" });
+});
+
+// Catch-all for invalid paths
 app.use((req, res, next) => {
   if (!req.path.startsWith("/api") && !req.path.startsWith("/uploads")) {
     return res.status(404).json({ error: "Not Found" });
@@ -69,21 +74,17 @@ app.use((req, res, next) => {
 
 const server = http.createServer(app);
 const io = initializeSocket(server, process.env.CLIENT_URL);
-const PORT = process.env.PORT;
+const PORT = process.env.PORT || 5050;
 
 (async () => {
   try {
     await mainDb.authenticate();
     await sessionStore.sync();
     await mainDb.sync();
-    app.get('/api/health', (req, res) => {
-  res.json({ status: "ok" });
-});
 
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(`API Server running on port ${PORT}`);
-});
-
+    server.listen(PORT, "0.0.0.0", () => {
+      console.log(`API Server running on port ${PORT}`);
+    });
   } catch (err) {
     console.error("Unable to connect to DB:", err);
   }

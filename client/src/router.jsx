@@ -33,7 +33,7 @@ import User from "@/pages/admin/User";
 import CreateUser from "@/components/subpages/CreateUsers";
 import Inventory from "@/pages/admin/Inventory";
 import NoMatch from "@/pages/NoMatch";
-import RequireRole from "@/lib/requiredRole";
+import RequireRole from "@/lib/RequiredRole";
 import Acquisition from "@/pages/admin/Acquisition";
 import ViewArtifacts from "@/components/subpages/ViewArtifacts";
 import Schedule from "@/pages/admin/Schedule";

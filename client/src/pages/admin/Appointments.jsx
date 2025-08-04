@@ -2,11 +2,11 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSocketClient } from "@/context/authContext";
 import { useLocation } from 'react-router-dom';
-import axiosClient from '../../lib/axiosClient';
-import TimelineDatePicker from '../../features/TimelineDatePicker';
-import Toast from '../../features/Toast';
-import { SearchBar, CardDropdownPicker } from "../../features/Utilities";
-import { LoadingSpinner, ErrorBox, EmptyMessage } from "../../components/list/commons";
+import axiosClient from '@/lib/axiosClient';
+import TimelineDatePicker from '@/features/TimelineDatePicker';
+import Toast from '@/features/Toast';
+import { SearchBar, CardDropdownPicker } from "@/features/Utilities";
+import { LoadingSpinner, ErrorBox, EmptyMessage } from "@/components/list/commons";
 import {
   AppointmentFormItem,
   AttendanceItem,
@@ -14,7 +14,7 @@ import {
   standardizeStatus,
   formatDateForDisplay,
   formatDate
-} from "../../components/list/AppointmentsList";
+} from "@/components/list/AppointmentsList";
 
 
 const Appointments = () => {
@@ -401,7 +401,7 @@ const Appointments = () => {
           {/* Right side: Tables */}
           <div className="w-full h-full flex flex-col gap-y-7 overflow-x-auto overflow-y-hidden">
             <div className="w-full h-fit flex gap-x-3 items-center">
-                            <TimelineDatePicker
+              <TimelineDatePicker
                 defaultValue={selectedDate ? selectedDate.toISOString().split('T')[0] : ''}
                 onDateChange={(dateString) => handleDateChange(dateString ? new Date(dateString) : null)}
                 theme="light"
@@ -506,29 +506,29 @@ const Appointments = () => {
 
                 {/* Table Data - Scrollable */}
                 <div className="w-full min-w-[94rem] overflow-y-auto h-full border-t-1 border-t-gray-400">
-                <div className="relative w-full h-full">
-                  {/* Overlayed Spinner */}
-                  {isLoading && (
-                    <div className="absolute inset-0 z-10 flex items-center justify-center ">
-                      <LoadingSpinner />
-                    </div>
-                  )}
+                  <div className="relative w-full h-full">
+                    {/* Overlayed Spinner */}
+                    {isLoading && (
+                      <div className="absolute inset-0 z-10 flex items-center justify-center ">
+                        <LoadingSpinner />
+                      </div>
+                    )}
 
-                  {/* Error State */}
-                  {error ? (
-                    <ErrorBox message={error} />
-                  ) : filteredData.appointments.length > 0 ? (
-                    filteredData.appointments.map((appt) => (
-                      <AppointmentFormItem
-                        key={appt.appointment_id}
-                        appointment={appt}
-                        cameFrom="forms"
-                      />
-                    ))
-                  ) : !isLoading && filteredData.appointments.length === 0 ? (
-                    <EmptyMessage message="No appointment data available" />
-                  ) : null}
-                </div>
+                    {/* Error State */}
+                    {error ? (
+                      <ErrorBox message={error} />
+                    ) : filteredData.appointments.length > 0 ? (
+                      filteredData.appointments.map((appt) => (
+                        <AppointmentFormItem
+                          key={appt.appointment_id}
+                          appointment={appt}
+                          cameFrom="forms"
+                        />
+                      ))
+                    ) : !isLoading && filteredData.appointments.length === 0 ? (
+                      <EmptyMessage message="No appointment data available" />
+                    ) : null}
+                  </div>
 
                 </div>
               </div>

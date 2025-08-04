@@ -6,16 +6,16 @@ import Calendar from 'react-calendar';
 import TimePicker from 'react-time-picker';
 import 'react-calendar/dist/Calendar.css';
 import 'react-time-picker/dist/TimePicker.css';
-import LiveClock from '../../features/LiveClock';
-import Toast from '../../features/Toast';
-import DayScheduler from '../../features/DayScheduler';
-import { LoadingSpinner, EmptyMessage } from '../../components/list/commons';
-import ScheduleItem from '../../components/list/ScheduleItem';
-import axiosClient from '../../lib/axiosClient';
-import { AppointmentViewPage } from '../../components/subpages/AppointmentViewPage';
-import ConfirmationModal from '../../components/modals/ConfirmationModal';
-import StyledButton from '../../components/buttons/StyledButton';
-import { useSocketClient } from '../../context/authContext';
+import LiveClock from '@/features/LiveClock';
+import Toast from '@/features/Toast';
+import DayScheduler from '@/features/DayScheduler';
+import { LoadingSpinner, EmptyMessage } from '@/components/list/commons';
+import ScheduleItem from '@/components/list/ScheduleItem';
+import axiosClient from '@/lib/axiosClient';
+import { AppointmentViewPage } from '@/components/subpages/AppointmentViewPage';
+import ConfirmationModal from '@/components/modals/ConfirmationModal';
+import StyledButton from '@/components/buttons/StyledButton';
+import { useSocketClient } from '@/context/authContext';
 import {
   getLocalDateString,
   timeStringToMinutes,
@@ -24,13 +24,7 @@ import {
   convertTo24Hour,
   transformScheduleData,
   transformAppointmentData
-} from '../../utils/scheduleUtils';
-
-import {
-  checkTimeSlotAvailability,
-  checkDateAvailability,
-  checkMonthlyAvailability as validateMonthlyAvailability
-} from '../../utils/scheduleValidation';
+} from '@/utils/scheduleUtils';
 
 // ---------------- MAIN SCHEDULE PAGE ----------------
 const Schedule = () => {
@@ -694,6 +688,27 @@ const Schedule = () => {
                 </div>
               </div>
 
+              <style>{`
+                .custom-scrollbar {
+                  scrollbar-width: thin;
+                  scrollbar-color: #9ca3af #f3f4f6;
+                }
+                .custom-scrollbar::-webkit-scrollbar {
+                  width: 8px;
+                }
+                .custom-scrollbar::-webkit-scrollbar-track {
+                  background: #f3f4f6;
+                  border-radius: 4px;
+                }
+                .custom-scrollbar::-webkit-scrollbar-thumb {
+                  background-color: #9ca3af;
+                  border-radius: 4px;
+                  border: 2px solid #f3f4f6;
+                }
+                .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+                  background-color: #6b7280;
+                }
+              `}</style>
               <div className="w-full xl:min-w-[31rem] xl:max-w-[31rem] flex flex-col h-[40rem] bg-white rounded-xl shadow-xl p-5">
                 <span className="text-2xl font-semibold mb-4">Today's Scheduled Tours</span>
                 <div className="w-full border-t border-gray-200 pt-4 space-y-3 h-[calc(100%-4rem)] overflow-y-auto overflow-x-hidden pr-2 custom-scrollbar">

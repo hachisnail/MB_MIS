@@ -1,14 +1,14 @@
 // FileName: /AppointmentModal.jsx
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import axiosClient from '../../lib/axiosClient';
-import { useSocketClient } from "../../context/authContext";
-import ConfirmationModal from '../modals/ConfirmationModal';
-import PopupModal from '../modals/PopupModal';
-import Modal from '../modals/Modal';
-import StyledButton from '../buttons/StyledButton';
-import Toast from '../../features/Toast';
-import { validateAppointmentSchedule } from '../../utils/scheduleValidation';
+import axiosClient from '@/lib/axiosClient';
+import { useSocketClient } from "@/context/authContext";
+import ConfirmationModal from '@/components/modals/ConfirmationModal';
+import PopupModal from '@/components/modals/PopupModal';
+import Modal from '@/components/modals/Modal';
+import StyledButton from '@/components/buttons/StyledButton';
+import Toast from '@/features/Toast';
+import { validateAppointmentSchedule } from '@/utils/scheduleValidation';
 
 export const AppointmentViewPage = ({
   showModal,

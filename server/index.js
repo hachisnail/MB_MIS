@@ -27,7 +27,14 @@ if (!fs.existsSync(UPLOAD_BASE_DIR)) {
 const app = express();
 
 app.use(cors({
-  origin: process.env.CLIENT_URL,
+  origin: function (origin, callback) {
+    if (!origin || origin === process.env.CLIENT_URL) {
+      callback(null, true);
+    } else {
+      console.warn("Blocked by CORS:", origin);
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
   credentials: true,
 }));
 
@@ -47,34 +54,30 @@ app.use(session({
   },
 }));
 
-// Add CORS headers for static files
+// ✅ Add CORS headers for static uploads
 app.use("/uploads", (req, res, next) => {
   res.header("Access-Control-Allow-Origin", process.env.CLIENT_URL);
   res.header("Access-Control-Allow-Credentials", "true");
   next();
 }, express.static(UPLOAD_BASE_DIR));
 
-// API routes
+// ✅ API routes
 app.use("/api", uploadRoutes);
 app.use("/api/auth", authRoutes);
 
-if (process.env.NODE_ENV === "production" ) {
-const CLIENT_BUILD_PATH = path.resolve(__dirname, "client_dist");
-
-
-  if (fs.existsSync(path.join(CLIENT_BUILD_PATH, "index.html"))) {
-    app.use(express.static(CLIENT_BUILD_PATH));
-
-    app.get(/^\/(?!api|uploads).*/, (req, res) => {
-      res.sendFile(path.join(CLIENT_BUILD_PATH, "index.html"));
-    });
-  } else {
-    console.warn("Frontend build not found. Skipping static fallback.");
-  }
+// Serve frontend
+const CLIENT_BUILD_PATH = path.resolve(__dirname, "dist");
+if (fs.existsSync(path.join(CLIENT_BUILD_PATH, "index.html"))) {
+  app.use(express.static(CLIENT_BUILD_PATH));
+  app.get(/^\/(?!api|uploads).*/, (req, res) => {
+    res.sendFile(path.join(CLIENT_BUILD_PATH, "index.html"));
+  });
 }
+
 
 const server = http.createServer(app);
 
+// ✅ Pass CORS config to socket
 const io = initializeSocket(server, process.env.CLIENT_URL);
 
 const PORT = process.env.PORT;
@@ -83,7 +86,6 @@ const PORT = process.env.PORT;
   try {
     await mainDb.authenticate();
     await sessionStore.sync();
-    // await mainDb.sync({force: true}); use this only if you dont have a db take note entries will be dropped on existing db.
     await mainDb.sync();
 
     server.listen(PORT, () => {

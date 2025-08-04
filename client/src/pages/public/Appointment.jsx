@@ -19,6 +19,14 @@ import {
   timeStringToMinutes,
   countOverlappingEvents
 } from '../../utils/scheduleUtils';
+
+import {
+  validateAppointmentSchedule,
+  checkTimeSlotAvailability,
+  checkDateAvailability,
+  checkMonthlyAvailability
+} from '../../utils/scheduleValidation';
+
 import { useSocketClient } from '../../context/authContext';
 
 // Enhanced TypedDropdown component for address selection
@@ -831,102 +839,10 @@ const Appointment = () => {
     purp === 'Workshops or Classes' ||
     purp === 'Others';
 
-  const checkTimeSlotAvailability = async (date) => {
-    if (!date) return;
-
-    setIsLoadingTimeSlots(true);
-    showToast('Checking time slot availability...', 'info');
-
-    try {
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      const formattedDate = `${year}-${month}-${day}`;
-
-      const timeSlots = ['09:00-10:29', '10:30-11:59', '01:00-02:29', '02:30-04:00'];
-      const counts = {};
-      const exclusive = {};
-      const confirmed = {};
-
-      timeSlots.forEach(slot => {
-        counts[slot] = 0;
-        exclusive[slot] = false;
-        confirmed[slot] = false;
-      });
-
-      // Fetch both appointments and schedules
-      const [appointmentResponse, scheduleResponse] = await Promise.all([
-        axiosClient.get('/auth/appointment'),
-        axiosClient.get(`/auth/schedules?date=${formattedDate}`)
-      ]);
-
-      // Process confirmed appointments for this date
-      const todayAppointments = appointmentResponse.data.filter(appointment => {
-        const appointmentDate = appointment.preferred_date.split('T')[0];
-        return appointmentDate === formattedDate;
-      });
-
-      todayAppointments.forEach(appointment => {
-        const status = (appointment.AppointmentStatus?.status || '').toUpperCase();
-        if (status === 'CONFIRMED' && appointment.start_time && appointment.end_time) {
-          let startTime = appointment.start_time.substring(0, 5);
-          let endTime = appointment.end_time.substring(0, 5);
-
-          const startHour = parseInt(startTime.split(':')[0], 10);
-          const endHour = parseInt(endTime.split(':')[0], 10);
-
-          if (startHour >= 13) {
-            startTime = `${(startHour - 12).toString().padStart(2, '0')}:${startTime.split(':')[1]}`;
-          }
-          if (endHour >= 13) {
-            endTime = `${(endHour - 12).toString().padStart(2, '0')}:${endTime.split(':')[1]}`;
-          }
-
-          const timeKey = `${startTime}-${endTime}`;
-          if (timeSlots.includes(timeKey)) {
-            confirmed[timeKey] = true;
-          }
-        }
-      });
-
-      // Process schedules for this date using the same logic as Schedule.jsx
-      if (scheduleResponse.data && Array.isArray(scheduleResponse.data)) {
-        const activeSchedules = scheduleResponse.data.filter(schedule => schedule.status !== 'COMPLETED');
-
-        activeSchedules.forEach(schedule => {
-          if (schedule.start_time && schedule.end_time) {
-            timeSlots.forEach(slot => {
-              const [slotStart, slotEnd] = slot.split('-');
-              if (checkTimeOverlap(schedule.start_time, schedule.end_time, slotStart, slotEnd)) {
-                if (schedule.availability === 'EXCLUSIVE') {
-                  exclusive[slot] = true;
-                } else {
-                  counts[slot] += 1;
-                }
-              }
-            });
-          }
-        });
-      }
-
-      setTimeSlotCounts(counts);
-      setTimeSlotExclusive(exclusive);
-      setConfirmedSlots(confirmed);
-
-      const availableSlots = timeSlots.filter(slot => !exclusive[slot] && !confirmed[slot] && counts[slot] < 5);
-      if (availableSlots.length === 0) {
-        showToast('No time slots available for this date', 'warning');
-      } else {
-        showToast(`${availableSlots.length} time slots available`, 'success');
-      }
-
-    } catch (error) {
-      console.error('Error checking time slot availability:', error);
-      showToast('Failed to check time slot availability', 'error');
-    } finally {
-      setIsLoadingTimeSlots(false);
-    }
+  const checkTimeSlotAvailabilityLocal = async (date) => {
+    return checkTimeSlotAvailability(date, axiosClient, showToast, setTimeSlotCounts, setTimeSlotExclusive, setConfirmedSlots, setIsLoadingTimeSlots);
   };
+
 
   const checkTimeOverlap = (start1, end1, start2, end2) => {
     const timeToMinutes = (timeStr) => {
@@ -953,229 +869,38 @@ const Appointment = () => {
 
   // Function to check if a specific date should be disabled
   const checkDateAvailability = async (date) => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const formattedDate = `${year}-${month}-${day}`;
-
-    const timeSlots = ['09:00-10:29', '10:30-11:59', '01:00-02:29', '02:30-04:00'];
-    let availableSlots = 0;
-
-    try {
-      const [appointmentResponse, scheduleResponse] = await Promise.all([
-        axiosClient.get('/auth/appointment'),
-        axiosClient.get(`/auth/schedules/public/availability?date=${formattedDate}`)
-      ]);
-
-      // Check each time slot
-      for (const slot of timeSlots) {
-        let isSlotAvailable = true;
-        let slotCount = 0;
-
-        // Check appointments for this date and slot
-        const todayAppointments = appointmentResponse.data.filter(appointment => {
-          const appointmentDate = appointment.preferred_date.split('T')[0];
-          return appointmentDate === formattedDate;
-        });
-
-        // Check if any confirmed appointment blocks this slot
-        const confirmedInSlot = todayAppointments.some(appointment => {
-          const status = (appointment.AppointmentStatus?.status || '').toUpperCase();
-          if (status === 'CONFIRMED' && appointment.start_time && appointment.end_time) {
-            let startTime = appointment.start_time.substring(0, 5);
-            let endTime = appointment.end_time.substring(0, 5);
-
-            const startHour = parseInt(startTime.split(':')[0], 10);
-            const endHour = parseInt(endTime.split(':')[0], 10);
-
-            if (startHour >= 13) {
-              startTime = `${(startHour - 12).toString().padStart(2, '0')}:${startTime.split(':')[1]}`;
-            }
-            if (endHour >= 13) {
-              endTime = `${(endHour - 12).toString().padStart(2, '0')}:${endTime.split(':')[1]}`;
-            }
-
-            const timeKey = `${startTime}-${endTime}`;
-            return timeKey === slot;
-          }
-          return false;
-        });
-
-        if (confirmedInSlot) {
-          isSlotAvailable = false;
-        } else {
-          // Check schedules for this slot
-          if (scheduleResponse.data && Array.isArray(scheduleResponse.data)) {
-            const activeSchedules = scheduleResponse.data.filter(schedule => schedule.status !== 'COMPLETED');
-
-            for (const schedule of activeSchedules) {
-              if (schedule.start_time && schedule.end_time) {
-                const [slotStart, slotEnd] = slot.split('-');
-                if (checkTimeOverlap(schedule.start_time, schedule.end_time, slotStart, slotEnd)) {
-                  if (schedule.availability === 'EXCLUSIVE') {
-                    isSlotAvailable = false;
-                    break;
-                  } else {
-                    slotCount += 1;
-                  }
-                }
-              }
-            }
-
-            // Check if slot count exceeds limit (5)
-            if (slotCount >= 5) {
-              isSlotAvailable = false;
-            }
-          }
-        }
-
-        if (isSlotAvailable) {
-          availableSlots++;
-        }
-      }
-
-      return availableSlots > 0;
-    } catch (error) {
-      console.error('Error checking date availability:', error);
-      return true; // Default to available if error occurs
-    }
+    return checkDateAvailability(date, axiosClient);
   };
+
 
   // Function to check multiple dates and update disabled dates
-  const checkMonthlyAvailability = async (year, month) => {
-    setIsLoadingDateAvailability(true);
-    const unavailableDates = [];
-
-    try {
-      // Fetch all appointments once for the month
-      const appointmentResponse = await axiosClient.get('/auth/appointment');
-      setMonthlyAppointments(appointmentResponse.data);
-
-      // Get first and last day of the month
-      const firstDay = new Date(year, month, 1);
-      const lastDay = new Date(year, month + 1, 0);
-
-      // Check each day of the month
-      for (let day = 1; day <= lastDay.getDate(); day++) {
-        const currentDate = new Date(year, month, day);
-        const formattedDate = format(currentDate, 'yyyy-MM-dd');
-
-        const timeSlots = ['09:00-10:29', '10:30-11:59', '01:00-02:29', '02:30-04:00'];
-        let availableSlots = 0;
-
-        try {
-          // Fetch schedules for this specific date
-          const scheduleResponse = await axiosClient.get(`/auth/schedules?date=${formattedDate}`);
-          setMonthlySchedules(prev => [...prev, ...scheduleResponse.data]);
-
-          // Check each time slot for this date
-          for (const slot of timeSlots) {
-            let isSlotAvailable = true;
-            let slotCount = 0;
-
-            // Check appointments for this date and slot
-            const todayAppointments = appointmentResponse.data.filter(appointment => {
-              const appointmentDate = appointment.preferred_date.split('T')[0];
-              return appointmentDate === formattedDate;
-            });
-
-            // Check if any confirmed appointment blocks this slot
-            const confirmedInSlot = todayAppointments.some(appointment => {
-              const status = (appointment.AppointmentStatus?.status || '').toUpperCase();
-              if (status === 'CONFIRMED' && appointment.start_time && appointment.end_time) {
-                let startTime = appointment.start_time.substring(0, 5);
-                let endTime = appointment.end_time.substring(0, 5);
-
-                const startHour = parseInt(startTime.split(':')[0], 10);
-                const endHour = parseInt(endTime.split(':')[0], 10);
-
-                if (startHour >= 13) {
-                  startTime = `${(startHour - 12).toString().padStart(2, '0')}:${startTime.split(':')[1]}`;
-                }
-                if (endHour >= 13) {
-                  endTime = `${(endHour - 12).toString().padStart(2, '0')}:${endTime.split(':')[1]}`;
-                }
-
-                const timeKey = `${startTime}-${endTime}`;
-                return timeKey === slot;
-              }
-              return false;
-            });
-
-            if (confirmedInSlot) {
-              isSlotAvailable = false;
-            } else {
-              // Check schedules for this slot using the same logic as checkTimeSlotAvailability
-              if (scheduleResponse.data && Array.isArray(scheduleResponse.data)) {
-                const activeSchedules = scheduleResponse.data.filter(schedule => schedule.status !== 'COMPLETED');
-
-                for (const schedule of activeSchedules) {
-                  if (schedule.start_time && schedule.end_time) {
-                    const [slotStart, slotEnd] = slot.split('-');
-                    if (checkTimeOverlap(schedule.start_time, schedule.end_time, slotStart, slotEnd)) {
-                      if (schedule.availability === 'EXCLUSIVE') {
-                        isSlotAvailable = false;
-                        break;
-                      } else {
-                        slotCount += 1;
-                      }
-                    }
-                  }
-                }
-
-                // Check if slot count exceeds limit (5)
-                if (slotCount >= 5) {
-                  isSlotAvailable = false;
-                }
-              }
-            }
-
-            if (isSlotAvailable) {
-              availableSlots++;
-            }
-          }
-        } catch (dateError) {
-          console.error(`Error checking availability for ${formattedDate}:`, dateError);
-          // If there's an error fetching schedules for this date, assume it's available
-          availableSlots = timeSlots.length;
-        }
-
-        // If no slots are available for this date, mark it as disabled
-        if (availableSlots === 0) {
-          unavailableDates.push(formattedDate);
-        }
-      }
-
-      setDisabledDates(unavailableDates);
-    } catch (error) {
-      console.error('Error checking monthly availability:', error);
-    } finally {
-      setIsLoadingDateAvailability(false);
-    }
+  const checkMonthlyAvailabilityLocal = async (year, month) => {
+    return checkMonthlyAvailability(year, month, axiosClient, setMonthlySchedules, setDisabledDates, setIsLoadingDateAvailability);
   };
+
 
   useEffect(() => {
     if (formData.scheduleNotes.selectedDate) {
-      checkTimeSlotAvailability(formData.scheduleNotes.selectedDate);
+      checkTimeSlotAvailabilityLocal(formData.scheduleNotes.selectedDate);
     }
   }, [formData.scheduleNotes.selectedDate]);
 
   // Check monthly availability when component mounts or when month changes
   useEffect(() => {
     const currentDate = new Date();
-    checkMonthlyAvailability(currentDate.getFullYear(), currentDate.getMonth());
+    checkMonthlyAvailabilityLocal(currentDate.getFullYear(), currentDate.getMonth());
   }, []);
 
   // Create a proper callback function for availability refresh
   const handleAvailabilityRefresh = useCallback(() => {
     // Refresh time slot availability for selected date
     if (formData.scheduleNotes.selectedDate) {
-      checkTimeSlotAvailability(formData.scheduleNotes.selectedDate);
+      checkTimeSlotAvailabilityLocal(formData.scheduleNotes.selectedDate);
     }
 
     // Refresh monthly availability when socket events occur
     const currentDate = new Date();
-    checkMonthlyAvailability(currentDate.getFullYear(), currentDate.getMonth());
+    checkMonthlyAvailabilityLocal(currentDate.getFullYear(), currentDate.getMonth());
   }, [formData.scheduleNotes.selectedDate]);
 
   // Socket listeners for real-time updates

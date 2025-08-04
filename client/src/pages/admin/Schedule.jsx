@@ -26,6 +26,12 @@ import {
   transformAppointmentData
 } from '../../utils/scheduleUtils';
 
+import {
+  checkTimeSlotAvailability,
+  checkDateAvailability,
+  checkMonthlyAvailability as validateMonthlyAvailability
+} from '../../utils/scheduleValidation';
+
 // ---------------- MAIN SCHEDULE PAGE ----------------
 const Schedule = () => {
   const navigate = useNavigate();
@@ -510,6 +516,11 @@ const Schedule = () => {
     }
   };
 
+  // Function to check multiple dates and update disabled dates
+  const checkMonthlyAvailability = async (year, month) => {
+    return validateMonthlyAvailability(year, month, axiosClient, setMonthlySchedules, setDisabledDates, setIsLoadingDateAvailability);
+  };
+
   const handleAddEvent = async () => {
     try {
       if (!newTitle) {
@@ -683,30 +694,9 @@ const Schedule = () => {
                 </div>
               </div>
 
-              <style>{`
-                .custom-scrollbar {
-                  scrollbar-width: thin;
-                  scrollbar-color: #9ca3af #f3f4f6;
-                }
-                .custom-scrollbar::-webkit-scrollbar {
-                  width: 8px;
-                }
-                .custom-scrollbar::-webkit-scrollbar-track {
-                  background: #f3f4f6;
-                  border-radius: 4px;
-                }
-                .custom-scrollbar::-webkit-scrollbar-thumb {
-                  background-color: #9ca3af;
-                  border-radius: 4px;
-                  border: 2px solid #f3f4f6;
-                }
-                .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-                  background-color: #6b7280;
-                }
-              `}</style>
               <div className="w-full xl:min-w-[31rem] xl:max-w-[31rem] flex flex-col h-[40rem] bg-white rounded-xl shadow-xl p-5">
                 <span className="text-2xl font-semibold mb-4">Today's Scheduled Tours</span>
-                <div className="w-full border-t border-gray-200 pt-4 space-y-3 h-[calc(100%-4rem)] overflow-y-auto overflow-x-hidden custom-scrollbar">
+                <div className="w-full border-t border-gray-200 pt-4 space-y-3 h-[calc(100%-4rem)] overflow-y-auto overflow-x-hidden pr-2 custom-scrollbar">
                   {todayTours.length === 0 && (
                     <div className="bg-gray-100 text-gray-700 p-3 rounded-lg">
                       No Scheduled Tours
@@ -722,7 +712,6 @@ const Schedule = () => {
                   ))}
                 </div>
               </div>
-
             </div>
 
             <div className="w-full xl:flex-1 h-full flex flex-col gap-y-8 min-w-0">

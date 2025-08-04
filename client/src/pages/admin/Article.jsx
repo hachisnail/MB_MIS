@@ -221,46 +221,52 @@ const CatOptions = [
             </div>
 
             <div className="w-full min-w-[60rem] overflow-y-auto h-full border-t-1 border-t-gray-400" style={{ maxHeight: "45rem" }}>
-              {loading ? (
-                <div className="min-w-[60rem] h-full py-16 flex justify-center items-center border-b-1 border-gray-400">
-                  <div className="text-2xl text-gray-500 flex flex-col items-center">
-                    <i className="fas fa-inbox text-5xl mb-4"></i>
-                    <p>Loading articles...</p>
-                  </div>
-                </div>
-              ) : error ? (
-                <div className="min-w-[60rem] h-full py-16 flex justify-center items-center border-b-1 border-gray-400">
-                  <div className="text-2xl text-red-500 flex flex-col items-center">
-                    <i className="fas fa-exclamation-circle text-5xl mb-4"></i>
-                    <p>{error}</p>
-                    <button
-                      onClick={fetchArticles}
-                      className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 mt-4"
-                    >
-                      Try Again
-                    </button>
-                  </div>
-                </div>
-              ) : filteredArticles.length > 0 ? (
-                filteredArticles.map((article) => (
-                  <Articleslist
-                    key={article.article_id}
-                    article={article}
-                    // handleRowClick={handleRowClick}
-                    handleStatusChange={handleStatusChange}
-                    userRole={userRole}
-                    getStatusBadge={getStatusBadge}
-                  />
-                ))
-              ) : (
-                <div className="min-w-[60rem] h-full py-16 flex justify-center items-center border-b-1 border-gray-400">
-                  <div className="text-2xl text-gray-500 flex flex-col items-center">
-                    <i className="fas fa-inbox text-5xl mb-4"></i>
-                    <p>No article found</p>
-                    <p className="text-lg mt-2">Try adjusting your filters or search criteria</p>
-                  </div>
-                </div>
-              )}
+<div className="relative w-full h-full min-w-[60rem]">
+  {/* Overlayed Spinner */}
+  {loading && (
+    <div className="absolute inset-0 z-10 flex justify-center items-center bg-white/60 backdrop-blur-sm">
+      <div className="text-2xl text-gray-500 flex flex-col items-center">
+        <i className="fas fa-inbox text-5xl mb-4"></i>
+        <p>Loading articles...</p>
+      </div>
+    </div>
+  )}
+
+  {/* Error State */}
+  {error ? (
+    <div className="w-full h-full py-16 flex justify-center items-center border-b-1 border-gray-400">
+      <div className="text-2xl text-red-500 flex flex-col items-center">
+        <i className="fas fa-exclamation-circle text-5xl mb-4"></i>
+        <p>{error}</p>
+        <button
+          onClick={fetchArticles}
+          className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 mt-4"
+        >
+          Try Again
+        </button>
+      </div>
+    </div>
+  ) : filteredArticles.length > 0 ? (
+    filteredArticles.map((article) => (
+      <Articleslist
+        key={article.article_id}
+        article={article}
+        handleStatusChange={handleStatusChange}
+        userRole={userRole}
+        getStatusBadge={getStatusBadge}
+      />
+    ))
+  ) : !loading && filteredArticles.length === 0 ? (
+    <div className="w-full h-full py-16 flex justify-center items-center border-b-1 border-gray-400">
+      <div className="text-2xl text-gray-500 flex flex-col items-center">
+        <i className="fas fa-inbox text-5xl mb-4"></i>
+        <p>No article found</p>
+        <p className="text-lg mt-2">Try adjusting your filters or search criteria</p>
+      </div>
+    </div>
+  ) : null}
+</div>
+
             </div>
           </div>
         </div>

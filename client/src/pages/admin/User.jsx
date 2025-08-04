@@ -287,25 +287,26 @@ const User = () => {
 
           <div className="w-full h-full overflow-x-scroll flex flex-col min-w-fit max-h-[38rem] bg-[#1C1B19] border-[#373737] border-1 rounded-md">
             {/* Upper right panel */}
-            {userLoading ? (
-              <LoadingSpinner />
-            ) : userError ? (
-              <ErrorBox message={userError} />
-            ) : (
-              <>
-                {users.length > 0 ? (
-                  users.map((user) => (
-                    <UserItem
-                      key={user.id}
-                      user={user}
-                      handleOpen={handleOpen}
-                    />
-                  ))
-                ) : (
-                  <EmptyMessage message="No users!" />
-                )}
-              </>
-            )}
+            <div className="relative w-full h-full">
+              {/* Overlayed Spinner */}
+              {userLoading && (
+                <div className="absolute inset-0 z-10 flex items-center justify-center ">
+                  <LoadingSpinner />
+                </div>
+              )}
+
+              {/* Error State */}
+              {userError ? (
+                <ErrorBox message={userError} />
+              ) : users.length > 0 ? (
+                users.map((user) => (
+                  <UserItem key={user.id} user={user} handleOpen={handleOpen} />
+                ))
+              ) : !userLoading && users.length === 0 ? (
+                <EmptyMessage message="No users!" />
+              ) : null}
+            </div>
+
           </div>
         </div>
         <div className="w-full min-h-[32rem] py-5 overflow-y-scroll flex-col xl:flex-row border-t-1 items-center border-[#373737] flex">
@@ -318,29 +319,34 @@ const User = () => {
             </span>
           </div>
           <div className="w-full max-h-[35rem] min-w-fit flex flex-col h-full bg-[#1C1B19] border-[#373737] border-1 rounded-md">
-            {inviteLoading ? (
-              <LoadingSpinner />
-            ) : inviteError ? (
-              <ErrorBox message={inviteError} />
-            ) : (
-              <>
-                {pendingInvitations.length > 0 ? (
-                  pendingInvitations.map((invite) => (
-                    <PendingInviteItem
-                      key={invite.id}
-                      invite={invite}
-                      onResend={(id) => openConfirmModal("resend", id)}
-                      onRevoke={(id) => openConfirmModal("revoke", id)}
-                      processingId={processingInviteId}
-                      action={processingAction}
-                      setViewInvite={setViewInvite}
-                    />
-                  ))
-                ) : (
-                  <EmptyMessage message="No pending invitations!" />
-                )}
-              </>
+           <div className="relative w-full h-full">
+            {/* Overlayed Spinner */}
+            {inviteLoading && (
+              <div className="absolute inset-0 z-10 flex items-center justify-center ">
+                <LoadingSpinner />
+              </div>
             )}
+
+            {/* Error State */}
+            {inviteError ? (
+              <ErrorBox message={inviteError} />
+            ) : pendingInvitations.length > 0 ? (
+              pendingInvitations.map((invite) => (
+                <PendingInviteItem
+                  key={invite.id}
+                  invite={invite}
+                  onResend={(id) => openConfirmModal("resend", id)}
+                  onRevoke={(id) => openConfirmModal("revoke", id)}
+                  processingId={processingInviteId}
+                  action={processingAction}
+                  setViewInvite={setViewInvite}
+                />
+              ))
+            ) : !inviteLoading && pendingInvitations.length === 0 ? (
+              <EmptyMessage message="No pending invitations!" />
+            ) : null}
+          </div>
+
           </div>
         </div>
       </div>

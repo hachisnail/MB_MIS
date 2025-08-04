@@ -506,17 +506,30 @@ const Appointments = () => {
 
                 {/* Table Data - Scrollable */}
                 <div className="w-full min-w-[94rem] overflow-y-auto h-full border-t-1 border-t-gray-400">
-                  {isLoading ? (
-                    <LoadingSpinner />
-                  ) : error ? (
+                <div className="relative w-full h-full">
+                  {/* Overlayed Spinner */}
+                  {isLoading && (
+                    <div className="absolute inset-0 z-10 flex items-center justify-center ">
+                      <LoadingSpinner />
+                    </div>
+                  )}
+
+                  {/* Error State */}
+                  {error ? (
                     <ErrorBox message={error} />
                   ) : filteredData.appointments.length > 0 ? (
                     filteredData.appointments.map((appt) => (
-                      <AppointmentFormItem key={appt.appointment_id} appointment={appt} cameFrom="forms" />
+                      <AppointmentFormItem
+                        key={appt.appointment_id}
+                        appointment={appt}
+                        cameFrom="forms"
+                      />
                     ))
-                  ) : (
+                  ) : !isLoading && filteredData.appointments.length === 0 ? (
                     <EmptyMessage message="No appointment data available" />
-                  )}
+                  ) : null}
+                </div>
+
                 </div>
               </div>
             )}

@@ -335,7 +335,7 @@ const PersonalInfo = ({ value, onChange, errors, validateField }) => {
         onChange={handleChange("organization")}
         onBlur={handleBlur("organization")}
         error={errors.organization}
-        width="w-[41.25rem]"
+        width="w-[40.75rem]"
         isRequired={false}
       />
     </div>

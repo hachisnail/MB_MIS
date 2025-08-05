@@ -15,6 +15,7 @@ import {
   TypeIcon,
   XIcon,
 } from "lucide-react";
+
 import axios from "axios";
 import Button from "../buttons/artclbtn";
 import { useParams } from "react-router-dom";
@@ -36,7 +37,7 @@ import Youtube from "@tiptap/extension-youtube";
 // import { HardBreak } from '@tiptap/extension-hard-break';
 
 import ConfirmDialog from "../modals/ConfirmDialog";
-import FontSize from "../../lib/axiosClient"
+import FontSize from "../../components/articleComponents/FontSize";
 
 
 const ArticleEditorForm = () => {
@@ -98,20 +99,26 @@ const ArticleEditorForm = () => {
       const [thumbnail, setThumbnail] = useState(null);
       const [previewImage, setPreviewImage] = useState(null);
       const Categories = ["Article", "Education", "Exhibit", "Contests", "Other"]; // changed from 'Contents'
-      const Municipalities = [
-        "Basud",
-        "Capalonga",
-        "Daet",
-        "Jose Panganiban",
-        "Labo",
-        "Mercedes",
-        "Paracale",
-        "San Lorenzo Ruiz",
-        "San Vicente",
-        "Santa Elena",
-        "Talisay",
-        "Vinzons",
-      ];
+      
+      const municipalitiesWithBarangays = {
+      "Basud": ["Mampili", "Matnog", "San Felipe", "San Isidro", "Tuaca"], // example
+      "Capalonga": ["Alayao", "Bayabas", "Del Pilar", "Itok", "Old Camp"],
+      "Daet": ["Alawihao", "Awitan", "Bagasbas", "Borabod", "Camambugan", "Dogongan"],
+      "San Lorenzo Ruiz": ["Daguit", "Langga", "Laniton", "Mampurog", "Matacong"],
+      "Jose Panganiban": ["Bagong Bayan", "Calero", "Larap", "Plaridel", "Osmeña"],
+      "Labo": ["Baay", "Bagacay", "Bagong Silang I", "Bakiad", "Talobatib"],
+      "Mercedes": ["Apuao", "Caucauayan", "Colasi", "Hinipagan", "San Roque"],
+      "Paracale": ["Bagumbayan", "Batobalani", "Calaburnay", "Capacuan", "Tugos"],
+      "San Vicente": ["Asdum", "Cabanbanan", "Calabagas", "Fabrica", "Iraya Sur"],
+      "Santa Elena": ["Basiad", "Bulala", "Maulawin", "Polungguitguit", "Rizal"],
+      "Talisay": ["Binanuahan", "Calintaan", "Del Rosario", "San Isidro", "Tinago"],
+      "Vinzons": ["Calangcawan Norte", "Candelaria", "Manmuntay", "Pinagtigasan", "Sula"],
+    };
+
+      const [status, setStatus] = useState("pending");
+      const [municipality, setMunicipality] = useState("");
+
+
       const [articles, setArticles] = useState([]);
       const [loading, setLoading] = useState(true);
       const [error, setError] = useState(null);
@@ -144,17 +151,18 @@ try {
     formData.append("description", editor?.getHTML() || "");
     formData.append("user_id", 1);
     formData.append("author", author);
-    formData.append("address", address);
+    formData.append("address", municipality);
     formData.append("selectedDate", selectedDate);
     formData.append("editImages", JSON.stringify(contentImages));
     formData.append("barangay", barangay);
-
+    formData.append("status", status);  
     // Only append thumbnail if it's a File object
     if (thumbnail && thumbnail instanceof File) {
     formData.append("thumbnail", thumbnail);
     }
     
-console.log("Submitting with thumbnail:", thumbnail);
+    console.log("Submitting with thumbnail:", thumbnail);
+    
     try {
       let response;
       if (isEditing) {
@@ -173,6 +181,8 @@ console.log("Submitting with thumbnail:", thumbnail);
         }
         setThumbnail(null); // Reset thumbnail to null after update
         console.log("Article updated successfully!", response.data);
+        resetForm();
+        navigate('/admin/article');
       } else {
         // Create new
         response = await axios.post(`${BASE_URL}/auth/article`, formData, {
@@ -185,6 +195,7 @@ console.log("Submitting with thumbnail:", thumbnail);
       }
 
       resetForm();
+      navigate('/admin/article');
       fetchArticles();
     } catch (err) {
       console.error(
@@ -192,7 +203,7 @@ console.log("Submitting with thumbnail:", thumbnail);
         err.response?.data || err.message
       );
     }
-    navigate(-1);
+  
   };
     // Handle new thumbnail in <input type="file" />
   const handleThumbnailChange = (e) => {
@@ -208,7 +219,7 @@ console.log("Submitting with thumbnail:", thumbnail);
     setTitle("");
     setAuthor("");
     setCategory("");
-    setAddress("");
+    setMunicipality("");
     setSelectedDate("");
     setThumbnail(null);
     setPreviewImage(null);
@@ -219,7 +230,7 @@ console.log("Submitting with thumbnail:", thumbnail);
     setIsEditing(false);
     setEditingArticleId(null);
     setArticle(null);
-   navigate(-1);
+   
   };
     const [contentImages, setContentImages] = useState([]);
     const [barangay, setBarangay] = useState(""); // <-- Add this line
@@ -245,11 +256,12 @@ console.log("Submitting with thumbnail:", thumbnail);
         setTitle(data.title || "");
         setAuthor(data.author || "");
         setCategory(data.article_category || "");
-        setAddress(data.address || "");
+        setMunicipality(data.address || "");
         setSelectedDate(data.upload_date || "");
         setBarangay(data.barangay || "");
+        setStatus(data.status || "pending");
 
-        if (data.upload_date) {
+        if (data.upload_date) { 
           const date = new Date(data.upload_date);
           const formattedDate = date.toISOString().split('T')[0];
           setSelectedDate(formattedDate);
@@ -274,7 +286,9 @@ console.log("Submitting with thumbnail:", thumbnail);
     };
 
     fetchArticle();
-  }
+  }else {
+      resetForm();
+    }
 }, [articleId, editor]); 
 
 useEffect(() => {
@@ -464,34 +478,21 @@ useEffect(() => {
     }
   };
 
-  // Validate the form fields
   const validateForm = () => {
     const newErrors = {};
+      if (!title.trim()) { newErrors.title = "Title is required"; }
+      if (!author.trim()) { newErrors.author = "Author is required"; }
+      if (!category) { newErrors.category = "Category is required"; }
+      if (!municipality.trim()) { newErrors.municipality = "Address is required"; }
+      if (!selectedDate) { newErrors.selectedDate = "Date is required"; }
+      if (!editor?.getHTML() || editor.getHTML() === "<p></p>") { newErrors.description = "Body content is required"; }
+      return newErrors;
+    };
 
-    // Check required fields
-    if (!title.trim()) {
-      newErrors.title = "Title is required";
-    }
-    if (!author.trim()) {
-      newErrors.author = "Author is required";
-    }
-    if (!category) {
-      newErrors.category = "Category is required";
-    }
-    if (!address.trim()) {
-      newErrors.address = "Address is required";
-    }
-    if (!selectedDate) {
-      newErrors.selectedDate = "Date is required";
-    }
-
-    // Check editor content
-    if (!editor?.getHTML() || editor.getHTML() === "<p></p>") {
-      newErrors.description = "Body content is required";
-    }
-
-    return newErrors;
-  };
+  const handleCancel = () => {
+    resetForm();
+    navigate('/admin/article'); // Navigate back to the article list
+    };
 
   // Handle cancel button click
   const handleCancelClick = () => {
@@ -499,8 +500,8 @@ useEffect(() => {
     if (isDirty) {
       setShowCancelConfirm(true);
     } else {
-      // If no changes, just close the modal
-      resetForm();
+      handleCancel();
+    
     }
   };
 
@@ -531,41 +532,44 @@ useEffect(() => {
               rounded-lg
               shadow-xl
               relative
-              max-h-[90vh]
+              max-h-[85vh]
               overflow-auto
               transition-all
               duration-300
             "
         >
-          <button
-            onClick={handleCancelClick}
-            className="absolute top-3 right-3 text-2xl text-gray-600 hover:text-black"
-          >
-            &times;
-          </button>
 
           <h2 className="text-3xl font-bold mb-6">Header</h2>
 
     <form onSubmit={handleFormSubmit} className="space-y-6">
-  {/* Title */}
-  <input
-    className={`w-full px-4 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 placeholder-gray-500 ${
-      errors.title ? "border-red-600" : "border-black"
-    }`}
-    type="text"
-    value={title}
-    onChange={(e) => {
-      setTitle(e.target.value);
-      setIsDirty(true);
-      clearFieldError("title");
-    }}
-    onClick={() => clearFieldError("title")}
-    placeholder={`Title${errors.title ? " *" : ""}`}
-  />
+{/* Title */}
+<label htmlFor="title" className={`font-bold ${errors.title ? "text-red-600" : ""}`}>
+  Title {errors.title && "*"}
+</label>
+<input
+  id="title"
+  className={`w-full px-4 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 placeholder-gray-500 ${
+    errors.title ? "border-red-600" : "border-black"
+  }`}
+  type="text"
+  value={title}
+  onChange={(e) => {
+    setTitle(e.target.value);
+    setIsDirty(true);
+    clearFieldError("title");
+  }}
+  onClick={() => clearFieldError("title")}
+  placeholder={`Title${errors.title ? " *" : ""}`}
+/>
 
-  {/* Date, Author, Category */}
-  <div className="flex flex-col md:flex-row gap-4">
+{/* Date, Author, Category */}
+<div className="flex flex-col md:flex-row gap-4">
+  <div className="flex-1">
+    <label htmlFor="selectedDate" className={`font-bold ${errors.selectedDate ? "text-red-600" : ""}`}>
+      Date {errors.selectedDate && "*"}
+    </label>
     <input
+      id="selectedDate"
       className={`w-full px-4 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 ${
         errors.selectedDate ? "border-red-600" : "border-black"
       }`}
@@ -577,7 +581,13 @@ useEffect(() => {
         clearFieldError("selectedDate");
       }}
     />
+  </div>
+  <div className="flex-1">
+    <label htmlFor="author" className={`font-bold ${errors.author ? "text-red-600" : ""}`}>
+      Author {errors.author && "*"}
+    </label>
     <input
+      id="author"
       className={`w-full px-4 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 placeholder-gray-500 ${
         errors.author ? "border-red-600" : "border-black"
       }`}
@@ -590,7 +600,13 @@ useEffect(() => {
       }}
       placeholder={`Author${errors.author ? " *" : ""}`}
     />
+  </div>
+  <div className="flex-1">
+    <label htmlFor="category" className={`font-bold ${errors.category ? "text-red-600" : ""}`}>
+      Category {errors.category && "*"}
+    </label>
     <select
+      id="category"
       className={`w-full px-4 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 ${
         errors.category ? "border-red-600" : "border-black"
       }`}
@@ -611,44 +627,85 @@ useEffect(() => {
       ))}
     </select>
   </div>
+</div>
 
-  {/* Barangay, Municipality */}
-  <div className="flex flex-col md:flex-row gap-4">
-    <input
-      className="w-full px-4 py-3 border-2 border-black rounded-2xl text-base md:text-lg outline-none placeholder-gray-500"
-      type="text"
-      value={barangay}
-      onChange={(e) => {
-        setBarangay(e.target.value);
-        setIsDirty(true);
-      }}
-      placeholder="Barangay"
-    />
+{/* Barangay, Municipality */}
+<div className="flex flex-col md:flex-row gap-4">
+  <div className="flex-1">
+    <label htmlFor="municipality" className={`font-bold ${errors.municipality ? "text-red-600" : ""}`}>
+      Municipality {errors.municipality && "*"}
+    </label>
     <select
+      id="municipality"
       className={`w-full px-4 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 ${
-        errors.address ? "border-red-600" : "border-black"
+        errors.municipality ? "border-red-600" : "border-black"
       }`}
-      value={address}
+      value={municipality}
       onChange={(e) => {
-        setAddress(e.target.value);
+        setMunicipality(e.target.value);
+        setBarangay("");
         setIsDirty(true);
-        clearFieldError("address");
+        clearFieldError("municipality");
       }}
     >
-      <option value="" disabled={address !== ""}>
-        {`Municipality${errors.address ? " *" : ""}`}
+      <option value="" disabled={municipality !== ""}>
+        {`Municipality${errors.municipality ? " *" : ""}`}
       </option>
-      {Municipalities.map((mun) => (
+      {Object.keys(municipalitiesWithBarangays).map((mun) => (
         <option key={mun} value={mun}>
           {mun}
         </option>
       ))}
     </select>
   </div>
-
-  {/* Thumbnail */}
-  <div className="relative">
+  <div className="flex-1">
+    <label htmlFor="barangay" className="font-bold">
+      Barangay
+    </label>
     <input
+      id="barangay"
+      list="barangayList"
+      className="w-full px-4 py-3 border-2 border-black rounded-2xl text-base md:text-lg outline-none placeholder-gray-500"
+      type="text"
+      value={barangay}
+      onChange={(e) => setBarangay(e.target.value)}
+      placeholder="Barangay (You can type or select)"
+    />
+    <datalist id="barangayList">
+      {(municipalitiesWithBarangays[municipality] || []).map((bgy) => (
+        <option key={bgy} value={bgy} />
+      ))}
+    </datalist>
+  </div>
+</div>
+
+{/* Thumbnail and Status Container */}
+<div className="flex flex-col md:flex-row gap-4">
+  {/* Status Dropdown */}
+  <div className="flex-1">
+    <label htmlFor="status" className="font-bold">
+      Status
+    </label>
+    <select
+      id="status"
+      className="w-full px-4 py-3 border-2 border-black rounded-2xl text-base md:text-lg outline-none"
+      name="status"
+      value={status}
+      onChange={(e) => setStatus(e.target.value)}
+    >
+      <option value="pending">Pending</option>
+      <option value="posted">Post</option>
+      {/* <option value="rejected">Rejected</option>
+      <option value="archived">Archived</option> */}
+    </select>
+  </div>
+  {/* Thumbnail */}
+  <div className="relative flex-1">
+    <label htmlFor="thumbnail" className="font-bold">
+      Thumbnail
+    </label>
+    <input
+      id="thumbnail"
       ref={thumbnailInputRef}
       className="w-full px-4 py-3 border-2 border-black rounded-2xl text-base md:text-lg outline-none file:hidden"
       type="file"
@@ -673,6 +730,9 @@ useEffect(() => {
       </button>
     )}
   </div>
+</div>
+
+
 
   {/* Rich Text Editor */}
   <div className="space-y-2">
@@ -1022,13 +1082,13 @@ useEffect(() => {
                   <div
                     className="
                           border rounded p-4 min-h-[21.5rem] max-h-[21.5rem] 
-                          sm:min-h-[24rem] sm:max-h-[24rem] 
+                          sm:min-h-[10rem] sm:max-h-[5rem] 
                           md:min-h-[36.5rem] md:max-h-[36.5rem] 
                           lg:min-h-[36.5rem] lg:max-h-[36.5rem] 
                           xl:min-h-[36.6rem] xl:max-h-[36.6rem] 
                           2xl:min-h-[37rem] 2xl:max-h-[37rem] 
                           overflow-auto prose focus:outline-none
-                          [&_.youtube-video]:!w-full [&_.youtube-video]:!max-w-[400px] [&_.youtube-video]:!mx-auto
+                          [&_.youtube-video]:!w-full [&_.youtube-video]:!max-w-[400px] [&_.youtube-video]:!mx-auto font-hina
                         "
                     tabIndex={0}
                     onClick={() => editor?.commands.focus()}
@@ -1054,7 +1114,7 @@ useEffect(() => {
 </form>
 </div>
 {/* RIGHT SIDE - Article Preview */}
-        <div className="bg-white w-full 2xl:w-2/5 p-6 rounded-lg shadow-xl overflow-y-auto max-h-[90vh] mt-4 2xl:mt-0 hidden lg:block"
+        <div className="bg-white w-full 2xl:w-2/5 p-6 rounded-lg shadow-xl overflow-y-auto max-h-[85vh] mt-4 2xl:mt-0 hidden lg:block"
             >
               <h3 className="text-2xl font-bold mb-4">Preview</h3>
               <div className="border border-gray-200 p-4 mb-4 rounded">
@@ -1063,7 +1123,7 @@ useEffect(() => {
                 </h1>
               </div>
 
-              <div className="flex w-full justify-center mb-6">
+              <div className="flex w-full justify-center mb-6 font-hina">
                 <div className="flex w-full items-center justify-center text-center text-base">
                   <span className="w-1/4 h-24 border border-gray-300 flex flex-col items-center justify-center p-2">
                     <h4 className="text-lg font-medium">Date</h4>
@@ -1093,11 +1153,11 @@ useEffect(() => {
                     <h4 className="text-lg font-medium">Address</h4>
                     <p
                       className={`text-sm ${
-                        !address && !barangay ? "text-gray-500 italic" : ""
+                        !municipality && !barangay ? "text-gray-500 italic" : ""
                       }`}
                     >
                       {barangay ? `${barangay}, ` : ""}
-                      {address || "[Location]"}
+                      {municipality || "[Location]"}
                     </p>
                   </span>
                   <span className="w-1/4 h-24 border border-gray-300 flex flex-col items-center justify-center p-2">
@@ -1124,7 +1184,7 @@ useEffect(() => {
                       </div>
                     ) : null}
                 <div
-                  className="prose max-w-none min-h-[18rem] max-h-[24rem] sm:min-h-[22rem] sm:max-h-[28rem] md:min-h-[26rem] md:max-h-[32rem] lg:min-h-[30rem] lg:max-h-[30rem] xl:min-h-[32rem] xl:max-h-[32rem] 2xl:min-h-[34rem] 2xl:max-h-[34rem] overflow-y-auto relative break-words"
+                  className="prose max-w-none min-h-[18rem] max-h-[24rem] sm:min-h-[22rem] sm:max-h-[28rem] md:min-h-[26rem] md:max-h-[32rem] lg:min-h-[30rem] lg:max-h-[30rem] xl:min-h-[32rem] xl:max-h-[32rem] 2xl:min-h-[57rem] 2xl:max-h-[34rem] overflow-y-auto relative break-words font-hina"
                 >
                       {editor?.getHTML() ? (
                         <div

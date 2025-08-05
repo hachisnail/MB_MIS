@@ -16,6 +16,7 @@ const ArticleForm = () => {
   const [selectedStatusFilter, setSelectedStatusFilter] = useState("");
   const [selectedCat, setSelectedCat] = useState("");
 
+  const allowedRoles = [1, 2, 5]; // Add article privs
   const BASE_URL = import.meta.env.VITE_API_BASE_URL;
   const SERVER_ORIGIN = BASE_URL.replace(/\/api$/, ""); // "http://localhost:5000"
   const UPLOAD_PATH = `${SERVER_ORIGIN}/uploads/pictures/`;
@@ -149,12 +150,13 @@ const CatOptions = [
   return (
     
     <>
-     <div className="w-full min-w-fit h-full pt-5  1xl:max-h-[69rem] 2xl:max-h-[81rem]  3xl:max-h-[88rem]">
-      <div className="w-full h-full flex flex-col gap-y-[2rem]">
-        <div className="w-full h-full flex flex-col xl:flex-row gap-y-5 xl:gap-x-5 pt-5 border-t-1">
+    <div className="relative w-full h-full bg-[#F0F0F0] select-none flex pt-[1rem] overflow-hidden">
+      <div className="w-full h-full flex flex-col gap-y-5 px-7 pb-7 pt-[1rem] overflow-hidden">
+
+        <div className="w-full h-full flex flex-col xl:flex-row gap-y-5 xl:gap-x-5 pt-5 ">
           {/* Left: Info and Add */}
           <div className="min-w-[34rem] h-full flex flex-col gap-y-7">
-            <div className="w-full max-w-[35rem] text-gray-500 min-h-[5rem] flex py-2 gap-x-2">
+            <div className="w-full max-w-[35rem] text-gray-500 h-[3.5rem] flex py-0 gap-x-2 items-center">
               <button className="px-4 h-full border-1 border-black text-white bg-black rounded-lg">
                 <span className="text-2xl font-semibold">Articles</span>
               </button>
@@ -189,16 +191,18 @@ const CatOptions = [
                   </div>
                 </div>
 
-                <NavLink to="add-article">
-                  <button
-                    className="cursor-pointer flex items-center justify-between w-full px-6 py-4 bg-[#6BFFD5] text-black font-medium"
-                  >
-                    <span className="text-2xl font-semibold">Add New Article</span>
-                    <span className="border-2 border-black rounded-full p-2 flex items-center justify-center">
-                      <i className="fas fa-plus text-xl"></i>
-                    </span>
-                  </button>
-                </NavLink>
+                {userRole && allowedRoles.includes(userRole) && (
+                    <NavLink to="add-article">
+                      <button className="cursor-pointer flex items-center justify-between w-full px-6 py-4 bg-[#6BFFD5] text-black font-medium">
+                        <span className="text-2xl font-semibold">
+                          Add New Article
+                        </span>
+                        <span className="border-2 border-black rounded-full p-2 flex items-center justify-center">
+                          <i className="fas fa-plus text-xl"></i>
+                        </span>
+                      </button>
+                    </NavLink>
+                  )}
               </div>
             </div>
           </div>
@@ -220,7 +224,7 @@ const CatOptions = [
               <div className="text-[#727272] text-2xl border-l-1 px-3 py-2">Status</div>
             </div>
 
-            <div className="w-full min-w-[60rem] overflow-y-auto h-full border-t-1 border-t-gray-400" style={{ maxHeight: "45rem" }}>
+            <div className="w-full min-w-[60rem] overflow-y-auto h-full border-t-1 border-t-gray-400" style={{ maxHeight: "68rem" }}>
               {loading ? (
                 <div className="min-w-[60rem] h-full py-16 flex justify-center items-center border-b-1 border-gray-400">
                   <div className="text-2xl text-gray-500 flex flex-col items-center">
@@ -266,6 +270,7 @@ const CatOptions = [
         </div>
       </div>
     </div>
+
     </>
   );
 };

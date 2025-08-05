@@ -8,6 +8,14 @@ import { useNavigate } from "react-router-dom";
 
 import { socialLinks } from "../../components/list/commons";
 
+import { useState, useEffect} from 'react';
+import axios from 'axios';
+import CalendarComponent from '../../features/CalendarComponent';
+
+  const BASE_URL = import.meta.env.VITE_API_BASE_URL;
+  const SERVER_ORIGIN = BASE_URL.replace(/\/api$/, ""); // "http://localhost:5000"
+  const UPLOAD_PATH = `${SERVER_ORIGIN}/uploads/pictures/`;
+
 const Home = () => {
   const navigate = useNavigate();
   const SocialLink = ({ href, name, iconPath, viewBox }) => (
@@ -38,8 +46,52 @@ const Home = () => {
       </div>
     </a>
   );
+   const [articles, setArticles] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const todayStr = new Date().toISOString().split('T')[0];
+  const todaysArticles = articles.filter(a => a.upload_date && a.upload_date.split('T')[0] === todayStr);
+
 
   // const learnMore = { current: null };
+
+
+  
+useEffect(() => {
+    fetchArticles();
+  }, []);
+
+  const fetchArticles = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get(`${SERVER_ORIGIN}/api/auth/public-articles`);
+      setArticles(response.data);
+      setLoading(false);
+    } catch (err) {
+      setError('Failed to load events.');
+      setLoading(false);
+    }
+  };
+  
+const encoded = (id, name) => {
+  const encodedString = `${id}::${name}`;
+  return btoa(encodedString);
+};
+
+
+let displayArticles = todaysArticles;
+if (displayArticles.length === 0) {
+  // Find the soonest future date
+  const futureArticles = articles
+    .filter(a => a.upload_date && a.upload_date.split('T')[0] > todayStr)
+    .sort((a, b) => a.upload_date.localeCompare(b.upload_date));
+  if (futureArticles.length > 0) {
+    const nextDate = futureArticles[0].upload_date.split('T')[0];
+    displayArticles = futureArticles.filter(a => a.upload_date.split('T')[0] === nextDate);
+  }
+}
+
+displayArticles = displayArticles.slice(0, 2);
 
   return (
     <>
@@ -222,13 +274,13 @@ const Home = () => {
             <img src={block2} alt="" className="h-[70rem] w-[85rem]" />
             <div className="absolute min-w-fit flex flex-col items-end justify-between top-20 h-[55rem] pr-20 w-[75rem] right-0 z-50">
               <div className="w-full h-fit">
-                <span className="text-7xl font-hina">April</span>
+                 <CalendarComponent/>
               </div>
-
-              <div className="w-full h-[45rem] bg-black rounded-md p-5 flex items-center justify-center">
+             
+              {/* <div className="w-full h-[45rem] bg-black rounded-md p-5 flex items-center justify-center">
 
                 <span className="text-white">Calendar componenet</span>
-              </div>
+              </div> */}
             </div>
           </div>
 
@@ -243,14 +295,31 @@ const Home = () => {
               <span className="text-8xl font-hina">Whats On?</span>
             </div>
 
-            <div className="w-[45rem] rounded-sm h-[29rem] bg-black flex items-center justify-center">
-              <span className="text-white">image 1</span>
-            </div>
-
-            <div className="w-[45rem] rounded-sm h-[29rem] bg-black flex items-center justify-center">
-              <span className="text-white">image 2</span>
-
-            </div>
+            <div className='w-[55rem] h-full flex flex-col justify-start gap-y-5'>
+            {displayArticles.length > 0 ? (
+              displayArticles.map((article, idx) => (
+                <NavLink
+                  key={article.article_id}
+                  to={`/article/${encoded(article.article_id, article.title)}`}
+                  className='w-[33rem] mx-auto h-[20rem] md:w-[55rem] md:h-[30rem] bg-cover bg-center bg-no-repeat rounded-lg shadow-lg hover:opacity-90 transition'
+                  style={{ backgroundImage: `url('${article.images}')` }}
+                  title={article.title}
+                >
+                  <div className="w-full h-full flex flex-col justify-end bg-opacity-30 p-4">
+                    <span className="text-white text-2xl font-bold drop-shadow">{article.title}</span>
+                    <span className="text-white text-lg">{article.upload_date ? new Date(article.upload_date).toLocaleDateString() : ''}</span>
+                  </div>
+                </NavLink>
+              ))
+            ) : (
+              <>
+                <div className='w-[33rem] mx-auto h-[20rem] md:w-[55rem] md:h-[30rem] bg-cover bg-center bg-no-repeat flex items-center justify-center text-gray-400' style={{ backgroundImage: `url(${bgImage1})` }}>
+                  <span>No events today or upcoming.</span>
+                </div>
+                <div className='w-[33rem] h-[20rem] mx-auto md:w-[55rem] md:h-[30rem] bg-cover bg-center bg-no-repeat' style={{ backgroundImage: `url(${bgImage1})` }} />
+              </>
+            )}
+          </div>
 
 
           </div>
@@ -298,17 +367,54 @@ const Home = () => {
     </div>
     <span className="text-white text-7xl font-hina">News & Events</span>
 
-    <div className="w-full flex flex-wrap items-center justify-center gap-2">
-      {/* render top 4 news and events card here */}
-      {[1, 2, 3, 4].map((i) => (
-        <div
-          key={i}
-          className="w-[63rem] h-[26rem] border border-white flex items-center justify-center"
-        >
-          <span className="text-3xl text-white">News & Events {i}</span>
-        </div>
-      ))}
-    </div>
+            <div className="w-full h-full px-8 py-3 grid xl:grid-cols-2 xl:grid-rows-2 grid-rows-4 grid-cols-1 gap-4 xl:gap-8">
+              {loading && (
+                <div className="col-span-2 text-white text-2xl text-center py-10">Loading events...</div>
+              )}
+              {error && (
+                <div className="col-span-2 text-red-500 text-2xl text-center py-10">{error}</div>
+              )}
+              {!loading && !error &&
+                articles.slice(0, 4).map((article, index) => {
+                  const displayDate = article.upload_date
+                    ? new Date(article.upload_date).toLocaleDateString()
+                    : "No Date";
+
+                      return (
+                        <NavLink
+                          key={index}
+                          to={`/article/${encoded(article.article_id, article.title)}`}
+                          className="w-full h-full transition duration-300">
+                      <div className="w-full h-full flex flex-col xl:flex-row gap-4 bg-black/50 p-3 rounded-lg">
+                        <div className="w-full xl:w-2/5 h-[40rem] xl:h-full rounded-lg overflow-hidden">
+                          <div
+                            className="w-full h-full bg-cover bg-no-repeat bg-center"
+                            style={{ backgroundImage: `url('${article.images}')` }}
+                          />
+                        </div>
+                        <div className="w-full xl:w-3/5 flex flex-col justify-between gap-y-5">
+                          <div className='w-full h-25'>
+                            <h3 className="text-2xl xl:text-5xl font-bold text-white overflow-hidden">
+                              {article.title || "Untitled"}
+                            </h3>
+                          </div>
+                          <div className='w-full h-fit flex gap-x-5'>
+                            <p className="w-50 text-xl text-[#787878]">{displayDate}</p>
+                            <p className="text-xl  text-yellow-600">
+                              {article.article_category || ""}
+                            </p>
+                          </div>
+                          <div className='w-full h-50 flex break-words'>
+                            <span className=' overflow-hidden text-white text-xl'>
+                              {article.description.replace(/<[^>]+>/g, '')|| '' }
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </NavLink>
+                  );
+                })}
+            </div>
 
     <div className="flex justify-end w-full text-gray-300 hover:text-gray-500">
       <button

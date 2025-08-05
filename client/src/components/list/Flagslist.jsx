@@ -1,3 +1,16 @@
+
+export const formatRouteKey = (key) => {
+  if (!key) return "No key";
+
+  const cleanedKey = key.replace(/_public/gi, "");
+
+  return cleanedKey
+    .split("_")
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+};
+
 const FlagItem = ({
   route_key,
   is_enabled,
@@ -254,11 +267,11 @@ const FlagItem = ({
         <div className="my-2">{icon}</div>
 
         <p className="text-lg font-semibold text-white truncate uppercase">
-          {route_key}
+          {formatRouteKey(route_key)}
           {is_public ? (
-            <span className="text-sm text-gray-400"> (Public)</span>
+            <span className="text-sm text-gray-300"> (Public)</span>
           ) : (
-            <span className="text-sm text-gray-600"> (Private)</span>
+            <span className="text-sm text-neutral-600"> (Private)</span>
           )}
         </p>
 

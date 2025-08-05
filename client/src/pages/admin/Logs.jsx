@@ -30,7 +30,8 @@ const Logs = () => {
       if (location.state.role) setSelectedRole(location.state.role);
       if (location.state.action) setSelectedAction(location.state.action);
       if (location.state.date) setSelectedDate(location.state.date);
-      if (location.state.search) setSearchQuery(location.state.search.toLowerCase());
+      if (location.state.search)
+        setSearchQuery(location.state.search.toLowerCase());
     }
   }, [location.state]);
 
@@ -151,7 +152,6 @@ const Logs = () => {
     <div className="w-full min-w-fit h-full pt-5 1xl:max-h-[69rem] 2xl:max-h-[81rem]  3xl:max-h-[88rem]">
       <div className="w-full h-full flex flex-col gap-y-[2rem]">
         <div className="w-full h-fit flex gap-x-3">
-
           <TimelineDatePicker onDateChange={handleDateFilter} theme="dark" />
 
           {/* searchbar */}
@@ -172,7 +172,6 @@ const Logs = () => {
             theme="dark"
             options={actionOptions}
           />
-
         </div>
 
         <div className="w-full h-full flex flex-col ">
@@ -191,17 +190,29 @@ const Logs = () => {
           </div>
 
           <div className="w-full h-[61rem]  border-t-1 border-gray-600 flex flex-col overflow-scroll">
-            {isLoading ? (
-              <LoadingSpinner />
-            ) : errorLogs ? (
-              <ErrorBox message={errorLogs} />
-            ) : filtered.length > 0 ? (
-              filtered.map((log) => (
-                <LogItem key={log.id} log={log} formatCreatedAt={formatCreatedAt} />
-              ))
-            ) : (
-              <EmptyMessage message="Empty logs" />
-            )}
+            <div className="relative w-full h-full">
+              {/* Overlayed Spinner */}
+              {isLoading && (
+                <div className="absolute inset-0 z-10 flex items-center justify-center ">
+                  <LoadingSpinner />
+                </div>
+              )}
+
+              {/* Error State */}
+              {errorLogs ? (
+                <ErrorBox message={errorLogs} />
+              ) : filtered.length > 0 ? (
+                filtered.map((log) => (
+                  <LogItem
+                    key={log.id}
+                    log={log}
+                    formatCreatedAt={formatCreatedAt}
+                  />
+                ))
+              ) : !isLoading && filtered.length === 0 ? (
+                <EmptyMessage message="Empty logs" />
+              ) : null}
+            </div>
           </div>
         </div>
       </div>

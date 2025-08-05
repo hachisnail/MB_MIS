@@ -156,3 +156,10 @@ export function scrollToElementById(id, offset) {
   }
 }
 
+
+
+export function handlePreview(navigate, category, filename, basePath = "/admin") {
+  const encoded = btoa(`${category}/${filename}`);
+  const normalizedBase = basePath.endsWith("/") ? basePath.slice(0, -1) : basePath;
+  navigate(`${normalizedBase}/preview/${encoded}`);
+}

@@ -1,13 +1,14 @@
 // FileName: /AppointmentModal.jsx
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import axiosClient from '../../lib/axiosClient';
-import { useSocketClient } from "../../context/authContext";
-import ConfirmationModal from '../modals/ConfirmationModal';
-import PopupModal from '../modals/PopupModal';
-import Modal from '../modals/Modal';
-import StyledButton from '../buttons/StyledButton';
-import Toast from '../../features/Toast';
+import axiosClient from '@/lib/axiosClient';
+import { useSocketClient } from "@/context/authContext";
+import ConfirmationModal from '@/components/modals/ConfirmationModal';
+import PopupModal from '@/components/modals/PopupModal';
+import Modal from '@/components/modals/Modal';
+import StyledButton from '@/components/buttons/StyledButton';
+import Toast from '@/features/Toast';
+import { validateAppointmentSchedule } from '@/utils/scheduleValidation';
 
 export const AppointmentViewPage = ({
   showModal,
@@ -397,9 +398,63 @@ export const AppointmentViewPage = ({
   };
 
   // Handler for the "Done" button click - now triggers confirmation modal
-  const handleSend = () => {
+  const handleSend = async () => {
     // --- Validation Logic ---
     if (isToReview) {
+      // Before confirming, validate the appointment schedule
+      if (approveVisit === 'yes' && modalData) {
+        try {
+          // Prepare appointment data for validation
+          const appointmentData = {
+            date: modalData.preferredDate ? modalData.preferredDate.split('T')[0] : null,
+            startTime: modalData.start_time || '09:00',
+            endTime: modalData.end_time || '10:00'
+          };
+
+          // Fetch existing schedules and appointments for validation
+          const [schedulesResponse, appointmentsResponse] = await Promise.all([
+            axiosClient.get(`/auth/schedules?date=${appointmentData.date}`),
+            axiosClient.get('/auth/appointment')
+          ]);
+
+          // Filter confirmed appointments for the same date
+          const confirmedAppointments = appointmentsResponse.data.filter(appt => {
+            const apptDate = appt.preferred_date ? appt.preferred_date.split('T')[0] : null;
+            const status = appt.AppointmentStatus?.status || '';
+            return apptDate === appointmentData.date && status.toUpperCase() === 'CONFIRMED';
+          });
+
+          // Combine schedules and confirmed appointments
+          const existingEvents = [
+            ...schedulesResponse.data.filter(schedule => schedule.status !== 'COMPLETED').map(schedule => ({
+              date: schedule.date,
+              startTime: schedule.start_time,
+              endTime: schedule.end_time,
+              availability: schedule.availability || 'SHARED',
+              isSchedule: true
+            })),
+            ...confirmedAppointments.map(appt => ({
+              date: appt.preferred_date.split('T')[0],
+              startTime: appt.start_time || '09:00',
+              endTime: appt.end_time || '10:00',
+              availability: 'SHARED',
+              isAppointment: true
+            }))
+          ];
+
+          // Validate the appointment
+          const validationResult = validateAppointmentSchedule(appointmentData, existingEvents);
+          if (!validationResult.isValid) {
+            showToast(validationResult.error || 'Appointment time conflicts with existing schedules or is invalid.', 'error');
+            return;
+          }
+        } catch (error) {
+          console.error('Error validating appointment:', error);
+          showToast('Failed to validate appointment schedule. Please try again.', 'error');
+          return;
+        }
+      }
+
       if (!approveVisit) {
         setApprovalError(true);
         return;

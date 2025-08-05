@@ -55,7 +55,7 @@ const Configuration = () => {
 
   const fetchFlags = async () => {
     try {
-      // setFlagsLoading(true);
+      setFlagsLoading(true);
       const { data } = await axiosClient.get("/auth/admin-flags");
 
       if (!data || !data.flags || data.flags.length === 0) {
@@ -68,24 +68,24 @@ const Configuration = () => {
       console.error("Failed to load flags", err);
       setFlagsError("Failed to load flags");
     } finally {
-      // setFlagsLoading(false);
+      setFlagsLoading(false);
     }
   };
 
   const fetchLogs = async () => {
     try {
       setLogsError(null);
-      // setLogLoading(true);
+      setLogLoading(true);
       const response = await axiosClient.get(`/auth/logs?model=RouterFlag`, {
         withCredentials: true,
       });
       setLogs(response.data);
-      console.log(response.data);
+      // console.log(response.data);
     } catch (error) {
-      console.error("Failed to fetch logs!", error);
+      // console.error("Failed to fetch logs!", error);
       setLogsError("Failed to fetch logs!\n" + error);
     } finally {
-      // setLogLoading(false);
+      setLogLoading(false);
     }
   };
 
@@ -271,37 +271,44 @@ const Configuration = () => {
               </div>
             </div>
 
-            <div className="w-full min-w-fit min-h-fit h-[49rem] flex flex-wrap gap-2 items-start justify-center">
-              {flagsLoading ? (
-                <LoadingSpinner />
-              ) : flagsError ? (
-                <ErrorBox message={flagsError} />
-              ) : currentFlags.length > 0 ? (
-                // Sorting the currentFlags array by 'is_public' before rendering
-                currentFlags
-                  .sort((a, b) => b.is_public - a.is_public) // Sort in descending order (public first)
-                  .map(({ route_key, is_enabled, is_public }) => {
-                    const isMaintenanceOn = availableFlags.find(
-                      (f) => f.route_key === "maintenance"
-                    )?.is_enabled;
-                    const isToggleable = route_key !== "maintenance";
+            <div className="w-full min-w-fit min-h-fit h-[49rem] flex  items-start justify-center">
+              <div className="relative w-full h-full flex flex-wrap gap-2">
+                {/* Overlayed Spinner */}
+                {flagsLoading && (
+                  <div className="absolute inset-0 z-10 flex items-center justify-center ">
+                    <LoadingSpinner />
+                  </div>
+                )}
 
-                    return (
-                      <FlagItem
-                        key={route_key}
-                        route_key={route_key}
-                        is_enabled={is_enabled}
-                        is_public={is_public}
-                        updatingFlag={updatingFlag}
-                        handleToggle={handleFlagClick}
-                        disabled={isMaintenanceOn && isToggleable}
-                        onDisabledClick={handleDisabledClick}
-                      />
-                    );
-                  })
-              ) : (
-                <EmptyMessage message="Empty flags!" />
-              )}
+                {/* Error State */}
+                {flagsError ? (
+                  <ErrorBox message={flagsError} />
+                ) : currentFlags.length > 0 ? (
+                  currentFlags
+                    .sort((a, b) => b.is_public - a.is_public)
+                    .map(({ route_key, is_enabled, is_public }) => {
+                      const isMaintenanceOn = availableFlags.find(
+                        (f) => f.route_key === "maintenance"
+                      )?.is_enabled;
+                      const isToggleable = route_key !== "maintenance";
+
+                      return (
+                        <FlagItem
+                          key={route_key}
+                          route_key={route_key}
+                          is_enabled={is_enabled}
+                          is_public={is_public}
+                          updatingFlag={updatingFlag}
+                          handleToggle={handleFlagClick}
+                          disabled={isMaintenanceOn && isToggleable}
+                          onDisabledClick={handleDisabledClick}
+                        />
+                      );
+                    })
+                ) : !flagsLoading && currentFlags.length === 0 ? (
+                  <EmptyMessage message="Empty flags!" />
+                ) : null}
+              </div>
             </div>
 
             {/* Pagination Controls */}
@@ -375,17 +382,25 @@ const Configuration = () => {
             </div>
 
             <div className="w-full h-[58rem] overflow-y-scroll border-t border-gray-700">
-              {logsLoading ? (
-                <LoadingSpinner />
-              ) : logsError ? (
-                <ErrorBox message={logsError} />
-              ) : availableLogs.length > 0 ? (
-                availableLogs.map((log, index) => (
-                  <ConfigLogslist key={index} log={log} />
-                ))
-              ) : (
-                <EmptyMessage message="Empty logs!" />
-              )}
+              <div className="relative w-full h-full">
+                {/* Overlayed Spinner */}
+                {logsLoading && (
+                  <div className="absolute inset-0 z-10 flex items-center justify-center ">
+                    <LoadingSpinner />
+                  </div>
+                )}
+
+                {/* Error State */}
+                {logsError ? (
+                  <ErrorBox message={logsError} />
+                ) : availableLogs.length > 0 ? (
+                  availableLogs.map((log, index) => (
+                    <ConfigLogslist key={index} log={log} />
+                  ))
+                ) : !logsLoading && availableLogs.length === 0 ? (
+                  <EmptyMessage message="Empty logs!" />
+                ) : null}
+              </div>
             </div>
           </div>
         </div>

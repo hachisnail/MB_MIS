@@ -33,7 +33,7 @@ import User from "@/pages/admin/User";
 import CreateUser from "@/components/subpages/CreateUsers";
 import Inventory from "@/pages/admin/Inventory";
 import NoMatch from "@/pages/NoMatch";
-import RequireRole from "@/lib/requiredRole";
+import RequireRole from "@/lib/RequiredRole";
 import Acquisition from "@/pages/admin/Acquisition";
 import ViewArtifacts from "@/components/subpages/ViewArtifacts";
 import Schedule from "@/pages/admin/Schedule";
@@ -45,7 +45,7 @@ import Configuration from "@/pages/admin/Configuration";
 // import ArticleModal from "./components/subpages/ArticleModal";
 
 // sandbox
-import FileUploadDownload from "@/sandbox/fileUploadDownload";
+import FileUploadDownload from "@/sandbox/FileUploadDownload";
 import FilePreviewer from "@/features/FilePreviewer";
 import ModalsTest from "@/sandbox/ModalsTest";
 import RouteFlagToggle from "@/sandbox/RouteFlagToggle";
@@ -189,6 +189,7 @@ const Router = () => {
           {flags["sandbox"] && (
             <>
             <Route path="sandbox" element={<FileUploadDownload />} />
+            <Route path="sandbox/preview/:encoded" element={<FilePreviewer />} />
             <Route path="sandbox/modal" element={<ModalsTest />} />
             <Route path="sandbox/router-flag" element={<RouteFlagToggle />} />
             <Route path="sandbox/socket-monitor" element={<SocketMonitor />} />

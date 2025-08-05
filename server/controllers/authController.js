@@ -26,17 +26,63 @@ export async function login(req, res) {
     const isValid = await bcrypt.compare(password, user.password);
     if (!isValid) return res.status(401).json({ message: "Invalid credentials" });
 
-    // Handle session regeneration and potential force logout
+    // 🛡 Prevent re-login in same session
+    if (req.session.userId && req.session.userId !== user.id) {
+      return res.status(400).json({
+        message: "A user is already logged in from this session.",
+      });
+    }
+
+    const beforeState = { isOnline: false };
+
+    const existingSession = await UserSession.findOne({
+      where: { userId: user.id, isOnline: true },
+      order: [["loginAt", "DESC"]],
+    });
+
+    if (existingSession) {
+      const io = getIO();
+
+      io.to(`user:${user.id}`).emit("forceLogout", {
+        reason: "Your account was accessed from another device.",
+      });
+
+      await UserSession.update(
+        {
+          isOnline: false,
+          logoutAt: new Date(),
+        },
+        {
+          where: { id: existingSession.id },
+          individualHooks: true,
+        }
+      );
+
+      sessionStore.destroy(existingSession.sessionId, (err) => {
+        if (err) {
+          console.warn(`Failed to destroy old session [${existingSession.sessionId}]:`, err);
+        } else {
+          console.log(`Old session [${existingSession.sessionId}] destroyed successfully.`);
+        }
+      });
+
+      await new Promise((resolve) => setTimeout(resolve, 300));
+
+      req.session.forceLogoutMessage = "Another session was logged out to allow this login.";
+    }
+
+    // ✅ Use promise wrapper for regenerate
     await new Promise((resolve, reject) => {
       req.session.regenerate((err) => {
         if (err) {
-          console.error("Session regeneration failed:", err);
-          return reject(err);
+          reject(err);
+        } else {
+          resolve();
         }
-        resolve();
       });
     });
 
+    // ✅ Set session data
     req.session.userId = user.id;
     req.session.user = {
       id: user.id,
@@ -48,42 +94,33 @@ export async function login(req, res) {
       position: user.position,
     };
 
-    // ✅ Explicitly save the session before sending the response
-    await new Promise((resolve, reject) => {
-        req.session.save((err) => {
-            if (err) {
-                console.error("Session save failed:", err);
-                return reject(err);
-            }
-            resolve();
-        });
-    });
-
-    // Create a new UserSession record
-    const userSession = await UserSession.create({
+    await UserSession.create({
       userId: user.id,
       sessionId: req.session.id,
       loginAt: new Date(),
       isOnline: true,
     });
-    io.to("realtimeDB").emit("UserSession", userSession);
 
-    // Create a new Log record
-    const log = await Log.create({
-      userId: user.id,
-      activity: "Logged in successfully",
-    });
-    io.to("realtimeDB").emit("Log", log);
+    const fullName = `${user.fname} ${user.lname}`;
+    const description = `${fullName} (${user.username}) logged in`;
+    const details = `IP: ${req.ip}, User-Agent: ${req.get("User-Agent")}`;
+    const afterState = { isOnline: true };
 
-    // Fetch and send router flags
-    const flags = await RouterFlag.findAll({ raw: true });
+    await createLog(
+      "login",
+      "User",
+      description,
+      user.id,
+      beforeState,
+      afterState,
+      details
+    );
 
     return res.json({
-      message: "Login successful",
+      message: req.session.forceLogoutMessage || "Login successful",
       user: req.session.user,
-      routerFlags: flags,
     });
-    
+
   } catch (error) {
     console.error("Login error:", error);
     return res.status(500).json({ message: "Server error" });

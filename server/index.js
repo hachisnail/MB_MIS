@@ -32,7 +32,8 @@ const app = express();
 const isProduction = process.env.NODE_ENV === "production";
 
 // Trust proxy is important if behind a reverse proxy (Coolify, NGINX, etc.)
-app.set("trust proxy", 1);
+app.set("trust proxy", true); // not just "1"
+
 
 // Ensure CORS allows credentials
 app.use(cors({
@@ -67,6 +68,13 @@ app.use("/uploads", express.static(UPLOAD_BASE_DIR));
 // API routes
 app.use("/api/auth", authRoutes);
 app.use("/api", uploadRoutes);
+
+app.use((req, res, next) => {
+  console.log("req.secure:", req.secure);
+  console.log("x-forwarded-proto:", req.headers['x-forwarded-proto']);
+  next();
+});
+
 
 // Health check route
 app.get("/api/health", (req, res) => {

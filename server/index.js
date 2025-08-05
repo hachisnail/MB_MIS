@@ -65,12 +65,19 @@ app.use("/uploads", (req, res, next) => {
 app.use("/api", uploadRoutes);
 app.use("/api/auth", authRoutes);
 
+
+
+
 // 🚫 Catch-all fallback: return 404 for non-API routes
 app.use((req, res, next) => {
   if (!req.path.startsWith("/api") && !req.path.startsWith("/uploads")) {
     return res.status(404).json({ error: "Not Found" });
   }
   next();
+});
+
+app.get('/api/health', (req, res) => {
+  res.json({ status: "ok" });
 });
 
 const server = http.createServer(app);
@@ -82,9 +89,7 @@ const PORT = process.env.PORT;
     await mainDb.authenticate();
     await sessionStore.sync();
     await mainDb.sync();
-    app.get('/api/health', (req, res) => {
-  res.json({ status: "ok" });
-});
+
 
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`API Server running on port ${PORT}`);

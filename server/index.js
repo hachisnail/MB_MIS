@@ -80,7 +80,7 @@ app.use((req, res, next) => {
   next();
 });
 
-app.get('/api/health', (req, res) => {
+app.get('/', (req, res) => {
   res.json({ status: "ok" });
 });
 

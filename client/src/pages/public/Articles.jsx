@@ -102,12 +102,12 @@ const Articles = () => {
       >
         {/* Overlay for search/filter bar, positioned absolutely within the background image div */}
         <div className="absolute inset-0 flex justify-center items-center">
-          <div className="grid grid-cols-4 w-[90%] max-w-6xl h-15">
+          <div className="grid grid-cols-3 w-[90%] max-w-6xl h-15">
             {/* Keyword Input */}
-            <div className="flex items-center justify-center bg-white text-black border-r border-black">
+              <div className="flex items-center justify-center bg-white text-black border-r border-black">
               <input
                 type="text"
-                placeholder="Enter keyword"
+                placeholder="Search"
                 className="w-full h-full px-4 text-4xl lg:text-5xl bg-transparent focus:outline-none"
                 value={keyword}
                 onChange={(e) => setKeyword(e.target.value)}
@@ -176,15 +176,7 @@ const Articles = () => {
               </div>
             </div>
 
-            {/* Search Button - Now applying filters on click */}
-            <button
-              className="flex items-center justify-center text-4xl lg:text-5xl border-2 border-transparent bg-black text-white hover:bg-white hover:text-black hover:border-black transition-all duration-300 cursor-pointer"
-              // No need to call fetchArticles again here, filtering happens automatically
-              // onClick={fetchArticles} // Removed - filtering is reactive
-              // No explicit onClick needed here as filters are applied reactively through state changes
-            >
-              Search
-            </button>
+            
           </div>
         </div>
       </div>

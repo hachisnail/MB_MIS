@@ -66,7 +66,11 @@ app.use("/api", uploadRoutes);
 app.use("/api/auth", authRoutes);
 
 
-
+app.use((req, res, next) => {
+  console.log("req.secure:", req.secure);
+  console.log("x-forwarded-proto:", req.headers['x-forwarded-proto']);
+  next();
+});
 
 // 🚫 Catch-all fallback: return 404 for non-API routes
 app.use((req, res, next) => {

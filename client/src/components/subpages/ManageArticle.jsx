@@ -38,7 +38,7 @@ import Youtube from "@tiptap/extension-youtube";
 
 import ConfirmDialog from "../modals/ConfirmDialog";
 import FontSize from "../../components/articleComponents/FontSize";
-
+import { useAuth } from "../../context/authContext";
 
 const ArticleEditorForm = () => {
 
@@ -46,6 +46,11 @@ const ArticleEditorForm = () => {
   const BASE_URL = import.meta.env.VITE_API_BASE_URL;
   const SERVER_ORIGIN = BASE_URL.replace(/\/api$/, ""); // "http://localhost:5000"
   const UPLOAD_PATH = `${SERVER_ORIGIN}/uploads/pictures/`;
+  const { user } = useAuth();
+  const userRole = user.roleId; 
+  const allowedRoles = [1, 2, 5]; // Add article privs
+
+
   const navigate = useNavigate();
     // Initialize TipTap editor
   const editor = useEditor({
@@ -523,6 +528,7 @@ useEffect(() => {
         {/* LEFT SPACER */}
         <div className="hidden 2xl:block 2xl:w-1/5" />
         {/* LEFT SIDE - Editor + Form */}
+        {userRole && allowedRoles.includes(userRole) && (
         <div
           className="
               bg-white
@@ -1113,6 +1119,7 @@ useEffect(() => {
   
 </form>
 </div>
+        )}
 {/* RIGHT SIDE - Article Preview */}
         <div className="bg-white w-full 2xl:w-2/5 p-6 rounded-lg shadow-xl overflow-y-auto max-h-[85vh] mt-4 2xl:mt-0 hidden lg:block"
             >

@@ -11,11 +11,13 @@ const PublicLayout = () => {
     '/login/forgot-password',
     '/recover',
     '/recover/success',
+    '/registration-success'
   ];
 
-  const isMinimalLayout =
-    hiddenPaths.includes(location.pathname) ||
-    /^\/recover\/[^/]+$/.test(location.pathname);
+const isMinimalLayout =
+  hiddenPaths.includes(location.pathname) ||
+  /^\/recover\/[^/]+$/.test(location.pathname) ||
+  /^\/complete-registration\/[^/]+$/.test(location.pathname);
 
   // Define themes for overall layout
   const themeRoutes = [

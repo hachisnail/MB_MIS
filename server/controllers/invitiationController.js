@@ -46,6 +46,13 @@ export const sendInvitation = async (req, res, next) => {
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7);
 
+      const roleMap = {
+      Admin: 1,
+      ContentManager: 2,
+      Viewer: 3,
+      Reviewer: 4
+    };
+
     const invitation = await Invitation.create({
       email,
       first_name,
@@ -54,10 +61,11 @@ export const sendInvitation = async (req, res, next) => {
       token,
       expiresAt,
       role,
-      position: position || null
+      position: position || null,
+       roleId: roleMap[role]
     });
 
-    const frontendBaseUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+    const frontendBaseUrl = process.env.CLIENT_URL;
     const registrationUrl = `${frontendBaseUrl}/complete-registration/${token}`;
 
     const emailHtml = `
@@ -185,23 +193,24 @@ export const resendInvitation = async (req, res, next) => {
     await invitation.save();
     const newState = invitation.toJSON();
 
-    const frontendBaseUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+    const frontendBaseUrl = process.env.CLIENT_URL;
     const registrationUrl = `${frontendBaseUrl}/complete-registration/${invitation.token}`;
 
-    const emailHtml = `
-    <div style="font-family: 'Segoe UI', sans-serif; padding: 20px; background-color: #f2f2f2; color: #333;">
-      <div style="max-width: 600px; margin: auto; background-color: #fff; border-radius: 10px; padding: 30px; box-shadow: 0 5px 15px rgba(0,0,0,0.1);">
-        <h2 style="color: #6F3FFF;">You're Invited to Join Museo Bulawan</h2>
-        <p>Dear ${first_name} ${last_name},</p>
-        <p>We’re excited to invite you to join <strong>Museo Bulawan</strong> as a <strong>${role}</strong>.</p>
-        <p>Click the button below to complete your registration. This link will expire on <strong>${expiresAt.toLocaleDateString()}</strong>.</p>
-        <a href="${registrationUrl}" style="display: inline-block; margin-top: 20px; padding: 12px 20px; background-color: #6F3FFF; color: white; text-decoration: none; border-radius: 5px;">
-          Complete Registration
-        </a>
-        <p style="margin-top: 30px; font-size: 14px; color: #777;">If you did not expect this invitation, you can safely ignore this email.</p>
-      </div>
+const emailHtml = `
+  <div style="font-family: 'Segoe UI', sans-serif; padding: 20px; background-color: #f2f2f2; color: #333;">
+    <div style="max-width: 600px; margin: auto; background-color: #fff; border-radius: 10px; padding: 30px; box-shadow: 0 5px 15px rgba(0,0,0,0.1);">
+      <h2 style="color: #6F3FFF;">You're Invited to Join Museo Bulawan</h2>
+     <p>Dear ${invitation.first_name} ${invitation.last_name},</p>
+     <p>We’re excited to invite you to join <strong>Museo Bulawan</strong> as a <strong>${invitation.role}</strong>.</p>
+     <p>Click the button below to complete your registration. This link will expire on <strong>${invitation.expiresAt.toLocaleDateString()}</strong>.</p>
+      <a href="${registrationUrl}" style="display: inline-block; margin-top: 20px; padding: 12px 20px; background-color: #6F3FFF; color: white; text-decoration: none; border-radius: 5px;">
+        Complete Registration
+      </a>
+      <p style="margin-top: 30px; font-size: 14px; color: #777;">If you did not expect this invitation, you can safely ignore this email.</p>
     </div>
-  `;
+  </div>
+`;
+
 
 
     await sendEmail({

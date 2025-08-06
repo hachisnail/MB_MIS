@@ -10,7 +10,8 @@ const ensureDir = (dir) => {
   }
 };
 
-const UPLOAD_BASE_DIR = path.join(process.cwd(), "..", "uploads");
+const UPLOAD_BASE_DIR = process.env.UPLOAD_BASE_DIR || path.join(process.cwd(), "..", "uploads");;
+
 
 // File type categorization logic
 const getFileCategory = (mimetype) => {

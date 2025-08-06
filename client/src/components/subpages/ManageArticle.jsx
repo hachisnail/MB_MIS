@@ -49,7 +49,7 @@ const ArticleEditorForm = () => {
   const { user } = useAuth();
   const userRole = user.roleId; 
   const allowedRoles = [1, 2, 5]; // Add article privs
-
+  const isReviewer = userRole === 4;
 
   const navigate = useNavigate();
     // Initialize TipTap editor
@@ -547,7 +547,7 @@ useEffect(() => {
 
           <h2 className="text-3xl font-bold mb-6">Header</h2>
 
-    <form onSubmit={handleFormSubmit} className="space-y-6">
+    <form onSubmit={handleFormSubmit} className={`space-y-6 ${isReviewer ? "opacity-50 pointer-events-none" : ""}`}>
 {/* Title */}
 <label htmlFor="title" className={`font-bold ${errors.title ? "text-red-600" : ""}`}>
   Title {errors.title && "*"}
@@ -689,22 +689,22 @@ useEffect(() => {
 <div className="flex flex-col md:flex-row gap-4">
   {/* Status Dropdown */}
   <div className="flex-1">
-    <label htmlFor="status" className="font-bold">
-      Status
-    </label>
-    <select
-      id="status"
-      className="w-full px-4 py-3 border-2 border-black rounded-2xl text-base md:text-lg outline-none"
-      name="status"
-      value={status}
-      onChange={(e) => setStatus(e.target.value)}
-    >
-      <option value="pending">Pending</option>
-      <option value="posted">Post</option>
-      {/* <option value="rejected">Rejected</option>
-      <option value="archived">Archived</option> */}
-    </select>
-  </div>
+        <label htmlFor="status" className="font-bold">
+          Status
+        </label>
+        <select
+          id="status"
+          className="w-full px-4 py-3 border-2 border-black rounded-2xl text-base md:text-lg outline-none"
+          name="status"
+          value={status}
+          onChange={(e) => setStatus(e.target.value)}
+        >
+          <option value="pending">Pending</option>
+          <option value="posted">Post</option>
+          {/* <option value="rejected">Rejected</option>
+          <option value="archived">Archived</option> */}
+        </select>
+      </div>
   {/* Thumbnail */}
   <div className="relative flex-1">
     <label htmlFor="thumbnail" className="font-bold">
@@ -1121,7 +1121,8 @@ useEffect(() => {
 </div>
         )}
 {/* RIGHT SIDE - Article Preview */}
-        <div className="bg-white w-full 2xl:w-2/5 p-6 rounded-lg shadow-xl overflow-y-auto max-h-[85vh] mt-4 2xl:mt-0 hidden lg:block"
+        <div
+              className="bg-white w-full 2xl:w-2/5 p-6 rounded-lg shadow-xl overflow-y-auto max-h-[85vh] mt-4 2xl:mt-0"
             >
               <h3 className="text-2xl font-bold mb-4">Preview</h3>
               <div className="border border-gray-200 p-4 mb-4 rounded">
@@ -1129,7 +1130,6 @@ useEffect(() => {
                   {title || "Title of the News or Event"}
                 </h1>
               </div>
-
               <div className="flex w-full justify-center mb-6 font-hina">
                 <div className="flex w-full items-center justify-center text-center text-base">
                   <span className="w-1/4 h-24 border border-gray-300 flex flex-col items-center justify-center p-2">
@@ -1205,9 +1205,38 @@ useEffect(() => {
                       )}
                 </div>
               </div>
+              {isReviewer && (
+                  <div className="mt-6 space-y-4">
+                    <h3 className="text-xl font-bold">Reviewer Actions</h3>
+                    <div className="flex flex-col gap-4 md:flex-row md:items-center">
+                      <label htmlFor="reviewerStatus" className="font-bold">
+                        Update Status:
+                      </label>
+                      <select
+                        id="reviewerStatus"
+                        className="flex-1 px-4 py-3 border-2 border-black rounded-2xl text-base md:text-lg outline-none"
+                        value={status}
+                        onChange={(e) => setStatus(e.target.value)}
+                      >
+                        <option value="pending">Pending</option>
+                        <option value="posted">Post</option>
+                      </select>
+                      <button
+                        type="button"
+                        onClick={handleFormSubmit} // Use the same submit handler
+                        className="w-full md:w-auto px-6 py-3 bg-[#c78216] text-white font-bold rounded-2xl hover:bg-[#d69641] transition-colors"
+                      >
+                        Save Status
+                      </button>
+                    </div>
+                  </div>
+                )}
             </div>
+            
             {/* RIGHT SPACER */}
+            
           <div className="hidden 2xl:block 2xl:w-1/5" />
+          
       </div>
 
       {/* Cancel Confirmation Dialog */}

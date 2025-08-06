@@ -46,13 +46,8 @@ export const sendInvitation = async (req, res, next) => {
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7);
 
-      const roleMap = {
-      Admin: 1,
-      ContentManager: 2,
-      Viewer: 3,
-      Reviewer: 4
-    };
 
+    // console.log(role)
     const invitation = await Invitation.create({
       email,
       first_name,
@@ -62,7 +57,7 @@ export const sendInvitation = async (req, res, next) => {
       expiresAt,
       role,
       position: position || null,
-       roleId: roleMap[role]
+
     });
 
     const frontendBaseUrl = process.env.CLIENT_URL;

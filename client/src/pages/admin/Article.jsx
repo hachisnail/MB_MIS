@@ -93,34 +93,49 @@ const ArticleForm = () => {
     }
   };
 
-  const getStatusBadge = (status) => {
-    let color = "";
-    let bg = "";
-    let label = "";
-    switch (status) {
-      case "posted":
-        color = "text-green-700";
-        bg = "bg-green-100";
-        label = "Posted";
-        break;
-      case "pending":
-        color = "text-yellow-700";
-        bg = "bg-yellow-100";
-        label = "Pending";
-        break;
-      default:
-        color = "text-gray-700";
-        bg = "bg-gray-200";
-        label = status;
-    }
-    return (
-      <span
-        className={`px-3 py-1 font-semibold text-base ${color} ${bg}`}
-      >
-        {label}
-      </span>
-    );
-  };
+const getStatusBadge = (status) => {
+  let color = "";
+  let bg = "";
+  let label = "";
+  switch (status) {
+    case "posted":
+      color = "text-green-700";
+      bg = "bg-green-100";
+      label = "Posted";
+      break;
+    case "pending":
+      color = "text-yellow-700";
+      bg = "bg-yellow-100";
+      label = "Pending";
+      break;
+    case "rejected": // Added rejected status styling
+      color = "text-red-700";
+      bg = "bg-red-100";
+      label = "Rejected";
+      break;
+    case "archived": // Added archived status styling
+      color = "text-gray-700";
+      bg = "bg-gray-100";
+      label = "Archived";
+      break;
+    default:
+      color = "text-gray-700";
+      bg = "bg-gray-200";
+      label = status;
+  }
+  return (
+    <span
+      className={`px-2 py-1 font-semibold ${color} ${bg} rounded border border-gray-400`} 
+      style={{
+        minWidth: "7rem", 
+        display: "inline-block",
+        textAlign: "center" 
+      }}
+    >
+      {label}
+    </span>
+  );
+};
 
   const { user } = useAuth();
 const userRole = user.roleId; 

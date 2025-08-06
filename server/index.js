@@ -54,7 +54,6 @@ app.use(session({
 }));
 
 
-// ✅ Serve static uploads only
 app.use("/uploads", (req, res, next) => {
   res.header("Access-Control-Allow-Origin", process.env.CLIENT_URL);
   res.header("Access-Control-Allow-Credentials", "true");
@@ -72,7 +71,6 @@ app.use((req, res, next) => {
   next();
 });
 
-// 🚫 Catch-all fallback: return 404 for non-API routes
 app.use((req, res, next) => {
   if (!req.path.startsWith("/api") && !req.path.startsWith("/uploads")) {
     return res.status(404).json({ error: "Not Found" });

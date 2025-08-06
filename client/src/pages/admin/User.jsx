@@ -17,6 +17,7 @@ import {
 
 import { useSocketClient } from "../../context/authContext";
 
+
 const User = () => {
   const [users, setUsers] = useState([]);
   const [pendingInvitations, setPendingInvitations] = useState([]);
@@ -112,6 +113,11 @@ const User = () => {
     setSelectedInviteId(null);
   };
 
+  const closeViewInvite = () => {
+  setViewInvite({ isOpen: false, invite: null });
+};
+
+
   const openPopup = (title, message, type = "info") => {
     setPopup({ isOpen: true, title, message, type });
   };
@@ -164,6 +170,16 @@ const User = () => {
     handleInviteAction("revoke", selectedInviteId);
     setShowConfirmRevoke(false);
   };
+
+  const formatDate = (dateString) => {
+  const date = new Date(dateString);
+  return date.toLocaleDateString('en-PH', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+};
+
 
   return (
     <>

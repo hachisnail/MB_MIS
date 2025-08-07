@@ -497,401 +497,407 @@ export const AppointmentViewPage = ({
   // Render content based on whether it's a route component or modal
   const renderContent = () => (
     <>
-      <div className="flex justify-between items-center mt-2">
-        <h2 className="text-3xl font-bold">
+      {/* Header Section - Enlarged text for full page layout */}
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-5xl font-bold text-gray-900">
           {modalData.fromFirstName} {modalData.fromLastName}
-        </h2>
-        <div className="text-lg">
+        </h1>
+        <div className="text-lg text-gray-600">
           {modalData.dateSent || "N/A"}
         </div>
       </div>
 
-      <hr className="border-gray-300 my-6" />
+      <hr className="border-gray-400 mb-12" />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-6">
-        <div>
-          <div className="mb-4">
-            <div className="text-gray-600 text-base mb-1">Email</div>
-            <div className="text-blue-500 text-xl">{modalData.email || 'N/A'}</div>
-          </div>
-          <div className="mb-4">
-            <div className="text-gray-600 text-base mb-1">Phone Number</div>
-            <div className="text-blue-500 text-xl">{modalData.phone || 'N/A'}</div>
-          </div>
-          <div className="mb-4">
-            <div className="text-gray-600 text-base mb-1">Address</div>
-            <div className="text-blue-500 text-xl">
-              {modalData.street || 'N/A'}, {modalData.barangay || 'N/A'}, {modalData.city_municipality || 'N/A'},{' '}
-              {modalData.province || 'N/A'}
+      {/* Main Content Grid - Enlarged text and spacing */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
+        {/* Left Column - Contact Information */}
+        <div className="space-y-8">
+          {/* Email */}
+          <div className="flex items-start gap-4">
+            <div className="w-7 h-7 mt-1">
+              <svg className="w-7 h-7 text-gray-700" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
+                <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
+              </svg>
+            </div>
+            <div>
+              <div className="text-lg font-medium text-gray-900">Email</div>
+              <div className="text-lg text-blue-600">{modalData.email || 'N/A'}</div>
             </div>
           </div>
-          <div className="mb-4">
-            <div className="text-gray-600 text-base mb-1">Organization</div>
-            <div className="text-blue-500 text-xl">{modalData.organization || 'N/A'}</div>
+
+          {/* Phone Number */}
+          <div className="flex items-start gap-4">
+            <div className="w-7 h-7 mt-1">
+              <svg className="w-7 h-7 text-gray-700" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
+              </svg>
+            </div>
+            <div>
+              <div className="text-lg font-medium text-gray-900">Phone Number</div>
+              <div className="text-lg text-blue-600">{modalData.phone || 'N/A'}</div>
+            </div>
+          </div>
+
+          {/* Address */}
+          <div className="flex items-start gap-4">
+            <div className="w-7 h-7 mt-1">
+              <svg className="w-7 h-7 text-gray-700" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div>
+              <div className="text-lg font-medium text-gray-900">Address:</div>
+              <div className="text-lg text-blue-600">
+                {modalData.street || 'N/A'}, {modalData.barangay || 'N/A'}, {modalData.city_municipality || 'N/A'}, {modalData.province || 'N/A'}
+              </div>
+            </div>
+          </div>
+
+          {/* Organization */}
+          <div className="flex items-start gap-4">
+            <div className="w-7 h-7 mt-1">
+              <svg className="w-7 h-7 text-gray-700" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2H4zm3 5a1 1 0 011-1h4a1 1 0 110 2H8a1 1 0 01-1-1zm0 3a1 1 0 011-1h4a1 1 0 110 2H8a1 1 0 01-1-1z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div>
+              <div className="text-lg font-medium text-gray-900">Organization:</div>
+              <div className="text-lg text-blue-600">{modalData.organization || 'N/A'}</div>
+            </div>
+          </div>
+
+          {/* Bottom Section - Appointment Details */}
+          <div className="mt-12 bg-gray-100 p-8 rounded-lg space-y-6">
+            <div>
+              <div className="text-lg font-medium text-gray-900 mb-2">Purpose of Visit:</div>
+              <div className="text-lg text-blue-600">{modalData.purpose || 'N/A'}</div>
+            </div>
+
+            <div>
+              <div className="text-lg font-medium text-gray-900 mb-2">Population Count:</div>
+              <div className="text-lg text-blue-600">{modalData.populationCount || '0'}</div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-12">
+              <div>
+                <div className="text-lg font-medium text-gray-900 mb-2">Preferred Date:</div>
+                <div className="text-lg text-blue-600">{modalData.preferredDate || 'N/A'}</div>
+              </div>
+              <div>
+                <div className="text-lg font-medium text-gray-900 mb-2">Preferred Time:</div>
+                <div className="text-lg text-blue-600">
+                  {modalData.preferredTime
+                    ? formatTimeRange(modalData.preferredTime)
+                    : (modalData.start_time || modalData.end_time
+                      ? `${convertTo12HourFormat(modalData.start_time || '')}${modalData.start_time && modalData.end_time ? ' - ' : ''
+                      }${convertTo12HourFormat(modalData.end_time || '')}`
+                      : "Flexible")}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
+        {/* Right Column - Notes and Respond Section */}
         <div>
-          <div className="mb-4">
-            <div className="text-gray-600 text-base mb-1">Purpose of Visit</div>
-            <div className="text-blue-500 text-xl">{modalData.purpose || 'N/A'}</div>
-          </div>
-          <div className="mb-4">
-            <div className="text-gray-600 text-base mb-1">Population Count</div>
-            <div className="text-blue-500 text-xl">{modalData.populationCount || '0'}</div>
-          </div>
-          <div className="mb-4">
-            <div className="text-gray-600 text-base mb-1">Preferred Date</div>
-            <div className="text-blue-500 text-xl">{modalData.preferredDate || 'N/A'}</div>
-          </div>
-          <div className="mb-4">
-            <div className="text-gray-600 text-base mb-1">Preferred Time</div>
-            <div className="text-blue-500 text-xl">
-              {modalData.preferredTime
-                ? formatTimeRange(modalData.preferredTime)
-                : (modalData.start_time || modalData.end_time
-                  ? `${convertTo12HourFormat(modalData.start_time || '')}${modalData.start_time && modalData.end_time ? ' - ' : ''
-                  }${convertTo12HourFormat(modalData.end_time || '')}`
-                  : "Flexible")}
+          {/* Notes Section - Enlarged text */}
+          {modalData.notes && (
+            <div className="bg-gray-100 p-8 rounded-lg mb-12">
+              <div className="text-lg font-medium text-gray-900 mb-3">Notes:</div>
+              <div className="text-lg text-blue-600">{modalData.notes}</div>
             </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="mb-6">
-        <div className="text-gray-600 text-base mb-1">Notes</div>
-        <div className="text-blue-500 text-xl">{modalData.notes || 'N/A'}</div>
-      </div>
-
-      <hr className="border-gray-300 my-6" />
-
-      {shouldShowRespondSection() && (
-        <div>
-          <h3 className="text-2xl font-bold mb-6">Respond</h3>
-
-          {isToReview && (
-            <>
-              <div className="mb-6">
-                <div className="text-lg mb-3">Approve Visit?</div>
-                <div className="flex gap-4">
-                  <StyledButton
-                    onClick={() => {
-                      setApproveVisit('yes');
-                      setApprovalError(false);
-                    }}
-                    buttonColor={approveVisit === 'yes' ? 'bg-[#6F3FFF]' : 'bg-gray-200'}
-                    hoverColor={approveVisit === 'yes' ? 'hover:bg-[#5F2FEF]' : 'hover:bg-gray-300'}
-                    textColor={approveVisit === 'yes' ? 'text-white' : 'text-gray-800'}
-                    className="px-8 py-3 text-lg"
-                  >
-                    Yes
-                  </StyledButton>
-                  <StyledButton
-                    onClick={() => {
-                      setApproveVisit('no');
-                      setApprovalError(false);
-                    }}
-                    buttonColor={approveVisit === 'no' ? 'bg-red-600' : 'bg-gray-200'}
-                    hoverColor={approveVisit === 'no' ? 'hover:bg-red-700' : 'hover:bg-gray-300'}
-                    textColor={approveVisit === 'no' ? 'text-white' : 'text-gray-800'}
-                    className="px-8 py-3 text-lg"
-                  >
-                    No
-                  </StyledButton>
-                </div>
-                {approvalError && (
-                  <p className="text-base text-red-500 mt-2">
-                    Please select Yes or No before continuing.
-                  </p>
-                )}
-              </div>
-
-              <div className="mb-6">
-                <div className="text-lg mb-3">Leave a message</div>
-                <textarea
-                  className={`w-full p-4 border ${messageError ? 'border-red-500' : 'border-gray-300'
-                    } rounded-md h-[120px] overflow-y-auto resize-none text-base`}
-                  value={message}
-                  onChange={(e) => {
-                    setMessage(e.target.value);
-                    if (e.target.value.trim()) {
-                      setMessageError(false);
-                    }
-                  }}
-                  placeholder="Enter message here (required)"
-                />
-                {messageError && (
-                  <p className="text-base text-red-500 mt-1">
-                    Please enter a message for the visitor.
-                  </p>
-                )}
-                <div className="text-base text-gray-500 mt-2">
-                  This will automatically send to{' '}
-                  {modalData.email || 'the visitor'}
-                </div>
-              </div>
-            </>
           )}
 
-          {isConfirmed && (
-            <>
-              <div className="mb-6">
-                <div className="text-lg mb-3">Appointment Action</div>
-                <div className="flex gap-4">
-                  <StyledButton
-                    onClick={() => {
-                      setApproveVisit('cancel');
-                      setActionError(false);
-                      setMessageError(false);
-                    }}
-                    buttonColor={approveVisit === 'cancel' ? 'bg-red-600' : 'bg-gray-200'}
-                    hoverColor={approveVisit === 'cancel' ? 'hover:bg-red-700' : 'hover:bg-gray-300'}
-                    textColor={approveVisit === 'cancel' ? 'text-white' : 'text-gray-800'}
-                    className="px-8 py-3 text-lg"
-                  >
-                    Cancel
-                  </StyledButton>
-                  <StyledButton
-                    onClick={() => {
-                      setApproveVisit('arrive');
-                      setActionError(false);
-                      setMessageError(false);
-                    }}
-                    buttonColor={approveVisit === 'arrive' ? 'bg-green-600' : 'bg-gray-200'}
-                    hoverColor={approveVisit === 'arrive' ? 'hover:bg-green-700' : 'hover:bg-gray-300'}
-                    textColor={approveVisit === 'arrive' ? 'text-white' : 'text-gray-800'}
-                    className="px-8 py-3 text-lg"
-                  >
-                    Arrive
-                  </StyledButton>
-                </div>
-                {actionError && (
-                  <p className="text-base text-red-500 mt-2">
-                    Please select Cancel or Arrive before continuing.
-                  </p>
-                )}
-              </div>
+          {shouldShowRespondSection() && (
+            <div>
+              <h3 className="text-3xl font-bold mb-8">Respond</h3>
 
-              {approveVisit === 'cancel' && (
-                <div className="mb-6">
-                  <div className="text-lg mb-3">Cancellation Message</div>
-                  <textarea
-                    className={`w-full p-4 border ${messageError ? 'border-red-500' : 'border-gray-300'
-                      } rounded-md h-[120px] overflow-y-auto resize-none text-base`}
-                    value={message}
-                    onChange={(e) => {
-                      setMessage(e.target.value);
-                      if (e.target.value.trim()) {
-                        setMessageError(false);
-                      }
-                    }}
-                    placeholder="Enter cancellation reason (required)"
-                  />
-                  {messageError && (
-                    <p className="text-base text-red-500 mt-1">
-                      Please enter a cancellation reason.
-                    </p>
-                  )}
-                  <div className="text-base text-gray-500 mt-2">
-                    This will automatically send to{' '}
-                    {modalData.email || 'the visitor'}
+              {isToReview && (
+                <>
+                  <div className="mb-8">
+                    <div className="text-lg font-medium mb-4">Approve Visit?</div>
+                    <div className="flex gap-6">
+                      <button
+                        onClick={() => {
+                          setApproveVisit('yes');
+                          setApprovalError(false);
+                        }}
+                        className={`px-12 py-3 text-lg rounded-md font-medium transition-colors ${approveVisit === 'yes'
+                          ? 'bg-purple-600 text-white'
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                          }`}
+                      >
+                        Yes
+                      </button>
+                      <button
+                        onClick={() => {
+                          setApproveVisit('no');
+                          setApprovalError(false);
+                        }}
+                        className={`px-12 py-3 text-lg rounded-md font-medium transition-colors ${approveVisit === 'no'
+                          ? 'bg-gray-600 text-white'
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                          }`}
+                      >
+                        No
+                      </button>
+                    </div>
+                    {approvalError && (
+                      <p className="text-lg text-red-500 mt-3 text-center">
+                        Please select Yes or No before continuing.
+                      </p>
+                    )}
                   </div>
-                </div>
+
+                  <div className="mb-8">
+                    <div className="text-lg font-medium mb-3">Leave a message</div>
+                    <textarea
+                      className={`w-full p-4 border ${messageError ? 'border-red-500' : 'border-gray-300'
+                        } rounded-md h-[150px] resize-none text-lg`}
+                      value={message}
+                      onChange={(e) => {
+                        setMessage(e.target.value);
+                        if (e.target.value.trim()) {
+                          setMessageError(false);
+                        }
+                      }}
+                      placeholder="Enter message here (required)"
+                    />
+                    {messageError && (
+                      <p className="text-lg text-red-500 mt-2">
+                        Please enter a message for the visitor.
+                      </p>
+                    )}
+                    <div className="text-base text-gray-500 mt-3">
+                      This will automatically send to{' '}
+                      <span className="text-blue-600">{modalData.email || 'the visitor'}</span>
+                    </div>
+                  </div>
+                </>
               )}
 
-              {approveVisit === 'arrive' && (
-                <div className="mb-6 bg-gray-50 p-6 rounded-lg border border-gray-200">
-                  <h4 className="text-xl font-bold mb-4">Attendance Details</h4>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 mb-4">
-                    <div>
-                      <div className="text-gray-600 text-base mb-2">Expected Visitors:</div>
-                      <div className="text-2xl font-semibold">
-                        {modalData.populationCount || '0'}
-                      </div>
+              {isConfirmed && (
+                <>
+                  <div className="mb-8">
+                    <div className="text-2xl mb-4">Appointment Action</div>
+                    <div className="flex gap-6">
+                      <StyledButton
+                        onClick={() => {
+                          setApproveVisit('cancel');
+                          setActionError(false);
+                          setMessageError(false);
+                        }}
+                        buttonColor={approveVisit === 'cancel' ? 'bg-red-600' : 'bg-gray-200'}
+                        hoverColor={approveVisit === 'cancel' ? 'hover:bg-red-700' : 'hover:bg-gray-300'}
+                        textColor={approveVisit === 'cancel' ? 'text-white' : 'text-gray-800'}
+                        className="px-12 py-4 text-xl"
+                      >
+                        Cancel
+                      </StyledButton>
+                      <StyledButton
+                        onClick={() => {
+                          setApproveVisit('arrive');
+                          setActionError(false);
+                          setMessageError(false);
+                        }}
+                        buttonColor={approveVisit === 'arrive' ? 'bg-green-600' : 'bg-gray-200'}
+                        hoverColor={approveVisit === 'arrive' ? 'hover:bg-green-700' : 'hover:bg-gray-300'}
+                        textColor={approveVisit === 'arrive' ? 'text-white' : 'text-gray-800'}
+                        className="px-12 py-4 text-xl"
+                      >
+                        Arrive
+                      </StyledButton>
                     </div>
+                    {actionError && (
+                      <p className="text-lg text-red-500 mt-3">
+                        Please select Cancel or Arrive before continuing.
+                      </p>
+                    )}
+                  </div>
 
-                    <div>
-                      <div className="text-gray-600 text-base mb-2">Present:</div>
-                      <div className="flex items-center gap-3">
-                        <input
-                          type="number"
-                          className={`border ${presentCountError ? 'border-red-500' : 'border-gray-300'
-                            } rounded-md p-3 w-full text-lg`}
-                          value={presentCount}
-                          onChange={(e) => {
-                            const value = e.target.value;
-                            if (value === '' || /^\d+$/.test(value)) {
-                              setPresentCount(value);
-                              setPresentCountError(false);
-                            }
-                          }}
-                          placeholder="Enter present count"
-                          min="0"
-                        />
-                        <StyledButton
-                          onClick={handleAllPresent}
-                          buttonColor="bg-green-500"
-                          hoverColor="hover:bg-green-600"
-                          textColor="text-white"
-                          className="px-3 py-3 whitespace-nowrap text-base"
-                        >
-                          All Present
-                        </StyledButton>
-                      </div>
-                      {presentCountError && (
-                        <p className="text-base text-red-500 mt-1">
-                          Please enter how many visitors attended
+                  {approveVisit === 'cancel' && (
+                    <div className="mb-8">
+                      <div className="text-2xl mb-4">Cancellation Message</div>
+                      <textarea
+                        className={`w-full p-5 border ${messageError ? 'border-red-500' : 'border-gray-300'
+                          } rounded-md h-[180px] overflow-y-auto resize-none text-lg`}
+                        value={message}
+                        onChange={(e) => {
+                          setMessage(e.target.value);
+                          if (e.target.value.trim()) {
+                            setMessageError(false);
+                          }
+                        }}
+                        placeholder="Enter cancellation reason (required)"
+                      />
+                      {messageError && (
+                        <p className="text-lg text-red-500 mt-2">
+                          Please enter a cancellation reason.
                         </p>
                       )}
+                      <div className="text-lg text-gray-500 mt-3">
+                        This will automatically send to{' '}
+                        {modalData.email || 'the visitor'}
+                      </div>
                     </div>
-                  </div>
+                  )}
 
-                  <div className="mt-4">
-                    <div className="text-lg mb-2">Completion Message</div>
-                    <textarea
-                      className="w-full p-4 border border-gray-300 rounded-md h-[120px] overflow-y-auto resize-none text-base"
-                      value={message}
-                      onChange={(e) => setMessage(e.target.value)}
-                      placeholder="Enter completion message (optional)"
-                    />
-                    <div className="text-base text-gray-500 mt-2">
-                      This will automatically send to{' '}
-                      {modalData.email || 'the visitor'}
+                  {approveVisit === 'arrive' && (
+                    <div className="mb-8 bg-gray-50 p-8 rounded-lg border border-gray-200">
+                      <h4 className="text-2xl font-bold mb-6">Attendance Details</h4>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 mb-6">
+                        <div>
+                          <div className="text-gray-600 text-lg mb-3">Expected Visitors:</div>
+                          <div className="text-3xl font-semibold">
+                            {modalData.populationCount || '0'}
+                          </div>
+                        </div>
+
+                        <div>
+                          <div className="text-gray-600 text-lg mb-3">Present:</div>
+                          <div className="flex items-center gap-4">
+                            <input
+                              type="number"
+                              className={`border ${presentCountError ? 'border-red-500' : 'border-gray-300'
+                                } rounded-md p-4 w-full text-xl`}
+                              value={presentCount}
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                if (value === '' || /^\d+$/.test(value)) {
+                                  setPresentCount(value);
+                                  setPresentCountError(false);
+                                }
+                              }}
+                              placeholder="Enter present count"
+                              min="0"
+                            />
+                            <StyledButton
+                              onClick={handleAllPresent}
+                              buttonColor="bg-green-500"
+                              hoverColor="hover:bg-green-600"
+                              textColor="text-white"
+                              className="px-4 py-4 whitespace-nowrap text-lg"
+                            >
+                              All Present
+                            </StyledButton>
+                          </div>
+                          {presentCountError && (
+                            <p className="text-lg text-red-500 mt-2">
+                              Please enter how many visitors attended
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="mt-6">
+                        <div className="text-xl mb-3">Completion Message</div>
+                        <textarea
+                          className="w-full p-5 border border-gray-300 rounded-md h-[180px] overflow-y-auto resize-none text-lg"
+                          value={message}
+                          onChange={(e) => setMessage(e.target.value)}
+                          placeholder="Enter completion message (optional)"
+                        />
+                        <div className="text-lg text-gray-500 mt-3">
+                          This will automatically send to{' '}
+                          {modalData.email || 'the visitor'}
+                        </div>
+                      </div>
+
+                      <div className="text-lg text-gray-500 mt-6">
+                        Enter the number of visitors who actually attended. Click "All Present" if
+                        everyone arrived.
+                      </div>
                     </div>
-                  </div>
+                  )}
+                </>
+              )}
 
-                  <div className="text-base text-gray-500 mt-4">
-                    Enter the number of visitors who actually attended. Click "All Present" if
-                    everyone arrived.
+              {isRejected && (
+                <div className="mb-8 text-center">
+                  <div className="px-8 py-6 bg-gray-100 rounded-lg text-gray-700 text-xl">
+                    This appointment has been rejected. No further actions are available.
                   </div>
                 </div>
               )}
-            </>
-          )}
 
-          {isRejected && (
-            <div className="mb-6 text-center text-xl">
-              <div className="px-6 py-3 bg-gray-100 rounded-lg text-gray-700">
-                This appointment has been rejected. No further actions are available.
+              {isCompletedOrFailed && (
+                <div className="mb-8 text-center">
+                  <div className="px-8 py-6 bg-gray-100 rounded-lg text-gray-700 text-xl">
+                    This appointment is {modalData.status.toLowerCase()}. No further actions are
+                    available.
+                  </div>
+                </div>
+              )}
+
+              <div className="flex mt-8">
+                {(isToReview || isConfirmed) && (
+                  <button
+                    onClick={handleSend}
+                    disabled={isLoading}
+                    className={`px-16 py-4 text-xl rounded-md font-medium transition-colors ${isLoading
+                      ? 'bg-gray-400 text-white cursor-not-allowed'
+                      : 'bg-purple-600 text-white hover:bg-purple-700'
+                      }`}
+                  >
+                    {isLoading ? 'Processing...' : 'Done'}
+                  </button>
+                )}
+
+                {(isCompletedOrFailed || isRejected) && (
+                  <button
+                    onClick={onClose}
+                    className="px-16 py-4 text-xl bg-gray-500 text-white rounded-md font-medium hover:bg-gray-600 transition-colors"
+                  >
+                    Close
+                  </button>
+                )}
               </div>
             </div>
           )}
 
-          {isCompletedOrFailed && (
-            <div className="mb-6 text-center text-xl">
-              <div className="px-6 py-3 bg-gray-100 rounded-lg text-gray-700">
-                This appointment is {modalData.status.toLowerCase()}. No further actions are
-                available.
-              </div>
-            </div>
-          )}
-
-          <div className="flex justify-end mt-6">
-            {(isToReview || isConfirmed) && (
-              <StyledButton
-                onClick={handleSend}
-                disabled={isLoading}
-                buttonColor={isLoading ? 'bg-gray-400' : 'bg-[#6F3FFF]'}
-                hoverColor={isLoading ? 'hover:bg-gray-400' : 'hover:bg-[#5F2FEF]'}
-                textColor="text-white"
-                className="px-10 py-3 text-lg font-medium"
-              >
-                {isLoading ? 'Processing...' : 'Done'}
-              </StyledButton>
-            )}
-
-            {(isCompletedOrFailed || isRejected) && (
+          {!shouldShowRespondSection() && (
+            <div className="flex justify-end mt-8">
               <StyledButton
                 onClick={onClose}
                 buttonColor="bg-gray-500"
                 hoverColor="hover:bg-gray-600"
                 textColor="text-white"
-                className="px-10 py-3 text-lg font-medium"
+                className="px-16 py-4 text-xl font-medium"
               >
                 Close
               </StyledButton>
-            )}
-          </div>
+            </div>
+          )}
         </div>
-      )}
-
-      {!shouldShowRespondSection() && (
-        <div className="flex justify-end mt-6">
-          <StyledButton
-            onClick={onClose}
-            buttonColor="bg-gray-500"
-            hoverColor="hover:bg-gray-600"
-            textColor="text-white"
-            className="px-10 py-3 text-lg font-medium"
-          >
-            Close
-          </StyledButton>
-        </div>
-      )}
+      </div>
     </>
   );
 
+  // Always render as full page layout - no modal behavior
   return (
     <>
-      {/* Main Appointment View - Render differently based on whether it's a route or modal */}
-      {isRouteComponent ? (
-        // Full page view when used as route component (like ViewLogs)
-        <div className="w-full h-full pt-5 overflow-y-auto">
-          <div className="w-full h-full flex flex-col gap-y-[2rem]">
-            <div className="max-w-4xl mx-auto w-full px-8">
-              <div className="relative bg-white rounded-2xl shadow-lg border border-gray-200 p-8">
-                {/* Close button */}
-                <button
-                  className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 transition-colors z-10"
-                  onClick={onClose}
-                  aria-label="Close view"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="18" y1="6" x2="6" y2="18"></line>
-                    <line x1="6" y1="6" x2="18" y2="18"></line>
-                  </svg>
-                </button>
-
-                {/* Main Content */}
-                <div className="pr-12">
-                  {renderContent()}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      ) : (
-        // Modal view when used as a prop-based component
-        <div
-          className="absolute inset-0 z-50 bg-black/20 backdrop-blur-sm flex items-center justify-center"
-          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+      {/* Main Appointment View - Full tab page layout */}
+      <div className="w-full h-full bg-white p-8 overflow-y-auto">
+        {/* Close button - positioned absolutely in top right */}
+        <button
+          className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 transition-colors z-10"
+          onClick={onClose}
+          aria-label="Close view"
         >
-          <div
-            className="relative bg-[#F0F0F0] shadow-lg p-8 w-full h-full max-w-none max-h-none overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="max-w-4xl mx-auto py-4">
-              <div className="relative bg-white rounded-2xl shadow-lg border border-gray-200 p-8">
-                <button
-                  className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 transition-colors z-10"
-                  onClick={onClose}
-                  aria-label="Close modal"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="18" y1="6" x2="6" y2="18"></line>
-                    <line x1="6" y1="6" x2="18" y2="18"></line>
-                  </svg>
-                </button>
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
 
-                <div className="pr-12">
-                  {renderContent()}
-                </div>
-              </div>
-            </div>
-          </div>
+        {/* Main Content - Full tab page layout */}
+        <div className="w-full">
+          {renderContent()}
         </div>
-      )}
+      </div>
 
       {/* Confirmation Modal */}
       <ConfirmationModal
@@ -914,7 +920,7 @@ export const AppointmentViewPage = ({
         theme="light"
       />
 
-      {/* Toast for route component */}
+      {/* Toast */}
       {isRouteComponent && (
         <Toast
           message={toastConfig.message}
@@ -922,7 +928,6 @@ export const AppointmentViewPage = ({
           onClose={hideToast}
         />
       )}
-
     </>
   );
 };

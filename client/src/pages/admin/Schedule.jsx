@@ -524,11 +524,11 @@ const Schedule = () => {
 
       const startMinutes = timeStringToMinutes(newStartTime);
       const endMinutes = timeStringToMinutes(newEndTime);
-      const sevenAM = timeStringToMinutes('07:00');
-      const fivePM = timeStringToMinutes('17:00');
+      const sixAM = timeStringToMinutes('06:00');
+      const sixPM = timeStringToMinutes('18:00');
 
-      if (startMinutes < sevenAM || endMinutes > fivePM) {
-        showToast('Schedule must be between 7:00 AM and 5:00 PM', 'error');
+      if (startMinutes < sixAM || endMinutes > sixPM) {
+        showToast('Schedule must be between 6:00 AM and 6:00 PM', 'error');
         return;
       }
 

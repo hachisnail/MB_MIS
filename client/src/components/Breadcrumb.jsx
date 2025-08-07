@@ -6,6 +6,10 @@ const routeMeta = [
     path: "/admin/acquisition",
     title: "Donations/Acquisitions/Lending Management",
   },
+    {
+    path: "/admin/acquisition/add-artifact",
+    title: "Manually add a new Artifact",
+  },
   { path: "/admin/logs", title: "Activities", theme: "text-gray-400" },
   { path: "/admin/logs/:log", title: "Activity", theme: "text-gray-400" },
   { path: "/admin/view", title: "View Artifacts" },

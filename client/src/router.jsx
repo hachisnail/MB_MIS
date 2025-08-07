@@ -35,6 +35,7 @@ import Inventory from "@/pages/admin/Inventory";
 import NoMatch from "@/pages/NoMatch";
 import RequireRole from "@/lib/RequiredRole";
 import Acquisition from "@/pages/admin/Acquisition";
+import AddArtifact from "@/components/subpages/private/AddArtifact"
 import ViewArtifacts from "@/components/subpages/private/ViewArtifacts";
 import Schedule from "@/pages/admin/Schedule";
 import Article from "@/pages/admin/Article";
@@ -151,7 +152,10 @@ const Router = () => {
           )}
 
           {flags["acquisition"] && (
-            <Route path="acquisition" element={<Acquisition />} />
+            <>
+              <Route path="acquisition" element={<Acquisition />} />
+              <Route path="acquisition/add-artifact" element={<AddArtifact />} />
+            </>
           )}
           {flags["schedule"] && (
             <Route path="schedule" element={<Schedule />} />

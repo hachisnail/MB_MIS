@@ -137,7 +137,7 @@ const Appointment = () => {
                       lg:min-h-[30rem] lg:max-h-[30rem]
                       xl:min-h-[32rem] xl:max-h-[32rem]
                       2xl:min-h-[34rem] 2xl:max-h-[34rem]
-                      overflow-y-auto
+                      
                       relative
                       break-words">
             {article.description ? (

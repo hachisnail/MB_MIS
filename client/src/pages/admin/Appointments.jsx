@@ -1,5 +1,4 @@
-// FileName: /Appointments.jsx
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSocketClient } from "@/context/authContext";
 import { useLocation } from 'react-router-dom';
 import axiosClient from '@/lib/axiosClient';
@@ -12,9 +11,11 @@ import {
   AttendanceItem,
   VisitorRecordItem,
   standardizeStatus,
-  formatDateForDisplay,
   formatDate
 } from "@/components/list/AppointmentsList";
+import { formatDateForDisplay } from "@/components/list/commons";
+
+import useToast from '../../components/list/commons';
 
 
 const Appointments = () => {
@@ -49,10 +50,8 @@ const Appointments = () => {
   const [sortDirection, setSortDirection] = useState('asc');
 
   // Toast
-  const [toastConfig, setToastConfig] = useState({
-    message: '',
-    type: 'success'
-  });
+  const { toastConfig, showToast, hideToast } = useToast();
+
 
   const socket = useSocketClient();
 
@@ -63,14 +62,6 @@ const Appointments = () => {
     }
   }, [location.state]);
 
-  // Toast functions
-  const showToast = useCallback((message, type = 'success') => {
-    setToastConfig({ message, type });
-  }, []);
-
-  const hideToast = useCallback(() => {
-    setToastConfig(prevConfig => ({ ...prevConfig, message: '' }));
-  }, []);
 
   // Helper function to format date for API
 
@@ -291,28 +282,28 @@ const Appointments = () => {
     <div className="relative w-full h-full  select-none flex  overflow-hidden">
       <div className="w-full h-full flex flex-col gap-y-5 pb-7  overflow-hidden">
 
-        <div className="w-full h-[calc(100%-9rem)] flex flex-col xl:flex-row gap-y-5 xl:gap-y-0 xl:gap-x-5 ">
+        <div className="w-full h-full flex flex-col xl:flex-row gap-y-5 xl:gap-y-0 xl:gap-x-5 ">
           {/* Left panel: Stats + Buttons */}
           <div className="min-w-[34rem] h-full flex flex-col gap-y-7">
             {/* Tab Buttons */}
-            <div className="w-full max-w-[35rem] text-gray-500 h-[3.5rem] flex py-0 gap-x-2 items-center">
+            <div className="w-full max-w-[35rem] text-gray-500 min-h-[3.2rem] flex py-0 gap-x-2 items-center">
               <button
                 onClick={() => setActiveTab('forms')}
-                className={`px-4 h-full border-1 rounded-lg cursor-pointer ${tabButtonStyle('forms')}`}
+                className={`px-4 text-2xl font-semibold h-full border-1 rounded-lg cursor-pointer ${tabButtonStyle('forms')}`}
               >
-                <span className="text-2xl font-semibold">Forms</span>
+                Forms
               </button>
               <button
                 onClick={() => setActiveTab('attendance')}
-                className={`px-4 h-full border-1 rounded-lg cursor-pointer ${tabButtonStyle('attendance')}`}
+                className={`px-4 h-full border-1 text-2xl font-semibold rounded-lg cursor-pointer ${tabButtonStyle('attendance')}`}
               >
-                <span className="text-2xl font-semibold">Attendance</span>
+                Attendance
               </button>
               <button
                 onClick={() => setActiveTab('visitorRecords')}
-                className={`px-4 h-full border-1 rounded-lg cursor-pointer ${tabButtonStyle('visitorRecords')}`}
+                className={`px-4 text-2xl font-semibold h-full border-1 rounded-lg cursor-pointer ${tabButtonStyle('visitorRecords')}`}
               >
-                <span className="text-2xl font-semibold">Visitor Records</span>
+                Visitor Records
               </button>
             </div>
 
@@ -400,7 +391,7 @@ const Appointments = () => {
 
           {/* Right side: Tables */}
           <div className="w-full h-full flex flex-col gap-y-7 overflow-x-auto overflow-y-hidden">
-            <div className="w-full h-fit flex gap-x-3 items-center">
+            <div className="w-full min-h-[3.2rem] flex gap-x-3 items-center">
               <TimelineDatePicker
                 defaultValue={selectedDate ? selectedDate.toISOString().split('T')[0] : ''}
                 onDateChange={(dateString) => handleDateChange(dateString ? new Date(dateString) : null)}

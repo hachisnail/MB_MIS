@@ -175,9 +175,9 @@ const CreateUsers = () => {
         theme="dark"
       />
       {PromptModal}
-      <div className="w-full h-full p-5 flex flex-col 1xl:h-[69rem] 2xl:max-h-[81rem] 3xl:max-h-[88rem]">
+      <div className="w-full h-full flex flex-col 1xl:h-[69rem] 2xl:max-h-[81rem] 3xl:max-h-[88rem]">
         <div className="w-full h-full overflow-y-scroll flex-col xl:flex-row py-5 items-center flex border-t-1 border-[#373737]">
-          <form className="min-w-fit flex h-full p-2 gap-y-5 gap-x-10" onSubmit={(e) => e.preventDefault()}>
+          <form className="min-w-fit flex h-full  gap-y-5 gap-x-10" onSubmit={(e) => e.preventDefault()}>
             <div className="w-[40rem] h-fit flex flex-col gap-y-2">
               <div className="w-full h-fit flex flex-col gap-y-2">
                 <span className="w-fit text-2xl font-semibold">Form</span>

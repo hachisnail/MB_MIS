@@ -149,7 +149,7 @@ const Logs = () => {
   });
 
   return (
-    <div className="w-full min-w-fit h-full pt-5 1xl:max-h-[69rem] 2xl:max-h-[81rem]  3xl:max-h-[88rem]">
+    <div className="w-full min-w-fit h-full  1xl:max-h-[69rem] 2xl:max-h-[81rem]  3xl:max-h-[88rem]">
       <div className="w-full h-full flex flex-col gap-y-[2rem]">
         <div className="w-full h-fit flex gap-x-3">
           <TimelineDatePicker onDateChange={handleDateFilter} theme="dark" />
@@ -176,20 +176,20 @@ const Logs = () => {
 
         <div className="w-full h-full flex flex-col ">
           {/* Table Header */}
-          <div className="w-full min-w-fit h-12 grid grid-cols-5">
+          <div className="w-full min-w-fit h-12 grid grid-cols-[15rem_18.5rem_13rem_12.5rem_1fr]  ">
             {["Actor", "Timestamp", "Tab", "Action", "Description"].map(
               (label) => (
                 <div
                   key={label}
-                  className="h-10 min-w-fit flex pl-5 items-center col-span-1"
+                  className="h-10 min-w-fit flex pl-5  items-center col-span-1"
                 >
-                  <span className="text-2xl font-semibold">{label}</span>
+                  <span className="text-2xl ">{label}</span>
                 </div>
               )
             )}
           </div>
 
-          <div className="w-full h-[61rem]  border-t-1 border-gray-600 flex flex-col overflow-scroll">
+          <div className="w-full h-[57rem]  border-t-1 border-gray-600 flex flex-col overflow-scroll">
             <div className="relative w-full h-full">
               {/* Overlayed Spinner */}
               {isLoading && (

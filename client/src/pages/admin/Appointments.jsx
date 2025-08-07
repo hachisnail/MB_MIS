@@ -288,10 +288,10 @@ const Appointments = () => {
   }, [appointments, attendanceData, visitorRecords, searchQuery, statusFilter, columnFilter, sortDirection]);
 
   return (
-    <div className="relative w-full h-full bg-[#F0F0F0] select-none flex pt-[1rem] overflow-hidden">
-      <div className="w-full h-full flex flex-col gap-y-5 px-7 pb-7 pt-[1rem] overflow-hidden">
+    <div className="relative w-full h-full  select-none flex  overflow-hidden">
+      <div className="w-full h-full flex flex-col gap-y-5 pb-7  overflow-hidden">
 
-        <div className="w-full h-[calc(100%-9rem)] flex flex-col xl:flex-row gap-y-5 xl:gap-y-0 xl:gap-x-5 pt-5">
+        <div className="w-full h-[calc(100%-9rem)] flex flex-col xl:flex-row gap-y-5 xl:gap-y-0 xl:gap-x-5 ">
           {/* Left panel: Stats + Buttons */}
           <div className="min-w-[34rem] h-full flex flex-col gap-y-7">
             {/* Tab Buttons */}

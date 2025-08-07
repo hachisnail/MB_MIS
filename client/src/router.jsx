@@ -3,6 +3,7 @@ import { useAuth } from "@/context/authContext";
 import Unauthorized from "@/pages/Unauthorized";
 import ServerDown from "@/pages/ServerDown";
 import { useRouterFlags } from "@/context/routerFlagProvider";
+import logo from "../src/assets/LOGO.png"
 
 import ManageArticle from "@/components/subpages/ManageArticle";
 
@@ -63,37 +64,38 @@ const Router = () => {
   const { login } = useAuth();
   const { flags, loading } = useRouterFlags();
 
-  if (loading) return (
-  <div className="w-screen h-screen flex items-center justify-center fkex-col">  
- <div className="flex flex-col">
-  <div className="w-7 h-7 mx-auto border-2 border-black border-t-transparent animate-spin rounded-full" /> 
-  <span> Loading routes... </span>
-  </div>
-  </div>)
+  if (loading)
+    return (
+      <div className="w-screen h-screen flex items-center justify-center fkex-col">
+        <div className="flex flex-col">
+        {/* <img src={logo} alt="MSB" className="w-20" /> */}
+
+          <div className="w-7 h-7 mx-auto border-2 border-black border-t-transparent animate-spin rounded-full" />
+          <span> Loading routes... </span>
+        </div>
+      </div>
+    );
   return (
     <Routes>
       {/* Public routes */}
       <Route element={<PublicLayout />}>
         {flags["login"] && (
           <>
-          <Route path="/login" element={<Login onLogin={login} />} />
-          <Route path="/login/forgot-password" element={<RecoverAccount />} />
+            <Route path="/login" element={<Login onLogin={login} />} />
+            <Route path="/login/forgot-password" element={<RecoverAccount />} />
           </>
         )}
-
-
 
         {flags["catalogs_public"] && (
           <Route path="/catalogs" element={<Catalogue />} />
         )}
 
-
         {flags["home"] && (
           <>
-          <Route path="/home" element={<Home />} />
-          <Route path="/" element={<Home />} />
+            <Route path="/home" element={<Home />} />
+            <Route path="/" element={<Home />} />
           </>
-          )}
+        )}
 
         {flags["appointment_public"] && (
           <Route path="/appointment" element={<Appointment />} />
@@ -101,18 +103,22 @@ const Router = () => {
 
         {flags["articles_public"] && (
           <>
-          <Route path="/article/:id" element={<Articlecontents />} />
-          <Route path="/articles" element={<Articles />} />
+            <Route path="/article/:id" element={<Articlecontents />} />
+            <Route path="/articles" element={<Articles />} />
           </>
         )}
 
-        {flags["about"] && (<>
-          <Route path="/about" element={<About />} />
-          <Route path="/about/support" element={<Support />} />
+        {flags["about"] && (
+          <>
+            <Route path="/about" element={<About />} />
+            <Route path="/about/support" element={<Support />} />
           </>
         )}
         {flags["acquisition_public"] && (
-          <Route path="/about/support/contribution-form" element={<Contribution />} />
+          <Route
+            path="/about/support/contribution-form"
+            element={<Contribution />}
+          />
         )}
 
         {/* flags to be defined */}
@@ -128,7 +134,6 @@ const Router = () => {
 
         {/* meh lmao */}
         <Route path="/parser" element={<ElectionResultParser />} />
-
       </Route>
 
       {/* Protected routes */}
@@ -139,8 +144,8 @@ const Router = () => {
           <Route path="dashboard" element={<Dashboard />} />
           {flags["inventory"] && (
             <>
-            <Route path="inventory" element={<Inventory />} />
-            <Route path="inventory/view" element={<ViewArtifacts />} />
+              <Route path="inventory" element={<Inventory />} />
+              <Route path="inventory/view" element={<ViewArtifacts />} />
             </>
           )}
 
@@ -155,31 +160,28 @@ const Router = () => {
               <Route path="article" element={<Article />} />
               <Route path="article/add-article" element={<ManageArticle />} />
               <Route
-              path="article/edit-article/:encoded"
-              element={<ManageArticle />}
+                path="article/edit-article/:encoded"
+                element={<ManageArticle />}
               />
 
-            <Route path="article/add-article" element={<ManageArticle />} />
-            <Route path="article/edit-article" element={<ManageArticle />} />
+              <Route path="article/add-article" element={<ManageArticle />} />
+              <Route path="article/edit-article" element={<ManageArticle />} />
             </>
           )}
-
 
           {flags["appointment"] && (
             <>
               <Route path="appointment" element={<Appointments />} />
               <Route
-              path="appointment/:encoded"
-              element={<AppointmentViewPage />}
+                path="appointment/:encoded"
+                element={<AppointmentViewPage />}
               />
             </>
           )}
 
-
           {flags["schedule"] && (
             <Route path="schedule/:encoded" element={<AppointmentViewPage />} />
           )}
-
 
           {flags["files"] && (
             <Route path="preview/:encoded" element={<FilePreviewer />} />
@@ -188,16 +190,19 @@ const Router = () => {
           {/* sandbox for testing */}
           {flags["sandbox"] && (
             <>
-            <Route path="sandbox" element={<FileUploadDownload />} />
-            <Route path="sandbox/preview/:encoded" element={<FilePreviewer />} />
-            <Route path="sandbox/modal" element={<ModalsTest />} />
-            <Route path="sandbox/router-flag" element={<RouteFlagToggle />} />
-            <Route path="sandbox/socket-monitor" element={<SocketMonitor />} />
-
-
+              <Route path="sandbox" element={<FileUploadDownload />} />
+              <Route
+                path="sandbox/preview/:encoded"
+                element={<FilePreviewer />}
+              />
+              <Route path="sandbox/modal" element={<ModalsTest />} />
+              <Route path="sandbox/router-flag" element={<RouteFlagToggle />} />
+              <Route
+                path="sandbox/socket-monitor"
+                element={<SocketMonitor />}
+              />
             </>
           )}
-
 
           {/* Admin-only subroutes */}
           <Route element={<RequireRole role="Admin" />}>
@@ -212,12 +217,9 @@ const Router = () => {
                 <Route path="user/:encoded" element={<UserView />} />
                 <Route path="user" element={<User />} />
                 <Route path="user/add-user" element={<CreateUser />} />
-
               </>
             )}
             <Route path="config" element={<Configuration />} />
-
-
           </Route>
 
           <Route path="unauthorized" element={<Unauthorized />} />

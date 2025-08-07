@@ -165,10 +165,10 @@ const CatOptions = [
   return (
     
     <>
-    <div className="relative w-full h-full bg-[#F0F0F0] select-none flex pt-[1rem] overflow-hidden">
-      <div className="w-full h-full flex flex-col gap-y-5 px-7 pb-7 pt-[1rem] overflow-hidden">
+    <div className="relative w-full h-full  select-none flex overflow-hidden">
+      <div className="w-full h-full flex flex-col gap-y-5  pb-7  overflow-hidden">
 
-        <div className="w-full h-full flex flex-col xl:flex-row gap-y-5 xl:gap-x-5 pt-5 ">
+        <div className="w-full h-full flex flex-col xl:flex-row gap-y-5 xl:gap-x-5  ">
           {/* Left: Info and Add */}
           <div className="min-w-[34rem] h-full flex flex-col gap-y-7">
             <div className="w-full max-w-[35rem] text-gray-500 h-[3.5rem] flex py-0 gap-x-2 items-center">

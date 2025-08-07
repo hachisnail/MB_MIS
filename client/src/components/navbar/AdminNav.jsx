@@ -41,7 +41,7 @@ const AdminNav = ({ isOpen }) => {
         h-full bg-[#1C1B19] flex flex-col items-center justify-between py-7
       `}
       >
-        <div className="w-full p-2 border-b border-gray-700 flex flex-col  gap-y-2">
+        <div className="w-full px-2 py-10 border-b border-gray-700 flex flex-col  gap-y-2">
           <div className="flex h-20 items-center justify-center gap-x-2">
             <div className="min-w-15 min-h-15 rounded-full bg-white flex items-center justify-center">
               <div

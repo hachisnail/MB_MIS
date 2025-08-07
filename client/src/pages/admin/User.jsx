@@ -277,7 +277,7 @@ const User = () => {
         />
       )}
 
-      <div className="select-none w-full h-full p-5 flex flex-col 1xl:h-[69rem] 2xl:max-h-[81rem] 3xl:max-h-[88rem] ">
+      <div className="select-none w-full h-full flex flex-col 1xl:h-[69rem] 2xl:max-h-[81rem] 3xl:max-h-[88rem] ">
         <div className="w-full min-h-[33rem] overflow-y-scroll flex-col xl:flex-row py-5 items-center flex border-t-1 border-[#373737]">
           <div className="p-1 w-full xl:min-w-[60rem] h-full max-h-[38rem] flex flex-col">
             {/* Upper Left panel */}

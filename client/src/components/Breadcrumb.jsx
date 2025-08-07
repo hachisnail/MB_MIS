@@ -129,7 +129,7 @@ const Breadcrumb = () => {
 
   return (
     <>
-      <span className="text-4xl font-semibold select-none">{pageTitle}</span>
+      <span className=" text-4xl font-semibold select-none">{pageTitle}</span>
       <div className="flex select-none items-center gap-x-2 text-xl text-gray-600">
         {crumbs.map((crumb, index) => (
           <div className="flex items-center gap-x-2" key={crumb.path}>

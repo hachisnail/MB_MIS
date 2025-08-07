@@ -12,7 +12,7 @@ import DayScheduler from '@/features/DayScheduler';
 import { LoadingSpinner, EmptyMessage } from '@/components/list/commons';
 import ScheduleItem from '@/components/list/ScheduleItem';
 import axiosClient from '@/lib/axiosClient';
-import { AppointmentViewPage } from '@/components/subpages/AppointmentViewPage';
+import { AppointmentViewPage } from '@/components/subpages/private/AppointmentViewPage';
 import ConfirmationModal from '@/components/modals/ConfirmationModal';
 import StyledButton from '@/components/buttons/StyledButton';
 import { useSocketClient } from '@/context/authContext';

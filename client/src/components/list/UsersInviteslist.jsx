@@ -1,4 +1,4 @@
-import StyledButton from "../buttons/StyledButton";
+import StyledButton from "@/components/buttons/StyledButton";
 // import ContextMenu from "../modals/ContextMenu";
 import { NavLink } from "react-router-dom";
 

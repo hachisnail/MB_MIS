@@ -1,5 +1,3 @@
-// src/components/DayScheduler.jsx
-
 import React from 'react';
 import 'react-time-picker/dist/TimePicker.css';
 

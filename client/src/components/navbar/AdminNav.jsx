@@ -1,9 +1,9 @@
-import { useAuth } from "../../context/authContext";
+import { useAuth } from "@/context/authContext";
 import { NavLink } from "react-router-dom";
-import { useRouterFlags } from "../../context/routerFlagProvider";
-import { generateColorFromKey } from "../list/commons";
+import { useRouterFlags } from "@/context/routerFlagProvider";
+import { generateColorFromKey } from "@/components/list/commons";
 
-import LogoutButton from "../buttons/LogoutBtn";
+import LogoutButton from "@/components/buttons/LogoutBtn";
 
 const AdminNav = ({ isOpen }) => {
   const { user } = useAuth();

@@ -1,4 +1,3 @@
-// src/pages/RegistrationSuccess.jsx
 import { Link } from 'react-router-dom';
 
 const RegistrationSuccess = () => (

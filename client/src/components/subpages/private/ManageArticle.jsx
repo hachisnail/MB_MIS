@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import axiosClient from "../../lib/axiosClient";
+import axiosClient from "@/lib/axiosClient";
 import { EditorContent } from "@tiptap/react";
 import {
   Bold,
@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 
 import axios from "axios";
-import Button from "../buttons/artclbtn";
+import Button from "../../buttons/artclbtn";
 import { useParams } from "react-router-dom";
 import { useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
@@ -25,7 +25,7 @@ import TextAlign from "@tiptap/extension-text-align";
 import Underline from "@tiptap/extension-underline";
 import Image from "@tiptap/extension-image";
 import TextStyle from "@tiptap/extension-text-style";
-import {ColumnBlock,Column,} from "../../components/articleComponents/ColumBlock";
+import {ColumnBlock,Column,} from "../../articleComponents/ColumBlock";
 import Placeholder from "@tiptap/extension-placeholder";
 import Link from "@tiptap/extension-link";
 import Table from "@tiptap/extension-table";
@@ -36,9 +36,9 @@ import Highlight from "@tiptap/extension-highlight";
 import Youtube from "@tiptap/extension-youtube";
 // import { HardBreak } from '@tiptap/extension-hard-break';
 
-import ConfirmDialog from "../modals/ConfirmDialog";
-import FontSize from "../../components/articleComponents/FontSize";
-import { useAuth } from "../../context/authContext";
+import ConfirmDialog from "../../modals/ConfirmDialog";
+import FontSize from "../../articleComponents/FontSize";
+import { useAuth } from "../../../context/authContext";
 
 const ArticleEditorForm = () => {
 

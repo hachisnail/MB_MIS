@@ -1,7 +1,7 @@
-import AdminHeader from "../headers/AdminHeader";
-import AdminNav from "../navbar/AdminNav";
+import AdminHeader from "@/components/headers/AdminHeader";
+import AdminNav from "@/components/navbar/AdminNav";
 import { Outlet, useLocation, matchPath } from "react-router-dom";
-import Breadcrumb from "../Breadcrumb";
+import Breadcrumb from "@/components/Breadcrumb";
 import { useState } from "react";
 
 const AdminLayout = () => {

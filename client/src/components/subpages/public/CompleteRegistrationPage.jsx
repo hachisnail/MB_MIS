@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { authAPI } from "../../services/api";
-import RegistrationForm from "./RegistrationForm";
-import Logo from "../../assets/LOGO.png";
+import { authAPI } from "@/services/api";
+import RegistrationForm from "@/components/subpages/private/RegistrationForm";
+import Logo from "@/assets/LOGO.png";
 
 const CompleteRegistrationPage = () => {
   const { token } = useParams();

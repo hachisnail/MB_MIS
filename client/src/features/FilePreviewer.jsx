@@ -2,8 +2,8 @@ import { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { renderAsync } from "docx-preview";
 import * as XLSX from "xlsx";
-import StyledButton from "../components/buttons/StyledButton";
-import TooltipButton from "../components/buttons/TooltipButton";
+import StyledButton from "@/components/buttons/StyledButton";
+import TooltipButton from "@/components/buttons/TooltipButton";
 
 const icons = {
   image: (

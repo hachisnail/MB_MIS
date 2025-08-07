@@ -5,7 +5,6 @@ import ServerDown from "@/pages/ServerDown";
 import { useRouterFlags } from "@/context/routerFlagProvider";
 import logo from "../src/assets/LOGO.png"
 
-import ManageArticle from "@/components/subpages/ManageArticle";
 
 import Home from "@/pages/public/Home";
 import Login from "@/pages/public/Login";
@@ -14,35 +13,37 @@ import Appointment from "@/pages/public/Appointment";
 import Articles from "@/pages/public/Articles";
 import About from "@/pages/public/About";
 import Articlecontents from "@/pages/public/Articlecontents";
-import Contribution from "@/components/subpages/Contribution";
-import Support from "@/components/subpages/Support";
+import Contribution from "@/components/subpages/public/Contribution";
+import Support from "@/components/subpages/public/Support";
 
-import RecoverAccount from "@/components/subpages/RecoverAccount";
+import RecoverAccount from "@/components/subpages/public/RecoverAccount";
 
 import MaintenanceMode from "@/pages/MaintenanceMode";
 
-import CompleteRegistrationPage from "@/components/subpages/CompleteRegistrationPage";
-import RegistrationSuccess from "@/components/subpages/RegistrationSuccessPage";
+import CompleteRegistrationPage from "@/components/subpages/public/CompleteRegistrationPage";
+import RegistrationSuccess from "@/components/subpages/public/RegistrationSuccessPage";
 
 import ElectionResultParser from "@/pages/ElectionRParser";
 
 // admin pages
 import Dashboard from "@/pages/admin/Dashboard";
 import Logs from "@/pages/admin/Logs";
-import ViewLogs from "@/components/subpages/ViewLogs";
+import ViewLogs from "@/components/subpages/private/ViewLogs";
 import User from "@/pages/admin/User";
-import CreateUser from "@/components/subpages/CreateUsers";
+import CreateUser from "@/components/subpages/private/CreateUsers";
 import Inventory from "@/pages/admin/Inventory";
 import NoMatch from "@/pages/NoMatch";
 import RequireRole from "@/lib/RequiredRole";
 import Acquisition from "@/pages/admin/Acquisition";
-import ViewArtifacts from "@/components/subpages/ViewArtifacts";
+import ViewArtifacts from "@/components/subpages/private/ViewArtifacts";
 import Schedule from "@/pages/admin/Schedule";
 import Article from "@/pages/admin/Article";
 import Appointments from "@/pages/admin/Appointments";
-import { AppointmentViewPage } from "@/components/subpages/AppointmentViewPage";
-import UserView from "@/components/subpages/ViewUser";
+import { AppointmentViewPage } from "@/components/subpages/private/AppointmentViewPage";
+import UserView from "@/components/subpages/private/ViewUser";
 import Configuration from "@/pages/admin/Configuration";
+import ManageArticle from "@/components/subpages/private/ManageArticle";
+
 // import ArticleModal from "./components/subpages/ArticleModal";
 
 // sandbox

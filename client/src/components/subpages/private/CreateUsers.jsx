@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
-import StyledButton from "../buttons/StyledButton";
-import usePrompt from "../../hooks/usePrompt";
-import ConfirmationModal from "../modals/ConfirmationModal";
-import axiosClient from "../../lib/axiosClient";
-import PopupModal from "../modals/PopupModal";
-import BackButton from "../buttons/BackButton";
+import StyledButton from "@/components/buttons/StyledButton";
+import usePrompt from "@/hooks/usePrompt";
+import ConfirmationModal from "@/components/modals/ConfirmationModal";
+import axiosClient from "@/lib/axiosClient";
+import PopupModal from "@/components/modals/PopupModal";
+import BackButton from "@/components/buttons/BackButton";
 
 const CreateUsers = () => {
   const [firstName, setFirstName] = useState("");
@@ -177,9 +177,9 @@ const CreateUsers = () => {
       {PromptModal}
       <div className="w-full h-full flex flex-col 1xl:h-[69rem] 2xl:max-h-[81rem] 3xl:max-h-[88rem]">
         <div className="w-full h-full overflow-y-scroll flex-col xl:flex-row py-5 items-center flex border-t-1 border-[#373737]">
-          <form className="min-w-fit flex h-full  gap-y-5 gap-x-10" onSubmit={(e) => e.preventDefault()}>
-            <div className="w-[40rem] h-fit flex flex-col gap-y-2">
-              <div className="w-full h-fit flex flex-col gap-y-2">
+          <form className="min-w-fit flex h-full  gap-y-5 gap-x-10 " onSubmit={(e) => e.preventDefault()}>
+            <div className="w-[40rem] p-1 h-fit flex flex-col gap-y-2 ">
+              <div className="w-full h-fit flex flex-col gap-y-2 ">
                 <span className="w-fit text-2xl font-semibold">Form</span>
                 <span className="w-[40rem] text-[#9C9C9C] text-lg text-justify">
                   Use this form to invite a new staff member to the <strong>Museo Bulawan Management Information System</strong>.
@@ -187,9 +187,9 @@ const CreateUsers = () => {
                 </span>
               </div>
               <div className="w-[40rem] my-7 h-[1px] bg-[#373737] rounded"></div>
-              <div className="flex flex-col w-[40rem] gap-y-4">
+              <div className="flex flex-col w-[40rem]  gap-y-4">
                 <label htmlFor="firstname" className="text-xl w-fit font-semibold">First Name</label>
-                <div className="w-full h-18 flex flex-col">
+                <div className="w-full h-18  flex flex-col">
                   <input
                     id="firstname"
                     placeholder="Francisco"
@@ -197,7 +197,7 @@ const CreateUsers = () => {
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
                     onBlur={() => validateField("firstName", firstName)}
-                    className={`border-1 bg-[#242424] border-[#373737] rounded-sm text-2xl px-3 py-2 ${formErrors.firstName ? "border-red-500" : ""}`}
+                    className={`border-1  bg-[#242424] border-[#373737] rounded-sm text-2xl px-3 py-2 ${formErrors.firstName ? "border-red-500" : ""}`}
                     disabled={isLoading}
                   />
                   {formErrors.firstName && (

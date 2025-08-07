@@ -1,11 +1,11 @@
-import axiosClient from "../../lib/axiosClient";
+import axiosClient from "@/lib/axiosClient";
 import { useState, useEffect, useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import PopupModal from "../modals/PopupModal";
-import { useSocketClient } from "../../context/authContext";
-import BackButton from "../buttons/BackButton";
-import { EmptyMessage, ErrorBox, LoadingSpinner } from "../list/commons";
-import { ViewUserItem, ViewUserSessionItem } from "../list/ViewUserlist";
+import PopupModal from "@/components/modals/PopupModal";
+import { useSocketClient } from "@/context/authContext";
+import BackButton from "@/components/buttons/BackButton";
+import { EmptyMessage, ErrorBox, LoadingSpinner } from "@/components/list/commons";
+import { ViewUserItem, ViewUserSessionItem } from "@/components/list/ViewUserlist";
 
 const ViewUser = () => {
   const [userData, setUserData] = useState(null);
@@ -95,7 +95,7 @@ const ViewUser = () => {
     <>
       <div className="w-full h-full flex 1xl:h-[69rem] 2xl:max-h-[81rem] 3xl:max-h-[88rem]">
         <div className="flex flex-col lg:flex-row w-full h-full border-t border-[#373737] pt-5 overflow-scroll">
-          <div className="w-full min-w-fit h-full border-b border-[#373737] flex flex-col pt-4  gap-y-10">
+          <div className="p-1 w-full min-w-fit h-full border-b border-[#373737] flex flex-col pt-4  gap-y-10">
             <BackButton />
             {sessionError ? (
               <ErrorBox message={sessionError} />

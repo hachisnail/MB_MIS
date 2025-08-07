@@ -1,7 +1,7 @@
 // hooks/usePrompt.jsx
 import { useCallback, useState } from "react";
-import { useBlocker } from "./useBlocker";
-import ConfirmationModal from "../components/modals/ConfirmationModal";
+import { useBlocker } from "@/hooks/useBlocker";
+import ConfirmationModal from "@/components/modals/ConfirmationModal";
 export default function usePrompt(message, when, theme = "dark") {
   const [showModal, setShowModal] = useState(false);
   const [retryNavigation, setRetryNavigation] = useState(null);

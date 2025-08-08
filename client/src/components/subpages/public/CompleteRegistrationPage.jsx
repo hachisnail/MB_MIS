@@ -56,7 +56,7 @@ const CompleteRegistrationPage = () => {
       // </div>
       <div className="w-screen items-center justify-center h-screen mx-auto p-6 flex flex-col">
         <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
-          <div className="bg-white rounded-2xl shadow-2xl p-10 flex flex-col items-center text-center max-w-xl w-full space-y-6">
+          <div className="bg-white rounded-2xl shadow-md shadow-gray-400 p-10 flex flex-col items-center text-center max-w-xl w-full space-y-6">
             <div className="flex flex-col justify-center items-center">
             
             <div className="flex items-center space-x-3">
@@ -97,7 +97,7 @@ const CompleteRegistrationPage = () => {
 
   return (
     <div className="w-screen items-center justify-center h-screen mx-auto p-6 flex flex-col">
-      <div className="w-fit h-fit rounded-lg shadow-2xl flex items-center flex-col">
+      <div className="w-fit h-fit rounded-lg shadow-md shadow-gray-400 flex items-center flex-col">
         <div className="flex">
           <img src={Logo} alt="Museo Bulawan Logo" className="w-11 h-auto" />
           <span className="text-4xl font-semibold">MIS</span>

@@ -18,7 +18,7 @@ const Acquisition = () => {
     { key: "form", label: "Forms" },
     { key: "donator-records", label: "Donator Records" },
     { key: "transfer-status", label: "Transfer Status" },
-  ];
+  ];  
 
 
   // set the values of this based on the db
@@ -45,11 +45,13 @@ const Acquisition = () => {
     { label: "Transfer Status", width: "w-60" },
     { label: "Acquisiton Date", width: "w-60" },
   ];
+
   const recordHeaders = [
     { label: "Date", width: "w-60" },
     { label: "Name of Donator/Lender", width: "" },
     { label: "Donations", width: "w-60" },
   ];
+
   const { toastConfig, showToast, hideToast } = useToast();
 
   const handleDateChange = useCallback(
@@ -96,7 +98,8 @@ const Acquisition = () => {
             <div className="w-full h-[5rem] bg-black rounded-sm flex px-4 text-2xl items-center justify-between font-semibold">
               <span className="text-white">Total Forms</span>
               <span className="w-[6rem] h-[3rem] bg-[#D4DBFF] flex items-center justify-center rounded-md">
-                5{/* total number of forms gets displayed here */}
+                {/* total number of forms gets displayed here */}
+                0
               </span>
             </div>
             <div className="w-full h-fit flex flex-col gap-y-7">
@@ -115,7 +118,7 @@ const Acquisition = () => {
           </div>
           <StyledButton
             buttonColor="bg-black"
-            className="justify-between flex px-8 h-25 items-center shadow-md shadow-gray-600"
+            className="justify-between flex px-8 h-25 items-center hover:shadow-md hover:shadow-gray-600"
             onClick={()=> (navigate("/admin/acquisition/add-artifact"))}
           >
             <span className="text-3xl font-semibold">Add new artifacts</span>
@@ -250,8 +253,11 @@ const Acquisition = () => {
               {activeTab === "form" && (
                 <>
                   {/* display list that contains forms */}
-                  <div className="text-2xl font-semibold py-2 flex justify-center border-gray-400 border-b-1">
-                    <span>forms</span>
+                  <div onClick={()=>(navigate("lending/acq1"))} className="text-2xl font-semibold py-2 flex justify-center border-gray-400 border-b-1">
+                    <span>acquisition forms</span>
+                  </div>
+                  <div onClick={()=>(navigate("donation/don1"))} className="text-2xl font-semibold py-2 flex justify-center border-gray-400 border-b-1">
+                    <span>donation forms</span>
                   </div>
                 </>
               )}

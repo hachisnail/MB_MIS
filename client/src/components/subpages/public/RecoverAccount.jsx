@@ -95,7 +95,7 @@ const RecoverAccount = () => {
   const renderEmailForm = () => (
     <form
       onSubmit={handleEmailSubmit}
-      className="px-8 pt-8 pb-6 rounded-lg shadow-2xl w-full max-w-xl"
+      className="px-8 pt-8 pb-6 rounded-lg shadow-md shadow-gray-400 w-full max-w-xl"
     >
       <div className="mb-7 flex flex-col items-center gap-y-4">
         <LogoHeader />
@@ -141,7 +141,7 @@ const RecoverAccount = () => {
   const renderPasswordForm = () => (
     <form
       onSubmit={handlePasswordSubmit}
-      className="px-8 pt-8 pb-6 rounded-lg shadow-2xl w-full max-w-xl"
+      className="px-8 pt-8 pb-6 rounded-lg shadow-md shadow-gray-400 w-full max-w-xl"
     >
       <div className="mb-7 flex flex-col items-center gap-y-4">
         <LogoHeader />

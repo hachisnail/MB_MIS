@@ -96,7 +96,7 @@ const Login = () => {
       <div className="w-full flex my-auto select-none justify-center">
         <form
           onSubmit={handleSubmit}
-          className="px-8 pt-8 pb-6 rounded-lg shadow-2xl w-full max-w-xl"
+          className="px-8 pt-8 pb-6 rounded-lg shadow-md shadow-gray-400 w-full max-w-xl"
         >
           <div className="mb-7 w-full h-fit flex flex-col items-center gap-y-4">
             <div className="flex gap-x-2 items-center">

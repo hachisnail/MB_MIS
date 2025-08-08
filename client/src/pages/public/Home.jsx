@@ -97,7 +97,7 @@ displayArticles = displayArticles.slice(0, 2);
     <>
       <div
         className="bg-cover bg-center bg-no-repeat w-screen rounded-sm h-screen pt-40 flex flex-col items-center"
-        style={{ backgroundImage: `url(${bgImage1})` }}
+        style={{ backgroundImage: `url(${bgImage1})` }}s
       >
         <div className="w-[97vw] h-full min-w-fit flex justify-center">
           {/* Left Column */}

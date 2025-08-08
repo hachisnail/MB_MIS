@@ -10,6 +10,10 @@ const routeMeta = [
     path: "/admin/acquisition/add-artifact",
     title: "Manually add a new Artifact",
   },
+  { path: "/admin/acquisition/lending/:ended", title: "Lending Form" },
+  { path: "/admin/acquisition/donation/:ended", title: "Donation Form" },
+
+
   { path: "/admin/logs", title: "Activities", theme: "text-gray-400" },
   { path: "/admin/logs/:log", title: "Activity", theme: "text-gray-400" },
   { path: "/admin/view", title: "View Artifacts" },
@@ -98,7 +102,7 @@ const Breadcrumb = () => {
 
       // Skip these segments in breadcrumb display
       if (
-        ["admin", "preview", "files", "pictures", "edit-article"].includes(
+        ["admin", "preview", "files", "pictures", "edit-article", "lending", "donation"].includes(
           segment
         )
       ) {

@@ -91,11 +91,11 @@ const AcquisitionViewPage = () => {
   ];
 
   const attachedFiles = [
-    { key: "1", label: "file 1" },
-    { key: "2", label: "file 2" },
-    { key: "3", label: "file 3" },
-    { key: "4", label: "file 4" },
-    { key: "5", label: "file 5" },
+    { key: "1", filename: "file 1", category:"file" },
+    { key: "2", filename: "file 2", category:"file" },
+    { key: "3", filename: "file 3", category:"file" },
+    { key: "4", filename: "file 4", category:"file" },
+    { key: "5", filename: "file 5", category:"file" },
   ];
 
   const artifactInfo = [
@@ -228,7 +228,7 @@ const AcquisitionViewPage = () => {
             <div className="p-5 flex flex-col gap-5">
               <span className="text-2xl font-semibold w-40">Approve?</span>
               <div id="accept-btn" className="gap-x-5 flex">
-                <StyledButton className="w-50 " buttonColor="">Yes</StyledButton>
+                <StyledButton className="w-50 " buttonColor="bg-[#6F3FFF]" hoverColor="bg-blue-600">Yes</StyledButton>
 
                 <StyledButton className="w-50">No</StyledButton>
               </div>

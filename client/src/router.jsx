@@ -157,6 +157,16 @@ const Router = () => {
               <Route path="acquisition" element={<Acquisition />} />
               <Route path="acquisition/lending/:encoded" element={<AcquisitionViewPage />} />
               <Route path="acquisition/donation/:encoded" element={<AcquisitionViewPage />} />
+              {/* acquisition/donation/don1/dW5kZWZpbmVk/preview/dW5kZWZpbmVk/ */}
+              <Route
+                path="acquisition/lending/:encoded/preview/:encoded"
+                element={<FilePreviewer />}
+              />
+              <Route
+                path="acquisition/donation/:encoded/preview/:encoded"
+                element={<FilePreviewer />}
+              />
+              
               <Route path="acquisition/add-artifact" element={<AddArtifact />} />
             </>
           )}

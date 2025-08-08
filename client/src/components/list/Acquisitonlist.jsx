@@ -1,11 +1,14 @@
 import { useState, useEffect } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
+import ContextMenu from "../modals/ContextMenu";
+import { handlePreview } from "./commons";
 
 export function RenderRelatedDocs({ relatedImages = [], attachedFiles = [] }) {
   const [imageCurrentPage, setImageCurrentPage] = useState(1);
   const [fileCurrentPage, setFileCurrentPage] = useState(1);
   const [isLending, setIsLending] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
 
   useEffect(() => {
     setIsLending(location.pathname.includes("lending"));
@@ -52,6 +55,9 @@ export function RenderRelatedDocs({ relatedImages = [], attachedFiles = [] }) {
       setFileCurrentPage((prevPage) => prevPage - 1);
     }
   };
+
+  const handleDownload = () => {};
+
   return (
     <div
       className={`w-full h-full flex flex-col items-center ${
@@ -138,7 +144,7 @@ export function RenderRelatedDocs({ relatedImages = [], attachedFiles = [] }) {
           </span>
         </div>
 
-        <div className="rounded-lg w-full h-full bg-white gap-y-2 flex items-center flex-col justify-center px-4">
+        <div className="rounded-lg w-full h-full bg-white gap-y-2 pt-4 flex items-center flex-col justify-center px-4">
           {/* Prev Button */}
           <div className="flex items-center w-full gap-x-2">
             <button
@@ -161,14 +167,36 @@ export function RenderRelatedDocs({ relatedImages = [], attachedFiles = [] }) {
               </svg>
             </button>
             <div className="w-full flex gap-x-2">
-              {paginatedFiles.map(({ key, label }) => (
-                <div
+              {paginatedFiles.map(({ key, filename, category }) => (
+                <ContextMenu
                   key={key}
-                  className="w-33 h-33 flex flex-col items-center justify-center text-black  bg-gray-200 rounded-lg"
+                  menuItems={[
+                    {
+                      label: "Preview",
+                      onClick: () =>
+                        handlePreview(navigate, category, filename),
+                    },
+                    {
+                      label: "Download",
+                      onClick: () => alert("download clicked"),
+                      
+                    },
+                    {
+                      label: "Delete",
+                      onClick: () => alert("delete clicked"),
+
+                    },
+                  ]}
                 >
-                  <div className="w-5 h-5 border"></div>
-                  <span>{label}</span>
-                </div>
+                  <div
+                    key={key}
+                    className="w-33 h-33 flex flex-col items-center justify-center text-black  bg-gray-200 rounded-lg"
+                  >
+                    <div className="w-5 h-5 border"></div>
+                    <span>{filename}</span>
+                    <span>{category}</span>
+                  </div>
+                </ContextMenu>
               ))}
             </div>
             {/* Next Button */}

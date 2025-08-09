@@ -6,7 +6,7 @@ import useToast from "../../components/list/commons";
 import { formatDateForDisplay } from "@/components/list/commons";
 import StyledButton from "../../components/buttons/StyledButton";
 import { useNavigate } from "react-router-dom";
-import TableHeaderContainer from "../../features/Utilities";
+import { TableHeaderContainer, SummaryPanel } from "../../features/Utilities";
 
 const Acquisition = () => {
   const [activeTab, setActiveTab] = useState("form");
@@ -68,7 +68,7 @@ const Acquisition = () => {
   );
 
   const headersMap = {
-    form: formHeaders,
+    "form": formHeaders,
     "transfer-status": transferHeaders,
     "donator-records": recordHeaders,
   };
@@ -76,71 +76,28 @@ const Acquisition = () => {
   return (
     <>
       <div className="w-full h-full flex gap-x-5 overflow-scroll lg:flex-row flex-col">
-        <div className="pb-5 min-w-[34rem] max-w-[34rem] h-full flex flex-col gap-y-7 ">
-          <div className=" min-h-[3.2rem] flex items-start gap-x-2">
-            {/* table setter */}
-            {tabs.map(({ key, label }) => (
-              <button
-                key={key}
-                className={`w-fit cursor-pointer h-full px-4 rounded-lg border-1 text-2xl font-semibold  ${
-                  activeTab === key
-                    ? "bg-black text-white border-black"
-                    : "border-gray-500"
-                }`}
-                onClick={() => setActiveTab(key)}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-
-          <div className="h-fit w-full flex flex-col gap-y-[5rem]">
-            <div className="w-full h-[5rem] bg-black rounded-sm flex px-4 text-2xl items-center justify-between font-semibold">
-              <span className="text-white">Total Forms</span>
-              <span className="w-[6rem] h-[3rem] bg-[#D4DBFF] flex items-center justify-center rounded-md">
-                {/* total number of forms gets displayed here */}0
-              </span>
-            </div>
-            <div className="w-full h-fit flex flex-col gap-y-7">
-              <span className="text-2xl font-semibold text-[#727272]">
-                {formatDateForDisplay(selectedDate || new Date())}
-              </span>
-              {formSummary.map(({ label, value }) => (
-                <div key={label} className="w-full h-fit flex justify-between">
-                  <span className="text-2xl font-semibold">{label}</span>
-                  <div className="w-[5rem] h-[2rem] flex items-center bg-[#D4DBFF] rounded-md justify-center">
-                    <span className="text-2xl font-semibold">{value}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-          <StyledButton
-            buttonColor="bg-black"
-            className="justify-between flex px-8 h-25 items-center hover:shadow-md hover:shadow-gray-600"
-            onClick={() => navigate("/admin/acquisition/add-artifact")}
-          >
-            <span className="text-3xl font-semibold">Add new artifacts</span>
-
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="32"
-              height="32"
-              viewBox="0 0 24 24"
-              stroke="#ffffff"
-              strokeWidth="1"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0" />
-              <path d="M9 12h6" />
-              <path d="M12 9v6" />
-            </svg>
-          </StyledButton>
-        </div>
+        
+        <SummaryPanel
+          tabs={tabs}
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          title="Total Forms"
+          totalCount={0}
+          dateLabel={formatDateForDisplay(selectedDate || new Date())}
+          summaryData={[
+            { label: "Approved", value: "0" },
+            { label: "Rejected", value: "0" },
+            { label: "Donation", value: "0" },
+            { label: "Lend", value: "0" },
+          ]}
+          button={{
+            label: "Add new artifacts",
+            onClick: () => navigate("/admin/acquisition/add-artifact")
+          }}
+        />
 
         <div className="w-full h-full flex flex-col min-w-[43.75rem] gap-y-7">
-          {/* right table */}
+          {/* table */}
           <div className="w-full min-h-[3.2rem] flex gap-x-3 items-center ">
             {/* table utilities */}
             <TimelineDatePicker
@@ -229,7 +186,7 @@ const Acquisition = () => {
 
             <TableHeaderContainer headers={headersMap[activeTab]} />
 
-            <div className="w-full h-[55rem] border-t border-gray-400">
+            <div className="w-full h-[55rem] border-y border-gray-400">
               {activeTab === "form" && (
                 <>
                   {/* display list that contains forms */}

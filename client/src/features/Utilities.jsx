@@ -497,3 +497,34 @@ export function ScrollButton({
     </div>
   );
 }
+
+
+export default function TableHeaderContainer({ headers = [], className = "" }) {
+  if (!headers.length) return null;
+
+  const gridCols = headers
+    .map(({ width }) => {
+      if (typeof width === "number") return `${width}rem`; 
+      if (width === "auto") return "auto";
+      if (width === "1fr") return "1fr";
+      return "1fr"; 
+    })
+    .join(" ");
+
+  return (
+    <div
+      className={`grid py-4 gap-y-5 h-fit ${className}`}
+      style={{ gridTemplateColumns: gridCols }}
+    >
+      {headers.map(({ label }) => (
+        <div
+          key={label}
+          className="text-[#727272] font-semibold flex px-3 py-2 text-2xl"
+        >
+          <span>{label}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+

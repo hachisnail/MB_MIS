@@ -6,20 +6,44 @@ import useToast from "../../components/list/commons";
 import { formatDateForDisplay } from "@/components/list/commons";
 import StyledButton from "../../components/buttons/StyledButton";
 import { useNavigate } from "react-router-dom";
+import TableHeaderContainer from "../../features/Utilities";
 
 const Acquisition = () => {
   const [activeTab, setActiveTab] = useState("form");
   const [selectedDate, setSelectedDate] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
 
-
   const navigate = useNavigate();
+
+  //tabs + header management
   const tabs = [
     { key: "form", label: "Forms" },
     { key: "donator-records", label: "Donator Records" },
     { key: "transfer-status", label: "Transfer Status" },
-  ];  
+  ];
 
+  const formHeaders = [
+    { label: "Date", width: 15 },
+    { label: "Donator Name", width: "auto" },
+    { label: "Title" },
+    { label: "Status", width: "1fr" },
+    { label: "Updated", width: 10 },
+  ];
+
+  const transferHeaders = [
+    { label: "Date", width: 15 },
+    { label: "Donator Name", width: 15 },
+    { label: "Title" },
+    { label: "Status", width: 15 },
+    { label: "Transfer Status", width: 15 },
+    { label: "Acquisiton Date", width: 15 },
+  ];
+
+  const recordHeaders = [
+    { label: "Date", width: "w-60" },
+    { label: "Name of Donator/Lender", width: "" },
+    { label: "Donations", width: "w-60" },
+  ];
 
   // set the values of this based on the db
   const formSummary = [
@@ -27,29 +51,6 @@ const Acquisition = () => {
     { label: "Rejected", value: "0" },
     { label: "Donation", value: "0" },
     { label: "Lend", value: "0" },
-  ];
-
-  const formHeaders = [
-    { label: "Date", width: "w-60" },
-    { label: "Donator Name", width: "w-60" },
-    { label: "Title", width: "" },
-    { label: "Status", width: "w-60" },
-    { label: "Updated", width: "w-60" },
-  ];
-
-  const transferHeaders = [
-    { label: "Date", width: "w-60" },
-    { label: "Donator Name", width: "w-60" },
-    { label: "Title", width: "" },
-    { label: "Status", width: "w-60" },
-    { label: "Transfer Status", width: "w-60" },
-    { label: "Acquisiton Date", width: "w-60" },
-  ];
-
-  const recordHeaders = [
-    { label: "Date", width: "w-60" },
-    { label: "Name of Donator/Lender", width: "" },
-    { label: "Donations", width: "w-60" },
   ];
 
   const { toastConfig, showToast, hideToast } = useToast();
@@ -66,11 +67,10 @@ const Acquisition = () => {
     [showToast]
   );
 
-
   const headersMap = {
-  "form": formHeaders,
-  "transfer-status": transferHeaders,
-  "donator-records": recordHeaders,
+    form: formHeaders,
+    "transfer-status": transferHeaders,
+    "donator-records": recordHeaders,
   };
 
   return (
@@ -98,8 +98,7 @@ const Acquisition = () => {
             <div className="w-full h-[5rem] bg-black rounded-sm flex px-4 text-2xl items-center justify-between font-semibold">
               <span className="text-white">Total Forms</span>
               <span className="w-[6rem] h-[3rem] bg-[#D4DBFF] flex items-center justify-center rounded-md">
-                {/* total number of forms gets displayed here */}
-                0
+                {/* total number of forms gets displayed here */}0
               </span>
             </div>
             <div className="w-full h-fit flex flex-col gap-y-7">
@@ -119,7 +118,7 @@ const Acquisition = () => {
           <StyledButton
             buttonColor="bg-black"
             className="justify-between flex px-8 h-25 items-center hover:shadow-md hover:shadow-gray-600"
-            onClick={()=> (navigate("/admin/acquisition/add-artifact"))}
+            onClick={() => navigate("/admin/acquisition/add-artifact")}
           >
             <span className="text-3xl font-semibold">Add new artifacts</span>
 
@@ -227,36 +226,23 @@ const Acquisition = () => {
 
           <div className="w-full h-[61rem] flex flex-col">
             {/* table */}
-            <div
-              className={`grid ${
-                (activeTab === "form" &&
-                  "grid-cols-[auto_auto_1fr_auto_auto]") ||
-                (activeTab === "transfer-status" &&
-                  "grid-cols-[auto_auto_1fr_auto_auto_auto]") ||
-                (activeTab === "donator-records" && "grid-cols-[auto_1fr_auto]")
-              } py-4 gap-y-5 h-fit`}
-            >
-              {/* table header */}
-                { (headersMap[activeTab] || []).map(({label, width}) => (
-                 <div
-                    key={label}
-                    className={`${width} text-[#727272] font-semibold flex px-3 py-2 text-2xl`}
-                  >
-                    <span>{label}</span>
-                  </div>
 
-                ))
+            <TableHeaderContainer headers={headersMap[activeTab]} />
 
-                }
-            </div>
             <div className="w-full h-[55rem] border-t border-gray-400">
               {activeTab === "form" && (
                 <>
                   {/* display list that contains forms */}
-                  <div onClick={()=>(navigate("lending/acq1"))} className="text-2xl font-semibold py-2 flex justify-center border-gray-400 border-b-1">
+                  <div
+                    onClick={() => navigate("lending/acq1")}
+                    className="text-2xl font-semibold py-2 flex justify-center border-gray-400 border-b-1"
+                  >
                     <span>acquisition forms</span>
                   </div>
-                  <div onClick={()=>(navigate("donation/don1"))} className="text-2xl font-semibold py-2 flex justify-center border-gray-400 border-b-1">
+                  <div
+                    onClick={() => navigate("donation/don1")}
+                    className="text-2xl font-semibold py-2 flex justify-center border-gray-400 border-b-1"
+                  >
                     <span>donation forms</span>
                   </div>
                 </>

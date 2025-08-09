@@ -235,7 +235,8 @@ const Calendar = () => {
       
       {/* Event Modal */}
       {modalOpen && (
-        <div className="fixed inset-0 backdrop-blur-xs bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 backdrop-blur-xs bg-opacity-50 flex items-center justify-center z-50" onClick={() => setModalOpen(false)}>
+          
           <div className="bg-white border-1 border-gray-400 w-full max-w-md mx-4 overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-300 flex justify-between items-center">
               <h3 className="text-lg font-medium">

@@ -73,6 +73,12 @@ const ArticleForm = () => {
   const pendingCount = articles.filter(
     (article) => article.status === "pending"
   ).length;
+  const rejectedCount = articles.filter(
+    (article) => article.status === "rejected"
+  ).length;
+  const archivedCount = articles.filter(
+    (article) => article.status === "archived"
+  ).length;
   const totalCount = articles.length;
 
   const handleStatusChange = async (articleId, newStatus) => {
@@ -203,6 +209,18 @@ const CatOptions = [
                   <span className="text-2xl font-semibold">Pending</span>
                   <div className="w-[5rem] h-[2rem] flex items-center bg-[#D4DBFF] rounded-md justify-center">
                     <span className="text-2xl font-semibold">{pendingCount || 0}</span>
+                  </div>
+                </div>
+                <div className="w-full h-fit flex justify-between items-center">
+                  <span className="text-2xl font-semibold">Rejected</span>
+                  <div className="w-[5rem] h-[2rem] flex items-center bg-[#D4DBFF] rounded-md justify-center">
+                    <span className="text-2xl font-semibold">{rejectedCount || 0}</span>
+                  </div>
+                </div>
+                <div className="w-full h-fit flex justify-between items-center">
+                  <span className="text-2xl font-semibold">Archived</span>
+                  <div className="w-[5rem] h-[2rem] flex items-center bg-[#D4DBFF] rounded-md justify-center">
+                    <span className="text-2xl font-semibold">{archivedCount || 0}</span>
                   </div>
                 </div>
 

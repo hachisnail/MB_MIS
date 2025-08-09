@@ -1,16 +1,20 @@
 import { useState, Fragment } from "react";
-import { useAuth } from "../../context/authContext";
+import { useAuth } from "@/context/authContext";
 import { useNavigate } from "react-router-dom";
 import { Transition } from "@headlessui/react";
-import ConfirmationModal from "../modals/ConfirmationModal"; // adjust the path if needed
+import ConfirmationModal from "@/components/modals/ConfirmationModal"; 
+import { useLocation } from "react-router-dom";
 
 const LogoutButton = ({ isOpen }) => {
   const { logout } = useAuth();
   const navigate = useNavigate();
   const [tooltipVisible, setTooltipVisible] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const location = useLocation();
 
   const shouldShowTooltip = !isOpen && tooltipVisible;
+  const darkThemePaths = ["user", "logs", "config"];
+  const isDarkTheme = darkThemePaths.some(path => location.pathname.includes(path));
 
   const handleConfirmLogout = async () => {
     await logout();
@@ -64,6 +68,7 @@ const LogoutButton = ({ isOpen }) => {
 
       {/* Confirmation Modal */}
       <ConfirmationModal
+        theme={isDarkTheme ? "dark" : "light"}
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onConfirm={handleConfirmLogout}

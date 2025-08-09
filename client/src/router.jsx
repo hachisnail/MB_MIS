@@ -3,8 +3,8 @@ import { useAuth } from "@/context/authContext";
 import Unauthorized from "@/pages/Unauthorized";
 import ServerDown from "@/pages/ServerDown";
 import { useRouterFlags } from "@/context/routerFlagProvider";
+import logo from "../src/assets/LOGO.png"
 
-import ManageArticle from "@/components/subpages/ManageArticle";
 
 import Home from "@/pages/public/Home";
 import Login from "@/pages/public/Login";
@@ -13,35 +13,39 @@ import Appointment from "@/pages/public/Appointment";
 import Articles from "@/pages/public/Articles";
 import About from "@/pages/public/About";
 import Articlecontents from "@/pages/public/Articlecontents";
-import Contribution from "@/components/subpages/Contribution";
-import Support from "@/components/subpages/Support";
+import Contribution from "@/components/subpages/public/Contribution";
+import Support from "@/components/subpages/public/Support";
 
-import RecoverAccount from "@/components/subpages/RecoverAccount";
+import RecoverAccount from "@/components/subpages/public/RecoverAccount";
 
 import MaintenanceMode from "@/pages/MaintenanceMode";
 
-import CompleteRegistrationPage from "@/components/subpages/CompleteRegistrationPage";
-import RegistrationSuccess from "@/components/subpages/RegistrationSuccessPage";
+import CompleteRegistrationPage from "@/components/subpages/public/CompleteRegistrationPage";
+import RegistrationSuccess from "@/components/subpages/public/RegistrationSuccessPage";
 
 import ElectionResultParser from "@/pages/ElectionRParser";
 
 // admin pages
 import Dashboard from "@/pages/admin/Dashboard";
 import Logs from "@/pages/admin/Logs";
-import ViewLogs from "@/components/subpages/ViewLogs";
+import ViewLogs from "@/components/subpages/private/ViewLogs";
 import User from "@/pages/admin/User";
-import CreateUser from "@/components/subpages/CreateUsers";
+import CreateUser from "@/components/subpages/private/CreateUsers";
 import Inventory from "@/pages/admin/Inventory";
 import NoMatch from "@/pages/NoMatch";
 import RequireRole from "@/lib/RequiredRole";
 import Acquisition from "@/pages/admin/Acquisition";
-import ViewArtifacts from "@/components/subpages/ViewArtifacts";
+import AddArtifact from "@/components/subpages/private/AddArtifact"
+import AcquisitionViewPage from "@/components/subpages/private/AcquisitionViewPage"
+import ViewArtifacts from "@/components/subpages/private/ViewArtifacts";
 import Schedule from "@/pages/admin/Schedule";
 import Article from "@/pages/admin/Article";
 import Appointments from "@/pages/admin/Appointments";
-import { AppointmentViewPage } from "@/components/subpages/AppointmentViewPage";
-import UserView from "@/components/subpages/ViewUser";
+import { AppointmentViewPage } from "@/components/subpages/private/AppointmentViewPage";
+import UserView from "@/components/subpages/private/ViewUser";
 import Configuration from "@/pages/admin/Configuration";
+import ManageArticle from "@/components/subpages/private/ManageArticle";
+
 import WalkInsPage from "@/components/subpages/WalkInsPage";
 // import ArticleModal from "./components/subpages/ArticleModal";
 
@@ -82,12 +86,9 @@ const Router = () => {
           </>
         )}
 
-
-
         {flags["catalogs_public"] && (
           <Route path="/catalogs" element={<Catalogue />} />
         )}
-
 
         {flags["home"] && (
           <>
@@ -113,7 +114,10 @@ const Router = () => {
         </>
         )}
         {flags["acquisition_public"] && (
-          <Route path="/about/support/contribution-form" element={<Contribution />} />
+          <Route
+            path="/about/support/contribution-form"
+            element={<Contribution />}
+          />
         )}
 
         {/* flags to be defined */}
@@ -129,7 +133,6 @@ const Router = () => {
 
         {/* meh lmao */}
         <Route path="/parser" element={<ElectionResultParser />} />
-
       </Route>
 
       {/* Protected routes */}
@@ -146,7 +149,22 @@ const Router = () => {
           )}
 
           {flags["acquisition"] && (
-            <Route path="acquisition" element={<Acquisition />} />
+            <>
+              <Route path="acquisition" element={<Acquisition />} />
+              <Route path="acquisition/lending/:encoded" element={<AcquisitionViewPage />} />
+              <Route path="acquisition/donation/:encoded" element={<AcquisitionViewPage />} />
+              {/* acquisition/donation/don1/dW5kZWZpbmVk/preview/dW5kZWZpbmVk/ */}
+              <Route
+                path="acquisition/lending/:encoded/preview/:encoded"
+                element={<FilePreviewer />}
+              />
+              <Route
+                path="acquisition/donation/:encoded/preview/:encoded"
+                element={<FilePreviewer />}
+              />
+
+              <Route path="acquisition/add-artifact" element={<AddArtifact />} />
+            </>
           )}
           {flags["schedule"] && (
             <Route path="schedule" element={<Schedule />} />
@@ -165,7 +183,6 @@ const Router = () => {
             </>
           )}
 
-
           {flags["appointment"] && (
             <>
               <Route path="appointment" element={<Appointments />} />
@@ -177,11 +194,9 @@ const Router = () => {
             </>
           )}
 
-
           {flags["schedule"] && (
             <Route path="schedule/:encoded" element={<AppointmentViewPage />} />
           )}
-
 
           {flags["files"] && (
             <Route path="preview/:encoded" element={<FilePreviewer />} />
@@ -200,7 +215,6 @@ const Router = () => {
             </>
           )}
 
-
           {/* Admin-only subroutes */}
           <Route element={<RequireRole role="Admin" />}>
             {flags["logs"] && (
@@ -214,12 +228,9 @@ const Router = () => {
                 <Route path="user/:encoded" element={<UserView />} />
                 <Route path="user" element={<User />} />
                 <Route path="user/add-user" element={<CreateUser />} />
-
               </>
             )}
             <Route path="config" element={<Configuration />} />
-
-
           </Route>
 
           <Route path="unauthorized" element={<Unauthorized />} />

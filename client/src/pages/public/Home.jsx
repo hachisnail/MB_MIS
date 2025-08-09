@@ -97,7 +97,7 @@ displayArticles = displayArticles.slice(0, 2);
     <>
       <div
         className="bg-cover bg-center bg-no-repeat w-screen rounded-sm h-screen pt-40 flex flex-col items-center"
-        style={{ backgroundImage: `url(${bgImage1})` }}
+        style={{ backgroundImage: `url(${bgImage1})` }}s
       >
         <div className="w-[97vw] h-full min-w-fit flex justify-center">
           {/* Left Column */}
@@ -386,7 +386,7 @@ displayArticles = displayArticles.slice(0, 2);
                           to={`/article/${encoded(article.article_id, article.title)}`}
                           className="w-full h-full transition duration-300">
                       <div className="w-full h-full flex flex-col xl:flex-row gap-4 bg-black/50 p-3 rounded-lg">
-                        <div className="w-full xl:w-2/5 h-[40rem] xl:h-full rounded-lg overflow-hidden">
+                        <div className="w-full xl:w-2/5 h-[30rem] xl:h-full rounded-lg overflow-hidden">
                           <div
                             className="w-full h-full bg-cover bg-no-repeat bg-center"
                             style={{ backgroundImage: `url('${article.images}')` }}

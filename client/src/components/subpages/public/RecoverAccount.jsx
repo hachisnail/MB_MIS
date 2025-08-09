@@ -1,8 +1,9 @@
 import { NavLink, useParams, useNavigate, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
-import Logo from "../../assets/LOGO.png";
-import PopupModal from "../modals/PopupModal";
-import axiosClient from "../../lib/axiosClient";
+import Logo from "@/assets/LOGO.png";
+
+import PopupModal from "@/components/modals/PopupModal";
+import axiosClient from "@/lib/axiosClient";
 
 const RecoverAccount = () => {
   const { token } = useParams();
@@ -94,7 +95,7 @@ const RecoverAccount = () => {
   const renderEmailForm = () => (
     <form
       onSubmit={handleEmailSubmit}
-      className="px-8 pt-8 pb-6 rounded-lg shadow-2xl w-full max-w-xl"
+      className="px-8 pt-8 pb-6 rounded-lg shadow-md shadow-gray-400 w-full max-w-xl"
     >
       <div className="mb-7 flex flex-col items-center gap-y-4">
         <LogoHeader />
@@ -140,7 +141,7 @@ const RecoverAccount = () => {
   const renderPasswordForm = () => (
     <form
       onSubmit={handlePasswordSubmit}
-      className="px-8 pt-8 pb-6 rounded-lg shadow-2xl w-full max-w-xl"
+      className="px-8 pt-8 pb-6 rounded-lg shadow-md shadow-gray-400 w-full max-w-xl"
     >
       <div className="mb-7 flex flex-col items-center gap-y-4">
         <LogoHeader />

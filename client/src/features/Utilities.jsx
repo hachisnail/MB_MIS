@@ -497,3 +497,121 @@ export function ScrollButton({
     </div>
   );
 }
+
+
+export function TableHeaderContainer({ headers = [], className = "", theme ="light" }) {
+  if (!headers.length) return null;
+
+  const gridCols = headers
+    .map(({ width }) => {
+      if (typeof width === "number") return `${width}rem`; 
+      if (width === "auto") return "auto";
+      if (width === "1fr") return "1fr";
+      return "1fr"; 
+    })
+    .join(" ");
+
+  return (
+    <div
+      className={`grid py-4 gap-y-5 h-fit ${className}`}
+      style={{ gridTemplateColumns: gridCols }}
+    >
+      {headers.map(({ label }) => (
+        <div
+          key={label}
+          className={`${theme === "light" ? "text-[#727272]" : "text-white" }  font-semibold flex px-3 py-2 text-2xl`}
+        >
+          <span>{label}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export function SummaryPanel({
+  tabs = [],
+  activeTab = null,
+  onTabChange = () => {},
+  title = "",
+  totalCount = 0,
+  dateLabel = "",
+  summaryData = [],
+  button = null, 
+  className = "",
+}) {
+  return (
+    <div
+      className={`pb-[2rem] min-w-[34rem] max-w-[34rem] h-full flex flex-col gap-y-[1.75rem] ${className}`}
+    >
+      {/* Tabs */}
+      {tabs.length > 0 && (
+        <div className="min-h-[3.2rem] flex items-start gap-x-[0.5rem]">
+          {tabs.map(({ key, label }) => (
+            <button
+              key={key}
+              className={`w-fit cursor-pointer h-full px-[1rem] rounded-lg border text-2xl font-semibold ${
+                activeTab === key
+                  ? "bg-black text-white border-black"
+                  : "border-gray-500"
+              }`}
+              onClick={() => onTabChange(key)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div className="h-fit w-full flex flex-col gap-y-[5rem]">
+        {/* Header Count */}
+        <div className="w-full h-[5rem] bg-black rounded-sm flex px-[1rem] text-2xl items-center justify-between font-semibold">
+          <span className="text-white">{title}</span>
+          <span className="w-[6rem] h-[3rem] bg-[#D4DBFF] flex items-center justify-center rounded-md">
+            {totalCount}
+          </span>
+        </div>
+
+        {/* Summary Data */}
+        <div className="w-full h-fit flex flex-col gap-y-[1.75rem]">
+          {dateLabel && (
+            <span className="text-2xl font-semibold text-[#727272]">
+              {dateLabel}
+            </span>
+          )}
+          {summaryData.map(({ label, value }) => (
+            <div key={label} className="w-full h-fit flex justify-between">
+              <span className="text-2xl font-semibold">{label}</span>
+              <div className="w-[5rem] h-[2rem] flex items-center bg-[#D4DBFF] rounded-md justify-center">
+                <span className="text-2xl font-semibold">{value}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+      
+      {/* button */}
+      {button && (
+        <button
+          onClick={button.onClick}
+          className="justify-between flex px-[2rem] h-[6.25rem] items-center bg-black text-white hover:shadow-md hover:shadow-gray-600 rounded-lg"
+        >
+          <span className="text-3xl font-semibold">{button.label}</span>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="w-[3.5rem] h-[3.5rem]"
+            viewBox="0 0 24 24"
+            stroke="#ffffff"
+            strokeWidth="1"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            fill="none"
+          >
+            <path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0" />
+            <path d="M9 12h6" />
+            <path d="M12 9v6" />
+          </svg>
+        </button>
+      )}
+    </div>
+  );
+}

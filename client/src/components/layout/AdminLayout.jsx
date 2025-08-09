@@ -1,7 +1,7 @@
-import AdminHeader from "../headers/AdminHeader";
-import AdminNav from "../navbar/AdminNav";
+import AdminHeader from "@/components/headers/AdminHeader";
+import AdminNav from "@/components/navbar/AdminNav";
 import { Outlet, useLocation, matchPath } from "react-router-dom";
-import Breadcrumb from "../Breadcrumb";
+import Breadcrumb from "@/components/Breadcrumb";
 import { useState } from "react";
 
 const AdminLayout = () => {
@@ -53,9 +53,9 @@ const AdminLayout = () => {
       {/* Breadcrumb */}
       {!isDashboard && !isUnauthorized && (
         <div
-          className={`col-span-4 col-start-2 row-start-2 h-[6rem] flex items-center pl-4 ${theme}`}
+          className={`h-[12rem] col-span-4 col-start-2 row-start-2  flex items-center px-15 ${theme}`}
         >
-          <div className="flex flex-col gap-y-1">
+          <div className="flex  h-fit flex-col gap-y-1">
             <Breadcrumb />
           </div>
         </div>
@@ -63,7 +63,7 @@ const AdminLayout = () => {
 
       {/* Main content */}
       <main
-        className={`col-span-4 row-span-3 col-start-2 row-start-3 h-full w-full overflow-auto ${theme} p-4`}
+        className={`col-span-4 row-span-3 col-start-2 row-start-3 h-full w-full overflow-auto ${theme} pb-5 px-15`}
       >
         <Outlet />
       </main>

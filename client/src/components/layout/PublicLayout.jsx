@@ -1,7 +1,7 @@
 import { Outlet, useLocation, matchPath } from 'react-router-dom';
-import PublicNav from '../navbar/PublicNav';
-import PublicHeader from '../headers/PublicHeader';
-import PublicFooter from '../footers/PublicFooter';
+import PublicNav from '@/components/navbar/PublicNav';
+import PublicHeader from '@/components/headers/PublicHeader';
+import PublicFooter from '@/components/footers/PublicFooter';
 
 const PublicLayout = () => {
   const location = useLocation();

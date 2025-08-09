@@ -13,6 +13,7 @@ import {
   ErrorBox,
   EmptyMessage,
 } from "../../components/list/commons";
+import { TableHeaderContainer } from "../../features/Utilities";
 
 const Configuration = () => {
   const socket = useSocketClient();
@@ -231,12 +232,19 @@ const Configuration = () => {
     }
   };
 
+  const logHeaders = [
+    {label:"TimeStamp"},
+    {label:"Flag"},
+    {label:"Status"},
+    {label:"Actor"},
+  ]
+
   return (
     <>
-      <div className="w-full min-w-fit h-full p-5  1xl:max-h-[69rem] 2xl:max-h-[81rem] 3xl:max-h-[88rem]">
-        <div className="w-full h-full justify-center gap-x-5  pt-5 flex border-t border-[#373737] gap-y-[2rem]">
-          <div className="w-[81.5rem] flex flex-col justify-between space-y-5 h-full pt-1">
-            <div className="h-20 border border-[#373737] flex items-center justify-center">
+      <div className="w-full min-w-fit h-full  1xl:max-h-[69rem] 2xl:max-h-[81rem] 3xl:max-h-[88rem]">
+        <div className="w-full h-full justify-center gap-x-5   flex  gap-y-[2rem]">
+          <div className="w-[82rem] flex flex-col justify-between space-y-5 h-full ">
+            <div className="h-15 border border-[#373737] flex items-center justify-center">
               <span className="text-xl">
                 Some Buttons for editong about and other misc.
               </span>
@@ -272,7 +280,7 @@ const Configuration = () => {
             </div>
 
             <div className="w-full min-w-fit min-h-fit h-[49rem] flex  items-start justify-center">
-              <div className="relative w-full h-full flex flex-wrap gap-2">
+              <div className="relative w-full h-full flex flex-wrap gap-2 justify-center">
                 {/* Overlayed Spinner */}
                 {flagsLoading && (
                   <div className="absolute inset-0 z-10 flex items-center justify-center ">
@@ -368,20 +376,17 @@ const Configuration = () => {
             </div>
           </div>
 
-          <div className="w-[47rem]  rounded-sm items-start justify-start h-full flex flex-col space-y-[2rem] border-r border-[#373737]">
+          <div className="w-[44rem]  rounded-sm items-start justify-start h-full flex flex-col  border-r border-[#373737]">
             {/* <span className="text-2xl font-semibold">
               Logs spcific to flags will bre displayed here
             </span> */}
 
-            <span className="text-2xl font-semibold w-fit ">Logs</span>
-            <div className="w-full min-w-fit min-h-fit grid text-xl grid-cols-4">
-              <div className="py-2 pl-2 border-gray-600">TimeStamp</div>
-              <div className="py-2 pl-2 border-gray-600">Flag</div>
-              <div className="py-2 pl-2 border-gray-600">Status</div>
-              <div className="py-2 pl-2 border-gray-600">Actor</div>
-            </div>
+            <span className="text-2xl font-semibold w-fit mb-[2rem]">Logs</span>
 
-            <div className="w-full h-[58rem] overflow-y-scroll border-t border-gray-700">
+            <TableHeaderContainer headers={logHeaders} theme="dark" className="w-full" />
+
+
+            <div className="w-full h-[58rem] overflow-y-scroll border-y border-gray-700">
               <div className="relative w-full h-full">
                 {/* Overlayed Spinner */}
                 {logsLoading && (

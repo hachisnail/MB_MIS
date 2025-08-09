@@ -1,6 +1,3 @@
-import React from 'react';
-
-
 const ConfirmDialog = ({
   visible = false,
   title = "Confirm",

@@ -2,7 +2,8 @@ import path from "path";
 import fs from "fs/promises";
 import fsSync from "fs";
 
-const UPLOAD_BASE_DIR = path.join(process.cwd(), "..", "uploads");
+const UPLOAD_BASE_DIR = process.env.UPLOAD_BASE_DIR || path.join(process.cwd(), "..", "uploads");
+
 const VALID_CATEGORIES = ["files", "pictures", "uncategorized"];
 
 export const handleUpload = (req, res) => {

@@ -1,7 +1,7 @@
 import { Outlet, useLocation, matchPath } from 'react-router-dom';
-import PublicNav from '../navbar/PublicNav';
-import PublicHeader from '../headers/PublicHeader';
-import PublicFooter from '../footers/PublicFooter';
+import PublicNav from '@/components/navbar/PublicNav';
+import PublicHeader from '@/components/headers/PublicHeader';
+import PublicFooter from '@/components/footers/PublicFooter';
 
 const PublicLayout = () => {
   const location = useLocation();
@@ -11,11 +11,13 @@ const PublicLayout = () => {
     '/login/forgot-password',
     '/recover',
     '/recover/success',
+    '/registration-success'
   ];
 
-  const isMinimalLayout =
-    hiddenPaths.includes(location.pathname) ||
-    /^\/recover\/[^/]+$/.test(location.pathname);
+const isMinimalLayout =
+  hiddenPaths.includes(location.pathname) ||
+  /^\/recover\/[^/]+$/.test(location.pathname) ||
+  /^\/complete-registration\/[^/]+$/.test(location.pathname);
 
   // Define themes for overall layout
   const themeRoutes = [

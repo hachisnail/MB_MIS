@@ -1288,7 +1288,7 @@ const Appointment = () => {
       {PromptModal}
       <div className="w-screen min-w-fit items-center justify-center min-h-screen flex flex-col">
         <div className="min-w-[30rem] w-fit h-fit flex gap-y-5 flex-col">
-          <div className="min-w-[30rem] p-10 min-h-[15rem] bg-white rounded-lg shadow-2xl shadow-black/80 flex flex-col items-center justify-center">
+          <div className="min-w-[30rem] p-10 min-h-[15rem] bg-white rounded-lg shadow-md shadow-gray-400 flex flex-col items-center justify-center">
             {steps[step].component}
           </div>
           <div className="flex justify-between">

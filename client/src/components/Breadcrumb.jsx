@@ -6,6 +6,14 @@ const routeMeta = [
     path: "/admin/acquisition",
     title: "Donations/Acquisitions/Lending Management",
   },
+    {
+    path: "/admin/acquisition/add-artifact",
+    title: "Manually add a new Artifact",
+  },
+  { path: "/admin/acquisition/lending/:ended", title: "Lending Form" },
+  { path: "/admin/acquisition/donation/:ended", title: "Donation Form" },
+
+
   { path: "/admin/logs", title: "Activities", theme: "text-gray-400" },
   { path: "/admin/logs/:log", title: "Activity", theme: "text-gray-400" },
   { path: "/admin/view", title: "View Artifacts" },
@@ -94,7 +102,7 @@ const Breadcrumb = () => {
 
       // Skip these segments in breadcrumb display
       if (
-        ["admin", "preview", "files", "pictures", "edit-article"].includes(
+        ["admin", "preview", "files", "pictures", "edit-article", "lending", "donation"].includes(
           segment
         )
       ) {
@@ -129,7 +137,7 @@ const Breadcrumb = () => {
 
   return (
     <>
-      <span className="text-4xl font-semibold select-none">{pageTitle}</span>
+      <span className=" text-4xl font-semibold select-none">{pageTitle}</span>
       <div className="flex select-none items-center gap-x-2 text-xl text-gray-600">
         {crumbs.map((crumb, index) => (
           <div className="flex items-center gap-x-2" key={crumb.path}>

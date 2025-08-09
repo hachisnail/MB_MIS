@@ -1,5 +1,3 @@
-// src/components/DayScheduler.jsx
-
 import React from 'react';
 import 'react-time-picker/dist/TimePicker.css';
 
@@ -61,8 +59,8 @@ const DayScheduler = ({
     console.log("- Filtered events count:", filteredEvents.length);
     console.log("- Filtered events:", filteredEvents);
 
-    // Our day runs from 7:00am to 6:00pm
-    const dayStart = 7 * 60;
+    // Our day runs from 6:00am to 6:00pm
+    const dayStart = 6 * 60;
     const dayEnd = 18 * 60;
     const totalMinutes = dayEnd - dayStart;
 
@@ -181,33 +179,67 @@ const DayScheduler = ({
     };
 
     return (
-        <div className="w-full h-full relative bg-gray-200 overflow-hidden">
-            {/* Left timeline ruler */}
+        <div className="w-full h-full relative bg-gray-50 overflow-hidden">
+            {/* Left timeline ruler - Clean Meter Stick Style */}
             <div
-                className="absolute left-0 top-0 bottom-0 bg-gray-900 text-white z-10 rounded-md"
+                className="absolute left-0 top-0 bottom-0 bg-slate-800 text-white z-10 rounded-md"
                 style={{ width: '4.5rem' }}
             >
-                {Array.from({ length: (dayEnd - dayStart) / 60 }).map((_, idx) => {
-                    const hour = dayStart / 60 + idx;
+                {/* Generate only hour markers and 30-minute intervals for cleaner look */}
+                {Array.from({ length: totalMinutes / 30 }).map((_, idx) => {
+                    const totalMinutesFromStart = idx * 30;
+                    const currentMinutes = dayStart + totalMinutesFromStart;
+                    const hour = Math.floor(currentMinutes / 60);
+                    const minute = currentMinutes % 60;
+                    const isHourMark = minute === 0;
+                    const isHalfHour = minute === 30;
+
+                    const topPosition = (totalMinutesFromStart / totalMinutes) * 100;
+
                     return (
                         <div
-                            key={hour}
-                            className="relative border-b border-gray-700"
-                            style={{ height: `${100 / ((dayEnd - dayStart) / 60)}%` }}
+                            key={`${hour}-${minute}`}
+                            className="absolute w-full flex items-center"
+                            style={{ top: `${topPosition}%` }}
                         >
-                            <span className="absolute inset-0 flex items-center justify-center text-xs font-medium">
-                                {formatTimeTo12H(`${hour.toString().padStart(2, '0')}:00`)}
-                            </span>
+                            {/* Clean tick marks */}
+                            <div className="absolute right-0 flex items-center">
+                                {/* Major tick for hours */}
+                                {isHourMark && (
+                                    <div className="w-2 h-0.5 bg-white"></div>
+                                )}
+                                {/* Minor tick for half hours */}
+                                {isHalfHour && (
+                                    <div className="w-1 h-0.5 bg-gray-300"></div>
+                                )}
+                            </div>
+
+                            {/* Hour labels positioned at exact hour start */}
+                            {isHourMark && (
+                                <span className="absolute left-2 text-xs font-medium transform -translate-y-1/2">
+                                    {formatTimeTo12H(`${hour.toString().padStart(2, '0')}:00`)}
+                                </span>
+                            )}
+
+                            {/* Half-hour labels for better precision */}
+                            {isHalfHour && (
+                                <span className="absolute left-3 text-[10px] font-light text-gray-300 transform -translate-y-1/2">
+                                    :30
+                                </span>
+                            )}
                         </div>
                     );
                 })}
+
+                {/* Final hour marker at the end */}
                 <div
-                    className="relative"
-                    style={{
-                        height: `${100 / ((dayEnd - dayStart) / 60)}%`
-                    }}
+                    className="absolute w-full flex items-center"
+                    style={{ top: '100%', transform: 'translateY(-1px)' }}
                 >
-                    <span className="absolute inset-0 flex items-center justify-center text-xs font-medium">
+                    <div className="absolute right-0 flex items-center">
+                        <div className="w-2 h-0.5 bg-white"></div>
+                    </div>
+                    <span className="absolute left-2 text-xs font-medium transform -translate-y-1/2">
                         {formatTimeTo12H(`${(dayEnd / 60).toString().padStart(2, '0')}:00`)}
                     </span>
                 </div>
@@ -218,16 +250,31 @@ const DayScheduler = ({
                 className="absolute top-0 bottom-0 right-0"
                 style={{ left: '4.5rem' }}
             >
-                {/* Hour lines */}
+                {/* Clean grid lines - Only major hour lines */}
                 {Array.from({ length: (dayEnd - dayStart) / 60 + 1 }).map((_, i) => (
                     <div
-                        key={i}
-                        className="absolute left-0 w-full border-t border-gray-300 rounded-md"
+                        key={`hour-${i}`}
+                        className="absolute left-0 w-full border-t border-gray-300"
                         style={{
-                            top: `calc(${(i / ((dayEnd - dayStart) / 60)) * 100}%)`
+                            top: `${(i / ((dayEnd - dayStart) / 60)) * 100}%`
                         }}
                     />
                 ))}
+
+                {/* Subtle 30-minute guide lines */}
+                {Array.from({ length: (dayEnd - dayStart) / 30 }).map((_, i) => {
+                    // Skip lines that coincide with hour lines
+                    if (i % 2 === 0) return null;
+                    return (
+                        <div
+                            key={`half-hour-${i}`}
+                            className="absolute left-0 w-full border-t border-gray-200 opacity-60"
+                            style={{
+                                top: `${(i / ((dayEnd - dayStart) / 30)) * 100}%`
+                            }}
+                        />
+                    );
+                })}
 
                 {/* Empty state message when no events */}
                 {events.length === 0 && (

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { authAPI } from "../../services/api";
+import { authAPI } from "@/services/api";
 
 const RegistrationForm = ({ error, setError }) => {
   const [password, setPassword] = useState("");
@@ -58,7 +58,7 @@ const RegistrationForm = ({ error, setError }) => {
   return (
     <form
       onSubmit={handleSubmit}
-      className=" min-h-fit min-w-fit w-screen min-w-fit px-10 pt-10 pb-4 rounded-lg space-y-4 w-[40rem] "
+      className=" min-h-fit   min-w-fit px-10 pt-10 pb-4 rounded-lg space-y-4 w-[40rem] "
     > 
       <div className="mb-4 gap-y-2 flex flex-col">
         <label htmlFor="username" className=" text-xl">Username</label>
@@ -90,7 +90,7 @@ const RegistrationForm = ({ error, setError }) => {
         <label htmlFor="password" className=" text-xl">Password</label>
         <input
         id="password"
-          type="text"
+          type="password"
           placeholder=""
           value={password}
           onChange={(e) => setPassword(e.target.value)}

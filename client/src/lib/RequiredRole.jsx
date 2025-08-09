@@ -1,4 +1,4 @@
-import { useAuth } from "../context/authContext";
+import { useAuth } from "@/context/authContext";
 import { Navigate, Outlet } from "react-router-dom";
 
 // Map role IDs to role names

@@ -25,7 +25,7 @@ const LogItem = ({ log, formatCreatedAt }) => {
           `${log.id} ${log.action} ${formatCreatedAt(log.createdAt)}`
         )
       }
-      className="w-full min-w-fit min-h-15 py-1 border-b border-gray-600 grid-cols-5 grid cursor-pointer hover:bg-gray-900"
+      className="w-full min-w-fit min-h-20 py-1 border-b border-gray-600 grid-cols-[15rem_18.5rem_13rem_12.5rem_1fr] grid cursor-pointer hover:bg-gray-900"
     >
       {/* Actor */}
       <div className="col-span-1 flex flex-col justify-center pl-5 border-gray-600">

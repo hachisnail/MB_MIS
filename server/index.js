@@ -17,7 +17,11 @@ dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const UPLOAD_BASE_DIR = path.join(process.cwd(), "..", "uploads");
+// const UPLOAD_BASE_DIR = 
+const UPLOAD_BASE_DIR = process.env.UPLOAD_BASE_DIR || path.join(process.cwd(), "..", "uploads");
+
+// const UPLOAD_BASE_DIR = "/uploads";
+
 
 if (!fs.existsSync(UPLOAD_BASE_DIR)) {
   fs.mkdirSync(UPLOAD_BASE_DIR, { recursive: true });
@@ -85,6 +89,49 @@ app.get('/', (req, res) => {
 const server = http.createServer(app);
 const io = initializeSocket(server, process.env.CLIENT_URL);
 const PORT = process.env.PORT;
+
+
+function copyRecursive(srcDir, destDir) {
+  if (!fs.existsSync(destDir)) fs.mkdirSync(destDir, { recursive: true });
+
+  for (const item of fs.readdirSync(srcDir)) {
+    const srcPath = path.join(srcDir, item);
+    const destPath = path.join(destDir, item);
+    const stat = fs.lstatSync(srcPath);
+
+    if (stat.isDirectory()) {
+      copyRecursive(srcPath, destPath);
+    } else if (stat.isFile()) {
+      fs.copyFileSync(srcPath, destPath);
+    }
+  }
+}
+
+function seedUploadsFolder() {
+  const seedDir = path.join(__dirname, '..', 'uploads');
+  const seedFlag = path.join(UPLOAD_BASE_DIR, '.seeded');
+
+  if (fs.existsSync(seedFlag)) {
+    console.log('Uploads already seeded.');
+    return;
+  }
+
+  if (!fs.existsSync(seedDir)) {
+    console.warn('Seed source folder does not exist:', seedDir);
+    return;
+  }
+
+  console.log('Seeding uploads volume from Git-tracked /uploads...');
+  copyRecursive(seedDir, UPLOAD_BASE_DIR);
+  fs.writeFileSync(seedFlag, 'seeded');
+  console.log('Seeding complete.');
+}
+
+if (process.env.NODE_ENV === 'production') {
+  seedUploadsFolder();
+}
+
+
 
 (async () => {
   try {

@@ -157,9 +157,39 @@ export function scrollToElementById(id, offset) {
 }
 
 
-
-export function handlePreview(navigate, category, filename, basePath = "/admin") {
+export function handlePreview( navigate,category, filename) {
   const encoded = btoa(`${category}/${filename}`);
-  const normalizedBase = basePath.endsWith("/") ? basePath.slice(0, -1) : basePath;
-  navigate(`${normalizedBase}/preview/${encoded}`);
+  const basePath = `${location.pathname}/preview/${encoded}`
+
+  navigate(basePath);
 }
+
+
+import { useCallback, useState } from "react";
+
+export default function useToast() {
+  const [toastConfig, setToastConfig] = useState({
+    message: "",
+    type: "success",
+  });
+
+  const showToast = useCallback((message, type = "success") => {
+    setToastConfig({ message, type });
+  }, []);
+
+  const hideToast = useCallback(() => {
+    setToastConfig((prevConfig) => ({ ...prevConfig, message: "" }));
+  }, []);
+
+  return { toastConfig, showToast, hideToast };
+}
+
+
+export const formatDateForDisplay = (date) => {
+    if (!date) return 'N/A';
+    return new Date(date).toLocaleDateString('en-US', {
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric'
+    });
+};

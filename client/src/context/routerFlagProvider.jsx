@@ -1,6 +1,6 @@
 import React, { createContext, useState, useEffect, useContext } from "react";
-import axiosClient from "../lib/axiosClient";
-import { useSocketClient } from "./authContext";
+import axiosClient from "@/lib/axiosClient";
+import { useSocketClient } from "@/context/authContext";
 
 const RouterFlagContext = createContext();
 

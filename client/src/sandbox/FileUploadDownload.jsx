@@ -256,7 +256,7 @@ const FileUploadDownload = () => {
                 {
                   label: "Preview",
                   onClick: () =>
-                    handlePreview(navigate, categoryData.category, file.filename, "/admin/sandbox"),
+                    handlePreview(navigate,categoryData.category, file.filename),
                 },
                 {
                   label: "Download",

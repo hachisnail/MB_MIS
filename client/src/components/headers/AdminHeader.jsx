@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
-import Logo from '../../assets/LOGO.png';
+import Logo from '@/assets/LOGO.png';
 
 const AdminHeader = ({ onClose, onOpen, isSidebarOpen }) => {
   const location = useLocation();

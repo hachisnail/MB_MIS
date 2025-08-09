@@ -12,7 +12,7 @@ import DayScheduler from '@/features/DayScheduler';
 import { LoadingSpinner, EmptyMessage } from '@/components/list/commons';
 import ScheduleItem from '@/components/list/ScheduleItem';
 import axiosClient from '@/lib/axiosClient';
-import { AppointmentViewPage } from '@/components/subpages/AppointmentViewPage';
+import { AppointmentViewPage } from '@/components/subpages/private/AppointmentViewPage';
 import ConfirmationModal from '@/components/modals/ConfirmationModal';
 import StyledButton from '@/components/buttons/StyledButton';
 import { useSocketClient } from '@/context/authContext';
@@ -524,11 +524,11 @@ const Schedule = () => {
 
       const startMinutes = timeStringToMinutes(newStartTime);
       const endMinutes = timeStringToMinutes(newEndTime);
-      const sevenAM = timeStringToMinutes('07:00');
-      const fivePM = timeStringToMinutes('17:00');
+      const sixAM = timeStringToMinutes('06:00');
+      const sixPM = timeStringToMinutes('18:00');
 
-      if (startMinutes < sevenAM || endMinutes > fivePM) {
-        showToast('Schedule must be between 7:00 AM and 5:00 PM', 'error');
+      if (startMinutes < sixAM || endMinutes > sixPM) {
+        showToast('Schedule must be between 6:00 AM and 6:00 PM', 'error');
         return;
       }
 
@@ -626,7 +626,7 @@ const Schedule = () => {
   };
 
   return (
-    <div className="relative w-full h-full bg-[#F0F0F0] select-none flex pt-10 overflow-hidden">
+    <div className="relative w-full h-full bg-[#F0F0F0] select-none flex overflow-hidden">
       {showAppointmentModal && modalData ? (
         <AppointmentViewPage
           showModal={showAppointmentModal}
@@ -644,8 +644,8 @@ const Schedule = () => {
           isFullPage={false}
         />
       ) : (
-        <div className="w-full bg-[#F0F0F0] h-full flex flex-col pb-7">
-          <div className="w-full h-full flex flex-col xl:flex-row gap-y-5 xl:gap-y-0 justify-between px-4 sm:px-12 gap-x-10">
+        <div className="w-full h-full flex flex-col pb-7">
+          <div className="w-full h-full flex flex-col xl:flex-row gap-y-5 xl:gap-y-0 justify-between   gap-x-10">
 
             <div className="w-full xl:w-[31rem] h-fit flex flex-col gap-y-6 items-center justify-around">
               <div className="w-full xl:min-w-[31rem] xl:max-w-[31rem] min-h-[27rem] flex flex-col gap-y-4">
@@ -709,9 +709,9 @@ const Schedule = () => {
                   background-color: #6b7280;
                 }
               `}</style>
-              <div className="w-full xl:min-w-[31rem] xl:max-w-[31rem] flex flex-col h-[40rem] bg-white rounded-xl shadow-xl p-5">
+              <div className="w-full xl:min-w-[31rem] xl:max-w-[31rem] flex flex-col h-[35rem] bg-white rounded-xl shadow-xl p-5">
                 <span className="text-2xl font-semibold mb-4">Today's Scheduled Tours</span>
-                <div className="w-full border-t border-gray-200 pt-4 space-y-3 h-[calc(100%-4rem)] overflow-y-auto overflow-x-hidden pr-2 custom-scrollbar">
+                <div className="w-full border-t border-gray-200 pt-4 space-y-3 h-[calc(100%-1rem)] overflow-y-auto overflow-x-hidden pr-2 custom-scrollbar">
                   {todayTours.length === 0 && (
                     <div className="bg-gray-100 text-gray-700 p-3 rounded-lg">
                       No Scheduled Tours

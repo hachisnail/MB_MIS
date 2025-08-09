@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
-import axiosClient from "../../lib/axiosClient";
-import { useSocketClient } from "../../context/authContext";
+import axiosClient from "@/lib/axiosClient";
+import { useSocketClient } from "@/context/authContext";
 
 const ViewLogs = () => {
   const [Log, setLogs] = useState([]);

@@ -119,12 +119,6 @@ const ArticleForm = () => {
   const pendingCount = articles.filter(
     (article) => article.status === "pending"
   ).length;
-  const rejectedCount = articles.filter(
-    (article) => article.status === "rejected"
-  ).length;
-  const archivedCount = articles.filter(
-    (article) => article.status === "archived"
-  ).length;
   const totalCount = articles.length;
 
   const handleStatusChange = async (articleId, newStatus) => {
@@ -210,75 +204,56 @@ const ArticleForm = () => {
   ];
 
   return (
-    
     <>
-    <div className="relative w-full h-full bg-[#F0F0F0] select-none flex pt-[1rem] overflow-hidden">
-      <div className="w-full h-full flex flex-col gap-y-5 px-7 pb-7 pt-[1rem] overflow-hidden">
+      <div className="w-full h-full flex gap-x-5 overflow-scroll lg:flex-row flex-col">
+        <SummaryPanel
+          tabs={tabs}
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          title="Total Articles"
+          totalCount={totalCount || 0}
+          dateLabel={new Date().toLocaleDateString("en-US", {
+            month: "long",
+            day: "numeric",
+            year: "numeric",
+          })}
+          summaryData={[
+            { label: "Posted", value: postedCount || 0 },
+            { label: "Pending", value: pendingCount || 0 },
+          ]}
+          button={
+            userRole && allowedRoles.includes(userRole)
+              ? {
+                  label: "Add new article",
+                  onClick: () => navigate("/admin/article/add-article"),
+                }
+              : undefined
+          }
+        />
 
-        <div className="w-full h-full flex flex-col xl:flex-row gap-y-5 xl:gap-x-5 pt-5 ">
-          {/* Left: Info and Add */}
-          <div className="min-w-[34rem] h-full flex flex-col gap-y-7">
-            <div className="w-full max-w-[35rem] text-gray-500 h-[3.5rem] flex py-0 gap-x-2 items-center">
-              <button className="px-4 h-full border-1 border-black text-white bg-black rounded-lg">
-                <span className="text-2xl font-semibold">Articles</span>
-              </button>
-            </div>
-
-            <div className="w-full h-full flex flex-col gap-y-[5rem]">
-              <div className="bg-[#161616] px-4 h-[5rem] flex justify-between items-center rounded-sm">
-                <span className="text-2xl text-white font-semibold">Articles</span>
-                <div className="w-[6rem] h-[3rem] bg-[#D4DBFF] flex items-center justify-center rounded-md">
-                  <span className="text-2xl text-black font-semibold">{totalCount || 0}</span>
-                </div>
-              </div>
-
-              <div className="w-full h-auto flex flex-col gap-y-7">
-                <span className="text-2xl font-semibold text-[#727272]">
-                  {new Date().toLocaleDateString("en-US", {
-                    month: "long", day: "numeric", year: "numeric",
-                  })}
-                </span>
-
-                <div className="w-full h-fit flex justify-between items-center">
-                  <span className="text-2xl font-semibold">Posted</span>
-                  <div className="w-[5rem] h-[2rem] flex items-center bg-[#D4DBFF] rounded-md justify-center">
-                    <span className="text-2xl font-semibold">{postedCount || 0}</span>
-                  </div>
-                </div>
-
-                <div className="w-full h-fit flex justify-between items-center">
-                  <span className="text-2xl font-semibold">Pending</span>
-                  <div className="w-[5rem] h-[2rem] flex items-center bg-[#D4DBFF] rounded-md justify-center">
-                    <span className="text-2xl font-semibold">{pendingCount || 0}</span>
-                  </div>
-                </div>
-                <div className="w-full h-fit flex justify-between items-center">
-                  <span className="text-2xl font-semibold">Rejected</span>
-                  <div className="w-[5rem] h-[2rem] flex items-center bg-[#D4DBFF] rounded-md justify-center">
-                    <span className="text-2xl font-semibold">{rejectedCount || 0}</span>
-                  </div>
-                </div>
-                <div className="w-full h-fit flex justify-between items-center">
-                  <span className="text-2xl font-semibold">Archived</span>
-                  <div className="w-[5rem] h-[2rem] flex items-center bg-[#D4DBFF] rounded-md justify-center">
-                    <span className="text-2xl font-semibold">{archivedCount || 0}</span>
-                  </div>
-                </div>
-
-                {userRole && allowedRoles.includes(userRole) && (
-                    <NavLink to="add-article">
-                      <button className="cursor-pointer flex items-center justify-between w-full px-6 py-4 bg-[#6BFFD5] text-black font-medium">
-                        <span className="text-2xl font-semibold">
-                          Add New Article
-                        </span>
-                        <span className="border-2 border-black rounded-full p-2 flex items-center justify-center">
-                          <i className="fas fa-plus text-xl"></i>
-                        </span>
-                      </button>
-                    </NavLink>
-                  )}
-              </div>
-            </div>
+        <div className="w-full h-full flex flex-col min-w-[43.75rem] gap-y-7">
+          <div className="w-full min-h-[3.2rem] flex gap-x-3 items-center ">
+            {/* table utilities */}
+            <TimelineDatePicker onDateChange={setFilterDate} theme="light" />
+            <SearchBar
+              theme="light"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            <CardDropdownPicker
+              value={selectedCat}
+              onChange={setSelectedCat}
+              placeholder="Categories"
+              theme="light"
+              options={CatOptions}
+            />
+            <CardDropdownPicker
+              value={selectedStatusFilter}
+              onChange={setSelectedStatusFilter}
+              placeholder="Status"
+              theme="light"
+              options={filterStatus}
+            />
           </div>
           <div className="w-full h-[61rem] flex flex-col">
             <TableHeaderContainer headers={headersMap[activeTab]} />

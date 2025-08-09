@@ -65,27 +65,27 @@ const Appointments = () => {
   ];
 
   const formHeaders = [
-    { label: "Creation Date", width: "auto" },
-    { label: "Visitor Name", width: "auto" },
-    { label: "Preferred Time", width: "auto" },
-    { label: "Status", width: "auto" },
-    { label: "Visitor Count", width: "auto" },
-    { label: "Last Updated", width: "auto" },
+    { label: "Creation Date", width: "1fr" },
+    { label: "Visitor Name", width: "1fr" },
+    { label: "Preferred Time", width: "1fr" },
+    { label: "Status", width: "1fr" },
+    { label: "Visitor Count", width: "1fr" },
+    { label: "Last Updated", width: "1fr" },
   ];
 
   const attendanceHeaders = [
-    { label: "Date", width: "auto" },
-    { label: "Visitor Name", width: "auto" },
-    { label: "Purpose of Visit", width: "auto" },
-    { label: "Preferred Date", width: "auto" },
-    { label: "Expected Visitor", width: "auto" },
-    { label: "Present", width: "auto" },
+    { label: "Date", width: "1fr" },
+    { label: "Visitor Name", width: "1fr" },
+    { label: "Purpose of Visit", width: "1fr" },
+    { label: "Preferred Date", width: "1fr" },
+    { label: "Expected Visitor", width: "1fr" },
+    { label: "Present", width: "1fr" },
   ];
 
   const visitorHeaders = [
-    { label: "Date", width: "auto" },
-    { label: "Visitors", width: "auto" },
-    { label: "Visitor Count", width: "auto" },
+    { label: "Date", width: "1fr" },
+    { label: "Visitors", width: "1fr" },
+    { label: "Visitor Count", width: "1fr" },
   ];
 
   const headersMap = {

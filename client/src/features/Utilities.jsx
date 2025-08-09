@@ -499,7 +499,7 @@ export function ScrollButton({
 }
 
 
-export function TableHeaderContainer({ headers = [], className = "" }) {
+export function TableHeaderContainer({ headers = [], className = "", theme ="light" }) {
   if (!headers.length) return null;
 
   const gridCols = headers
@@ -519,7 +519,7 @@ export function TableHeaderContainer({ headers = [], className = "" }) {
       {headers.map(({ label }) => (
         <div
           key={label}
-          className="text-[#727272] font-semibold flex px-3 py-2 text-2xl"
+          className={`${theme === "light" ? "text-[#727272]" : "text-white" }  font-semibold flex px-3 py-2 text-2xl`}
         >
           <span>{label}</span>
         </div>

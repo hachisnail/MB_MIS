@@ -281,10 +281,10 @@ export function RenderArtifactInformation({
   );
 
   return (
-    <div className="w-full h-full flex flex-col gap-y-6">
+    <div className="w-full h-full flex flex-col gap-y-5 px-15">
       <span className="text-4xl font-semibold">About The Artifact</span>
 
-      <div className="max-h-[24rem] h-full gap-y-6 flex flex-col overflow-auto">
+      <div className="max-h-[24rem] h-full gap-y-5 flex flex-col overflow-auto ">
         {artifactInfo.map(({ label, value }) => (
           <div
             key={label}
@@ -320,10 +320,10 @@ export function RenderArtifactInformation({
 
         {/* Side thumbnails */}
         <div className="w-fit h-full flex items-center justify-center gap-4">
-          <div className="w-fit flex flex-col items-center justify-center gap-2 p-2">
+          <div className="w-fit flex flex-col items-center justify-center gap-4">
             {sideImages.map((imageObj, idx) => (
               <div key={idx} className="flex flex-col items-center gap-1">
-                <div className="w-33 h-33 border rounded-lg overflow-hidden flex items-center justify-center">
+                <div className="w-32 h-32 border rounded-lg overflow-hidden flex items-center justify-center">
                   {imageObj && (
                     <img
                       src={imageObj.src}

@@ -26,10 +26,11 @@ export const createArticle = async (req, res) => {
       author,
       address,
       selectedDate,
-      // Previously called "content_images"; now changed to "editImages"
       editImages,
       status,
-      barangay // <-- ADD THIS LINE
+      uploadPeriodStart,
+      uploadPeriodEnd,
+      barangay
     } = req.body;
 
     let thumbnail = null;
@@ -49,11 +50,13 @@ export const createArticle = async (req, res) => {
       user_id,
       author,
       address,
-      barangay, // <-- ADD THIS LINE
+      barangay,
       upload_date: selectedDate,
       images: thumbnail,
       editImages: editImagesString,
-      status
+      status,
+      upload_period_start: uploadPeriodStart,
+      upload_period_end: uploadPeriodEnd,
     });
 
     return res.status(201).json(article);
@@ -103,7 +106,6 @@ export const getPublicArticles = async (req, res) => {
 };
 
 // Retrieve a specific public article
-// In your backend controller.js
 export const getPublicArticle = async (req, res) => {
   try {
     const { id } = req.params;
@@ -114,7 +116,7 @@ export const getPublicArticle = async (req, res) => {
     const article = await Article.findOne({
       where: { article_id: id },
       attributes: [
-        'article_id', 'title', 'user_id', 'upload_date', 'images', // Get the raw images value
+        'article_id', 'title', 'user_id', 'upload_date', 'images',
         'editImages', 'article_category', 'description', 'author',
         'address', 'barangay', 'status', 'upload_period_start',
         'upload_period_end', 'created_at', 'updated_at'
@@ -125,22 +127,22 @@ export const getPublicArticle = async (req, res) => {
       return res.status(404).json({ message: 'Article not found.' });
     }
 
-    // Construct full URL for images before sending
     const baseUrl = `${req.protocol}://${req.get('host')}`;
     const formattedArticle = {
       ...article.dataValues,
       images: article.images
-        ? `${baseUrl}/uploads/pictures/${article.images}` // Ensure it points to the correct path
+        ? `${baseUrl}/uploads/pictures/${article.images}`
         : null
     };
 
-    return res.json(formattedArticle); // Send the formatted article
+    return res.json(formattedArticle);
   } catch (error) {
     console.error('Error fetching public article:', error);
     return res.status(500).json({ message: 'Server error retrieving public article.' });
   }
 };
 
+// Update an existing article
 // Update an existing article
 export const updateArticle = async (req, res) => {
   console.log('Update request body:', req.body);
@@ -156,7 +158,10 @@ export const updateArticle = async (req, res) => {
       address,
       selectedDate,
       editImages,
-      status // <-- Add this line
+      status,
+      barangay,
+      uploadPeriodStart,
+      uploadPeriodEnd
     } = req.body;
 
     let thumbnail = null;
@@ -173,7 +178,6 @@ export const updateArticle = async (req, res) => {
       }
     }
 
-    // Include 'status' in fields to update
     const [updatedCount] = await Article.update(
       {
         title,
@@ -182,10 +186,13 @@ export const updateArticle = async (req, res) => {
         user_id,
         author,
         address,
+        barangay: barangay || undefined,
         upload_date: selectedDate,
         images: thumbnail || undefined,
         editImages: editImagesString,
-        status: status || undefined,  // <-- Include status here
+        status: status || undefined,
+        upload_period_start: uploadPeriodStart || undefined,
+        upload_period_end: uploadPeriodEnd || undefined,
         updated_at: new Date()
       },
       { where: { article_id: id } }

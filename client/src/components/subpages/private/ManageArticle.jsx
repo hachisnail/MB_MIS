@@ -36,9 +36,10 @@ import Highlight from "@tiptap/extension-highlight";
 import Youtube from "@tiptap/extension-youtube";
 // import { HardBreak } from '@tiptap/extension-hard-break';
 
-import ConfirmDialog from "../../modals/ConfirmDialog";
-import FontSize from "../../articleComponents/FontSize";
-import { useAuth } from "../../../context/authContext";
+import ConfirmDialog from "../modals/ConfirmDialog";
+import FontSize from "../../components/articleComponents/FontSize";
+import { useAuth } from "../../context/authContext";
+import useAutosave, { loadDraft, clearDraft } from "../../features/ContentDrafting.jsx";
 
 const ArticleEditorForm = () => {
 
@@ -50,6 +51,7 @@ const ArticleEditorForm = () => {
   const userRole = user.roleId; 
   const allowedRoles = [1, 2, 5]; // Add article privs
   const isReviewer = userRole === 4;
+  const hasRun = useRef(false);
 
   const navigate = useNavigate();
     // Initialize TipTap editor
@@ -93,6 +95,9 @@ const ArticleEditorForm = () => {
         // ...custom logic...
       },
     },
+    onUpdate: ({ editor }) => {
+    setIsDirty(true); // <-- Add this line to mark the form as dirty on every editor change
+  },
   });
     const [isEditing, setIsEditing] = useState(false);
     // Form state
@@ -104,7 +109,6 @@ const ArticleEditorForm = () => {
       const [thumbnail, setThumbnail] = useState(null);
       const [previewImage, setPreviewImage] = useState(null);
       const Categories = ["Article", "Education", "Exhibit", "Contests", "Other"]; // changed from 'Contents'
-      
       const municipalitiesWithBarangays = {
       "Basud": ["Mampili", "Matnog", "San Felipe", "San Isidro", "Tuaca"], // example
       "Capalonga": ["Alayao", "Bayabas", "Del Pilar", "Itok", "Old Camp"],
@@ -119,34 +123,54 @@ const ArticleEditorForm = () => {
       "Talisay": ["Binanuahan", "Calintaan", "Del Rosario", "San Isidro", "Tinago"],
       "Vinzons": ["Calangcawan Norte", "Candelaria", "Manmuntay", "Pinagtigasan", "Sula"],
     };
-
       const [status, setStatus] = useState("pending");
+      const [uploadPeriodStart, setUploadPeriodStart] = useState("");
+      const [uploadPeriodEnd, setUploadPeriodEnd] = useState("");
+
       const [municipality, setMunicipality] = useState("");
-
-
+      const [contentImages, setContentImages] = useState([]);
+      const [barangay, setBarangay] = useState(""); // <-- Add this line
+      const imageInputRef = useRef(null);
+      const thumbnailInputRef = useRef(null);
+      const [isDirty, setIsDirty] = useState(false);
+      const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+      const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
+      const [errors, setErrors] = useState({});
+      const [removeThumbnail, setRemoveThumbnail] = useState(false);
+      const [hasThumbnail, setHasThumbnail] = useState(
+        !!thumbnail || !!previewImage
+      );
       const [articles, setArticles] = useState([]);
       const [loading, setLoading] = useState(true);
       const [error, setError] = useState(null);
       const [editingArticleId, setEditingArticleId] = useState(null);
-
-
       const { encoded } = useParams();
-
-
-let articleId = null;
-
-try {
-  if (encoded) {
-    const decoded = atob(encoded);       // e.g. "123 Some Title"
-    articleId = decoded.split(" ")[0];   // extract just the ID
-  }
-} catch (err) {
-  console.error("Invalid base64 ID:", encoded);
-}
+      let articleId = null;
+        try {
+          if (encoded) {
+            const decoded = atob(encoded);       // e.g. "123 Some Title"
+            articleId = decoded.split(" ")[0];   // extract just the ID
+          }
+        } catch (err) {
+          console.error("Invalid base64 ID:", encoded);
+        }
       const [article, setArticle] = useState(null);
 
-
-
+      const draftKey = articleId ? `article-draft-${articleId}` : 'new-article-draft';
+      const draftData = useMemo(() => ({
+          title,
+          selectedDate,
+          author,
+          category,
+          municipality,
+          barangay,
+          status,
+          uploadPeriodStart,
+          uploadPeriodEnd,
+          description: editor?.getHTML() || "",
+        }), [title, selectedDate, author, category, municipality, barangay, status, uploadPeriodStart, uploadPeriodEnd ,editor?.getHTML()]);
+        useAutosave(isDirty ? draftData : null, draftKey, 1000);
+        
   // Handle new or updated article submission
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -161,7 +185,9 @@ try {
     formData.append("editImages", JSON.stringify(contentImages));
     formData.append("barangay", barangay);
     formData.append("status", status);  
-    // Only append thumbnail if it's a File object
+    formData.append("upload_period_start", uploadPeriodStart);
+    formData.append("upload_period_end", uploadPeriodEnd);
+
     if (thumbnail && thumbnail instanceof File) {
     formData.append("thumbnail", thumbnail);
     }
@@ -236,71 +262,119 @@ try {
     setEditingArticleId(null);
     setArticle(null);
    
+    clearDraft(draftKey)
   };
-    const [contentImages, setContentImages] = useState([]);
-    const [barangay, setBarangay] = useState(""); // <-- Add this line
 
-  const imageInputRef = useRef(null);
-  const thumbnailInputRef = useRef(null);
+// This consolidated useEffect replaces the two previous ones.
+useEffect(() => {
+    if (hasRun.current) {
+        return;
+    }
 
+    const fetchArticleAndLoadDraft = async () => {
+        const draft = loadDraft(draftKey);
+        let shouldLoadDraft = false;
 
+        if (draft && editor) { // Check if editor is ready before showing prompt
+            shouldLoadDraft = window.confirm(
+                'It looks like you have a saved draft. Do you want to load it?'
+            );
+        }
 
-  useEffect(() => {
-    
-  if (articleId) {
-    const fetchArticle = async () => {
-      try {
-        const response = await axiosClient.get(`/auth/articles/${articleId}`);
+        // Handle an existing article (edit mode)
+        if (articleId) {
+            try {
+                const response = await axiosClient.get(`/auth/articles/${articleId}`);
+                const data = response.data;
+                setArticle(data);
+                setIsEditing(true);
+                setEditingArticleId(data.article_id);
 
-        const data = response.data;
-        setArticle(data);
-        setIsEditing(true);
-        setEditingArticleId(data.article_id);
+                // If the user accepts the draft, load it and then delete it.
+                 if (shouldLoadDraft) {
+                    setTitle(draft.title || "");
+                    setAuthor(draft.author || "");
+                    setCategory(draft.category || "");
+                    setMunicipality(draft.municipality || "");
+                    setBarangay(draft.barangay || "");
+                    setStatus(draft.status || "pending");
+                    setSelectedDate(draft.selectedDate || "");
+                    setUploadPeriodStart(data.upload_period_start || "");
+                    setUploadPeriodEnd(data.upload_period_end || "");
+                    if (editor && draft.description) {
+                         editor.commands.setContent(draft.description);
+                    }
+                    console.log('Draft loaded from local storage.');
+                    // 🎉 Clear the draft AFTER it has been loaded
+                    clearDraft(draftKey); 
+                } else {
+                    // Load the original article data from the server
+                    setTitle(data.title || "");
+                    setAuthor(data.author || "");
+                    setCategory(data.article_category || "");
+                    setMunicipality(data.address || "");
+                    setBarangay(data.barangay || "");
+                    setStatus(data.status || "pending");
+                    setUploadPeriodStart(data.upload_period_start || "");
+                    setUploadPeriodEnd(data.upload_period_end || "");
+                    if (editor && data.description) {
+                        editor.commands.setContent(data.description);
+                    }
+                    if (data.upload_date) {
+                        const formattedDate = new Date(data.upload_date).toISOString().split('T')[0];
+                        setSelectedDate(formattedDate);
+                    } else {
+                        setSelectedDate("");
+                    }
+                    // 🎉 If the user cancels the prompt, clear the draft here
+                    if (draft) {
+                        clearDraft(draftKey); 
+                    }
+                }
+                
+                // Handle thumbnail
+                if (data.images) {
+                    setPreviewImage(`${UPLOAD_PATH}${data.images}`);
+                } else {
+                    setPreviewImage(null);
+                }
+                setThumbnail(null);
 
-        // Set form fields
-        setTitle(data.title || "");
-        setAuthor(data.author || "");
-        setCategory(data.article_category || "");
-        setMunicipality(data.address || "");
-        setSelectedDate(data.upload_date || "");
-        setBarangay(data.barangay || "");
-        setStatus(data.status || "pending");
-
-        if (data.upload_date) { 
-          const date = new Date(data.upload_date);
-          const formattedDate = date.toISOString().split('T')[0];
-          setSelectedDate(formattedDate);
+            } catch (err) {
+                console.error("Failed to fetch article:", err);
+            }
         } else {
-          setSelectedDate("");
+            // Handle a new article (no articleId)
+            if (shouldLoadDraft) {
+                console.log('Draft loaded from local storage.');
+                setTitle(draft.title || "");
+                setAuthor(draft.author || "");
+                setCategory(draft.category || "");
+                setMunicipality(draft.municipality || "");
+                setBarangay(draft.barangay || "");
+                setStatus(draft.status || "pending");
+                if (editor) {
+                    editor.commands.setContent(draft.description || "");
+                }
+                if (draft.selectedDate) {
+                    setSelectedDate(draft.selectedDate);
+                }
+                console.log('Draft loaded from local storage.');
+                
+                clearDraft(draftKey);
+              } else {
+               
+                resetForm();
+            }
         }
-
-        if (editor && data.description) {
-          editor.commands.setContent(data.description);
-        }
-
-        if (data.images) {
-          setPreviewImage(`${UPLOAD_PATH}${data.images}`);
-          setThumbnail(null); // <-- Always null unless user selects a new file
-        } else {
-          setPreviewImage(null);
-          setThumbnail(null);
-        }
-      } catch (err) {
-        console.error("Failed to fetch article:", err);
-      }
     };
 
-    fetchArticle();
-  }else {
-      resetForm();
+    if (editor) {
+        fetchArticleAndLoadDraft();
+        hasRun.current = true;
     }
-}, [articleId, editor]); 
+}, [articleId, editor, draftKey]);
 
-useEffect(() => {
-  if (!encoded) {
-    resetForm(); 
-  }
-}, [encoded]);
 
   useEffect(() => {
     fetchArticles();
@@ -342,26 +416,11 @@ useEffect(() => {
       // If form is valid, show confirm dialog
       setShowSubmitConfirm(true);
     }
+    clearDraft(draftKey);
   };
 
 
-  // State for tracking the "dirty" state of form
-  const [isDirty, setIsDirty] = useState(false);
 
-  // State for confirmation dialogs
-  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
-  const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
-
-  // State for validation
-  const [errors, setErrors] = useState({});
-
-
-  // State for removing or replacing the current thumbnail
-  const [removeThumbnail, setRemoveThumbnail] = useState(false);
-  // Track if a thumbnail is present
-  const [hasThumbnail, setHasThumbnail] = useState(
-    !!thumbnail || !!previewImage
-  );
 
   // Update hasThumbnail when thumbnail changes
   useEffect(() => {
@@ -508,6 +567,7 @@ useEffect(() => {
       handleCancel();
     
     }
+    
   };
 
 
@@ -685,26 +745,75 @@ useEffect(() => {
   </div>
 </div>
 
-{/* Thumbnail and Status Container */}
 <div className="flex flex-col md:flex-row gap-4">
   {/* Status Dropdown */}
   <div className="flex-1">
-        <label htmlFor="status" className="font-bold">
-          Status
-        </label>
-        <select
-          id="status"
-          className="w-full px-4 py-3 border-2 border-black rounded-2xl text-base md:text-lg outline-none"
-          name="status"
-          value={status}
-          onChange={(e) => setStatus(e.target.value)}
-        >
-          <option value="pending">Pending</option>
-          <option value="posted">Post</option>
-          {/* <option value="rejected">Rejected</option>
-          <option value="archived">Archived</option> */}
-        </select>
-      </div>
+    <label htmlFor="status" className="font-bold">
+      Status
+    </label>
+    <select
+      id="status"
+      className="w-full px-4 py-3 border-2 border-black rounded-2xl text-base md:text-lg outline-none"
+      name="status"
+      value={status}
+      onChange={(e) => {
+        setStatus(e.target.value);
+        setIsDirty(true);
+      }}
+    >
+      <option value="pending">Pending</option>
+      <option value="posted">Post</option>
+    </select>
+  </div>
+
+  {/* Start Date Input */}
+  <div className="flex-1">
+    <label htmlFor="uploadPeriodStart" className={`font-bold`}>
+      Start Date
+    </label>
+    <input
+      id="uploadPeriodStart"
+      type="date"
+      className={`w-full px-4 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 ${
+        errors.uploadPeriodStart ? "border-red-600" : "border-black"
+      } ${status !== "posted" ? "bg-gray-200 text-gray-500 cursor-not-allowed" : ""}`}
+      value={uploadPeriodStart}
+      onChange={(e) => {
+        setUploadPeriodStart(e.target.value);
+        setIsDirty(true);
+        clearFieldError("uploadPeriodStart");
+      }}
+      disabled={status !== "posted"}
+      placeholder={status !== "posted" ? "Pick 'Post' to enable" : ""}
+    />
+  </div>
+
+  {/* End Date Input */}
+  <div className="flex-1">
+    <label htmlFor="uploadPeriodEnd" className={`font-bold`}>
+      End Date
+    </label>
+    <input
+      id="uploadPeriodEnd"
+      type="date"
+      className={`w-full px-4 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 ${
+        errors.uploadPeriodEnd ? "border-red-600" : "border-black"
+      } ${status !== "posted" ? "bg-gray-200 text-gray-500 cursor-not-allowed" : ""}`}
+      value={uploadPeriodEnd}
+      onChange={(e) => {
+        setUploadPeriodEnd(e.target.value);
+        setIsDirty(true);
+        clearFieldError("uploadPeriodEnd");
+      }}
+      disabled={status !== "posted"}
+      placeholder={status !== "posted" ? "Pick 'Post' to enable" : ""}
+    />
+  </div>
+</div>
+
+{/* Thumbnail  */}
+<div className="flex flex-col md:flex-row gap-4">
+
   {/* Thumbnail */}
   <div className="relative flex-1">
     <label htmlFor="thumbnail" className="font-bold">
@@ -1220,6 +1329,8 @@ useEffect(() => {
                       >
                         <option value="pending">Pending</option>
                         <option value="posted">Post</option>
+                        <option value="rejected">Reject</option>
+                        <option value="archived">Archive</option>
                       </select>
                       <button
                         type="button"

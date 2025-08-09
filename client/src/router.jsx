@@ -42,6 +42,7 @@ import Appointments from "@/pages/admin/Appointments";
 import { AppointmentViewPage } from "@/components/subpages/AppointmentViewPage";
 import UserView from "@/components/subpages/ViewUser";
 import Configuration from "@/pages/admin/Configuration";
+import WalkInsPage from "@/components/subpages/WalkInsPage";
 // import ArticleModal from "./components/subpages/ArticleModal";
 
 // sandbox
@@ -64,20 +65,20 @@ const Router = () => {
   const { flags, loading } = useRouterFlags();
 
   if (loading) return (
-  <div className="w-screen h-screen flex items-center justify-center fkex-col">  
- <div className="flex flex-col">
-  <div className="w-7 h-7 mx-auto border-2 border-black border-t-transparent animate-spin rounded-full" /> 
-  <span> Loading routes... </span>
-  </div>
-  </div>)
+    <div className="w-screen h-screen flex items-center justify-center fkex-col">
+      <div className="flex flex-col">
+        <div className="w-7 h-7 mx-auto border-2 border-black border-t-transparent animate-spin rounded-full" />
+        <span> Loading routes... </span>
+      </div>
+    </div>)
   return (
     <Routes>
       {/* Public routes */}
       <Route element={<PublicLayout />}>
         {flags["login"] && (
           <>
-          <Route path="/login" element={<Login onLogin={login} />} />
-          <Route path="/login/forgot-password" element={<RecoverAccount />} />
+            <Route path="/login" element={<Login onLogin={login} />} />
+            <Route path="/login/forgot-password" element={<RecoverAccount />} />
           </>
         )}
 
@@ -90,10 +91,10 @@ const Router = () => {
 
         {flags["home"] && (
           <>
-          <Route path="/home" element={<Home />} />
-          <Route path="/" element={<Home />} />
+            <Route path="/home" element={<Home />} />
+            <Route path="/" element={<Home />} />
           </>
-          )}
+        )}
 
         {flags["appointment_public"] && (
           <Route path="/appointment" element={<Appointment />} />
@@ -101,15 +102,15 @@ const Router = () => {
 
         {flags["articles_public"] && (
           <>
-          <Route path="/article/:id" element={<Articlecontents />} />
-          <Route path="/articles" element={<Articles />} />
+            <Route path="/article/:id" element={<Articlecontents />} />
+            <Route path="/articles" element={<Articles />} />
           </>
         )}
 
         {flags["about"] && (<>
           <Route path="/about" element={<About />} />
           <Route path="/about/support" element={<Support />} />
-          </>
+        </>
         )}
         {flags["acquisition_public"] && (
           <Route path="/about/support/contribution-form" element={<Contribution />} />
@@ -139,8 +140,8 @@ const Router = () => {
           <Route path="dashboard" element={<Dashboard />} />
           {flags["inventory"] && (
             <>
-            <Route path="inventory" element={<Inventory />} />
-            <Route path="inventory/view" element={<ViewArtifacts />} />
+              <Route path="inventory" element={<Inventory />} />
+              <Route path="inventory/view" element={<ViewArtifacts />} />
             </>
           )}
 
@@ -155,12 +156,12 @@ const Router = () => {
               <Route path="article" element={<Article />} />
               <Route path="article/add-article" element={<ManageArticle />} />
               <Route
-              path="article/edit-article/:encoded"
-              element={<ManageArticle />}
+                path="article/edit-article/:encoded"
+                element={<ManageArticle />}
               />
 
-            <Route path="article/add-article" element={<ManageArticle />} />
-            <Route path="article/edit-article" element={<ManageArticle />} />
+              <Route path="article/add-article" element={<ManageArticle />} />
+              <Route path="article/edit-article" element={<ManageArticle />} />
             </>
           )}
 
@@ -169,9 +170,10 @@ const Router = () => {
             <>
               <Route path="appointment" element={<Appointments />} />
               <Route
-              path="appointment/:encoded"
-              element={<AppointmentViewPage />}
+                path="appointment/:encoded"
+                element={<AppointmentViewPage />}
               />
+              <Route path="appointment/walk-ins/:encoded" element={<WalkInsPage />} />
             </>
           )}
 
@@ -188,11 +190,11 @@ const Router = () => {
           {/* sandbox for testing */}
           {flags["sandbox"] && (
             <>
-            <Route path="sandbox" element={<FileUploadDownload />} />
-            <Route path="sandbox/preview/:encoded" element={<FilePreviewer />} />
-            <Route path="sandbox/modal" element={<ModalsTest />} />
-            <Route path="sandbox/router-flag" element={<RouteFlagToggle />} />
-            <Route path="sandbox/socket-monitor" element={<SocketMonitor />} />
+              <Route path="sandbox" element={<FileUploadDownload />} />
+              <Route path="sandbox/preview/:encoded" element={<FilePreviewer />} />
+              <Route path="sandbox/modal" element={<ModalsTest />} />
+              <Route path="sandbox/router-flag" element={<RouteFlagToggle />} />
+              <Route path="sandbox/socket-monitor" element={<SocketMonitor />} />
 
 
             </>

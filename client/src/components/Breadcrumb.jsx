@@ -28,6 +28,11 @@ const routeMeta = [
     title: "View Appointment",
     theme: "text-gray-800",
   },
+  {
+    path: "/admin/appointment/walk-ins/:encoded",
+    title: "New Appointment",
+    theme: "text-gray-800",
+  },
   { path: "/admin/schedule", title: "Schedules Management" },
   {
     path: "/admin/schedule/:encoded",
@@ -94,7 +99,7 @@ const Breadcrumb = () => {
 
       // Skip these segments in breadcrumb display
       if (
-        ["admin", "preview", "files", "pictures", "edit-article"].includes(
+        ["admin", "preview", "files", "pictures", "edit-article", "walk-ins"].includes(
           segment
         )
       ) {

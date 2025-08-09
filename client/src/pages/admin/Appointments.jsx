@@ -1,7 +1,7 @@
 // FileName: /Appointments.jsx
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSocketClient } from "@/context/authContext";
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import axiosClient from '@/lib/axiosClient';
 import TimelineDatePicker from '@/features/TimelineDatePicker';
 import Toast from '@/features/Toast';
@@ -19,6 +19,7 @@ import {
 
 const Appointments = () => {
   const location = useLocation();
+  const navigate = useNavigate();
 
   // State management
   const [selectedDate, setSelectedDate] = useState(null);
@@ -393,6 +394,36 @@ const Appointments = () => {
                   <div className="w-[5rem] h-[2rem] flex items-center bg-[#D4DBFF] rounded-md justify-center">
                     <span className="text-2xl font-semibold">{stats.present}</span>
                   </div>
+                </div>
+
+                {/* Walk ins Button */}
+                <div className="w-full h-fit flex justify-between items-center mt-7">
+                  <button
+                    onClick={() => {
+                      // Create encoded parameter for walk-ins breadcrumb
+                      const walkInsBreadcrumb = "Walk Ins";
+                      const encodedParam = btoa(walkInsBreadcrumb);
+                      navigate(`/admin/appointment/walk-ins/${encodedParam}`);
+                    }}
+                    className="w-full h-[4rem] bg-[#161616] text-white rounded-lg flex items-center justify-between px-4 hover:bg-[#2a2a2a] transition-colors duration-200 cursor-pointer"
+                  >
+                    <span className="text-3xl font-semibold">Walk ins</span>
+                    <div className="w-8 h-8 rounded-full border-2 border-white flex items-center justify-center">
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                      </svg>
+                    </div>
+                  </button>
                 </div>
               </div>
             </div>

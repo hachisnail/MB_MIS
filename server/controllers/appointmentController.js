@@ -23,7 +23,8 @@ export const createAppointment = async (req, res, next) => {
       preferred_date,
       start_time,
       end_time,
-      additional_notes
+      additional_notes,
+      status // Destructure status
     } = req.body;
 
     // Basic checks
@@ -78,6 +79,12 @@ export const createAppointment = async (req, res, next) => {
       start_time: start_time || null,
       end_time: end_time || null,
       additional_notes
+    });
+
+    // Create the corresponding AppointmentStatus record
+    await AppointmentStatus.create({
+      appointment_id: appointment.appointment_id,
+      status: status || 'TO_REVIEW', // Use status from body or default to TO_REVIEW
     });
 
     res.status(201).json({

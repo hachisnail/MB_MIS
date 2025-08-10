@@ -46,6 +46,7 @@ import UserView from "@/components/subpages/private/ViewUser";
 import Configuration from "@/pages/admin/Configuration";
 import ManageArticle from "@/components/subpages/private/ManageArticle";
 
+import WalkInsPage from "@/components/subpages/WalkInsPage";
 // import ArticleModal from "./components/subpages/ArticleModal";
 
 // sandbox
@@ -67,17 +68,13 @@ const Router = () => {
   const { login } = useAuth();
   const { flags, loading } = useRouterFlags();
 
-  if (loading)
-    return (
-      <div className="w-screen h-screen flex items-center justify-center fkex-col">
-        <div className="flex flex-col">
-        {/* <img src={logo} alt="MSB" className="w-20" /> */}
-
-          <div className="w-7 h-7 mx-auto border-2 border-black border-t-transparent animate-spin rounded-full" />
-          <span> Loading routes... </span>
-        </div>
+  if (loading) return (
+    <div className="w-screen h-screen flex items-center justify-center fkex-col">
+      <div className="flex flex-col">
+        <div className="w-7 h-7 mx-auto border-2 border-black border-t-transparent animate-spin rounded-full" />
+        <span> Loading routes... </span>
       </div>
-    );
+    </div>)
   return (
     <Routes>
       {/* Public routes */}
@@ -111,11 +108,10 @@ const Router = () => {
           </>
         )}
 
-        {flags["about"] && (
-          <>
-            <Route path="/about" element={<About />} />
-            <Route path="/about/support" element={<Support />} />
-          </>
+        {flags["about"] && (<>
+          <Route path="/about" element={<About />} />
+          <Route path="/about/support" element={<Support />} />
+        </>
         )}
         {flags["acquisition_public"] && (
           <Route
@@ -166,7 +162,7 @@ const Router = () => {
                 path="acquisition/donation/:encoded/preview/:encoded"
                 element={<FilePreviewer />}
               />
-              
+
               <Route path="acquisition/add-artifact" element={<AddArtifact />} />
             </>
           )}
@@ -194,6 +190,7 @@ const Router = () => {
                 path="appointment/:encoded"
                 element={<AppointmentViewPage />}
               />
+              <Route path="appointment/walk-ins/:encoded" element={<WalkInsPage />} />
             </>
           )}
 
@@ -209,16 +206,12 @@ const Router = () => {
           {flags["sandbox"] && (
             <>
               <Route path="sandbox" element={<FileUploadDownload />} />
-              <Route
-                path="sandbox/preview/:encoded"
-                element={<FilePreviewer />}
-              />
+              <Route path="sandbox/preview/:encoded" element={<FilePreviewer />} />
               <Route path="sandbox/modal" element={<ModalsTest />} />
               <Route path="sandbox/router-flag" element={<RouteFlagToggle />} />
-              <Route
-                path="sandbox/socket-monitor"
-                element={<SocketMonitor />}
-              />
+              <Route path="sandbox/socket-monitor" element={<SocketMonitor />} />
+
+
             </>
           )}
 

@@ -293,15 +293,18 @@ const AcquisitionViewPage = () => {
           </button>
         )}
       </div>
-<div className="w-full h-1 flex items-center justify-center gap-x-5">
-  <div
-    className={`w-100 h-1 ${activeTab === "left" ? "bg-black" : "bg-gray-500"}`}
-  ></div>
-  <div
-    className={`w-100 h-1 ${activeTab === "right" ? "bg-black" : "bg-gray-500"}`}
-  ></div>
-</div>
-
+      <div className="w-full h-1 flex items-center justify-center gap-x-5">
+        <div
+          className={`w-100 h-1 ${
+            activeTab === "left" ? "bg-black" : "bg-gray-500"
+          }`}
+        ></div>
+        <div
+          className={`w-100 h-1 ${
+            activeTab === "right" ? "bg-black" : "bg-gray-500"
+          }`}
+        ></div>
+      </div>
     </div>
   );
 };

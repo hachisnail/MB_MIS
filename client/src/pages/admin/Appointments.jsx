@@ -370,7 +370,7 @@ const Appointments = () => {
 
   return (
     <>
-      <div className="w-full h-full flex gap-x-5 overflow-scroll lg:flex-row flex-col">
+      <div className="w-full h-full flex gap-x-15 overflow-scroll lg:flex-row flex-col">
         <SummaryPanel
           tabs={tabs}
           activeTab={activeTab}

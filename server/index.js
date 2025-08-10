@@ -12,12 +12,15 @@ import sessionStore from "./configs/sessionStore.js";
 import authRoutes from "./routes/auth.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
 import { initializeSocket } from "./configs/socketServer.js";
+import { requireAuth,requireRole } from "./middlewares/authMiddlewares.js";
 
 dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 // const UPLOAD_BASE_DIR = 
+
+const PUBLIC_UPLOADS = ["pictures", "files"];
 const UPLOAD_BASE_DIR = process.env.UPLOAD_BASE_DIR || path.join(process.cwd(), "..", "uploads");
 
 // const UPLOAD_BASE_DIR = "/uploads";
@@ -58,11 +61,32 @@ app.use(session({
 }));
 
 
-app.use("/uploads", (req, res, next) => {
-  res.header("Access-Control-Allow-Origin", process.env.CLIENT_URL);
-  res.header("Access-Control-Allow-Credentials", "true");
-  next();
-}, express.static(UPLOAD_BASE_DIR));
+PUBLIC_UPLOADS.forEach((cat) => {
+  app.use(`/uploads/${cat}`, express.static(path.join(UPLOAD_BASE_DIR, cat)));
+});
+
+// Private category — always secure, supports subdirectories
+app.get("/uploads/private/*", requireAuth, requireRole([1, 2]), (req, res) => {
+  // Extract everything after /uploads/private/
+  const relativePath = req.params[0];
+
+  // Prevent path traversal attacks
+  const safePath = relativePath.replace(/(\.\.[/\\])/g, "");
+
+  const filePath = path.join(UPLOAD_BASE_DIR, "private", safePath);
+
+  // Ensure requested file is still inside the private folder
+  if (!filePath.startsWith(path.join(UPLOAD_BASE_DIR, "private"))) {
+    return res.status(400).json({ message: "Invalid file path" });
+  }
+
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({ message: "File not found" });
+  }
+
+  res.sendFile(filePath);
+});
+
 
 // ✅ Only mount API routes
 app.use("/api", uploadRoutes);

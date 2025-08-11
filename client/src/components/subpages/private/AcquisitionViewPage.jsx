@@ -179,7 +179,7 @@ const AcquisitionViewPage = () => {
         )}
 
         {activeTab === "left" && (
-          <div className="flex gap-x-10 w-full h-full">
+          <div className="flex gap-x-10 w-fit h-full">
             <div className="min-w-[60rem] h-full flex flex-col gap-y-10">
               <div className="w-full min-h-fit h-fit border gap-y-5 border-gray-400 rounded-lg flex flex-col p-8">
                 <span className="text-4xl font-semibold">
@@ -188,10 +188,10 @@ const AcquisitionViewPage = () => {
                 {donatorInformation.map(({ label, value }) => (
                   <div
                     key={label}
-                    className="flex gap-x-5 w-full text-2xl h-fit font-medium"
+                    className="flex gap-x-5 w-full text-2xl h-fit font-semibold "
                   >
                     <span className="w-45">{label}</span>
-                    <span>{value}</span>
+                    <span className="font-normal text-[#333333]">{value}</span>
                   </div>
                 ))}
               </div>

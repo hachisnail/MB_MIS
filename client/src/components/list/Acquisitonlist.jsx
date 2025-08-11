@@ -70,7 +70,7 @@ export function RenderRelatedDocs({ relatedImages = [], attachedFiles = [] }) {
           Related images / about the artifact
         </span>
 
-        <div className="w-full h-full flex flex-col items-center gap-y-4 mt-4 justify-center">
+        <div className="max-w-[60rem] h-full flex flex-col items-center gap-y-4 mt-4 justify-center">
           <div className="flex items-center">
             <button
               onClick={handlePreviousPage}
@@ -281,7 +281,7 @@ export function RenderArtifactInformation({
   );
 
   return (
-    <div className="w-full h-full flex flex-col gap-y-5 px-15">
+    <div className="w-full max-w-[58rem] h-full flex flex-col gap-y-5 px-15">
       <span className="text-4xl font-semibold">About The Artifact</span>
 
       <div className="max-h-[24rem] h-full gap-y-5 flex flex-col overflow-auto ">
@@ -290,8 +290,8 @@ export function RenderArtifactInformation({
             key={label}
             className="w-full flex flex-col h-fit text-2xl font-medium"
           >
-            <span>{label}</span>
-            <span className="text-blue-500">{value}</span>
+            <span id="value" className="font-normal">{label}</span>
+            <span className="text-blue-500 font-normal">{value}</span>
           </div>
         ))}
       </div>

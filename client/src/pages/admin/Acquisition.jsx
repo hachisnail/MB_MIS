@@ -45,7 +45,6 @@ const Acquisition = () => {
     { label: "Donations", width: "w-60" },
   ];
 
-  // set the values of this based on the db
   const formSummary = [
     { label: "Approved", value: "0" },
     { label: "Rejected", value: "0" },

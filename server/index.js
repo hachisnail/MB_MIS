@@ -7,12 +7,12 @@ import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs";
 
-import { mainDb } from "./models/authModels.js";
-import sessionStore from "./configs/sessionStore.js";
-import authRoutes from "./routes/auth.js";
-import uploadRoutes from "./routes/uploadRoutes.js";
-import { initializeSocket } from "./configs/socketServer.js";
-import { requireAuth,requireRole } from "./middlewares/authMiddlewares.js";
+import { mainDb } from "./src/models/authModels.js";
+import sessionStore from "./src/configs/sessionStore.js";
+import authRoutes from "./src/routes/auth.js";
+import uploadRoutes from "./src/routes/uploadRoutes.js";
+import { initializeSocket } from "./src/configs/socketServer.js";
+import { requireAuth,requireRole } from "./src/middlewares/authMiddlewares.js";
 
 dotenv.config();
 
@@ -67,10 +67,9 @@ PUBLIC_UPLOADS.forEach((cat) => {
 
 
 app.get(/^\/uploads\/private\/(.+)$/, requireAuth, requireRole([1, 2]), (req, res) => {
-  const relativePath = req.params[0]; // capture group from regex
+  const relativePath = req.params[0]; 
   const filePath = path.join(UPLOAD_BASE_DIR, "private", relativePath);
 
-  // Security: normalize & check base dir
   const normalizedPath = path.normalize(filePath);
   const baseDir = path.join(UPLOAD_BASE_DIR, "private");
 
@@ -85,13 +84,8 @@ app.get(/^\/uploads\/private\/(.+)$/, requireAuth, requireRole([1, 2]), (req, re
   res.sendFile(normalizedPath);
 });
 
-
-
-
-// ✅ Only mount API routes
 app.use("/api", uploadRoutes);
 app.use("/api/auth", authRoutes);
-
 
 app.use((req, res, next) => {
   console.log("req.secure:", req.secure);
@@ -113,7 +107,6 @@ app.get('/', (req, res) => {
 const server = http.createServer(app);
 const io = initializeSocket(server, process.env.CLIENT_URL);
 const PORT = process.env.PORT;
-
 
 function copyRecursive(srcDir, destDir) {
   if (!fs.existsSync(destDir)) fs.mkdirSync(destDir, { recursive: true });
@@ -154,8 +147,6 @@ function seedUploadsFolder() {
 if (process.env.NODE_ENV === 'production') {
   seedUploadsFolder();
 }
-
-
 
 (async () => {
   try {

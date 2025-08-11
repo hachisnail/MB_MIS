@@ -36,10 +36,10 @@ import Highlight from "@tiptap/extension-highlight";
 import Youtube from "@tiptap/extension-youtube";
 // import { HardBreak } from '@tiptap/extension-hard-break';
 
-import ConfirmDialog from "../modals/ConfirmDialog";
-import FontSize from "../../components/articleComponents/FontSize";
-import { useAuth } from "../../context/authContext";
-import useAutosave, { loadDraft, clearDraft } from "../../features/ContentDrafting.jsx";
+import ConfirmDialog from "../../modals/ConfirmDialog";
+import FontSize from "../../../components/articleComponents/FontSize";
+import { useAuth } from "../../../context/authContext";
+import useAutosave, { loadDraft, clearDraft } from "../../../features/ContentDrafting.jsx";
 
 const ArticleEditorForm = () => {
 

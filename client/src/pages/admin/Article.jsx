@@ -205,7 +205,7 @@ const ArticleForm = () => {
 
   return (
     <>
-      <div className="w-full h-full flex gap-x-15 overflow-scroll lg:flex-row flex-col">
+      <div className="w-full h-full flex gap-x-5 overflow-scroll lg:flex-row flex-col">
         <SummaryPanel
           tabs={tabs}
           activeTab={activeTab}
@@ -255,9 +255,9 @@ const ArticleForm = () => {
               options={filterStatus}
             />
           </div>
-          <div className="w-full h-[61rem] flex flex-col">
+          <div className="w-full h-full flex flex-col">
             <TableHeaderContainer headers={headersMap[activeTab]} />
-            <div className="w-full h-[55rem] overflow-y-auto border-y border-gray-400">
+            <div className="w-full h-[55rem] 3xl:h-[67rem] overflow-y-auto border-y border-gray-400">
               {activeTab === "forms" && (
                 <>
                   {loading ? (

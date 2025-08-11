@@ -11,6 +11,7 @@ import {
   EmptyMessage,
 } from "../../components/list/commons";
 import { rolePermissions, actionLabels } from "../../components/list/commons";
+import { TableHeaderContainer } from "../../features/Utilities";
 
 const Logs = () => {
   const location = useLocation();
@@ -148,6 +149,14 @@ const Logs = () => {
     return matchesSearch && matchesRole && matchesAction && matchesDate;
   });
 
+  const logHeaders = [
+    {label:"Actor", width: 15},
+    {label:"Timestamp", width: 18.5},
+    {label:"Tab", width: 13},
+    {label:"Action", width: 12.5},
+    {label:"Description"},
+  ]
+
   return (
     <div className="w-full min-w-fit h-full  1xl:max-h-[69rem] 2xl:max-h-[81rem]  3xl:max-h-[88rem]">
       <div className="w-full h-full flex flex-col gap-y-[2rem]">
@@ -176,7 +185,9 @@ const Logs = () => {
 
         <div className="w-full h-full flex flex-col ">
           {/* Table Header */}
-          <div className="w-full min-w-fit h-12 grid grid-cols-[15rem_18.5rem_13rem_12.5rem_1fr]  ">
+            <TableHeaderContainer headers={logHeaders} theme="dark"/>
+
+          {/* <div className="w-full min-w-fit h-12 grid grid-cols-[15rem_18.5rem_13rem_12.5rem_1fr]  ">
             {["Actor", "Timestamp", "Tab", "Action", "Description"].map(
               (label) => (
                 <div
@@ -187,7 +198,7 @@ const Logs = () => {
                 </div>
               )
             )}
-          </div>
+          </div> */}
 
           <div className="w-full h-[57rem]  border-t-1 border-gray-600 flex flex-col overflow-scroll">
             <div className="relative w-full h-full">

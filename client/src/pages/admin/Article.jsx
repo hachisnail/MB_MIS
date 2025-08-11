@@ -119,12 +119,6 @@ const ArticleForm = () => {
   const pendingCount = articles.filter(
     (article) => article.status === "pending"
   ).length;
-  const rejectedCount = articles.filter(
-    (article) => article.status === "rejected"
-  ).length;
-  const archivedCount = articles.filter(
-    (article) => article.status === "archived"
-  ).length;
   const totalCount = articles.length;
 
   const handleStatusChange = async (articleId, newStatus) => {

@@ -255,7 +255,7 @@ export const AppointmentViewPage = ({
 
   useEffect(() => {
     if (modalData && modalData.status) {
-      if (modalData.status === 'CONFIRMED' || modalData.status === 'Confirmed') {
+      if (modalData.status === 'CONFIRMED' || modalData.status === 'Confirmed' || modalData.status === 'confirmed') {
         setApproveVisit('');
       } else if (modalData.status === 'REJECTED' || modalData.status === 'Rejected') {
         setApproveVisit('no');
@@ -295,7 +295,7 @@ export const AppointmentViewPage = ({
   if (isRouteComponent && !modalData) return null;
 
   const isToReview = modalData.status === 'TO_REVIEW' || modalData.status === 'To Review';
-  const isConfirmed = modalData.status === 'CONFIRMED' || modalData.status === 'Confirmed';
+  const isConfirmed = modalData.status === 'CONFIRMED' || modalData.status === 'Confirmed' || modalData.status === 'confirmed';
   const isRejected = modalData.status === 'REJECTED' || modalData.status === 'Rejected';
   const isFailed = modalData.status === 'FAILED' || modalData.status === 'Failed';
   const isCompleted = modalData.status === 'COMPLETED' || modalData.status === 'Completed';
@@ -490,7 +490,7 @@ export const AppointmentViewPage = ({
   };
 
   const handleAllPresent = () => {
-    setPresentCount(modalData.populationCount || '0');
+    setPresentCount(String(modalData.populationCount || '0'));
     setPresentCountError(false);
   };
 
@@ -645,9 +645,9 @@ export const AppointmentViewPage = ({
                       </button>
                     </div>
                     {approvalError && (
-                      <p className="text-lg text-red-500 mt-3 text-center">
+                      <div className="text-lg text-red-500 mt-3 text-center">
                         Please select Yes or No before continuing.
-                      </p>
+                      </div>
                     )}
                   </div>
 
@@ -666,9 +666,9 @@ export const AppointmentViewPage = ({
                       placeholder="Enter message here (required)"
                     />
                     {messageError && (
-                      <p className="text-lg text-red-500 mt-2">
+                      <div className="text-lg text-red-500 mt-2">
                         Please enter a message for the visitor.
-                      </p>
+                      </div>
                     )}
                     <div className="text-base text-gray-500 mt-3">
                       This will automatically send to{' '}
@@ -711,9 +711,9 @@ export const AppointmentViewPage = ({
                       </StyledButton>
                     </div>
                     {actionError && (
-                      <p className="text-lg text-red-500 mt-3">
+                      <div className="text-lg text-red-500 mt-3">
                         Please select Cancel or Arrive before continuing.
-                      </p>
+                      </div>
                     )}
                   </div>
 
@@ -785,9 +785,9 @@ export const AppointmentViewPage = ({
                             </StyledButton>
                           </div>
                           {presentCountError && (
-                            <p className="text-lg text-red-500 mt-2">
+                            <div className="text-lg text-red-500 mt-2">
                               Please enter how many visitors attended
-                            </p>
+                            </div>
                           )}
                         </div>
                       </div>

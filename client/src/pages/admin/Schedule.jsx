@@ -626,7 +626,7 @@ const Schedule = () => {
   };
 
   return (
-    <div className="relative w-full h-full bg-[#F0F0F0] select-none flex overflow-hidden">
+    <div className="relative w-full h-full bg-[#F0F0F0] p-3 select-none flex overflow-hidden">
       {showAppointmentModal && modalData ? (
         <AppointmentViewPage
           showModal={showAppointmentModal}

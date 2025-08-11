@@ -566,7 +566,7 @@ const Appointments = () => {
                     </div>
                     <div className="w-full h-[61rem] flex flex-col">
                         <TableHeaderContainer headers={headersMap[activeTab]} />
-                        <div className="w-full h-[55rem] border-y overlfow-x-hidden border-gray-400">
+                        <div className="w-full h-[55rem] overflow-y-auto border-y border-gray-400">
                             {activeTab === "forms" && (
                                 <>
                                     {isLoading && (

@@ -65,27 +65,27 @@ PUBLIC_UPLOADS.forEach((cat) => {
   app.use(`/uploads/${cat}`, express.static(path.join(UPLOAD_BASE_DIR, cat)));
 });
 
-// Private category — always secure, supports subdirectories
-app.get("/uploads/private/*", requireAuth, requireRole([1, 2]), (req, res) => {
-  // Extract everything after /uploads/private/
-  const relativePath = req.params[0];
 
-  // Prevent path traversal attacks
-  const safePath = relativePath.replace(/(\.\.[/\\])/g, "");
+app.get(/^\/uploads\/private\/(.+)$/, requireAuth, requireRole([1, 2]), (req, res) => {
+  const relativePath = req.params[0]; // capture group from regex
+  const filePath = path.join(UPLOAD_BASE_DIR, "private", relativePath);
 
-  const filePath = path.join(UPLOAD_BASE_DIR, "private", safePath);
+  // Security: normalize & check base dir
+  const normalizedPath = path.normalize(filePath);
+  const baseDir = path.join(UPLOAD_BASE_DIR, "private");
 
-  // Ensure requested file is still inside the private folder
-  if (!filePath.startsWith(path.join(UPLOAD_BASE_DIR, "private"))) {
-    return res.status(400).json({ message: "Invalid file path" });
+  if (!normalizedPath.startsWith(baseDir)) {
+    return res.status(403).json({ message: "Access denied" });
   }
 
-  if (!fs.existsSync(filePath)) {
+  if (!fs.existsSync(normalizedPath)) {
     return res.status(404).json({ message: "File not found" });
   }
 
-  res.sendFile(filePath);
+  res.sendFile(normalizedPath);
 });
+
+
 
 
 // ✅ Only mount API routes

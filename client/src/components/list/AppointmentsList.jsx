@@ -83,7 +83,7 @@ export const AppointmentFormItem = ({ appointment, cameFrom = 'forms' }) => {
         <NavLink
             to={encodedId}
             state={{ cameFrom }}
-            className="text-xl h-fit font-semibold grid grid-cols-[auto_auto_auto_auto_auto_auto] cursor-pointer hover:bg-gray-300"
+            className="text-xl h-fit font-semibold grid grid-cols-[15rem_1fr_11.7rem_9.5rem_12rem_16rem] cursor-pointer hover:bg-gray-300"
         >
             <div className="px-4 py-3 border-b-1 border-gray-400">
                 {appointment.creation_date
@@ -126,7 +126,7 @@ export const AttendanceItem = ({ attendance, cameFrom = 'attendance' }) => {
         <NavLink
             to={encodedId}
             state={{ cameFrom }}
-            className="min-w-[94rem] text-xl h-fit font-semibold grid grid-cols-[auto_auto_auto_auto_auto_auto] hover:bg-gray-300 cursor-pointer"
+            className="text-xl h-fit font-semibold grid grid-cols-[15rem_1fr_12.3rem_11.5rem_12.5rem_13rem] hover:bg-gray-300 cursor-pointer"
         >
             <div className="px-4 py-3 border-b-1 border-gray-400">{attendance.date}</div>
             <div className="px-4 py-3 border-b-1 border-gray-400">{attendance.visitorName}</div>
@@ -138,13 +138,12 @@ export const AttendanceItem = ({ attendance, cameFrom = 'attendance' }) => {
     );
 };
 
-// Visitor Record Item Component
 export const VisitorRecordItem = ({ record, isExpanded, onToggle, cameFrom = 'visitorRecords' }) => {
     return (
         <>
             {/* Main Row */}
             <div
-                className=" text-xl h-fit font-semibold grid grid-cols-3 cursor-pointer hover:bg-gray-300 border-b-1 border-gray-400"
+                className=" text-xl h-fit font-semibold grid grid-cols-[1fr_1fr_39rem] cursor-pointer hover:bg-gray-300 border-b-1 border-gray-400"
                 onClick={() => onToggle(record.id)}
             >
                 <div className="px-4 py-3">{formatDate(record.date)}</div>

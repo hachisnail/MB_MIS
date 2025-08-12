@@ -19,6 +19,7 @@ import {
 } from "@/components/list/AppointmentsList";
 import { formatDateForDisplay } from "@/components/list/commons";
 import { TableHeaderContainer, SummaryPanel } from "../../features/Utilities";
+import ContextMenu from "../../components/modals/ContextMenu";
 
 import useToast from "../../components/list/commons";
 
@@ -53,6 +54,7 @@ const Appointments = () => {
     const [statusFilter, setStatusFilter] = useState("All Statuses");
     const [columnFilter, setColumnFilter] = useState("");
     const [sortDirection, setSortDirection] = useState("asc");
+    const [isPreview, setIsPreview] = useState(false);
 
     // Toast
     const { toastConfig, showToast, hideToast } = useToast();
@@ -66,27 +68,27 @@ const Appointments = () => {
     ];
 
     const formHeaders = [
-        { label: "Creation Date", width: "auto" },
-        { label: "Visitor Name", width: "auto" },
-        { label: "Preferred Time", width: "auto" },
-        { label: "Status", width: "auto" },
-        { label: "Visitor Count", width: "auto" },
-        { label: "Last Updated", width: "auto" },
+        { label: "Creation Date", width: 15 },
+        { label: "Visitor Name", width: "1fr" },
+        { label: "Preferred Time", width: 11.7 },
+        { label: "Status", width: 9.5 },
+        { label: "Visitor Count", width: 12 },
+        { label: "Last Updated", width: 16 },
     ];
 
     const attendanceHeaders = [
-        { label: "Date", width: "auto" },
-        { label: "Visitor Name", width: "auto" },
-        { label: "Purpose of Visit", width: "auto" },
-        { label: "Preferred Date", width: "auto" },
-        { label: "Expected Visitor", width: "auto" },
-        { label: "Present", width: "auto" },
+        { label: "Date", width: 15 },
+        { label: "Visitor Name", width: "1fr" },
+        { label: "Purpose of Visit", width: 12.3 },
+        { label: "Preferred Date", width: 11.5 },
+        { label: "Expected Visitor", width: 12.5 },
+        { label: "Present", width: 13 },
     ];
 
     const visitorHeaders = [
-        { label: "Date", width: "auto" },
-        { label: "Visitors", width: "auto" },
-        { label: "Visitor Count", width: "auto" },
+        { label: "Date", width: "1fr" },
+        { label: "Visitors", width: "1fr" },
+        { label: "Visitor Count", width: 39 },
     ];
 
     const headersMap = {
@@ -369,9 +371,26 @@ const Appointments = () => {
         sortDirection,
     ]);
 
+    const menuItems = [                {
+                      label: "Preview",
+                      onClick: () =>
+                        setIsPreview(true),
+                    },
+                    {
+                      label: "Download",
+                    //   onClick: () =>
+                    //     handleDownload(categoryData.category, file.filename),
+                    },
+                    {
+                      label: "Delete",
+                    //   onClick: () =>
+                    //     handleDelete(categoryData.category, file.filename),
+                    },]
+
     return (
         <>
             <div className="w-full h-full flex gap-x-15 overflow-scroll lg:flex-row flex-col">
+                {isPreview === false && (
                 <SummaryPanel
                     tabs={tabs}
                     activeTab={activeTab}
@@ -406,6 +425,7 @@ const Appointments = () => {
                         },
                     }}
                 />
+                )}
 
                 <div className="w-full h-full flex flex-col min-w-[43.75rem] gap-y-7">
                     <div className="w-full min-h-[3.2rem] flex gap-x-3 items-center ">
@@ -579,11 +599,13 @@ const Appointments = () => {
                                         <ErrorBox message={error} />
                                     ) : filteredData.appointments.length > 0 ? (
                                         filteredData.appointments.map((appt) => (
+                                            <ContextMenu key={appt.appointment_id} menuItems={menuItems}>
                                             <AppointmentFormItem
                                                 key={appt.appointment_id}
                                                 appointment={appt}
                                                 cameFrom="forms"
                                             />
+                                            </ContextMenu>
                                         ))
                                     ) : !isLoading && filteredData.appointments.length === 0 ? (
                                         <EmptyMessage message="No appointment data available" />
@@ -633,6 +655,16 @@ const Appointments = () => {
                         </div>
                     </div>
                 </div>
+                {isPreview === true && (
+                <div className="w-full max-w-[35rem] h-[99%] shadow-md shadow-gray-700 rounded-md flex flex-col mt-[2px] mr-[1rem]">
+                    {/* <button onClick={() => setIsPreview(false)} className="p-2">
+                        close
+                    </button> */}
+                    <div className="min-h-[10rem]">
+
+                    </div>
+                </div>
+                )}
             </div>
 
             <Toast

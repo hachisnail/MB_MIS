@@ -62,9 +62,9 @@ const ArticleForm = () => {
 
   };
 
-  const allowedRoles = [1, 2, 5]; // Add article privs
+  const allowedRoles = [1, 2, 5];
   const BASE_URL = import.meta.env.VITE_API_BASE_URL;
-  const SERVER_ORIGIN = BASE_URL.replace(/\/api$/, ""); // "http://localhost:5000"
+  const SERVER_ORIGIN = BASE_URL.replace(/\/api$/, "");
   const UPLOAD_PATH = `${SERVER_ORIGIN}/uploads/pictures/`;
 
   const navigate = useNavigate();
@@ -85,7 +85,7 @@ const ArticleForm = () => {
       setError(
         "Failed to load articles. Check that the API server is running."
       );
-      setArticles([]); // <-- Always reset to empty array on error
+      setArticles([]); 
       setLoading(false);
     }
   };

@@ -63,7 +63,7 @@ export const formatDate = (dateStr) => {
 
 
 // Appointment Form Item Component
-export const AppointmentFormItem = ({ appointment, cameFrom = 'forms' }) => {
+export const AppointmentFormItem = ({activePreview, appointment, cameFrom = 'forms' }) => {
     const status = standardizeStatus(appointment.AppointmentStatus?.status || 'To Review');
     const updatedAt = appointment.AppointmentStatus?.updated_at
         ? new Date(appointment.AppointmentStatus.updated_at).toLocaleString()
@@ -80,10 +80,10 @@ export const AppointmentFormItem = ({ appointment, cameFrom = 'forms' }) => {
     const encodedId = btoa(breadcrumbText);
 
     return (
-        <NavLink
-            to={encodedId}
+        <div
+            // to={encodedId}
             state={{ cameFrom }}
-            className="text-xl h-fit font-semibold grid grid-cols-[15rem_1fr_11.7rem_9.5rem_12rem_16rem] cursor-pointer hover:bg-gray-300"
+            className={`${activePreview === appointment.appointment_id ? "bg-black rounded-md text-white hover:bg-gray-900" : "hover:bg-gray-300"} text-xl h-fit font-semibold grid grid-cols-[15rem_1fr_11.7rem_9.5rem_12rem_16rem] cursor-pointer `}
         >
             <div className="px-4 py-3 border-b-1 border-gray-400">
                 {appointment.creation_date
@@ -105,9 +105,122 @@ export const AppointmentFormItem = ({ appointment, cameFrom = 'forms' }) => {
             <div className="px-4 py-3 border-b-1 border-gray-400">
                 {updatedAt}
             </div>
-        </NavLink>
+        </div>
     );
 };
+
+export const AppointmentPreview = ({appointment, cameFrom = 'forms' }) => {
+
+const appointmentInfo = [
+  {
+    icon: (
+        <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="#000000"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        >
+        <path d="M3 7a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v10a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-10z" />
+        <path d="M3 7l9 6l9 -6" />
+        </svg>
+
+    ),
+    Label: "Email",
+    Value: appointment.Visitor?.email
+  },
+  {
+    icon: (
+        <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="#000000"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        >
+        <path d="M3 7a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v10a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-10z" />
+        <path d="M3 7l9 6l9 -6" />
+        </svg>
+    ),
+    Label: "Phone Number",
+    Value: appointment.Visitor?.phone,
+  },
+  {
+    icon: (
+        <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="#000000"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        >
+        <path d="M3 7a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v10a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-10z" />
+        <path d="M3 7l9 6l9 -6" />
+        </svg>
+    ),
+    Label: "Address",
+    Value: "",
+  },
+  {
+    icon: (
+        <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="#000000"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        >
+        <path d="M3 7a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v10a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-10z" />
+        <path d="M3 7l9 6l9 -6" />
+        </svg>
+    ),
+    Label: "Organization",
+    Value: "",
+  },
+];
+
+    return(
+        <div className="w-full h-full flex flex-col gap-y-7">
+            <div className="  border-b-1 border-gray-400 flex items-center justify-between">
+                
+                <span className="mb-3 text-3xl font-semibold">{appointment.Visitor?.first_name} {appointment.Visitor?.last_name}</span>
+                <span className="text-lg">{formatDate(appointment.creation_date)}</span>
+            </div>
+
+            <div className="w-full h-fit border-b-1 border-gray-400 pb-3 flex flex-col">
+                {appointmentInfo.map(({icon, Label, Value}) => (
+                    <div key={Label} className="flex w-full h-fit">
+                        <div className="min-w-fit h-fit">
+                            {icon}
+                        </div>
+                        <div className="w-full h-fit flex flex-col">
+                            <span>{Label}</span>
+                            <span>{Value}</span>
+                        </div>
+                    </div>
+                ))}
+
+            </div>
+
+        </div>
+    );
+}
 
 // Attendance Item Component
 export const AttendanceItem = ({ attendance, cameFrom = 'attendance' }) => {

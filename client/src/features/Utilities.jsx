@@ -615,3 +615,129 @@ export function SummaryPanel({
     </div>
   );
 }
+
+
+
+export function ImageCarousel({
+  images = [],
+  thumbnailSize = "w-32 h-32",
+  mainSize = "w-[35rem] h-[35rem]",
+}) {
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  const handlePrev = () => {
+    setCurrentIndex((prev) => (prev > 0 ? prev - 1 : images.length - 1));
+  };
+
+  const handleNext = () => {
+    setCurrentIndex((prev) => (prev < images.length - 1 ? prev + 1 : 0));
+  };
+
+  // Calculate the visible thumbnails
+  const getVisibleThumbnails = () => {
+    if (images.length <= 4) return images;
+
+    let start = currentIndex - 1;
+    let end = currentIndex + 3;
+
+    // Adjust if we're near the start
+    if (start < 0) {
+      start = 0;
+      end = 4;
+    }
+
+    // Adjust if we're near the end
+    if (end > images.length) {
+      end = images.length;
+      start = images.length - 4;
+    }
+
+    return images.slice(start, end);
+  };
+
+  const visibleThumbnails = getVisibleThumbnails();
+
+  return (
+    <div className="w-full h-full flex justify-center items-center gap-4">
+      {/* Prev Button */}
+      <button
+        onClick={handlePrev}
+        disabled={images.length <= 1}
+        className="h-full hover:text-gray-600 cursor-pointer disabled:opacity-50"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="32"
+          height="32"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M13 20l-3 -8l3 -8" />
+        </svg>
+      </button>
+
+      {/* Side thumbnails + Main image */}
+      <div className="w-fit h-full flex items-center justify-center gap-4">
+        {/* Thumbnails */}
+        <div className="w-fit flex flex-col items-center justify-center gap-4">
+          {visibleThumbnails.map((img, idx) => {
+            const realIndex = images.indexOf(img); // find actual index in full array
+            return (
+              <div
+                key={realIndex}
+                className={`border rounded-lg overflow-hidden flex items-center justify-center ${thumbnailSize} cursor-pointer ${
+                  realIndex === currentIndex ? "ring-2 ring-blue-500" : ""
+                }`}
+                onClick={() => setCurrentIndex(realIndex)}
+              >
+                <img
+                  src={img.src}
+                  alt={img.label}
+                  className="object-cover w-full h-full"
+                />
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Main image */}
+        <div
+          className={`${mainSize} border rounded-lg overflow-hidden flex flex-col items-center justify-center`}
+        >
+          {images[currentIndex] && (
+            <img
+              src={images[currentIndex].src}
+              alt={images[currentIndex].label}
+              className="object-cover w-full h-full"
+            />
+          )}
+        </div>
+      </div>
+
+      {/* Next Button */}
+      <button
+        onClick={handleNext}
+        disabled={images.length <= 1}
+        className="hover:text-gray-600 h-full cursor-pointer disabled:opacity-50"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="32"
+          height="32"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M11 4l3 8l-3 8" />
+        </svg>
+      </button>
+    </div>
+  );
+}

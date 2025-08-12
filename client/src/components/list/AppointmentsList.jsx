@@ -83,7 +83,7 @@ export const AppointmentFormItem = ({ appointment, cameFrom = 'forms' }) => {
         <NavLink
             to={encodedId}
             state={{ cameFrom }}
-            className="min-w-[94rem] text-xl h-fit font-semibold grid grid-cols-6 cursor-pointer hover:bg-gray-300"
+            className="text-xl h-fit font-semibold grid grid-cols-[auto_auto_auto_auto_auto_auto] cursor-pointer hover:bg-gray-300"
         >
             <div className="px-4 py-3 border-b-1 border-gray-400">
                 {appointment.creation_date
@@ -126,7 +126,7 @@ export const AttendanceItem = ({ attendance, cameFrom = 'attendance' }) => {
         <NavLink
             to={encodedId}
             state={{ cameFrom }}
-            className="min-w-[94rem] text-xl h-fit font-semibold grid grid-cols-6 hover:bg-gray-300 cursor-pointer"
+            className="min-w-[94rem] text-xl h-fit font-semibold grid grid-cols-[auto_auto_auto_auto_auto_auto] hover:bg-gray-300 cursor-pointer"
         >
             <div className="px-4 py-3 border-b-1 border-gray-400">{attendance.date}</div>
             <div className="px-4 py-3 border-b-1 border-gray-400">{attendance.visitorName}</div>
@@ -144,12 +144,12 @@ export const VisitorRecordItem = ({ record, isExpanded, onToggle, cameFrom = 'vi
         <>
             {/* Main Row */}
             <div
-                className="min-w-[94rem] text-xl h-fit font-semibold grid grid-cols-3 cursor-pointer hover:bg-gray-300 border-b-1 border-gray-200"
+                className=" text-xl h-fit font-semibold grid grid-cols-3 cursor-pointer hover:bg-gray-300 border-b-1 border-gray-400"
                 onClick={() => onToggle(record.id)}
             >
-                <div className="px-4 py-4">{formatDate(record.date)}</div>
-                <div className="px-4 py-4">{record.visitorName}</div>
-                <div className="px-4 py-4 flex justify-between items-center">
+                <div className="px-4 py-3">{formatDate(record.date)}</div>
+                <div className="px-4 py-3">{record.visitorName}</div>
+                <div className="px-4 py-3 flex justify-between items-center">
                     <span>{record.visitCount}</span>
                     <svg
                         className={`w-5 h-5 mr-4 text-gray-500 transform ${isExpanded ? 'rotate-180' : ''}`}
@@ -168,8 +168,8 @@ export const VisitorRecordItem = ({ record, isExpanded, onToggle, cameFrom = 'vi
 
             {/* Expanded Details */}
             {isExpanded && (
-                <div className="min-w-[94rem] flex justify-end">
-                    <div className="w-[45%] my-4 mr-4 rounded-lg overflow-hidden shadow-sm">
+                <div className="w-full flex justify-end">
+                    <div className="w-[45%] my-4 mr-4 rounded-lg overflow-hidden shadow-sm shadow-black">
                         {record.details && record.details.length > 0 ? (
                             <div style={{
                                 maxHeight: record.details.length > 3 ? 'calc(3*3.5rem)' : 'auto',
@@ -179,7 +179,7 @@ export const VisitorRecordItem = ({ record, isExpanded, onToggle, cameFrom = 'vi
                             }}>
                                 <table className="w-full border-collapse bg-white">
                                     <thead className="sticky top-0 bg-white z-10">
-                                        <tr className="border-b border-gray-200">
+                                        <tr className="border-b border-gray-400">
                                             <th className="text-left py-3 px-4 font-semibold text-gray-700">Purpose of visit</th>
                                             <th className="text-center py-3 px-4 font-semibold text-gray-700">Visitor Count</th>
                                             <th className="text-center py-3 px-4 font-semibold text-gray-700">Present</th>

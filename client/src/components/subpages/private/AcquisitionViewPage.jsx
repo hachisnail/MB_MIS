@@ -180,7 +180,7 @@ const AcquisitionViewPage = () => {
 
         {activeTab === "left" && (
           <div className="flex gap-x-10 w-fit h-full">
-            <div className="min-w-[60rem] h-full flex flex-col gap-y-10">
+            <div className="w-full max-w-[58rem] h-full flex flex-col gap-y-10">
               <div className="w-full min-h-fit h-fit border gap-y-5 border-gray-400 rounded-lg flex flex-col p-8">
                 <span className="text-4xl font-semibold">
                   Donators Information
@@ -205,7 +205,7 @@ const AcquisitionViewPage = () => {
               )}
             </div>
 
-            <div className="w-full h-full">
+            <div className="w-fit h-full">
               <RenderArtifactInformation
                 artifactInfo={artifactInfo}
                 artifactImg={artifactImg}
@@ -228,7 +228,7 @@ const AcquisitionViewPage = () => {
               />
             )}
 
-            <form className="min-w-[60rem] h-full rounded-lg bg-gray-200 flex flex-col px-10 pt-15 pb-5">
+            <form className="w-full min-w-[58rem] h-full rounded-lg bg-gray-200 flex flex-col px-10 pt-15 pb-5">
               <span className="text-4xl font-semibold">Respond</span>
               <div className="p-5 flex flex-col gap-5">
                 <span className="text-2xl font-semibold w-40">Approve?</span>

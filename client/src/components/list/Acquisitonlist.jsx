@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import ContextMenu from "../modals/ContextMenu";
 import { handlePreview } from "./commons";
+import { ImageCarousel } from "../../features/Utilities";
 
 export function RenderRelatedDocs({ relatedImages = [], attachedFiles = [] }) {
   const [imageCurrentPage, setImageCurrentPage] = useState(1);
@@ -138,7 +139,7 @@ export function RenderRelatedDocs({ relatedImages = [], attachedFiles = [] }) {
 
       {/* Files Section */}
       <div className="w-full h-[12rem] flex rounded-lg border-gray-400 border bg-black">
-        <div className="min-w-60 h-full flex items-center justify-center">
+        <div className="max-w-60 w-full h-full flex items-center justify-center">
           <span className="text-white text-2xl font-semibold">
             Attached Files
           </span>
@@ -281,7 +282,7 @@ export function RenderArtifactInformation({
   );
 
   return (
-    <div className="w-full max-w-[58rem] h-full flex flex-col gap-y-5 px-15">
+    <div className="w-full max-w-[58rem] just h-full flex flex-col gap-y-5 px-15">
       <span className="text-4xl font-semibold">About The Artifact</span>
 
       <div className="max-h-[24rem] h-full gap-y-5 flex flex-col overflow-auto ">
@@ -296,81 +297,7 @@ export function RenderArtifactInformation({
         ))}
       </div>
 
-      <div className="w-full h-full flex justify-center items-center gap-4">
-        {/* Prev Button */}
-        <button
-          onClick={handlePrev}
-          disabled={artifactImg.length <= 1}
-          className="h-full hover:text-gray-600 cursor-pointer disabled:opacity-50"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="32"
-            height="32"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M13 20l-3 -8l3 -8" />
-          </svg>
-        </button>
-
-        {/* Side thumbnails */}
-        <div className="w-fit h-full flex items-center justify-center gap-4">
-          <div className="w-fit flex flex-col items-center justify-center gap-4">
-            {sideImages.map((imageObj, idx) => (
-              <div key={idx} className="flex flex-col items-center gap-1">
-                <div className="w-32 h-32 border rounded-lg overflow-hidden flex items-center justify-center">
-                  {imageObj && (
-                    <img
-                      src={imageObj.src}
-                      alt={imageObj.label}
-                      className="object-cover w-full h-full"
-                    />
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Main image */}
-          <div className="w-[35rem] h-[35rem] border rounded-lg overflow-hidden flex flex-col items-center justify-center">
-            {artifactImg[currentIndex] && (
-              <>
-                <img
-                  src={artifactImg[currentIndex].src}
-                  alt={artifactImg[currentIndex].label}
-                  className="object-cover w-full h-full"
-                />
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* Next Button */}
-        <button
-          onClick={handleNext}
-          disabled={artifactImg.length <= 1}
-          className="hover:text-gray-600 h-full cursor-pointer disabled:opacity-50"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="32"
-            height="32"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M11 4l3 8l-3 8" />
-          </svg>
-        </button>
-      </div>
+<ImageCarousel images={artifactImg}/>
     </div>
   );
 }

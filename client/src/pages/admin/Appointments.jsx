@@ -650,8 +650,8 @@ const Appointments = () => {
           </div>
         </div>
         {isPreview === true && (
-          <div className="w-full max-w-[35rem] h-[99%] shadow-md shadow-gray-700 rounded-md flex flex-col mt-[2px] mr-[1rem]">
-            <div className="min-h-[4rem] flex pl-5 pr-2 rounded-md items-center bg-black justify-between">
+          <div className="w-full max-w-[35rem] h-[99%] shadow-md shadow-gray-700 rounded-md flex flex-col mt-[2px] mr-[.5rem]">
+            <div className="min-h-[4rem] flex pl-5 pr-3 rounded-md items-center bg-black justify-between">
               <div className="flex gap-x-2 items-center">
                 <span className="text-xl text-white font-md">
                   Appointment Information
@@ -703,7 +703,7 @@ const Appointments = () => {
               </svg>
             </div>
 
-            <div className="w-full h-full py-10 px-5">
+            <div className="w-full h-full py-10 px-10">
               <AppointmentPreview
                 key={activePreviewId}
                 appointment={appointments.find(

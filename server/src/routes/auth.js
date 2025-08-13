@@ -35,6 +35,15 @@ import {
   getArticleById
 } from '../controllers/articleController.js';
 
+import {
+  createContribution,
+  getAllContributions,
+  getContributionById,
+  updateContributionStatus,
+  getContributionStats,
+  uploadContributionFiles
+} from '../controllers/contributionController.js';
+
 import { upload, multerErrorHandler } from '../middlewares/multerMiddleware.js';
 
 
@@ -101,6 +110,14 @@ router.get('/public-articles', getPublicArticles);
 router.get('/public-article/:id', getPublicArticle);
 router.get('/articles/:id', requireAuth, getArticleById);
 router.put('/article/:id', upload.single('thumbnail'), multerErrorHandler, updateArticle);
+
+// Contributions
+router.post('/contribution', createContribution); // Public endpoint for form submission
+router.post('/contribution/files', upload.array('files', 20), multerErrorHandler, uploadContributionFiles); // File upload endpoint
+router.get('/contributions', requireAuth, requireRole([1, 2, 5]), getAllContributions); // Admin only
+router.get('/contributions/stats', requireAuth, requireRole([1, 2, 5]), getContributionStats); // Admin only
+router.get('/contributions/:id', requireAuth, requireRole([1, 2, 5]), getContributionById); // Admin only
+router.patch('/contributions/:id/status', requireAuth, requireRole([1, 2, 5]), updateContributionStatus); // Admin only
 
 
 export default router;

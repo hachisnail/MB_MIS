@@ -345,7 +345,7 @@ export const AttendanceItem = ({ attendance, cameFrom = "attendance" }) => {
     <NavLink
       to={encodedId}
       state={{ cameFrom }}
-      className=" text-xl h-fit font-semibold grid grid-cols-[15rem_1fr_12.3rem_11.5rem_12.5rem_13rem] hover:bg-gray-300 cursor-pointer"
+      className=" text-xl min-w-fit h-fit font-semibold grid grid-cols-[15rem_1fr_12.3rem_11.5rem_12.5rem_13rem] hover:bg-gray-300 cursor-pointer"
     >
       <div className="px-4 py-3 border-b-1 border-gray-400">
         {attendance.date}

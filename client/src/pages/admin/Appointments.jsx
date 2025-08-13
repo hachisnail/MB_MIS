@@ -414,7 +414,7 @@ const Appointments = () => {
           />
         )}
 
-        <div className="w-full h-full flex flex-col min-w-[43.75rem] gap-y-7">
+        <div className="w-full h-full flex flex-col min-w-[43.75rem] gap-y-7 ">
           <div className="w-full min-h-[3.2rem] flex gap-x-3 items-center ">
             <TimelineDatePicker
               defaultValue={

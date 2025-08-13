@@ -2,6 +2,7 @@ import { useLocation, NavLink, matchPath } from "react-router-dom";
 
 const routeMeta = [
   { path: "/admin/inventory", title: "Inventory of Artifact" },
+  { path: "/admin/inventory/:encoded", title: "artifact name " },
   {
     path: "/admin/acquisition",
     title: "Donations/Acquisitions/Lending Management",
@@ -10,8 +11,8 @@ const routeMeta = [
     path: "/admin/acquisition/add-artifact",
     title: "Manually add a new Artifact",
   },
-  { path: "/admin/acquisition/lending/:ended", title: "Lending Form" },
-  { path: "/admin/acquisition/donation/:ended", title: "Donation Form" },
+  { path: "/admin/acquisition/lending/:encoded", title: "Lending Form" },
+  { path: "/admin/acquisition/donation/:encoded", title: "Donation Form" },
   { path: "/admin/logs", title: "Activities", theme: "text-gray-400" },
   { path: "/admin/logs/:log", title: "Activity", theme: "text-gray-400" },
   { path: "/admin/view", title: "View Artifacts" },
@@ -90,13 +91,22 @@ const Breadcrumb = () => {
   );
 
   if (matchedRoute?.title) {
-    pageTitle = matchedRoute.title;
+    if (matchedRoute.path === "/admin/inventory/:encoded") {
+      const encodedParam = pathSegments[pathSegments.length - 1];
+      const decoded = safeDecodeBase64(decodeURIComponent(encodedParam));
+      pageTitle = decoded
+        .replace(/-/g, " ")
+        .replace(/\s+/g, " ")
+        .trim()
+        .split(" ")
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(" ");
+    } else {
+      pageTitle = matchedRoute.title;
+    }
   }
 
-  // Don't override pageTitle for preview routes (filename should NOT be title)
-
   const theme = matchedRoute?.theme || "text-gray-700";
-
   let currentLink = "";
 
   const crumbs = pathSegments
@@ -105,9 +115,16 @@ const Breadcrumb = () => {
 
       // Skip these segments in breadcrumb display
       if (
-        ["admin", "preview", "files", "pictures", "edit-article", "lending", "donation", "walk-ins"].includes(
-          segment
-        )
+        [
+          "admin",
+          "preview",
+          "files",
+          "pictures",
+          "edit-article",
+          "lending",
+          "donation",
+          "walk-ins",
+        ].includes(segment)
       ) {
         return null;
       }
@@ -122,8 +139,15 @@ const Breadcrumb = () => {
         index === arr.length - 1 &&
         segment === encodedParam
       ) {
-        // If decoded includes slashes (folders), take only last part (filename)
         label = decoded.split("/").pop();
+      }
+
+      // For inventory/:encoded route, decode artifact name
+      if (
+        matchedRoute?.path === "/admin/inventory/:encoded" &&
+        index === arr.length - 1
+      ) {
+        label = decoded;
       }
 
       label = label

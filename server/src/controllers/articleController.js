@@ -27,10 +27,12 @@ export const createArticle = async (req, res) => {
       address,
       selectedDate,
       editImages,
+      caption,
       status,
       uploadPeriodStart,
       uploadPeriodEnd,
-      barangay
+      barangay,
+      reviewerNotes
     } = req.body;
 
     let thumbnail = null;
@@ -54,9 +56,11 @@ export const createArticle = async (req, res) => {
       upload_date: selectedDate,
       images: thumbnail,
       editImages: editImagesString,
+      caption,
       status,
       upload_period_start: uploadPeriodStart,
       upload_period_end: uploadPeriodEnd,
+      reviewer_notes: reviewerNotes
     });
 
     return res.status(201).json(article);
@@ -83,7 +87,7 @@ export const getAllArticles = async (req, res) => {
 export const getPublicArticles = async (req, res) => {
   try {
     const articles = await Article.findAll({
-      attributes: ['article_id', 'images', 'title', 'article_category', 'upload_date','status', 'description'],
+      attributes: ['article_id', 'images', 'title', 'article_category', 'upload_date','status', 'description','caption'],
       where: { status: 'posted' },
       order: [['created_at', 'DESC']]
     });
@@ -117,9 +121,9 @@ export const getPublicArticle = async (req, res) => {
       where: { article_id: id },
       attributes: [
         'article_id', 'title', 'user_id', 'upload_date', 'images',
-        'editImages', 'article_category', 'description', 'author',
+        'editImages','caption' , 'article_category', 'description', 'author',
         'address', 'barangay', 'status', 'upload_period_start',
-        'upload_period_end', 'created_at', 'updated_at'
+        'upload_period_end', 'created_at', 'updated_at', 'reviewer_notes'
       ]
     });
 
@@ -158,10 +162,12 @@ export const updateArticle = async (req, res) => {
       address,
       selectedDate,
       editImages,
+      caption,
       status,
       barangay,
       uploadPeriodStart,
-      uploadPeriodEnd
+      uploadPeriodEnd,
+      reviewer_notes
     } = req.body;
 
     let thumbnail = null;
@@ -190,10 +196,12 @@ export const updateArticle = async (req, res) => {
         upload_date: selectedDate,
         images: thumbnail || undefined,
         editImages: editImagesString,
+        caption: caption || undefined,
         status: status || undefined,
         upload_period_start: uploadPeriodStart || undefined,
         upload_period_end: uploadPeriodEnd || undefined,
-        updated_at: new Date()
+        updated_at: new Date(),
+        reviewer_notes: reviewer_notes || null
       },
       { where: { article_id: id } }
     );

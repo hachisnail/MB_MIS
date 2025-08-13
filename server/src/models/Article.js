@@ -42,6 +42,10 @@ const Article = sequelize.define('Article', {
     type: DataTypes.TEXT,
     allowNull: true,
   },
+  caption: { 
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
   author: {
     type: DataTypes.STRING,
     allowNull: true,
@@ -75,6 +79,10 @@ const Article = sequelize.define('Article', {
     type: DataTypes.DATE,
     defaultValue: DataTypes.NOW,
   },
+  reviewer_notes: {
+      type: DataTypes.TEXT,
+      allowNull: true 
+    },
 }, {
   tableName: 'articles',
   timestamps: false,

@@ -50,6 +50,7 @@ const ArticleEditorForm = () => {
   const { user } = useAuth();
   const userRole = user.roleId; 
   const allowedRoles = [1, 2, 5]; // Add article privs
+  const isViewer = userRole === 3;
   const isReviewer = userRole === 4;
   const hasRun = useRef(false);
 
@@ -89,7 +90,7 @@ const ArticleEditorForm = () => {
       // }),
     ],
     content: "",
-    editable: true,
+    editable: !isReviewer,
     editorProps: {
       handleKeyDown(view, event) {
         // ...custom logic...
@@ -126,9 +127,11 @@ const ArticleEditorForm = () => {
       const [status, setStatus] = useState("pending");
       const [uploadPeriodStart, setUploadPeriodStart] = useState("");
       const [uploadPeriodEnd, setUploadPeriodEnd] = useState("");
+      const [reviewerNotes, setReviewerNotes] = useState('');
 
       const [municipality, setMunicipality] = useState("");
       const [contentImages, setContentImages] = useState([]);
+      const [caption, setCaption] = useState('');
       const [barangay, setBarangay] = useState(""); // <-- Add this line
       const imageInputRef = useRef(null);
       const thumbnailInputRef = useRef(null);
@@ -145,6 +148,10 @@ const ArticleEditorForm = () => {
       const [error, setError] = useState(null);
       const [editingArticleId, setEditingArticleId] = useState(null);
       const { encoded } = useParams();
+      const [isGeneratingCaption, setIsGeneratingCaption] = useState(false); // New state for AI generation
+
+
+
       let articleId = null;
         try {
           if (encoded) {
@@ -171,6 +178,58 @@ const ArticleEditorForm = () => {
         }), [title, selectedDate, author, category, municipality, barangay, status, uploadPeriodStart, uploadPeriodEnd ,editor?.getHTML()]);
         useAutosave(isDirty ? draftData : null, draftKey, 1000);
         
+
+    // Function to generate caption using AI
+    const handleGenerateCaption = async () => {
+        const articleContent = editor.getText();
+        if (!articleContent.trim()) {
+            window.alert('Please write some content in the editor first to generate a caption.');
+            return;
+        }
+
+        setIsGeneratingCaption(true);
+        let retries = 0;
+        const maxRetries = 5;
+        let success = false;
+        
+        // The prompt for the AI model
+        const prompt = `Summarize the following article content into a short, engaging caption, suitable for public display on a homepage. The caption should be no more than 150 characters. The content is: ${articleContent}`;
+
+        while (retries < maxRetries && !success) {
+            try {
+                const chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
+                const payload = { contents: chatHistory };
+                const apiKey = import.meta.env.VITE_GEMINI_API_KEY;;
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+                
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`API error: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                const generatedText = result?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+                setCaption(generatedText);
+                success = true;
+            } catch (error) {
+                retries++;
+                const delay = Math.pow(2, retries) * 1000;
+                console.error(`API call failed. Retrying in ${delay / 1000}s...`, error);
+                await new Promise(resolve => setTimeout(resolve, delay));
+            }
+        }
+        setIsGeneratingCaption(false);
+        if (!success) {
+            window.alert('Failed to generate caption. Please try again.');
+        }
+    };
+    
+
   // Handle new or updated article submission
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -183,17 +242,19 @@ const ArticleEditorForm = () => {
     formData.append("address", municipality);
     formData.append("selectedDate", selectedDate);
     formData.append("editImages", JSON.stringify(contentImages));
+    formData.append("caption", caption);
     formData.append("barangay", barangay);
     formData.append("status", status);  
     formData.append("upload_period_start", uploadPeriodStart);
     formData.append("upload_period_end", uploadPeriodEnd);
+    formData.append("reviewer_notes", reviewerNotes || "");
 
     if (thumbnail && thumbnail instanceof File) {
     formData.append("thumbnail", thumbnail);
     }
     
     console.log("Submitting with thumbnail:", thumbnail);
-    
+    console.log("Caption state value:", caption);
     try {
       let response;
       if (isEditing) {
@@ -255,7 +316,9 @@ const ArticleEditorForm = () => {
     setThumbnail(null);
     setPreviewImage(null);
     setContentImages([]);
+    setCaption("");
     setBarangay("");
+    setReviewerNotes("");
     editor?.commands.setContent("");
     // setShowModal(false);
     setIsEditing(false);
@@ -299,8 +362,11 @@ useEffect(() => {
                     setBarangay(draft.barangay || "");
                     setStatus(draft.status || "pending");
                     setSelectedDate(draft.selectedDate || "");
-                    setUploadPeriodStart(data.upload_period_start || "");
-                    setUploadPeriodEnd(data.upload_period_end || "");
+                    setUploadPeriodStart(draft.upload_period_start || "");
+                    setUploadPeriodEnd(draft.upload_period_end || "");
+                    setReviewerNotes(draft.reviewer_notes || '');
+                    setCaption(draft.caption || '');
+                    
                     if (editor && draft.description) {
                          editor.commands.setContent(draft.description);
                     }
@@ -317,9 +383,13 @@ useEffect(() => {
                     setStatus(data.status || "pending");
                     setUploadPeriodStart(data.upload_period_start || "");
                     setUploadPeriodEnd(data.upload_period_end || "");
+                    setReviewerNotes(data.reviewer_notes || "");
+                    setCaption(data.caption || "");
+
                     if (editor && data.description) {
                         editor.commands.setContent(data.description);
                     }
+                    
                     if (data.upload_date) {
                         const formattedDate = new Date(data.upload_date).toISOString().split('T')[0];
                         setSelectedDate(formattedDate);
@@ -353,6 +423,8 @@ useEffect(() => {
                 setMunicipality(draft.municipality || "");
                 setBarangay(draft.barangay || "");
                 setStatus(draft.status || "pending");
+                setReviewerNotes(draft.reviewerNotes || "");
+                setCaption(draft.caption || "");
                 if (editor) {
                     editor.commands.setContent(draft.description || "");
                 }
@@ -416,7 +488,7 @@ useEffect(() => {
       // If form is valid, show confirm dialog
       setShowSubmitConfirm(true);
     }
-    clearDraft(draftKey);
+
   };
 
 
@@ -588,27 +660,12 @@ useEffect(() => {
         {/* LEFT SPACER */}
         <div className="hidden 2xl:block 2xl:w-1/5" />
         {/* LEFT SIDE - Editor + Form */}
-        {userRole && allowedRoles.includes(userRole) && (
-        <div
-          className="
-              bg-white
-              w-full
-              2xl:w-2/5
-              p-6
-              rounded-lg
-              shadow-xl
-              relative
-              max-h-[85vh]
-              overflow-auto
-              transition-all
-              duration-300
-            "
-        >
-
+        {userRole && allowedRoles.includes(userRole) && !isReviewer ? (
+        <div className="bg-white w-full 2xl:w-2/5 p-6 rounded-lg shadow-xl relative max-h-[85vh] overflow-auto transition-all duration-300">
           <h2 className="text-3xl font-bold mb-6">Header</h2>
 
-    <form onSubmit={handleFormSubmit} className={`space-y-6 ${isReviewer ? "opacity-50 pointer-events-none" : ""}`}>
-{/* Title */}
+<form onSubmit={handleFormSubmit} className="space-y-6">
+  {/* Title */}
 <label htmlFor="title" className={`font-bold ${errors.title ? "text-red-600" : ""}`}>
   Title {errors.title && "*"}
 </label>
@@ -1212,6 +1269,30 @@ useEffect(() => {
                   </div>
                 </div>
 
+                {/* New Public Caption Field with AI Button */}
+                    <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 border border-gray-200">
+                        <div className="flex justify-between items-center mb-2">
+                            <label htmlFor="caption" className="text-xl font-bold text-gray-800">
+                                Publicly Displayed Caption
+                            </label>
+                            <button
+                                type="button"
+                                onClick={handleGenerateCaption}
+                                disabled={isGeneratingCaption || !editor?.getText()?.trim()}
+                                className="px-4 py-2 bg-purple-600 text-white font-semibold rounded-lg shadow-md hover:bg-purple-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+                            >
+                                {isGeneratingCaption ? 'Generating...' : 'Generate with AI'}
+                            </button>
+                        </div>
+                        <textarea
+                            id="caption"
+                            className="w-full h-24 p-3 border-2 border-gray-300 rounded-lg text-base md:text-lg outline-none resize-none focus:border-blue-500 transition-colors"
+                            value={caption}
+                            onChange={(e) => setCaption(e.target.value)}
+                            placeholder="Enter a brief, engaging caption for the article. This will be visible on the homepage."
+                            readOnly={isViewer}
+                        />
+                    </div>
   {/* Buttons */}
   <div className="flex justify-between">
     <Button
@@ -1228,7 +1309,84 @@ useEffect(() => {
   
 </form>
 </div>
-        )}
+        ): (
+        // RENDER THE SIMPLIFIED REVIEWER VIEW
+        <div className="bg-white w-full 2xl:w-2/5 p-6 rounded-lg shadow-xl relative max-h-[85vh] overflow-auto transition-all duration-300">
+          <h2 className="text-3xl font-bold mb-6">Review Article</h2>
+          
+          <div className="space-y-4">
+            {/* Title */}
+            <div>
+              <p className="text-lg font-bold">Title:</p>
+              <p>{title || "N/A"}</p>
+            </div>
+
+            {/* Dates */}
+            <div className="flex gap-4">
+              <div className="flex flex-col md:flex-row gap-4">
+                <div className="flex-1">
+                  <label className="font-bold">Date Created</label>
+                  <p className="text-lg text-gray-700">{article?.created_at}</p>
+                </div>
+                <div className="flex-1">
+                  <label className="font-bold">Last Updated</label>
+                  <p className="text-lg text-gray-700">{article?.updated_at}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Current Status */}
+            <div>
+              <p className="text-lg font-bold">Current Status:</p>
+              <p className="capitalize">{status}</p>
+            </div>
+            
+            {/* Reviewer Notes */}
+            <div className="space-y-2">
+              <label htmlFor="reviewerNotes" className="text-lg font-bold">Reviewer's Notes</label>
+              <textarea
+                id="reviewerNotes"
+                className="w-full h-40 p-4 border-2 border-black rounded-lg text-base md:text-lg outline-none resize-none"
+                value={reviewerNotes}
+                onChange={(e) => setReviewerNotes(e.target.value)}
+                placeholder="Add your notes here..."
+                disabled={isViewer}
+              />
+            </div>
+          </div>
+          
+          <form onSubmit={handleFormSubmit} className="mt-6 space-y-6">
+            {/* Status Dropdown */}
+            <div className="flex items-center gap-4">
+              <label htmlFor="reviewerStatus" className="font-bold whitespace-nowrap">
+                Change Status:
+              </label>
+              <select
+                id="reviewerStatus"
+                className="flex-1 px-4 py-3 border-2 border-black rounded-2xl text-base md:text-lg outline-none"
+                value={status}
+                onChange={(e) => setStatus(e.target.value)}
+                disabled={isViewer}
+              >
+                <option value="pending">Pending</option>
+                <option value="posted">Post</option>
+                <option value="rejected">Reject</option>
+                <option value="archived">Archive</option>
+              </select>
+            </div>
+            
+            {/* Submit Button */}
+            {userRole !== 3 && (
+            <div className="flex justify-end">
+              <Button type="submit" className="w-full md:w-auto px-6 py-3 bg-[#c78216] text-white font-bold rounded-2xl hover:bg-[#d69641] transition-colors">
+                Save Status
+              </Button>
+            </div>
+            )}
+          </form>
+        </div>
+      )}
+       
 {/* RIGHT SIDE - Article Preview */}
         <div
               className="bg-white w-full 2xl:w-2/5 p-6 rounded-lg shadow-xl overflow-y-auto max-h-[85vh] mt-4 2xl:mt-0"
@@ -1314,34 +1472,9 @@ useEffect(() => {
                       )}
                 </div>
               </div>
-              {isReviewer && (
-                  <div className="mt-6 space-y-4">
-                    <h3 className="text-xl font-bold">Reviewer Actions</h3>
-                    <div className="flex flex-col gap-4 md:flex-row md:items-center">
-                      <label htmlFor="reviewerStatus" className="font-bold">
-                        Update Status:
-                      </label>
-                      <select
-                        id="reviewerStatus"
-                        className="flex-1 px-4 py-3 border-2 border-black rounded-2xl text-base md:text-lg outline-none"
-                        value={status}
-                        onChange={(e) => setStatus(e.target.value)}
-                      >
-                        <option value="pending">Pending</option>
-                        <option value="posted">Post</option>
-                        <option value="rejected">Reject</option>
-                        <option value="archived">Archive</option>
-                      </select>
-                      <button
-                        type="button"
-                        onClick={handleFormSubmit} // Use the same submit handler
-                        className="w-full md:w-auto px-6 py-3 bg-[#c78216] text-white font-bold rounded-2xl hover:bg-[#d69641] transition-colors"
-                      >
-                        Save Status
-                      </button>
-                    </div>
-                  </div>
-                )}
+             
+               
+               
             </div>
             
             {/* RIGHT SPACER */}

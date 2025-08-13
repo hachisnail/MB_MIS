@@ -541,11 +541,11 @@ export function SummaryPanel({
 }) {
   return (
     <div
-      className={`pb-[2rem] min-w-[34rem] max-w-[34rem] h-full flex flex-col gap-y-[1.75rem] ${className}`}
+      className={`pb-[2rem] min-w-[34rem] items-center max-w-[34rem] h-full flex flex-col gap-y-[1.75rem] ${className}`}
     >
       {/* Tabs */}
       {tabs.length > 0 && (
-        <div className="min-h-[3.2rem] flex items-start gap-x-[0.5rem]">
+        <div className="w-full min-h-[3.2rem] flex items-start gap-x-[0.5rem]">
           {tabs.map(({ key, label }) => (
             <button
               key={key}
@@ -593,7 +593,7 @@ export function SummaryPanel({
       {button && (
         <button
           onClick={button.onClick}
-          className="justify-between flex px-[2rem] h-[6.25rem] items-center bg-black text-white hover:shadow-md hover:shadow-gray-600 rounded-lg"
+          className="justify-between w-[98%] flex px-[2rem] h-[6.25rem] items-center bg-black text-white hover:shadow-md hover:shadow-gray-600 rounded-lg"
         >
           <span className="text-3xl font-semibold">{button.label}</span>
           <svg

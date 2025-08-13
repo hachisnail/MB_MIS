@@ -4,11 +4,13 @@ import useToast from "../../components/list/commons";
 import Toast from "@/features/Toast";
 import { SearchBar, CardDropdownPicker } from "@/features/Utilities";
 import { formatDateForDisplay } from "../../components/list/commons";
+import { useNavigate } from "react-router-dom";
 
 const Inventory = () => {
   const [activeTab, setActiveTab] = useState("artifacts");
   const [selectedDate, setSelectedDate] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const navigate = useNavigate();
 
   const inventorySuammary = [
     { label: "Total Artifacts", Value: "0" },
@@ -187,7 +189,7 @@ const Inventory = () => {
               {activeTab === "artifacts" && (
                 <>
                   {/* display list that artifacts records*/}
-                  <div className="text-2xl font-semibold py-2 flex justify-center border-gray-400 border-b-1">
+                  <div onClick={() => navigate(`YXJ0aWZhY3Qx`)} className="text-2xl font-semibold py-2 flex justify-center border-gray-400 border-b-1">
                     <span>artifacts artifacts</span>
                   </div>
                 </>

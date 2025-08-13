@@ -144,7 +144,7 @@ const Router = () => {
           {flags["inventory"] && (
             <>
               <Route path="inventory" element={<Inventory />} />
-              <Route path="inventory/view" element={<ViewArtifacts />} />
+              <Route path="inventory/:encoded" element={<ViewArtifacts />} />
             </>
           )}
 

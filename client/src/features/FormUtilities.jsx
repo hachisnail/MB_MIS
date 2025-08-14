@@ -14,7 +14,7 @@ import {
 export const DateInput = ({
   control,
   name,
-  mode = "single", // "single" or "range"
+  mode = "single", 
   className = "",
   error = "",
   minDate = new Date(1900, 0, 1),

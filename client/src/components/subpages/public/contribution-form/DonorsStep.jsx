@@ -113,7 +113,10 @@ const DonorsStep = ({
           <div className="w-full h-full pt-10 flex flex-col justify-between">
             {/* Name */}
             <div className="w-full h-fit flex ">
-              <label className="min-w-40 text-2xl font-semibold">Name</label>
+              <label className="min-w-40 text-2xl font-semibold">
+                Name
+                <span className="text-red-700"> *</span>
+              </label>
               <div className="w-full h-fit flex justify-between">
                 <FormInput
                   placeholder="First Name"
@@ -136,6 +139,7 @@ const DonorsStep = ({
             <div className="w-full h-fit flex">
               <label className="min-w-40 text-2xl font-semibold">
                 Birthdate
+                <span className="text-red-700"> *</span>
               </label>
               <div className="w-full h-fit flex justify-between">
                 <div className="w-[32rem] flex justify-end">
@@ -155,6 +159,7 @@ const DonorsStep = ({
                   <div className="flex w-full items-between">
                     <label className="min-w-25 text-2xl font-semibold">
                       Sex
+                      <span className="text-red-700"> *</span>
                     </label>
                     <DropdownInput
                       control={control}
@@ -173,7 +178,10 @@ const DonorsStep = ({
 
             {/* Contact & Email */}
             <div className="w-full h-fit flex">
-              <label className="min-w-40 text-2xl font-semibold">Contact</label>
+              <label className="min-w-40 text-2xl font-semibold">
+                Contact
+                <span className="text-red-700"> *</span>
+              </label>
               <div className="w-full flex justify-between">
                 <div className="w-[32rem] flex justify-end">
                   <ContactNumberInput
@@ -187,6 +195,7 @@ const DonorsStep = ({
                   <div className="flex w-full items-between">
                     <label className="min-w-25 text-2xl font-semibold">
                       Email
+                      <span className="text-red-700"> *</span>
                     </label>
                     <div className="w-full h-fit flex justify-end">
                       <EmailInput
@@ -221,56 +230,74 @@ const DonorsStep = ({
             <div className="w-full h-fit flex">
               <label className="min-w-40 text-2xl font-semibold">
                 Province
+                <span className="text-red-700"> *</span>
               </label>
               <div className="w-full h-fit flex justify-between">
-                <DropdownInput
-                  control={control}
-                  name="province"
-                  className="w-[32rem]"
-                  options={provinces.map((p) => ({
-                    value: p.name,
-                    label: p.name,
-                  }))}
-                  error={errors.province}
-                />
-                <DropdownInput
-                  control={control}
-                  name="city"
-                  className="w-[32rem]"
-                  options={cities.map((c) => ({
-                    value: c.name,
-                    label: c.name,
-                  }))}
-                  error={errors.city}
-                  disabled={!selectedProvince}
-                />
+                <div className="w-[32rem] flex justify-end">
+                  <DropdownInput
+                    control={control}
+                    name="province"
+                    className="w-[26rem]"
+                    options={provinces.map((p) => ({
+                      value: p.name,
+                      label: p.name,
+                    }))}
+                    error={errors.province}
+                  />
+                </div>
+                <div className="w-[32rem] flex justify-end">
+                  <span className="text-2xl min-w-25 font-semibold">
+                    City
+                    <span className="text-red-700"> *</span>
+                  </span>
+                  <DropdownInput
+                    control={control}
+                    name="city"
+                    className="w-[26rem]"
+                    options={cities.map((c) => ({
+                      value: c.name,
+                      label: c.name,
+                    }))}
+                    error={errors.city}
+                    disabled={!selectedProvince}
+                  />
+                </div>
               </div>
             </div>
 
             <div className="w-full h-fit flex">
               <label className="min-w-40 text-2xl font-semibold">
                 Barangay
+                                <span className="text-red-700"> *</span>
+
               </label>
               <div className="w-full h-fit flex justify-between">
-                <DropdownInput
-                  control={control}
-                  name="barangay"
-                  options={barangays.map((b) => ({
-                    value: b.name,
-                    label: b.name,
-                  }))}
-                  error={errors.barangay}
-                  disabled={!selectedCity}
-                  className="w-[32rem]"
-                />
-                <FormInput
-                  placeholder="Street"
-                  register={register}
-                  name="street"
-                  error={errors.street}
-                  className="w-[32rem]"
-                  disabled={!selectedCity}
-                />
+                <div className="w-[32rem] flex justify-end">
+                  <DropdownInput
+                    control={control}
+                    name="barangay"
+                    options={barangays.map((b) => ({
+                      value: b.name,
+                      label: b.name,
+                    }))}
+                    error={errors.barangay}
+                    disabled={!selectedCity}
+                    className="w-[26rem]"
+                  />
+                </div>
+                <div className="w-[32rem] flex justify-end">
+                  <span className="text-2xl min-w-25 font-semibold">
+                    Street
+                  </span>
+                  <FormInput
+                    placeholder="Street"
+                    register={register}
+                    name="street"
+                    error={errors.street}
+                    className="w-[26rem]"
+                    disabled={!selectedCity}
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -286,14 +313,16 @@ const DonorsStep = ({
           </button>
           <div className="w-fit h-fit flex gap-x-5">
             {isDirty && (
-            <button
-              type="button"
-              onClick={() => {onClearForm() }}
-              className=" w-40 hover:bg-black rounded-md text-2xl bg-gray-900 text-white"
-            >
-              Clear Form
-            </button>
-          )}
+              <button
+                type="button"
+                onClick={() => {
+                  onClearForm();
+                }}
+                className=" w-40 hover:bg-black rounded-md text-2xl bg-gray-900 text-white"
+              >
+                Clear Form
+              </button>
+            )}
             <button
               type="submit"
               className="w-44 h-15 rounded-md bg-black text-white text-2xl hover:bg-gray-800"

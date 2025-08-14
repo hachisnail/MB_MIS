@@ -1,5 +1,7 @@
 import { NavLink } from "react-router-dom";
 import bgImage1 from "@/assets/06-AfternoonMealOfTheWorker 1.svg";
+import na1 from "@/assets/visit_us.svg";
+import na2 from "@/assets/support_us.svg";
 import block1 from "@/assets/block1.svg";
 import block2 from "@/assets/block2.png";
 import { scrollToElementById } from "@/components/list/commons";
@@ -467,8 +469,72 @@ displayArticles = displayArticles.slice(0, 2);
 
 
 
-         <div className="w-full xl:justify-between min-h-[85vh] gap-y-20 xl:gap-y-0 h-auto flex xl:flex-row flex-col items-center overflow-hidden">
-          Support
+         <div className="w-full xl:justify-center min-h-[85vh] gap-y-20 xl:gap-y-0 h-auto flex xl:flex-row flex-col items-center overflow-hidden">
+          <div className="max-w-[90rem] h-[70rem] w-full flex flex-col px-12">
+              <div className="w-full h-[35rem] flex items-center justify-center">
+                  <div className="w-[40rem] h-full flex justify-start">
+                    <div
+                      className="w-[40rem] h-[35rem] bg-no-repeat bg-cover bg-center p-10"
+                      style={{ backgroundImage: `url(${na1})` }}
+                    >
+                      <div className="w-full h-full  outline-2 outline-white flex items-center justify-center"></div>  
+                    </div>
+                  </div>
+
+                <div className="w-[40rem] h-full flex flex-col gap-2 justify-center items-end pl-5">
+                  <div className="h-[10rem] w-full flex items-end text-left">
+                    <span className="text-6xl font-bold font-hind">VISIT US!</span>
+                  </div>
+
+                  <div className="h-[11rem] flex">
+                    <span className="text-3xl font-hind font-medium tracking-wide leading-11 text-left">
+                     Explore the treasures of Museo Bulawan! Plan your visit today by booking a tour or schedule an appointment for research, interviews, and more.
+                    </span>
+                  </div>
+
+                  <div className="h-[10rem] w-full flex t">
+                    <NavLink to="/appointment">
+                      <button className="w-auto h-auto border-black border-2 rounded-lg px-5 py-2 cursor-pointer hover:bg-gray-200">
+                        <span className="text-3xl font-hind">BOOK AN APPOINTMENT</span>
+                      </button>
+                    </NavLink>
+                  </div>
+                </div>
+
+              </div>
+
+              <div className="w-full h-[35rem] flex items-center justify-center">
+                <div className="w-[40rem] h-full flex flex-col gap-2 justify-center items-end pr-5">
+                  <div className="h-[10rem] flex items-end text-right">
+                    <span className="text-6xl font-bold font-hind">YOUR SUPPORT MATTERS!</span>
+                  </div>
+
+                  <div className="h-[11rem] flex">
+                    <span className="text-3xl font-hind font-medium tracking-wide leading-11 text-right">
+                     Help us preserve and celebrate our heritage! Contribute to Museo Bulawan by donating or lending artifacts to enrich our collection and share history with future generations
+                    </span>
+                  </div>
+
+                  <div className="h-[10rem] w-full justify-end flex">
+                    <NavLink to="/about/support">
+                      <button className="w-auto h-auto border-black border-2 rounded-lg px-5 py-2 cursor-pointer hover:bg-gray-200">
+                        <span className="text-3xl font-hind">SUPPORT</span>
+                      </button>
+                    </NavLink>
+                  </div>
+                </div>
+
+
+                  <div className="w-[40rem] h-full flex justify-start">
+                    <div
+                      className="w-[40rem] h-[35rem] bg-no-repeat bg-cover bg-center p-10"
+                      style={{ backgroundImage: `url(${na2})` }}
+                    >
+                      <div className="w-full h-full  outline-2 outline-white flex items-center justify-center"></div>  
+                    </div>
+                  </div>
+              </div>
+          </div>
         </div>
 
 

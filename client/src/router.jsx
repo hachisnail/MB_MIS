@@ -13,7 +13,7 @@ import Appointment from "@/pages/public/Appointment";
 import Articles from "@/pages/public/Articles";
 import About from "@/pages/public/About";
 import Articlecontents from "@/pages/public/Articlecontents";
-import Contribution from "@/components/subpages/public/Contribution";
+import Contribution from "@/components/subpages/public/contribution-form/Contribution";
 import Support from "@/components/subpages/public/Support";
 
 import RecoverAccount from "@/components/subpages/public/RecoverAccount";
@@ -55,6 +55,8 @@ import FilePreviewer from "@/features/FilePreviewer";
 import ModalsTest from "@/sandbox/ModalsTest";
 import RouteFlagToggle from "@/sandbox/RouteFlagToggle";
 import SocketMonitor from "./sandbox/SocketMonitor";
+import TableAndForms from "./sandbox/TableAndForms";
+
 
 import AdminLayout from "@/components/layout/AdminLayout";
 import PublicLayout from "@/components/layout/PublicLayout";
@@ -210,6 +212,8 @@ const Router = () => {
               <Route path="sandbox/modal" element={<ModalsTest />} />
               <Route path="sandbox/router-flag" element={<RouteFlagToggle />} />
               <Route path="sandbox/socket-monitor" element={<SocketMonitor />} />
+              <Route path="sandbox/table-forms" element={<TableAndForms />} />
+
 
 
             </>

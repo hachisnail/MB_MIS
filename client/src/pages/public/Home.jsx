@@ -406,7 +406,7 @@ displayArticles = displayArticles.slice(0, 2);
                           </div>
                           <div className='w-full h-50 flex break-words'>
                             <span className=' overflow-hidden text-white text-xl'>
-                              {article.description.replace(/<[^>]+>/g, '')|| '' }
+                              {article.caption|| '' }
                             </span>
                           </div>
                         </div>

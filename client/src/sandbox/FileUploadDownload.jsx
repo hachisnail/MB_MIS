@@ -300,6 +300,12 @@ const FileUploadDownload = () => {
             tooltipText="This will disable pages on the website likely to controll content displayed"
           />
         </NavLink>
+        <NavLink to="table-forms">
+          <TooltipButton
+            buttonText="Table Forms"
+            tooltipText="Tables and forms expirements for rendering it using a library"
+          />
+        </NavLink>
       </div>
     </div>
   );

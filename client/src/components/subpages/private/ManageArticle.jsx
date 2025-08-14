@@ -150,7 +150,7 @@ const ArticleEditorForm = () => {
       const { encoded } = useParams();
       const [isGeneratingCaption, setIsGeneratingCaption] = useState(false); // New state for AI generation
 
-
+      
 
       let articleId = null;
         try {
@@ -245,9 +245,23 @@ const ArticleEditorForm = () => {
     formData.append("caption", caption);
     formData.append("barangay", barangay);
     formData.append("status", status);  
+    
+    formData.append("reviewer_notes", reviewerNotes || "");
+    let finalUploadPeriodStart = null;
+        let finalUploadPeriodEnd = null;
+
+        if (status === 'post') {
+            finalUploadPeriodStart = new Date().toISOString();
+        } else if (status === 'schedule') {
+  
+            finalUploadPeriodStart = uploadPeriodStart;
+            finalUploadPeriodEnd = uploadPeriodEnd;
+        }
+
+
     formData.append("upload_period_start", uploadPeriodStart);
     formData.append("upload_period_end", uploadPeriodEnd);
-    formData.append("reviewer_notes", reviewerNotes || "");
+
 
     if (thumbnail && thumbnail instanceof File) {
     formData.append("thumbnail", thumbnail);
@@ -802,71 +816,73 @@ useEffect(() => {
   </div>
 </div>
 
-<div className="flex flex-col md:flex-row gap-4">
-  {/* Status Dropdown */}
-  <div className="flex-1">
-    <label htmlFor="status" className="font-bold">
-      Status
-    </label>
-    <select
-      id="status"
-      className="w-full px-4 py-3 border-2 border-black rounded-2xl text-base md:text-lg outline-none"
-      name="status"
-      value={status}
-      onChange={(e) => {
-        setStatus(e.target.value);
-        setIsDirty(true);
-      }}
-    >
-      <option value="pending">Pending</option>
-      <option value="posted">Post</option>
-    </select>
-  </div>
-
-  {/* Start Date Input */}
-  <div className="flex-1">
-    <label htmlFor="uploadPeriodStart" className={`font-bold`}>
-      Start Date
-    </label>
-    <input
-      id="uploadPeriodStart"
-      type="date"
-      className={`w-full px-4 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 ${
-        errors.uploadPeriodStart ? "border-red-600" : "border-black"
-      } ${status !== "posted" ? "bg-gray-200 text-gray-500 cursor-not-allowed" : ""}`}
-      value={uploadPeriodStart}
-      onChange={(e) => {
-        setUploadPeriodStart(e.target.value);
-        setIsDirty(true);
-        clearFieldError("uploadPeriodStart");
-      }}
-      disabled={status !== "posted"}
-      placeholder={status !== "posted" ? "Pick 'Post' to enable" : ""}
-    />
-  </div>
-
-  {/* End Date Input */}
-  <div className="flex-1">
-    <label htmlFor="uploadPeriodEnd" className={`font-bold`}>
-      End Date
-    </label>
-    <input
-      id="uploadPeriodEnd"
-      type="date"
-      className={`w-full px-4 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 ${
-        errors.uploadPeriodEnd ? "border-red-600" : "border-black"
-      } ${status !== "posted" ? "bg-gray-200 text-gray-500 cursor-not-allowed" : ""}`}
-      value={uploadPeriodEnd}
-      onChange={(e) => {
-        setUploadPeriodEnd(e.target.value);
-        setIsDirty(true);
-        clearFieldError("uploadPeriodEnd");
-      }}
-      disabled={status !== "posted"}
-      placeholder={status !== "posted" ? "Pick 'Post' to enable" : ""}
-    />
-  </div>
+{/* Status Dropdown */}
+<div className="flex-1">
+      <label htmlFor="status" className="font-bold">
+                                    Status
+      </label>
+      <select
+                                    id="status"
+                                    className="w-full px-4 py-3 border-2 border-black rounded-2xl text-base md:text-lg outline-none"
+                                    name="status"
+                                    value={status}
+                                    onChange={(e) => {
+                                        setStatus(e.target.value);
+                                        setIsDirty(true);
+                                    }}
+                                >
+                                    <option value="pending">Pending</option>
+                                    <option value="schedule">Schedule</option>
+                                    <option value="post">Post</option>
+                                    <option value="draft">Draft</option>
+      </select>
 </div>
+
+      {/* Conditional rendering for scheduled posts */}
+      {status === 'schedule' && (
+        <>
+            {/* Start Date Input */}
+            <div className="flex-1">
+                                        <label htmlFor="uploadPeriodStart" className={`font-bold`}>
+                                            Start Date
+                                        </label>
+                                        <input
+                                            id="uploadPeriodStart"
+                                            type="datetime-local"
+                                            className={`w-full px-4 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 ${
+                                                errors.uploadPeriodStart ? "border-red-600" : "border-black"
+                                            }`}
+                                            value={uploadPeriodStart}
+                                            onChange={(e) => {
+                                                setUploadPeriodStart(e.target.value);
+                                                setIsDirty(true);
+                                                clearFieldError("uploadPeriodStart");
+                                            }}
+                                        />
+            </div>
+
+            {/* End Date Input */}
+            <div className="flex-1">
+                <label htmlFor="uploadPeriodEnd" className={`font-bold`}>
+                                            End Date
+                </label>
+                <input
+                    id="uploadPeriodEnd"
+                      type="datetime-local"
+                      className={`w-full px-4 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 ${
+                          errors.uploadPeriodEnd ? "border-red-600" : "border-black"
+                      }`}
+                      value={uploadPeriodEnd}
+                      onChange={(e) => {
+                          setUploadPeriodEnd(e.target.value);
+                          setIsDirty(true);
+                          clearFieldError("uploadPeriodEnd");
+                      }}
+                    min={uploadPeriodStart}
+                />
+            </div>
+        </>
+      )}
 
 {/* Thumbnail  */}
 <div className="flex flex-col md:flex-row gap-4">
@@ -1269,30 +1285,30 @@ useEffect(() => {
                   </div>
                 </div>
 
-                {/* New Public Caption Field with AI Button */}
-                    <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 border border-gray-200">
-                        <div className="flex justify-between items-center mb-2">
-                            <label htmlFor="caption" className="text-xl font-bold text-gray-800">
-                                Publicly Displayed Caption
-                            </label>
-                            <button
-                                type="button"
-                                onClick={handleGenerateCaption}
-                                disabled={isGeneratingCaption || !editor?.getText()?.trim()}
-                                className="px-4 py-2 bg-purple-600 text-white font-semibold rounded-lg shadow-md hover:bg-purple-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
-                            >
-                                {isGeneratingCaption ? 'Generating...' : 'Generate with AI'}
-                            </button>
-                        </div>
-                        <textarea
-                            id="caption"
-                            className="w-full h-24 p-3 border-2 border-gray-300 rounded-lg text-base md:text-lg outline-none resize-none focus:border-blue-500 transition-colors"
-                            value={caption}
-                            onChange={(e) => setCaption(e.target.value)}
-                            placeholder="Enter a brief, engaging caption for the article. This will be visible on the homepage."
-                            readOnly={isViewer}
-                        />
-                    </div>
+{/*Caption Field with AI Button */}
+<div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 border border-gray-200">
+    <div className="flex justify-between items-center mb-2">
+        <label htmlFor="caption" className="text-xl font-bold text-gray-800">
+            Publicly Displayed Caption
+        </label>
+        <button
+            type="button"
+            onClick={handleGenerateCaption}
+            disabled={isGeneratingCaption || !editor?.getText()?.trim()}
+            className="px-4 py-2 bg-purple-600 text-white font-semibold rounded-lg shadow-md hover:bg-purple-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+        >
+            {isGeneratingCaption ? 'Generating...' : 'Generate with AI'}
+        </button>
+    </div>
+    <textarea
+        id="caption"
+        className="w-full h-24 p-3 border-2 border-gray-300 rounded-lg text-base md:text-lg outline-none resize-none focus:border-blue-500 transition-colors"
+        value={caption}
+        onChange={(e) => setCaption(e.target.value)}
+        placeholder="Enter a brief, engaging caption for the article. This will be visible on the homepage."
+        readOnly={isViewer}
+    />
+</div>
   {/* Buttons */}
   <div className="flex justify-between">
     <Button

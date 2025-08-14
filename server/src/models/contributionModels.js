@@ -10,59 +10,19 @@ export const Contributors = mainDb.define(
       primaryKey: true,
       autoIncrement: true,
     },
-    first_name: {
-      type: DataTypes.STRING(255),
-      allowNull: false,
-    },
-    last_name: {
-      type: DataTypes.STRING(255),
-      allowNull: false,
-    },
-    age: {
-      type: DataTypes.INTEGER,
-      allowNull: true,
-    },
-    phone_number: {
-      type: DataTypes.STRING(20),
-      allowNull: false,
-    },
-    sex: {
-      type: DataTypes.ENUM('male', 'female', 'other'),
-      allowNull: false,
-    },
-    email: {
-      type: DataTypes.STRING(255),
-      allowNull: false,
-      unique: true,
-    },
-    organization: {
-      type: DataTypes.STRING(255),
-      allowNull: true,
-    },
-    province: {
-      type: DataTypes.STRING(255),
-      allowNull: false,
-    },
-    barangay: {
-      type: DataTypes.STRING(255),
-      allowNull: false,
-    },
-    city: {
-      type: DataTypes.STRING(255),
-      allowNull: false,
-    },
-    street: {
-      type: DataTypes.STRING(255),
-      allowNull: false,
-    },
-    created_at: {
-      type: DataTypes.DATE,
-      defaultValue: DataTypes.NOW,
-    },
-    updated_at: {
-      type: DataTypes.DATE,
-      defaultValue: DataTypes.NOW,
-    },
+    first_name: { type: DataTypes.STRING(255), allowNull: false },
+    last_name: { type: DataTypes.STRING(255), allowNull: false },
+    birth_date: { type: DataTypes.DATE, allowNull: true }, // Updated
+    phone_number: { type: DataTypes.STRING(20), allowNull: false },
+    sex: { type: DataTypes.ENUM("male", "female", "other"), allowNull: false },
+    email: { type: DataTypes.STRING(255), allowNull: false, unique: true },
+    organization: { type: DataTypes.STRING(255), allowNull: true },
+    province: { type: DataTypes.STRING(255), allowNull: false },
+    barangay: { type: DataTypes.STRING(255), allowNull: false },
+    city: { type: DataTypes.STRING(255), allowNull: false },
+    street: { type: DataTypes.STRING(255), allowNull: false },
+    created_at: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
+    updated_at: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
   },
   {
     tableName: "Contributors",
@@ -84,31 +44,19 @@ export const Contributions = mainDb.define(
     contributor_id: {
       type: DataTypes.INTEGER,
       allowNull: false,
-      references: {
-        model: Contributors,
-        key: 'contributor_id',
-      },
+      references: { model: Contributors, key: "contributor_id" },
     },
     contribution_type: {
-      type: DataTypes.ENUM('lending', 'donation'),
+      type: DataTypes.ENUM("lending", "donation"),
       allowNull: false,
     },
-    submission_date: {
-      type: DataTypes.DATE,
-      defaultValue: DataTypes.NOW,
-    },
+    submission_date: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
     status: {
-      type: DataTypes.ENUM('pending', 'approved', 'rejected'),
-      defaultValue: 'pending',
+      type: DataTypes.ENUM("pending", "approved", "rejected"),
+      defaultValue: "pending",
     },
-    created_at: {
-      type: DataTypes.DATE,
-      defaultValue: DataTypes.NOW,
-    },
-    updated_at: {
-      type: DataTypes.DATE,
-      defaultValue: DataTypes.NOW,
-    },
+    created_at: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
+    updated_at: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
   },
   {
     tableName: "Contributions",
@@ -131,35 +79,15 @@ export const LendingDetails = mainDb.define(
       type: DataTypes.INTEGER,
       allowNull: false,
       unique: true,
-      references: {
-        model: Contributions,
-        key: 'contribution_id',
-      },
+      references: { model: Contributions, key: "contribution_id" },
     },
-    duration: {
-      type: DataTypes.STRING(255),
-      allowNull: false,
-    },
-    display_handling_condition: {
-      type: DataTypes.TEXT,
-      allowNull: false,
-    },
-    liability_concerns: {
-      type: DataTypes.TEXT,
-      allowNull: false,
-    },
-    lending_reason: {
-      type: DataTypes.TEXT,
-      allowNull: false,
-    },
-    created_at: {
-      type: DataTypes.DATE,
-      defaultValue: DataTypes.NOW,
-    },
-    updated_at: {
-      type: DataTypes.DATE,
-      defaultValue: DataTypes.NOW,
-    },
+    duration_from: { type: DataTypes.DATE, allowNull: true },
+    duration_to: { type: DataTypes.DATE, allowNull: true },
+    lend_conditions: { type: DataTypes.TEXT, allowNull: false },
+    lend_liabilities: { type: DataTypes.TEXT, allowNull: false },
+    lending_reason: { type: DataTypes.TEXT, allowNull: false },
+    created_at: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
+    updated_at: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
   },
   {
     tableName: "LendingDetails",
@@ -182,69 +110,45 @@ export const ContributionArtifacts = mainDb.define(
       type: DataTypes.INTEGER,
       allowNull: false,
       unique: true,
-      references: {
-        model: Contributions,
-        key: 'contribution_id',
-      },
+      references: { model: Contributions, key: "contribution_id" },
     },
-    title: {
-      type: DataTypes.STRING(255),
-      allowNull: false,
-    },
-    description: {
-      type: DataTypes.TEXT,
-      allowNull: false,
-    },
-    acquisition_details: {
-      type: DataTypes.TEXT,
-      allowNull: false,
-    },
-    other_info: {
-      type: DataTypes.TEXT,
-      allowNull: true,
-    },
-    narrative_story: {
-      type: DataTypes.TEXT,
-      allowNull: true,
-    },
+    title: { type: DataTypes.STRING(255), allowNull: false },
+    description: { type: DataTypes.TEXT, allowNull: false },
+    acquisition_details: { type: DataTypes.TEXT, allowNull: false },
+    additional_info: { type: DataTypes.TEXT, allowNull: true }, // updated
+    narrative: { type: DataTypes.TEXT, allowNull: true }, // updated
     images: {
       type: DataTypes.TEXT,
       allowNull: true,
-      comment: 'JSON array of image filenames',
+      comment: "JSON array of image filenames",
     },
     documents: {
       type: DataTypes.TEXT,
       allowNull: true,
-      comment: 'JSON array of document filenames',
+      comment: "JSON array of document filenames",
     },
     related_images: {
       type: DataTypes.TEXT,
       allowNull: true,
-      comment: 'JSON array of related image filenames',
+      comment: "JSON array of related image filenames",
     },
     image_urls: {
       type: DataTypes.TEXT,
       allowNull: true,
-      comment: 'JSON array of image URLs (optional)',
+      comment: "JSON array of image URLs",
     },
     document_urls: {
       type: DataTypes.TEXT,
       allowNull: true,
-      comment: 'JSON array of document URLs (optional)',
+      comment: "JSON array of document URLs",
     },
     related_image_urls: {
       type: DataTypes.TEXT,
       allowNull: true,
-      comment: 'JSON array of related image URLs (optional)',
+      comment: "JSON array of related image URLs",
     },
-    created_at: {
-      type: DataTypes.DATE,
-      defaultValue: DataTypes.NOW,
-    },
-    updated_at: {
-      type: DataTypes.DATE,
-      defaultValue: DataTypes.NOW,
-    },
+    created_at: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
+    updated_at: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
   },
   {
     tableName: "ContributionArtifacts",
@@ -254,32 +158,25 @@ export const ContributionArtifacts = mainDb.define(
   }
 );
 
-// Define associations
+// Associations
 Contributors.hasMany(Contributions, {
-  foreignKey: 'contributor_id',
-  onDelete: 'CASCADE',
+  foreignKey: "contributor_id",
+  onDelete: "CASCADE",
 });
-
-Contributions.belongsTo(Contributors, {
-  foreignKey: 'contributor_id',
-});
+Contributions.belongsTo(Contributors, { foreignKey: "contributor_id" });
 
 Contributions.hasOne(LendingDetails, {
-  foreignKey: 'contribution_id',
-  onDelete: 'CASCADE',
+  foreignKey: "contribution_id",
+  onDelete: "CASCADE",
 });
-
-LendingDetails.belongsTo(Contributions, {
-  foreignKey: 'contribution_id',
-});
+LendingDetails.belongsTo(Contributions, { foreignKey: "contribution_id" });
 
 Contributions.hasOne(ContributionArtifacts, {
-  foreignKey: 'contribution_id',
-  onDelete: 'CASCADE',
+  foreignKey: "contribution_id",
+  onDelete: "CASCADE",
 });
-
 ContributionArtifacts.belongsTo(Contributions, {
-  foreignKey: 'contribution_id',
+  foreignKey: "contribution_id",
 });
 
 export default {

@@ -1,13 +1,34 @@
-import { Contributors, Contributions, LendingDetails, ContributionArtifacts } from "../models/contributionModels.js";
-import { Op } from "sequelize";
+import {
+  Contributors,
+  Contributions,
+  LendingDetails,
+  ContributionArtifacts,
+} from "../models/contributionModels.js";
+import { requireCaptchaVerification } from "../services/captchaService.js";
+
+// Helper to parse JSON fields
+const parseArtifactFiles = (artifact) => {
+  if (!artifact) return null;
+  return {
+    ...artifact.dataValues,
+    images: JSON.parse(artifact.images || "[]"),
+    documents: JSON.parse(artifact.documents || "[]"),
+    related_images: JSON.parse(artifact.related_images || "[]"),
+    image_urls: JSON.parse(artifact.image_urls || "[]"),
+    document_urls: JSON.parse(artifact.document_urls || "[]"),
+    related_image_urls: JSON.parse(artifact.related_image_urls || "[]"),
+  };
+};
+
+// ---------------- Contribution CRUD ----------------
 
 export const createContribution = async (req, res) => {
   try {
     const {
       firstName,
       lastName,
-      age,
-      phone,
+      birthDate,
+      contact,
       sex,
       email,
       organization,
@@ -15,33 +36,52 @@ export const createContribution = async (req, res) => {
       city,
       barangay,
       street,
-      contributionType,
-      duration,
-      displayHandlingCondition,
-      liabilityConcerns,
+      type,
+      lendDuration,
+      lendConditions,
+      lendLiabilities,
       lendingReason,
-      title,
-      description,
-      acquisition,
-      otherInfo,
-      moreInfo,
-      imageFiles,
-      documentFiles,
-      relatedImageFiles,
+      artifactTitle,
+      artifactDescription,
+      acquisitionDetails,
+      additionalInfo,
+      narrative,
+      artifactImages,
+      artifactDocuments,
+      artifactRelatedImages,
       imageUrls,
       documentUrls,
       relatedImageUrls,
+      captchaToken,
+      category,
     } = req.body;
 
-    // Check if contributor already exists by email
-    let contributor = await Contributors.findOne({ where: { email } });
+    // PRIVATE category check: either logged-in user OR captcha verified
+    if (
+      category === "private" &&
+      !req.session?.user &&
+      !req.session?.captchaVerified
+    ) {
+      try {
+        if (!captchaToken) {
+          return res
+            .status(400)
+            .json({ message: "Captcha token required for private submission" });
+        }
+        await requireCaptchaVerification(req, captchaToken);
+      } catch (err) {
+        return res.status(400).json({ message: "Captcha verification failed" });
+      }
+    }
 
+    // Find or create contributor
+    let contributor = await Contributors.findOne({ where: { email } });
     if (!contributor) {
       contributor = await Contributors.create({
         first_name: firstName,
         last_name: lastName,
-        age,
-        phone_number: phone,
+        birth_date: birthDate,
+        phone_number: contact,
         sex,
         email,
         organization,
@@ -52,38 +92,36 @@ export const createContribution = async (req, res) => {
       });
     }
 
-    // Create contribution record
     const contribution = await Contributions.create({
       contributor_id: contributor.contributor_id,
-      contribution_type: contributionType,
+      contribution_type: type,
       status: "pending",
     });
 
-    // If lending, create lending details
-    if (contributionType === "lending") {
+    if (type === "lending") {
       await LendingDetails.create({
         contribution_id: contribution.contribution_id,
-        duration,
-        display_handling_condition: displayHandlingCondition,
-        liability_concerns: liabilityConcerns,
+        duration_from: lendDuration?.from || null,
+        duration_to: lendDuration?.to || null,
+        lend_conditions: lendConditions,
+        lend_liabilities: lendLiabilities,
         lending_reason: lendingReason,
       });
     }
 
-    // Create artifact record
     await ContributionArtifacts.create({
       contribution_id: contribution.contribution_id,
-      title,
-      description,
-      acquisition_details: acquisition,
-      other_info: otherInfo,
-      narrative_story: moreInfo,
-      images: JSON.stringify(imageFiles || []),
-      documents: JSON.stringify(documentFiles || []),
-      related_images: JSON.stringify(relatedImageFiles || []),
-      image_urls: JSON.stringify(imageUrls ? [imageUrls] : []),
-      document_urls: JSON.stringify(documentUrls ? [documentUrls] : []),
-      related_image_urls: JSON.stringify(relatedImageUrls ? [relatedImageUrls] : []),
+      title: artifactTitle,
+      description: artifactDescription,
+      acquisition_details: acquisitionDetails,
+      other_info: additionalInfo,
+      narrative_story: narrative,
+      images: JSON.stringify(artifactImages || []),
+      documents: JSON.stringify(artifactDocuments || []),
+      related_images: JSON.stringify(artifactRelatedImages || []),
+      image_urls: JSON.stringify(imageUrls || []),
+      document_urls: JSON.stringify(documentUrls || []),
+      related_image_urls: JSON.stringify(relatedImageUrls || []),
     });
 
     return res.status(201).json({
@@ -92,8 +130,18 @@ export const createContribution = async (req, res) => {
       status: contribution.status,
     });
   } catch (error) {
-    console.error("Error creating contribution:", error);
+    console.error(error);
     return res.status(500).json({ message: "Server error creating contribution." });
+  }
+};
+
+export const uploadContributionFiles = async (req, res) => {
+  try {
+    const files = req.files.map((file) => file.filename);
+    return res.status(200).json({ message: "Files uploaded successfully", files });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server error uploading files", error: err.message });
   }
 };
 
@@ -101,22 +149,21 @@ export const getAllContributions = async (req, res) => {
   try {
     const contributions = await Contributions.findAll({
       include: [
-        {
-          model: Contributors,
-          attributes: ["first_name", "last_name", "email"],
-        },
-        {
-          model: LendingDetails,
-        },
-        {
-          model: ContributionArtifacts,
-        },
+        { model: Contributors, attributes: ["first_name", "last_name", "email"] },
+        { model: LendingDetails },
+        { model: ContributionArtifacts },
       ],
       order: [["created_at", "DESC"]],
     });
-    return res.json(contributions);
+
+    const parsed = contributions.map((c) => ({
+      ...c.dataValues,
+      ContributionArtifact: parseArtifactFiles(c.ContributionArtifact),
+    }));
+
+    return res.json(parsed);
   } catch (error) {
-    console.error("Error fetching contributions:", error);
+    console.error(error);
     return res.status(500).json({ message: "Server error retrieving contributions." });
   }
 };
@@ -127,27 +174,21 @@ export const getContributionById = async (req, res) => {
     const contribution = await Contributions.findOne({
       where: { contribution_id: id },
       include: [
-        {
-          model: Contributors,
-          attributes: ["first_name", "last_name", "email", "phone_number"],
-        },
-        {
-          model: LendingDetails,
-        },
-        {
-          model: ContributionArtifacts,
-        },
+        { model: Contributors, attributes: ["first_name", "last_name", "email", "phone_number"] },
+        { model: LendingDetails },
+        { model: ContributionArtifacts },
       ],
     });
 
-    if (!contribution) {
-      return res.status(404).json({ message: "Contribution not found." });
-    }
+    if (!contribution) return res.status(404).json({ message: "Contribution not found" });
 
-    return res.json(contribution);
-  } catch (error) {
-    console.error("Error fetching contribution by ID:", error);
-    return res.status(500).json({ message: "Server error retrieving contribution." });
+    return res.json({
+      ...contribution.dataValues,
+      ContributionArtifact: parseArtifactFiles(contribution.ContributionArtifact),
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server error retrieving contribution" });
   }
 };
 
@@ -157,27 +198,21 @@ export const updateContributionStatus = async (req, res) => {
     const { status } = req.body;
 
     const validStatuses = ["pending", "approved", "rejected"];
-    if (!validStatuses.includes(status)) {
-      return res.status(400).json({ message: "Invalid status value." });
-    }
+    if (!validStatuses.includes(status))
+      return res.status(400).json({ message: "Invalid status" });
 
     const [updatedCount] = await Contributions.update(
       { status, updated_at: new Date() },
       { where: { contribution_id: id } }
     );
-
-    if (updatedCount === 0) {
-      return res.status(404).json({ message: "Contribution not found or no changes made." });
-    }
+    if (updatedCount === 0)
+      return res.status(404).json({ message: "Contribution not found or no changes made" });
 
     const updatedContribution = await Contributions.findOne({ where: { contribution_id: id } });
-    return res.status(200).json({
-      message: "Contribution status updated successfully",
-      contribution: updatedContribution,
-    });
-  } catch (error) {
-    console.error("Error updating contribution status:", error);
-    return res.status(500).json({ message: "Server error updating contribution status." });
+    return res.json({ message: "Status updated successfully", contribution: updatedContribution });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server error updating status" });
   }
 };
 
@@ -189,22 +224,8 @@ export const getContributionStats = async (req, res) => {
     const rejected = await Contributions.count({ where: { status: "rejected" } });
 
     return res.json({ total, pending, approved, rejected });
-  } catch (error) {
-    console.error("Error fetching contribution stats:", error);
-    return res.status(500).json({ message: "Server error retrieving contribution stats." });
-  }
-};
-
-export const uploadContributionFiles = async (req, res) => {
-  try {
-    // req.files is an array of files
-    const files = req.files.map((file) => file.filename);
-    return res.status(200).json({
-      message: 'Contribution files uploaded successfully',
-      files,
-    });
-  } catch (error) {
-    console.error('Error uploading contribution files:', error.message);
-    return res.status(500).json({ message: 'Server Error', error: error.message });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server error retrieving stats" });
   }
 };

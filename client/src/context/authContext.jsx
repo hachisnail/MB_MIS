@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useRef } from "react";
 import axiosClient from "@/lib/axiosClient";
 import SocketClient from "@/lib/socketClient";
+import { getSocketClient } from "@/lib/socketSingleton";
 
 const AuthContext = createContext(null);
 
@@ -41,41 +42,31 @@ export function AuthProvider({ children }) {
     }
   };
 
-  const initializeSocket = (userId = null) => {
-    if (socketRef.current) {
-      socketRef.current.leaveAllRooms?.();
-      socketRef.current.disconnect();
-      socketRef.current = null;
-    }
+const initializeSocket = (userId = null) => {
+  const socketClient = getSocketClient();
+  socketRef.current = socketClient;
 
-    const socketClient = new SocketClient(import.meta.env.VITE_SERVER_URL);
-    socketRef.current = socketClient;
+  if (!socketClient.hasInitialized) {
+    socketClient.hasInitialized = true;
 
     socketClient.onReady(() => {
       socketClient.registerUser(userId);
       if (isMountedRef.current) setSocketReady(true);
     });
 
-    socketClient.onForceLogout(async (data) => {
+    socketClient.onForceLogout((data) => {
       setForcedLogoutReason(data.reason || "You have been logged out.");
-
-      if (socketRef.current) {
-        socketRef.current.leaveAllRooms?.();
-        socketRef.current.disconnect();
-        socketRef.current = null;
-      }
-
-      if (isMountedRef.current) {
-        setSocketReady(false);
-        safeSetUser(null);
-      }
-
+      safeSetUser(null);
+      setSocketReady(false);
       localStorage.setItem("logout-event", Date.now());
-
-      console.log("[Socket] Forced logout. Reinitializing as guest...");
-      initializeSocket(null); // guest mode
+      console.log("[Socket] Forced logout. Switching to guest mode...");
+      socketClient.registerUser(null); // guest mode
     });
-  };
+  } else {
+    // Just re-register user without creating new listeners
+    socketClient.registerUser(userId);
+  }
+};
 
   // useEffect(() => {
   //   initializeSocket();

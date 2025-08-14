@@ -23,10 +23,8 @@ const storage = multer.diskStorage({
       if (!VALID_CATEGORIES.includes(category))
         return cb(new Error("Invalid category"), null);
 
-      // Handle private subcategories
       let subDir = "";
       if (category === "private") {
-        // Only logged in users or captcha-verified users
         if (!req.session?.user) {
           const token = req.body.captchaToken;
           if (!token)
@@ -41,7 +39,7 @@ const storage = multer.diskStorage({
             return cb(new Error("Captcha verification failed"), null);
           }
         }
-        subDir = getFileCategory(file.mimetype); // private/pictures or private/files
+        subDir = getFileCategory(file.mimetype); 
       }
 
       const dir = path.join(UPLOAD_BASE_DIR, category, subDir);

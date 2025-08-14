@@ -1,7 +1,7 @@
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   DateInput,
   FormInput,
@@ -33,7 +33,14 @@ const schema = yup.object({
   street: yup.string().nullable(),
 });
 
-const DonorsStep = ({ initialData, onNext, onBack, setFormData }) => {
+const DonorsStep = ({
+  initialData,
+  onNext,
+  onBack,
+  setFormData,
+  onClearForm,
+}) => {
+  const [isDirty, setIsDirty] = useState(false);
   const {
     register,
     handleSubmit,
@@ -61,7 +68,6 @@ const DonorsStep = ({ initialData, onNext, onBack, setFormData }) => {
   const watchProvince = watch("province");
   const watchCity = watch("city");
 
-  // Sync form values with address logic
   useEffect(() => {
     if (watchProvince) {
       const prov = provinces.find((p) => p.name === watchProvince);
@@ -76,24 +82,23 @@ const DonorsStep = ({ initialData, onNext, onBack, setFormData }) => {
     }
   }, [watchCity, cities]);
 
-useEffect(() => {
-  const subscription = watch((values) => {
-    // Only update formData if there’s a difference
-    setFormData((prev) => {
-      let changed = false;
-      const updated = { ...prev };
-      for (const key in values) {
-        if (values[key] !== prev[key]) {
-          updated[key] = values[key];
-          changed = true;
+  useEffect(() => {
+    const subscription = watch((values) => {
+      setFormData((prev) => {
+        let changed = false;
+        const updated = { ...prev };
+        for (const key in values) {
+          if (values[key] !== prev[key]) {
+            updated[key] = values[key];
+            changed = true;
+            setIsDirty(true);
+          }
         }
-      }
-      return changed ? updated : prev;
+        return changed ? updated : prev;
+      });
     });
-  });
-  return () => subscription.unsubscribe();
-}, [watch, setFormData]);
-
+    return () => subscription.unsubscribe();
+  }, [watch, setFormData]);
 
   return (
     <div className="w-[85rem] h-fit ">
@@ -139,10 +144,10 @@ useEffect(() => {
                     name="birthDate"
                     mode="single"
                     placeholder="Select your birthdate"
-                    maxDate={new Date()} 
+                    maxDate={new Date()}
                     minDate={new Date(1900, 0, 1)}
                     defaultMonth={new Date()}
-                    error={errors.birthDate} 
+                    error={errors.birthDate}
                     className="w-[26rem]"
                   />
                 </div>
@@ -214,20 +219,28 @@ useEffect(() => {
 
             {/* Address */}
             <div className="w-full h-fit flex">
-              <label className="min-w-40 text-2xl font-semibold">Province</label>
+              <label className="min-w-40 text-2xl font-semibold">
+                Province
+              </label>
               <div className="w-full h-fit flex justify-between">
                 <DropdownInput
                   control={control}
                   name="province"
                   className="w-[32rem]"
-                  options={provinces.map((p) => ({ value: p.name, label: p.name }))}
+                  options={provinces.map((p) => ({
+                    value: p.name,
+                    label: p.name,
+                  }))}
                   error={errors.province}
                 />
                 <DropdownInput
                   control={control}
                   name="city"
                   className="w-[32rem]"
-                  options={cities.map((c) => ({ value: c.name, label: c.name }))}
+                  options={cities.map((c) => ({
+                    value: c.name,
+                    label: c.name,
+                  }))}
                   error={errors.city}
                   disabled={!selectedProvince}
                 />
@@ -235,12 +248,17 @@ useEffect(() => {
             </div>
 
             <div className="w-full h-fit flex">
-              <label className="min-w-40 text-2xl font-semibold">Barangay</label>
+              <label className="min-w-40 text-2xl font-semibold">
+                Barangay
+              </label>
               <div className="w-full h-fit flex justify-between">
                 <DropdownInput
                   control={control}
                   name="barangay"
-                  options={barangays.map((b) => ({ value: b.name, label: b.name }))}
+                  options={barangays.map((b) => ({
+                    value: b.name,
+                    label: b.name,
+                  }))}
                   error={errors.barangay}
                   disabled={!selectedCity}
                   className="w-[32rem]"
@@ -266,12 +284,23 @@ useEffect(() => {
           >
             Previous
           </button>
-          <button
-            type="submit"
-            className="w-44 h-15 rounded-md bg-black text-white text-2xl hover:bg-gray-800"
-          >
-            Next
-          </button>
+          <div className="w-fit h-fit flex gap-x-5">
+            {isDirty && (
+            <button
+              type="button"
+              onClick={() => {onClearForm() }}
+              className=" w-40 hover:bg-black rounded-md text-2xl bg-gray-900 text-white"
+            >
+              Clear Form
+            </button>
+          )}
+            <button
+              type="submit"
+              className="w-44 h-15 rounded-md bg-black text-white text-2xl hover:bg-gray-800"
+            >
+              Next
+            </button>
+          </div>
         </div>
       </form>
     </div>

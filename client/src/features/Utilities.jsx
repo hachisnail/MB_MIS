@@ -620,8 +620,8 @@ export function SummaryPanel({
 
 export function ImageCarousel({
   images = [],
-  thumbnailSize = "w-32 h-32",
-  mainSize = "w-[35rem] h-[35rem]",
+  thumbnailSize = "w-29 h-29",
+  mainSize = "w-[32rem] h-[32rem]",
 }) {
   const [currentIndex, setCurrentIndex] = useState(0);
 

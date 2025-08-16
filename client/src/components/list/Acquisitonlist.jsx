@@ -63,7 +63,7 @@ export function RenderRelatedDocs({ relatedImages = [], attachedFiles = [] }) {
     <div
       className={`w-full h-full flex flex-col items-center ${
         isLending ? "justify-center" : "justify-start"
-      }  gap-y-10`}
+      }  gap-y-5`}
     >
       {/* Images Section */}
       <div className="w-full p-5 rounded-lg border border-gray-400 flex flex-col">

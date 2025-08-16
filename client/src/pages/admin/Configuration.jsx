@@ -243,7 +243,7 @@ const Configuration = () => {
     <>
       <div className="w-full min-w-fit h-full  1xl:max-h-[69rem] 2xl:max-h-[81rem] 3xl:max-h-[88rem]">
         <div className="w-full h-full justify-center gap-x-5   flex  gap-y-[2rem]">
-          <div className="w-[82rem] flex flex-col justify-between space-y-5 h-full ">
+          <div className="w-[82rem] flex flex-col justify-between space-y-1 h-full ">
             <div className="h-15 border border-[#373737] flex items-center justify-center">
               <span className="text-xl">
                 Some Buttons for editong about and other misc.
@@ -386,7 +386,7 @@ const Configuration = () => {
             <TableHeaderContainer headers={logHeaders} theme="dark" className="w-full" />
 
 
-            <div className="w-full h-[58rem] overflow-y-scroll border-y border-gray-700">
+            <div className="w-full h-[52rem] overflow-y-scroll border-y border-gray-700">
               <div className="relative w-full h-full">
                 {/* Overlayed Spinner */}
                 {logsLoading && (

@@ -250,7 +250,7 @@ const AcquisitionViewPage = () => {
                 value={messageReply}
                 onChange={(v) => setMessageReply(v)}
                 placeholder="Write something..."
-                rows={32}
+                rows={29}
                 maxLength={500}
                 autosize
                 showCount

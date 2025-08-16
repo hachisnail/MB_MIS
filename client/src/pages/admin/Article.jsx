@@ -257,7 +257,7 @@ const ArticleForm = () => {
           </div>
           <div className="w-full h-full flex flex-col">
             <TableHeaderContainer headers={headersMap[activeTab]} />
-            <div className="w-full h-[55rem] 3xl:h-[67rem] overflow-y-auto border-y border-gray-400">
+            <div className="w-full h-[52rem] 3xl:h-[67rem] overflow-y-auto border-y border-gray-400">
               {activeTab === "forms" && (
                 <>
                   {loading ? (

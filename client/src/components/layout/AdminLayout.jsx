@@ -21,9 +21,18 @@ const AdminLayout = () => {
     matchPath({ path, end: true }, location.pathname)
   );
 
+  const itemRoutes = [
+    "/admin/acquisition/lending/*",
+    "/admin/acquisition/donation/*",
+    "/admin/invemtory/*",
+  ];
+
+  const isItemView = itemRoutes.some((path) =>
+    matchPath({ path }, location.pathname)
+  );
+
   const theme = matchedTheme?.theme || "";
   const isDashboard = location.pathname === "/admin/dashboard";
-  const isPreview = location.pathname.includes("/preview/");
   const isUnauthorized = location.pathname.includes("/unauthorized");
 
   return (
@@ -63,7 +72,9 @@ const AdminLayout = () => {
 
       {/* Main content */}
       <main
-        className={`col-span-4 row-span-3 col-start-2 row-start-3 h-full w-full overflow-auto ${theme} pb-5 px-15`}
+        className={`col-span-4 row-span-3 col-start-2 row-start-3 h-full w-full overflow-auto ${theme} pb-5 ${
+          isItemView ? "pl-15 pr-0" : " px-15"
+        } `}
       >
         <Outlet />
       </main>

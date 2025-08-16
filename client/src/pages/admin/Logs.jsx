@@ -200,7 +200,7 @@ const Logs = () => {
             )}
           </div> */}
 
-          <div className="w-full h-[57rem]  border-t-1 border-gray-600 flex flex-col overflow-scroll">
+          <div className="w-full h-[52rem]  border-y-1 border-gray-600 flex flex-col overflow-scroll">
             <div className="relative w-full h-full">
               {/* Overlayed Spinner */}
               {isLoading && (

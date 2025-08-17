@@ -1,6 +1,6 @@
+// AuthProvider.jsx
 import { createContext, useContext, useState, useEffect, useRef } from "react";
 import axiosClient from "@/lib/axiosClient";
-import SocketClient from "@/lib/socketClient";
 import { getSocketClient } from "@/lib/socketSingleton";
 
 const AuthContext = createContext(null);
@@ -33,83 +33,72 @@ export function AuthProvider({ children }) {
     try {
       const res = await axiosClient.get("/auth/me");
       safeSetUser(res.data.user);
-      // console.log("[Auth] Logged in user fetched:");
       return res.data.user;
     } catch {
-      // console.log("[Auth] No authenticated user. Guest mode.");
       safeSetUser(null);
       return null;
     }
   };
 
-const initializeSocket = (userId = null) => {
+  const initializeSocket = (userId = null) => {
+    const socketClient = getSocketClient();
+    socketRef.current = socketClient;
+    socketClient.registerUser(userId); // just register/re-register the user
+  };
+
+useEffect(() => {
   const socketClient = getSocketClient();
   socketRef.current = socketClient;
 
-  if (!socketClient.hasInitialized) {
-    socketClient.hasInitialized = true;
-
-    socketClient.onReady(() => {
-      socketClient.registerUser(userId);
-      if (isMountedRef.current) setSocketReady(true);
-    });
-
-    socketClient.onForceLogout((data) => {
-      setForcedLogoutReason(data.reason || "You have been logged out.");
-      safeSetUser(null);
-      setSocketReady(false);
-      localStorage.setItem("logout-event", Date.now());
-      console.log("[Socket] Forced logout. Switching to guest mode...");
-      socketClient.registerUser(null); // guest mode
-    });
-  } else {
-    // Just re-register user without creating new listeners
-    socketClient.registerUser(userId);
-  }
-};
-
-  // useEffect(() => {
-  //   initializeSocket();
-
-  //   const init = async () => {
-  //     const currentUser = await fetchCurrentUser();
-  //     if (currentUser?.id) {
-  //       socketRef.current?.registerUser(currentUser.id);
-  //     }
-  //   };
-
-  //   init();
-  // }, []);
-
-  useEffect(() => {
-  const init = async () => {
-    const currentUser = await fetchCurrentUser();
-
-    if (currentUser?.id) {
-      console.log("[Init] Logged in user detected:", currentUser.id);
-      initializeSocket(currentUser.id);
-    } else {
-      console.log("[Init] No user, registering guest");
-      initializeSocket(null); 
-    }
+  const handleReady = () => {
+    if (isMountedRef.current) setSocketReady(true);
   };
 
-  init();
+  const handleForceLogout = (data) => {
+    setForcedLogoutReason(data.reason || "You have been logged out.");
+    safeSetUser(null);
+    setSocketReady(false);
+    localStorage.setItem("logout-event", Date.now());
+    console.log("[Socket] Forced logout. Switching to guest mode...");
+    socketClient.registerUser(null); // fallback to guest mode
+  };
+
+  socketClient.onReady(handleReady);
+  socketClient.onForceLogout(handleForceLogout);
+
+  return () => {
+    socketClient.offReady(handleReady);
+    socketClient.offForceLogout(handleForceLogout);
+  };
 }, []);
 
+
+  // On mount, check if user exists and init socket
+  useEffect(() => {
+    const init = async () => {
+      const currentUser = await fetchCurrentUser();
+
+      if (currentUser?.id) {
+        console.log("[Init] Logged in user detected:", currentUser.id);
+        initializeSocket(currentUser.id);
+      } else {
+        console.log("[Init] No user, registering guest");
+        initializeSocket(null);
+      }
+    };
+
+    init();
+  }, []);
 
   const login = async (credentials) => {
     setLoading(true);
     try {
-      const res = await axiosClient.post("/auth/login", credentials);
+      await axiosClient.post("/auth/login", credentials);
       const loggedInUser = await fetchCurrentUser();
 
       if (loggedInUser?.id) {
         socketRef.current?.registerUser(loggedInUser.id);
-        console.log(
-          "[Auth] User logged in:",
-          loggedInUser.username || loggedInUser.id
-        );
+        console.log("[Auth] User logged in:", loggedInUser.username || loggedInUser.id);
       }
 
       return { success: true, user: loggedInUser };
@@ -141,15 +130,8 @@ const initializeSocket = (userId = null) => {
 
       if (isMountedRef.current) setSocketReady(false);
 
-      if (skipServer) {
-        console.log("[Auth] Skipped server logout. Reinitializing as guest...");
-        initializeSocket(null);
-      } else {
-        console.log(
-          "[Auth] Logged out successfully. Reinitializing as guest..."
-        );
-        initializeSocket(null);
-      }
+      console.log("[Auth] Logged out successfully. Reinitializing as guest...");
+      initializeSocket(null);
     }
   };
 

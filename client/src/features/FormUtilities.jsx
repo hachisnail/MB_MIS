@@ -11,6 +11,9 @@ import {
   Transition,
 } from "@headlessui/react";
 
+
+
+// public forms
 export const DateInput = ({
   control,
   name,
@@ -465,3 +468,42 @@ const handleFiles = useCallback(
     </div>
   );
 }
+
+
+
+
+
+
+
+// 
+// components/form/FormField.jsx
+export const FormField = ({
+  id,
+  label,
+  placeholder,
+  type = "text",
+  register,
+  error = "",
+  disabled,
+}) => {
+  return (
+    <div className="flex flex-col gap-y-2">
+      <label htmlFor={id} className="text-xl font-semibold">
+        {label}
+      </label>
+      <input
+        id={id}
+        placeholder={placeholder}
+        type={type}
+        disabled={disabled}
+        {...register}
+        className={`border-1 bg-[#242424] border-[#373737] rounded-sm text-2xl px-3 py-2 ${
+          error ? "border-red-500" : ""
+        }`}
+      />
+       <span className="text-red-500 h-6 text-sm">{error.message}</span>
+    </div>
+  );
+};
+
+export default FormField;

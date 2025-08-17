@@ -593,7 +593,7 @@ export function SummaryPanel({
       {button && (
         <button
           onClick={button.onClick}
-          className="justify-between w-[98%] flex px-[2rem] h-[6.25rem] items-center bg-black text-white hover:shadow-md hover:shadow-gray-600 rounded-lg"
+          className="justify-between w-[98%] flex px-[2rem] h-[6.25rem] items-center bg-black text-white hover:shadow-md transition-shadow hover:shadow-gray-600 rounded-lg"
         >
           <span className="text-3xl font-semibold">{button.label}</span>
           <svg

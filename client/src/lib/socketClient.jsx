@@ -1,3 +1,4 @@
+// socketClient.js
 import { io } from "socket.io-client";
 
 class SocketClient {
@@ -14,7 +15,9 @@ class SocketClient {
     this.joinedRooms = new Set();
     this.userId = null;
     this.isGuest = false;
+
     this.readyCallbacks = new Set();
+    this.forceLogoutCallbacks = new Set();
 
     // Health check state
     this.lastPongTime = Date.now();
@@ -53,6 +56,7 @@ class SocketClient {
 
     this.socket.on("forceLogout", (data) => {
       this.handleMessage({ type: "forceLogout", ...data });
+      this.forceLogoutCallbacks.forEach((cb) => cb(data));
     });
 
     this.socket.on("message", (data) => {
@@ -62,7 +66,6 @@ class SocketClient {
     // Health check pong listener
     this.socket.on("pongCheck", (serverTime) => {
       this.lastPongTime = Date.now();
-      // console.log(`[Socket] PongCheck received, server time: ${serverTime}`);
     });
   }
 
@@ -76,25 +79,37 @@ class SocketClient {
         console.warn("[Socket] Not connected, attempting reconnect...");
         this.socket.connect();
       } else {
-        // Ask server for pong
         this.socket.emit("pingCheck");
       }
 
-      // If no pong in last 10s, reconnect
       if (now - this.lastPongTime > this.healthTimeout) {
         console.warn("[Socket] Health check failed — forcing reconnect...");
         this.socket.disconnect();
         this.socket.connect();
       }
-    }, 5000); // every 5 seconds
+    }, 5000);
   }
 
+  // === Ready callbacks ===
   onReady(callback) {
     if (this.socket.connected) {
       callback();
     } else {
       this.readyCallbacks.add(callback);
     }
+  }
+
+  offReady(callback) {
+    this.readyCallbacks.delete(callback);
+  }
+
+  // === Force logout callbacks ===
+  onForceLogout(callback) {
+    this.forceLogoutCallbacks.add(callback);
+  }
+
+  offForceLogout(callback) {
+    this.forceLogoutCallbacks.delete(callback);
   }
 
   registerUser(userId) {
@@ -206,18 +221,7 @@ class SocketClient {
     this.joinedRooms.clear();
   }
 
-  onForceLogout(callback) {
-    if (!this.listeners.has("forceLogout")) {
-      this.listeners.set("forceLogout", new Set());
-    }
-    this.listeners.get("forceLogout").add(callback);
-  }
-
   handleMessage(data) {
-    if (data.type === "forceLogout" && this.listeners.has("forceLogout")) {
-      for (const cb of this.listeners.get("forceLogout")) cb(data);
-    }
-
     if (this.listeners.has("message")) {
       for (const cb of this.listeners.get("message")) {
         cb(data);

@@ -90,7 +90,7 @@ const AdminNav = ({ isOpen }) => {
         </div> */}
         </div>
         <div className="w-full h-full mt-10">
-          <div className="flex-1 w-full  flex flex-col items-center px-3 text-xl gap-y-2 font-semibold">
+          <div className="flex-1 w-full  flex flex-col items-center px-8 text-xl gap-y-2 font-semibold">
             <NavItem
               title="Dashboard"
               to="/admin/dashboard"
@@ -263,7 +263,7 @@ const AdminNav = ({ isOpen }) => {
 
           {user.roleId == "1" ? (
             <>
-              <div className="pt-10 flex-1 w-full mt-4 border-t-1 border-gray-700 flex flex-col items-center px-3 text-xl gap-y-2 font-semibold">
+              <div className="pt-10 flex-1 w-full mt-4 border-t-1 border-gray-700 flex flex-col items-center px-8 text-xl gap-y-2 font-semibold">
                 {flags["user"] && (
                   <NavItem
                     title="User"
@@ -357,7 +357,7 @@ const AdminNav = ({ isOpen }) => {
           ) : null}
         </div>
         {/* Footer */}
-        <div className=" mt-4 w-full flex justify-center px-2">
+        <div className=" mt-4 w-full flex justify-center px-7">
           <LogoutButton isOpen={isOpen} />
         </div>
       </div>

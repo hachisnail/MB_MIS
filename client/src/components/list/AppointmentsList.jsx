@@ -249,7 +249,7 @@ export const AppointmentPreview = ({ appointment, cameFrom = "forms" }) => {
         <span className="text-lg">{formatDate(appointment.creation_date)}</span>
       </div>
 
-      <div className="w-full  h-fit flex flex-col gap-y-3 border-b-1 border-gray-400 pb-10">
+      <div className="w-full  h-fit flex flex-col gap-y-3 border-b-1 border-gray-400 pb-5">
         {appointmentInfo.map(({ icon, Label, Value }) => (
           <div key={Label} className="flex gap-x-2 w-full h-fit">
             <div className="min-w-fit h-fit">{icon}</div>
@@ -283,9 +283,9 @@ export const AppointmentPreview = ({ appointment, cameFrom = "forms" }) => {
 
         </div>
 
-        <div className="w-full mt-7 h-60 rounded-md bg-gray-200 p-5 flex flex-col">
+        <div className="w-full mt-7 h-fit rounded-md bg-gray-200 p-5 flex flex-col">
             <span className="text-xl">Notes:</span>
-            <span className="h-50 overflow-y-auto  text-lg text-[#4E84D4]">
+            <span className="h-37 overflow-y-auto  text-lg text-[#4E84D4]">
                 {appointment.additional_notes}
             </span>
 

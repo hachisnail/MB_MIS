@@ -593,7 +593,7 @@ export function SummaryPanel({
       {button && (
         <button
           onClick={button.onClick}
-          className="justify-between w-[98%] flex px-[2rem] h-[6.25rem] items-center bg-black text-white hover:shadow-md hover:shadow-gray-600 rounded-lg"
+          className="justify-between w-[98%] flex px-[2rem] h-[6.25rem] items-center bg-black text-white hover:shadow-md transition-shadow hover:shadow-gray-600 rounded-lg"
         >
           <span className="text-3xl font-semibold">{button.label}</span>
           <svg
@@ -620,8 +620,8 @@ export function SummaryPanel({
 
 export function ImageCarousel({
   images = [],
-  thumbnailSize = "w-32 h-32",
-  mainSize = "w-[35rem] h-[35rem]",
+  thumbnailSize = "w-29 h-29",
+  mainSize = "w-[32rem] h-[32rem]",
 }) {
   const [currentIndex, setCurrentIndex] = useState(0);
 

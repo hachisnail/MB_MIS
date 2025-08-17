@@ -185,7 +185,7 @@ const Inventory = () => {
                 </div>
               ))}
             </div>
-            <div className="w-full h-[47rem] border-t border-gray-400">
+            <div className="w-full h-[43.7rem] border-y border-gray-400">
               {activeTab === "artifacts" && (
                 <>
                   {/* display list that artifacts records*/}

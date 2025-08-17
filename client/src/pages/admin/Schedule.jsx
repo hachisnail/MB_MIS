@@ -626,7 +626,7 @@ const Schedule = () => {
   };
 
   return (
-    <div className="relative w-full h-full bg-[#F0F0F0] p-3 select-none flex overflow-hidden">
+    <div className="relative w-full h-full p-3 select-none flex overflow-hidden">
       {showAppointmentModal && modalData ? (
         <AppointmentViewPage
           showModal={showAppointmentModal}
@@ -652,7 +652,7 @@ const Schedule = () => {
                 <div className="flex justify-between items-center">
                   <span className="text-2xl font-semibold">{monthLabel}</span>
                 </div>
-                <div className="rounded-xl bg-black p-3 shadow-xl">
+                <div className="rounded-xl bg-black p-3 shadow-md shadow-gray-600">
                   <Calendar
                     onChange={setSelectedDate}
                     value={selectedDate}
@@ -709,7 +709,7 @@ const Schedule = () => {
                   background-color: #6b7280;
                 }
               `}</style>
-              <div className="w-full xl:min-w-[31rem] xl:max-w-[31rem] flex flex-col h-[35rem] bg-white rounded-xl shadow-xl p-5">
+              <div className="w-full xl:min-w-[31rem] xl:max-w-[31rem] flex flex-col h-[35rem] bg-white rounded-xl shadow-md shadow-gray-600 p-5">
                 <span className="text-2xl font-semibold mb-4">Today's Scheduled Tours</span>
                 <div className="w-full border-t border-gray-200 pt-4 space-y-3 h-[calc(100%-1rem)] overflow-y-auto overflow-x-hidden pr-2 custom-scrollbar">
                   {todayTours.length === 0 && (
@@ -776,7 +776,7 @@ const Schedule = () => {
                 </div>
               </div>
 
-              <div className="w-full flex-1 bg-white p-5 rounded-xl shadow-xl overflow-hidden">
+              <div className="w-full flex-1 bg-white p-5 rounded-xl shadow-md shadow-gray-600 overflow-hidden">
                 <DayScheduler
                   appointments={backendEvents}
                   selectedDate={selectedDate}
@@ -788,7 +788,7 @@ const Schedule = () => {
             </div>
 
             <div className="w-full xl:w-[31rem] h-full flex flex-col gap-y-5">
-              <div className="w-full rounded-xl bg-white shadow-xl p-6 flex items-center justify-center gap-x-8 hover:shadow-2xl transition-shadow">
+              <div className="w-full rounded-xl bg-white shadow-md shadow-gray-600 p-6 flex items-center justify-center gap-x-8 ">
                 <div className="bg-gray-100 p-3 rounded-full">
                   <svg
                     className="w-12 h-12 text-[#9590FF]"
@@ -809,7 +809,7 @@ const Schedule = () => {
                 </div>
               </div>
 
-              <div className="w-full max-w-lg mx-auto rounded-2xl bg-white shadow-2xl p-8 space-y-6">
+              <div className="w-full max-w-lg mx-auto rounded-2xl bg-white shadow-md shadow-gray-600 p-8 space-y-6">
                 <div>
                   <span className="text-2xl font-bold block mb-2 text-gray-800">
                     Add a Schedule for
@@ -965,7 +965,7 @@ const Schedule = () => {
                 </div>
               </div>
 
-              <div className="w-full shadow-xl bg-white rounded-xl p-6">
+              <div className="w-full shadow-md shadow-gray-600 bg-white rounded-xl p-6">
                 <h2 className="text-xl font-bold mb-4">Selected Event</h2>
                 {selectedAppointment ? (
                   <>

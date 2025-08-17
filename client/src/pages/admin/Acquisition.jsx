@@ -185,7 +185,7 @@ const Acquisition = () => {
 
             <TableHeaderContainer headers={headersMap[activeTab]} />
 
-            <div className="w-full h-[55rem] 3xl:h-[67rem] border-y border-gray-400">
+            <div className="w-full h-[52rem] 3xl:h-[67rem] border-y border-gray-400">
               {activeTab === "form" && (
                 <>
                   {/* display list that contains forms */}

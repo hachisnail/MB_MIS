@@ -93,7 +93,7 @@ const ViewUser = () => {
 
   return (
     <>
-      <div className="w-full h-full flex 1xl:h-[69rem] 2xl:max-h-[81rem] 3xl:max-h-[88rem]">
+      <div className="w-full h-full flex 1xl:h-[62rem] 2xl:max-h-[81rem] 3xl:max-h-[88rem]">
         <div className="flex flex-col lg:flex-row w-full h-full border-t border-[#373737] pt-5 overflow-scroll">
           <div className="p-1 w-full min-w-fit h-full border-b border-[#373737] flex flex-col pt-4  gap-y-10">
             <BackButton />

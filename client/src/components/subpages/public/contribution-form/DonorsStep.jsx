@@ -146,7 +146,10 @@ const DonorsStep = ({
           <div className="w-full h-full pt-10 flex flex-col justify-between">
             {/* Name */}
             <div className="w-full h-fit flex ">
-              <label className="min-w-40 text-2xl font-semibold">Name</label>
+              <label className="min-w-40 text-2xl font-semibold">
+                Name
+                <span className="text-red-700"> *</span>
+              </label>
               <div className="w-full h-fit flex justify-between">
                 <FormInput
                   placeholder="First Name"
@@ -169,6 +172,7 @@ const DonorsStep = ({
             <div className="w-full h-fit flex">
               <label className="min-w-40 text-2xl font-semibold">
                 Birthdate
+                <span className="text-red-700"> *</span>
               </label>
               <div className="w-full h-fit flex justify-between">
                 <div className="w-[32rem] flex justify-end">
@@ -188,6 +192,7 @@ const DonorsStep = ({
                   <div className="flex w-full items-between">
                     <label className="min-w-25 text-2xl font-semibold">
                       Sex
+                      <span className="text-red-700"> *</span>
                     </label>
                     <DropdownInput
                       control={control}
@@ -206,7 +211,10 @@ const DonorsStep = ({
 
             {/* Contact & Email */}
             <div className="w-full h-fit flex">
-              <label className="min-w-40 text-2xl font-semibold">Contact</label>
+              <label className="min-w-40 text-2xl font-semibold">
+                Contact
+                <span className="text-red-700"> *</span>
+              </label>
               <div className="w-full flex justify-between">
                 <div className="w-[32rem] flex justify-end">
                   <ContactNumberInput
@@ -220,6 +228,7 @@ const DonorsStep = ({
                   <div className="flex w-full items-between">
                     <label className="min-w-25 text-2xl font-semibold">
                       Email
+                      <span className="text-red-700"> *</span>
                     </label>
                     <div className="w-full h-fit flex justify-end">
                       <EmailInput
@@ -254,6 +263,7 @@ const DonorsStep = ({
             <div className="w-full h-fit flex">
               <label className="min-w-40 text-2xl font-semibold">
                 Province
+                <span className="text-red-700"> *</span>
               </label>
               <div className="w-full h-fit flex justify-between">
                 <div className="w-[32rem]">
@@ -291,6 +301,8 @@ const DonorsStep = ({
             <div className="w-full h-fit flex">
               <label className="min-w-40 text-2xl font-semibold">
                 Barangay
+                <span className="text-red-700"> *</span>
+
               </label>
               <div className="w-full h-fit flex justify-between">
                 <div className="w-[32rem]">

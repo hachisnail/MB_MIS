@@ -277,9 +277,9 @@ const User = () => {
         />
       )}
 
-      <div className="select-none w-full h-full flex flex-col 1xl:h-[69rem] 2xl:max-h-[81rem] 3xl:max-h-[88rem] ">
-        <div className="w-full min-h-[33rem] overflow-y-scroll flex-col xl:flex-row py-5 items-center flex border-t-1 border-[#373737]">
-          <div className="p-1 w-full xl:min-w-[60rem] h-full max-h-[38rem] flex flex-col">
+      <div className="select-none w-full h-full flex flex-col 1xl:h-[62rem] 2xl:max-h-[81rem] 3xl:max-h-[88rem] ">
+        <div className="w-full min-h-1/2 overflow-y-scroll flex-col xl:flex-row py-5 items-center flex border-t-1 border-[#373737]">
+          <div className="p-1 w-full xl:min-w-[60rem] h-full max-h-[30rem] flex flex-col">
             {/* Upper Left panel */}
             <span className="w-fit text-2xl font-semibold mb-2">Users</span>
             <span className="w-70 text-lg text-[#9C9C9C]">
@@ -325,7 +325,7 @@ const User = () => {
 
           </div>
         </div>
-        <div className="w-full min-h-[32rem] py-5 overflow-y-scroll flex-col xl:flex-row border-t-1 items-center border-[#373737] flex">
+        <div className="w-full min-h-1/2 py-5 overflow-y-scroll flex-col xl:flex-row border-t-1 items-center border-[#373737] flex">
           <div className="w-full xl:min-w-[60rem] h-full flex flex-col max-h-[35rem]">
             {/* Upper Left panel */}
             <span className="w-fit text-2xl font-semibold mb-2">Pendings</span>

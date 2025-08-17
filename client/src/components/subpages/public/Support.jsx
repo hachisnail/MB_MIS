@@ -40,13 +40,15 @@ const Support = () => {
               style={{ backgroundImage: `url(${backgroundImage})` }}
             >
               <div className="w-full h-full  outline-2 outline-white flex items-center justify-center">
-                <div className="w-40 min-h-10 flex items-center justify-center outline-2 outline-[#867055]  bg-white xl:h-16 xl:w-60">
                   <NavLink to="/about/support/contribution-form">
-                    <span className="text-2xl xl:text-4xl font-hina cursor-pointer">
+
+                <button className="w-40 cursor-pointer min-h-10 flex items-center justify-center outline-2 outline-[#867055]  bg-white xl:h-16 xl:w-60">
+                    <span className="text-2xl xl:text-4xl font-hina ">
                       FORM{" "}
                     </span>
+                </button>
                   </NavLink>
-                </div>
+
               </div>
             </div>
           </div>

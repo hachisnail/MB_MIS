@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import axiosClient from '../../lib/axiosClient';
-import useAddressLogic from '../../hooks/useAddressLogic';
+import { TypedDropdown, useAddressLogic } from '../../features/AddressDropdownSystem';
 import TimelineDatePicker from '../../features/TimelineDatePicker';
 import AppointmentDatePicker from '../../components/appointment/AppointmentDatePicker';
 import StyledButton from '../../components/buttons/StyledButton';
@@ -28,197 +28,6 @@ import {
 } from '../../utils/scheduleValidation';
 
 import { useSocketClient } from '../../context/authContext';
-
-// Enhanced TypedDropdown component for address selection
-function TypedDropdown({
-  placeholder,
-  options,
-  selectedItem,
-  onChange,
-  disabled = false,
-  isLoading = false,
-  error = null,
-  filterFunction = null,
-  onInputChange = null,
-  showSuggestions = true,
-  maxSuggestions = 8
-}) {
-  const [inputText, setInputText] = useState(selectedItem?.name || '');
-  const [showDropdown, setShowDropdown] = useState(false);
-  const [filteredOptions, setFilteredOptions] = useState(options);
-  const wrapperRef = useRef(null);
-  const inputRef = useRef(null);
-
-  useEffect(() => {
-    setInputText(selectedItem?.name || '');
-  }, [selectedItem]);
-
-  useEffect(() => {
-    if (filterFunction && typeof filterFunction === 'function') {
-      const filtered = filterFunction(inputText);
-      setFilteredOptions(filtered.slice(0, maxSuggestions));
-    } else {
-      const filtered = options.filter((o) =>
-        o.name.toLowerCase().includes(inputText.toLowerCase())
-      );
-      setFilteredOptions(filtered.slice(0, maxSuggestions));
-    }
-  }, [options, inputText, filterFunction, maxSuggestions]);
-
-  useEffect(() => {
-    function handleClickOutside(e) {
-      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
-        setShowDropdown(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  const handleInputChange = (e) => {
-    const value = e.target.value;
-    setInputText(value);
-
-    if (!disabled) {
-      setShowDropdown(true);
-      if (onInputChange) {
-        onInputChange(value);
-      }
-      if (selectedItem && value !== selectedItem.name) {
-        onChange(null);
-      }
-    }
-  };
-
-  const handleSelect = (item) => {
-    setInputText(item.name);
-    onChange(item);
-    setShowDropdown(false);
-    inputRef.current?.blur();
-  };
-
-  const handleClear = () => {
-    onChange(null);
-    setInputText('');
-    setShowDropdown(false);
-    inputRef.current?.focus();
-  };
-
-  const handleKeyDown = (e) => {
-    if (disabled) return;
-
-    switch (e.key) {
-      case 'Escape':
-        setShowDropdown(false);
-        inputRef.current?.blur();
-        break;
-      case 'Enter':
-        e.preventDefault();
-        if (filteredOptions.length > 0 && showDropdown) {
-          handleSelect(filteredOptions[0]);
-        }
-        break;
-      case 'ArrowDown':
-        e.preventDefault();
-        if (!showDropdown) {
-          setShowDropdown(true);
-        }
-        break;
-    }
-  };
-
-  return (
-    <div ref={wrapperRef} className="relative w-full">
-      <div
-        className={`flex border rounded-full px-4 py-1 transition-colors ${disabled
-          ? 'bg-gray-100 cursor-not-allowed border-gray-300'
-          : error
-            ? 'bg-white border-red-500 focus-within:ring-2 focus-within:ring-gray-300'
-            : 'bg-white border-black focus-within:ring-2 focus-within:ring-gray-300'
-          }`}
-        style={{ boxShadow: "inset 0 1px 1px rgba(1, 1, 1, 0.50)" }}
-      >
-        <input
-          ref={inputRef}
-          className="outline-none flex-grow placeholder-gray-400 text-md bg-transparent"
-          placeholder={disabled ? 'Please select previous field first' : placeholder}
-          value={inputText}
-          disabled={disabled}
-          onChange={handleInputChange}
-          onFocus={() => !disabled && setShowDropdown(true)}
-          onKeyDown={handleKeyDown}
-          autoComplete="off"
-        />
-
-        {isLoading && (
-          <div className="ml-2 flex items-center">
-            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[#524433]"></div>
-          </div>
-        )}
-
-        {selectedItem && !disabled && !isLoading && (
-          <button
-            type="button"
-            className="ml-2 text-gray-500 hover:text-gray-700 transition-colors"
-            onClick={handleClear}
-            title="Clear selection"
-          >
-            ×
-          </button>
-        )}
-      </div>
-
-      {error && (
-        <p className="mt-1 text-sm text-red-600">{error}</p>
-      )}
-
-      {showDropdown && !disabled && showSuggestions && (
-        <div className="absolute z-20 mt-1 w-full max-h-60 overflow-auto bg-white border border-gray-300 shadow-lg rounded-md">
-          {isLoading ? (
-            <div className="px-3 py-4 text-center text-gray-500">
-              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-[#524433] mx-auto mb-2"></div>
-              Loading...
-            </div>
-          ) : filteredOptions.length > 0 ? (
-            <>
-              {filteredOptions.map((option, index) => (
-                <div
-                  key={option.code}
-                  className={`px-3 py-2 cursor-pointer transition-colors hover:bg-gray-100 ${index === 0 ? 'bg-gray-50' : ''
-                    }`}
-                  onClick={() => handleSelect(option)}
-                >
-                  <div className="font-medium">{option.name}</div>
-                  {option.relevance && (
-                    <div className="text-xs text-gray-500">
-                      {option.relevance === 3 ? 'Exact match' :
-                        option.relevance === 2 ? 'Contains all letters' :
-                          'Partial match'}
-                    </div>
-                  )}
-                </div>
-              ))}
-              {inputText && filteredOptions.length < options.length && (
-                <div className="px-3 py-2 text-xs text-gray-500 border-t">
-                  Showing top {filteredOptions.length} results. Type more to refine search.
-                </div>
-              )}
-            </>
-          ) : inputText ? (
-            <div className="px-3 py-4 text-center text-gray-500">
-              <div className="mb-2">No results found for "{inputText}"</div>
-              <div className="text-xs">Try typing a different name or check spelling</div>
-            </div>
-          ) : (
-            <div className="px-3 py-4 text-center text-gray-500">
-              Start typing to search...
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
 
 const Notice = () => {
   return (
@@ -398,6 +207,8 @@ const AddressInfo = ({
                 error={errors.province}
                 filterFunction={getFilteredProvinces}
                 maxSuggestions={10}
+                variant="rounded"
+                inputStyle={{ boxShadow: "inset 0 1px 1px rgba(1, 1, 1, 0.50)" }}
               />
             </div>
           </div>
@@ -417,6 +228,8 @@ const AddressInfo = ({
                 error={errors.barangay}
                 filterFunction={getFilteredBarangays}
                 maxSuggestions={12}
+                variant="rounded"
+                inputStyle={{ boxShadow: "inset 0 1px 1px rgba(1, 1, 1, 0.50)" }}
               />
             </div>
           </div>
@@ -438,6 +251,8 @@ const AddressInfo = ({
                 error={errors.city}
                 filterFunction={getFilteredCities}
                 maxSuggestions={10}
+                variant="rounded"
+                inputStyle={{ boxShadow: "inset 0 1px 1px rgba(1, 1, 1, 0.50)" }}
               />
             </div>
           </div>

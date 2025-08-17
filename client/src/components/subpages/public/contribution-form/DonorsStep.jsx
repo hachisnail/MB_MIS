@@ -9,7 +9,7 @@ import {
   ContactNumberInput,
   EmailInput,
 } from "../../../../features/FormUtilities";
-import useAddressLogic from "@/hooks/useAddressLogic";
+import { TypedDropdown, useAddressLogic } from "../../../../features/AddressDropdownSystem";
 
 const schema = yup.object({
   firstName: yup.string().required("First Name is required"),
@@ -63,24 +63,57 @@ const DonorsStep = ({
     setSelectedProvince,
     setSelectedCity,
     setSelectedBarangay,
+    getFilteredProvinces,
+    getFilteredCities,
+    getFilteredBarangays,
+    isLoadingProvinces,
+    isLoadingCities,
+    isLoadingBarangays,
+    provincesError,
+    citiesError,
+    barangaysError
   } = useAddressLogic();
 
-  const watchProvince = watch("province");
-  const watchCity = watch("city");
+  // Handle address changes and sync with form
+  const handleProvinceChange = (province) => {
+    setSelectedProvince(province);
+    setFormData(prev => ({ ...prev, province: province?.name || '', city: '', barangay: '' }));
+    setIsDirty(true);
+  };
+
+  const handleCityChange = (city) => {
+    setSelectedCity(city);
+    setFormData(prev => ({ ...prev, city: city?.name || '', barangay: '' }));
+    setIsDirty(true);
+  };
+
+  const handleBarangayChange = (barangay) => {
+    setSelectedBarangay(barangay);
+    setFormData(prev => ({ ...prev, barangay: barangay?.name || '' }));
+    setIsDirty(true);
+  };
+
+  // Initialize address selections from form data
+  useEffect(() => {
+    if (initialData.province && provinces.length > 0) {
+      const prov = provinces.find((p) => p.name === initialData.province);
+      if (prov) setSelectedProvince(prov);
+    }
+  }, [initialData.province, provinces]);
 
   useEffect(() => {
-    if (watchProvince) {
-      const prov = provinces.find((p) => p.name === watchProvince);
-      setSelectedProvince(prov || null);
+    if (initialData.city && cities.length > 0) {
+      const city = cities.find((c) => c.name === initialData.city);
+      if (city) setSelectedCity(city);
     }
-  }, [watchProvince, provinces]);
+  }, [initialData.city, cities]);
 
   useEffect(() => {
-    if (watchCity) {
-      const c = cities.find((c) => c.name === watchCity);
-      setSelectedCity(c || null);
+    if (initialData.barangay && barangays.length > 0) {
+      const barangay = barangays.find((b) => b.name === initialData.barangay);
+      if (barangay) setSelectedBarangay(barangay);
     }
-  }, [watchCity, cities]);
+  }, [initialData.barangay, barangays]);
 
   useEffect(() => {
     const subscription = watch((values) => {
@@ -223,27 +256,35 @@ const DonorsStep = ({
                 Province
               </label>
               <div className="w-full h-fit flex justify-between">
-                <DropdownInput
-                  control={control}
-                  name="province"
-                  className="w-[32rem]"
-                  options={provinces.map((p) => ({
-                    value: p.name,
-                    label: p.name,
-                  }))}
-                  error={errors.province}
-                />
-                <DropdownInput
-                  control={control}
-                  name="city"
-                  className="w-[32rem]"
-                  options={cities.map((c) => ({
-                    value: c.name,
-                    label: c.name,
-                  }))}
-                  error={errors.city}
-                  disabled={!selectedProvince}
-                />
+                <div className="w-[32rem]">
+                  <TypedDropdown
+                    placeholder="Type to search provinces..."
+                    options={provinces}
+                    selectedItem={selectedProvince}
+                    onChange={handleProvinceChange}
+                    isLoading={isLoadingProvinces}
+                    error={errors.province ? "Province is required" : provincesError}
+                    filterFunction={getFilteredProvinces}
+                    maxSuggestions={10}
+                    variant="default"
+                    size="medium"
+                  />
+                </div>
+                <div className="w-[32rem]">
+                  <TypedDropdown
+                    placeholder={selectedProvince ? "Type to search cities..." : "Select province first"}
+                    options={cities}
+                    selectedItem={selectedCity}
+                    onChange={handleCityChange}
+                    disabled={!selectedProvince}
+                    isLoading={isLoadingCities}
+                    error={errors.city ? "City is required" : citiesError}
+                    filterFunction={getFilteredCities}
+                    maxSuggestions={10}
+                    variant="default"
+                    size="medium"
+                  />
+                </div>
               </div>
             </div>
 
@@ -252,24 +293,27 @@ const DonorsStep = ({
                 Barangay
               </label>
               <div className="w-full h-fit flex justify-between">
-                <DropdownInput
-                  control={control}
-                  name="barangay"
-                  options={barangays.map((b) => ({
-                    value: b.name,
-                    label: b.name,
-                  }))}
-                  error={errors.barangay}
-                  disabled={!selectedCity}
-                  className="w-[32rem]"
-                />
+                <div className="w-[32rem]">
+                  <TypedDropdown
+                    placeholder={selectedCity ? "Type to search barangays..." : "Select city first"}
+                    options={barangays}
+                    selectedItem={selectedBarangay}
+                    onChange={handleBarangayChange}
+                    disabled={!selectedCity}
+                    isLoading={isLoadingBarangays}
+                    error={errors.barangay ? "Barangay is required" : barangaysError}
+                    filterFunction={getFilteredBarangays}
+                    maxSuggestions={12}
+                    variant="default"
+                    size="medium"
+                  />
+                </div>
                 <FormInput
                   placeholder="Street"
                   register={register}
                   name="street"
                   error={errors.street}
                   className="w-[32rem]"
-                  disabled={!selectedCity}
                 />
               </div>
             </div>
@@ -286,14 +330,14 @@ const DonorsStep = ({
           </button>
           <div className="w-fit h-fit flex gap-x-5">
             {isDirty && (
-            <button
-              type="button"
-              onClick={() => {onClearForm() }}
-              className=" w-40 hover:bg-black rounded-md text-2xl bg-gray-900 text-white"
-            >
-              Clear Form
-            </button>
-          )}
+              <button
+                type="button"
+                onClick={() => { onClearForm() }}
+                className=" w-40 hover:bg-black rounded-md text-2xl bg-gray-900 text-white"
+              >
+                Clear Form
+              </button>
+            )}
             <button
               type="submit"
               className="w-44 h-15 rounded-md bg-black text-white text-2xl hover:bg-gray-800"

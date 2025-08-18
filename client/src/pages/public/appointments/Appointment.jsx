@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import AppointmentForm from '../../components/subpages/public/appointment-form/AppointmentForm';
-import usePrompt from '../../hooks/usePrompt';
+import AppointmentForm from './components/AppointmentForm';
+import usePrompt from '@/hooks/usePrompt';
 
 const Appointment = () => {
   const navigate = useNavigate();

@@ -1,7 +1,7 @@
 import { useState, useRef, useMemo, useCallback, useEffect } from "react";
-import axiosClient from "../../../../lib/axiosClient";
-import ConfirmationModal from "../../../modals/ConfirmationModal";
-import PopupModal from "../../../modals/PopupModal";
+import axiosClient from "@/lib/axiosClient";
+import ConfirmationModal from "@/components/modals/ConfirmationModal";
+import PopupModal from "@/components/modals/PopupModal";
 import Toast from "../../../../features/Toast";
 import NoticeStep from "./NoticeStep";
 import PersonalInfoStep from "./PersonalInfoStep";

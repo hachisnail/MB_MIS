@@ -42,8 +42,8 @@ import RegistrationSuccess from "./pages/public/recover-account/subpages/Registr
 import Dashboard from "./pages/admin/dashboard/Dashboard";
 
 // logs
-import Logs from "@/pages/admin/logs/Logs";
-import ViewLogs from "@/pages/admin/logs/subpages/ViewLogs";
+import Logs from "@/pages/admin/log/Logs";
+import ViewLogs from "@/pages/admin/log/subpages/ViewLogs";
 
 // acquisition
 import Acquisition from "@/pages/admin/acquisition/Acquisition";

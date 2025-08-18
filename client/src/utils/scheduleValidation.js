@@ -124,7 +124,7 @@ export const checkTimeSlotAvailability = async (
     // Fetch both appointments and schedules
     const [appointmentResponse, scheduleResponse] = await Promise.all([
       axiosClient.get('/auth/appointment'),
-      axiosClient.get(`/auth/schedules?date=${formattedDate}`)
+      axiosClient.get(`/auth/schedules/public/availability?date=${formattedDate}`)
     ]);
 
     // Process confirmed appointments for this date
@@ -328,8 +328,10 @@ export const checkMonthlyAvailability = async (
 
       try {
         // Fetch schedules for this specific date
-        const scheduleResponse = await axiosClient.get(`/auth/schedules?date=${formattedDate}`);
-        setMonthlySchedules(prev => [...prev, ...scheduleResponse.data]);
+        const scheduleResponse = await axiosClient.get(`/auth/schedules/public/availability?date=${formattedDate}`);
+        if (setMonthlySchedules && typeof setMonthlySchedules === 'function') {
+          setMonthlySchedules(prev => [...prev, ...scheduleResponse.data]);
+        }
 
         // Check each time slot for this date
         for (const slot of timeSlots) {

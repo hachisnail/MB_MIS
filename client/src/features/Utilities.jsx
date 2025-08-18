@@ -5,7 +5,7 @@ import {
   ListboxOption,
 } from "@headlessui/react";
 import { Fragment, useState, useRef, useEffect } from "react";
-import { scrollToElementById } from "@/components/list/commons";
+import { scrollToElementById } from "@/components/commons";
 
 // admin utilities
 export function SearchBar({ placeholder = "Search History", onChange, theme }) {

@@ -4,11 +4,11 @@ import na1 from "@/assets/visit_us.svg";
 import na2 from "@/assets/support_us.svg";
 import block1 from "@/assets/block1.svg";
 import block2 from "@/assets/block2.png";
-import { scrollToElementById } from "@/components/list/commons";
+import { scrollToElementById } from "@/components/commons";
 import { ScrollButton } from "../../../features/Utilities";
 import { useNavigate } from "react-router-dom";
 
-import { socialLinks } from "../../../components/list/commons";
+import { socialLinks } from "../../../components/commons";
 
 import { useState, useEffect} from 'react';
 import axios from 'axios';

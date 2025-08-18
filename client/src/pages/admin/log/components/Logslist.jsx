@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { rolePermissions, roleColorMap, actionMap } from "../../../../components/list/commons";
+import { rolePermissions, roleColorMap, actionMap } from "../../../../components/commons";
 
 const LogItem = ({ log, formatCreatedAt }) => {
   const navigate = useNavigate();

@@ -2,7 +2,7 @@ import React from "react";
 import { NavLink } from "react-router-dom";
 import Logo from "@/assets/LOGO.png";
 import { useRouterFlags } from "@/context/routerFlagProvider";
-import { scrollToElementById } from "@/components/list/commons";
+import { scrollToElementById } from "@/components/commons";
 
 const PublicFooter = () => {
   const { flags } = useRouterFlags();

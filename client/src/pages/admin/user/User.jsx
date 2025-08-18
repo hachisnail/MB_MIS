@@ -13,7 +13,7 @@ import {
   LoadingSpinner,
   ErrorBox,
   EmptyMessage,
-} from "../../../components/list/commons";
+} from "../../../components/commons";
 
 import { useSocketClient } from "../../../context/authContext";
 

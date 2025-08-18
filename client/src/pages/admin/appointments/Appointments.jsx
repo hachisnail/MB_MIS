@@ -9,7 +9,7 @@ import {
   LoadingSpinner,
   ErrorBox,
   EmptyMessage,
-} from "@/components/list/commons";
+} from "@/components/commons";
 
 import {
   AppointmentFormItem,
@@ -19,14 +19,14 @@ import {
   formatDate,
   AppointmentPreview,
 } from "./components/AppointmentsList";
-import { formatDateForDisplay } from "@/components/list/commons";
+import { formatDateForDisplay } from "@/components/commons";
 import {
   TableHeaderContainer,
   SummaryPanel,
 } from "../../../features/Utilities";
 import ContextMenu from "../../../components/modals/ContextMenu";
 
-import useToast from "../../../components/list/commons";
+import useToast from "../../../components/commons";
 
 const Appointments = () => {
   const location = useLocation();

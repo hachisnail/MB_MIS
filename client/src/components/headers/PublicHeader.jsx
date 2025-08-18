@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { NavLink, useLocation } from "react-router-dom";
-import { scrollToElementById } from "@/components/list/commons";
+import { scrollToElementById } from "@/components/commons";
 import { useRouterFlags } from "@/context/routerFlagProvider";
 
 

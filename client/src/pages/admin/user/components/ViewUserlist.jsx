@@ -1,4 +1,4 @@
-import { rolePermissions, generateColorFromKey } from "@/components/list/commons";
+import { rolePermissions, generateColorFromKey } from "@/components/commons";
 
 export const ViewUserSessionItem = ({ session, onClick }) => {
   const formatFullDate = (date) =>

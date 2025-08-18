@@ -3,7 +3,7 @@ import { AuthProvider } from "@/context/authContext";
 import { useAuth } from "@/context/authContext";
 import { useEffect } from "react";
 import { RouterFlagProvider } from "@/context/routerFlagProvider";
-import { ScrollToTop } from "@/lib/ScrollToTop";
+import { ScrollToTop } from "@/features/ScrollToTop";
 import bg from "@/assets/Image-1-1.jpg";
 
 import Router from "./router";

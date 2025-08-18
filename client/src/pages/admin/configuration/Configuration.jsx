@@ -12,7 +12,7 @@ import {
   LoadingSpinner,
   ErrorBox,
   EmptyMessage,
-} from "../../../components/list/commons";
+} from "../../../components/commons";
 import { TableHeaderContainer } from "../../../features/Utilities";
 
 const Configuration = () => {

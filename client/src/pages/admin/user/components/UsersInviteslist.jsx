@@ -2,7 +2,7 @@ import StyledButton from "@/components/buttons/StyledButton";
 // import ContextMenu from "../modals/ContextMenu";
 import { NavLink } from "react-router-dom";
 
-import { rolePermissions, generateColorFromKey, LoadingSpinner } from "../../../../components/list/commons";
+import { rolePermissions, generateColorFromKey, LoadingSpinner } from "../../../../components/commons";
 
 export const UserItem = ({ user, handleOpen }) => {
   const fname = user.fname.replace(/\s+/g, "");

@@ -1,7 +1,7 @@
 import { useAuth } from "@/context/authContext";
 import { NavLink } from "react-router-dom";
 import { useRouterFlags } from "@/context/routerFlagProvider";
-import { generateColorFromKey } from "@/components/list/commons";
+import { generateColorFromKey } from "@/components/commons";
 
 import LogoutButton from "@/components/buttons/LogoutBtn";
 

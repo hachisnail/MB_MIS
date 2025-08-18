@@ -9,7 +9,7 @@ import 'react-time-picker/dist/TimePicker.css';
 import LiveClock from '@/features/LiveClock';
 import Toast from '@/features/Toast';
 import DayScheduler from '@/features/DayScheduler';
-import { LoadingSpinner, EmptyMessage } from '@/components/list/commons';
+import { LoadingSpinner, EmptyMessage } from '@/components/commons';
 import ScheduleItem from './components/ScheduleItem';
 import axiosClient from '@/lib/axiosClient';
 import AppointmentViewPage from '../appointments/subpages/AppointmentViewPage';

@@ -4,7 +4,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import PopupModal from "@/components/modals/PopupModal";
 import { useSocketClient } from "@/context/authContext";
 import BackButton from "@/components/buttons/BackButton";
-import { EmptyMessage, ErrorBox, LoadingSpinner } from "@/components/list/commons";
+import { EmptyMessage, ErrorBox, LoadingSpinner } from "@/components/commons";
 import { ViewUserItem,ViewUserSessionItem } from "../components/ViewUserlist";
 
 const ViewUser = () => {

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import ContextMenu from "../../../../components/modals/ContextMenu";
-import { handlePreview } from "../../../../components/list/commons";
+import { handlePreview } from "../../../../components/commons";
 import { ImageCarousel } from "../../../../features/Utilities";
 
 

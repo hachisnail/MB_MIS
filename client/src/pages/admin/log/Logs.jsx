@@ -9,8 +9,8 @@ import {
   LoadingSpinner,
   ErrorBox,
   EmptyMessage,
-} from "../../../components/list/commons";
-import { rolePermissions, actionLabels } from "../../../components/list/commons";
+} from "../../../components/commons";
+import { rolePermissions, actionLabels } from "../../../components/commons";
 import { TableHeaderContainer } from "../../../features/Utilities";
 
 const Logs = () => {

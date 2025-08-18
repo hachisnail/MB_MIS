@@ -10,7 +10,7 @@ import {
   LoadingSpinner,
   ErrorBox,
   EmptyMessage,
-} from "@/components/list/commons";
+} from "@/components/commons";
 
 const ArticleForm = () => {
   const [articles, setArticles] = useState([]);

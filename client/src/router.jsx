@@ -3,61 +3,104 @@ import { useAuth } from "@/context/authContext";
 import Unauthorized from "@/pages/Unauthorized";
 import ServerDown from "@/pages/ServerDown";
 import { useRouterFlags } from "@/context/routerFlagProvider";
-import logo from "../src/assets/LOGO.png"
+
+// public pages
+
+// home
+import Home from "./pages/public/home/Home";
+
+// catalogue
+import Catalogue from "./pages/public/catalogue/Catalogue";
+
+// login
+import Login from "./pages/public/login/Login";
+
+// appointment
+import Appointment from "./pages/public/appointments/Appointment";
 
 
-import Home from "@/pages/public/Home";
-import Login from "@/pages/public/Login";
-import Catalogue from "@/pages/public/Catalogue";
-import Appointment from "@/pages/public/Appointment";
-import Articles from "@/pages/public/Articles";
-import About from "@/pages/public/About";
-import Articlecontents from "@/pages/public/Articlecontents";
-import Contribution from "@/components/subpages/public/contribution-form/Contribution";
-import Support from "@/components/subpages/public/Support";
+// article
+import Articles from "./pages/public/article/Articles";
+import Articlecontents from "./pages/public/article/subpages/Articlecontents"
 
-import RecoverAccount from "@/components/subpages/public/RecoverAccount";
+// about
+import About from "./pages/public/about/About";
+import Support from "./pages/public/about/subpages/Support";
+import Contribution from "./pages/public/about/subpages/contribution-form/Contribution";
 
-import MaintenanceMode from "@/pages/MaintenanceMode";
+// forgot password
+import RecoverAccount from "./pages/public/recover-account/RecoverAccount";
+import CompleteRegistrationPage from "./pages/public/recover-account/subpages/CompleteRegistrationPage";
+import RegistrationSuccess from "./pages/public/recover-account/subpages/RegistrationSuccessPage";
 
-import CompleteRegistrationPage from "@/components/subpages/public/CompleteRegistrationPage";
-import RegistrationSuccess from "@/components/subpages/public/RegistrationSuccessPage";
 
-import ElectionResultParser from "@/pages/ElectionRParser";
+
 
 // admin pages
-import Dashboard from "@/pages/admin/Dashboard";
-import Logs from "@/pages/admin/Logs";
-import ViewLogs from "@/components/subpages/private/ViewLogs";
-import User from "@/pages/admin/User";
-import CreateUser from "@/components/subpages/private/CreateUsers";
-import Inventory from "@/pages/admin/Inventory";
+
+// dahsboard
+import Dashboard from "./pages/admin/dashboard/Dashboard";
+
+// logs
+import Logs from "@/pages/admin/logs/Logs";
+import ViewLogs from "@/pages/admin/logs/subpages/ViewLogs";
+
+// acquisition
+import Acquisition from "@/pages/admin/acquisition/Acquisition";
+import AcquisitionViewPage from "./pages/admin/acquisition/subpages/AcquisitionViewPage";
+import AddArtifact from "./pages/admin/acquisition/subpages/AddArtifact";
+
+// apointments
+import Appointments from "@/pages/admin/appointments/Appointments";
+import { AppointmentViewPage } from "./pages/admin/appointments/subpages/AppointmentViewPage";
+import WalkInsPage from "./pages/admin/appointments/subpages/WalkInsPage";
+
+// articles
+import Article from "@/pages/admin/article/Article";
+import ManageArticle from "./pages/admin/article/subpages/ManageArticle";
+
+// schedules
+import Schedule from "./pages/admin/schedule/Schedule";
+
+// configurations
+import Configuration from "./pages/admin/configuration/Configuration";
+
+// inventory
+import Inventory from "./pages/admin/inventory/Inventory";
+import ViewArtifacts from "./pages/admin/inventory/subpages/ViewArtifacts";
+
+// user
+import User from "./pages/admin/user/User";
+import CreateUser from "./pages/admin/user/subpages/CreateUsers";
+import UserView from "./pages/admin/user/subpages/ViewUser";
+
+
+// system
+import FilePreviewer from "@/features/FilePreviewer";
+
 import NoMatch from "@/pages/NoMatch";
 import RequireRole from "@/lib/RequiredRole";
-import Acquisition from "@/pages/admin/Acquisition";
-import AddArtifact from "@/components/subpages/private/AddArtifact"
-import AcquisitionViewPage from "@/components/subpages/private/AcquisitionViewPage"
-import ViewArtifacts from "@/components/subpages/private/ViewArtifacts";
-import Schedule from "@/pages/admin/Schedule";
-import Article from "@/pages/admin/Article";
-import Appointments from "@/pages/admin/Appointments";
-import { AppointmentViewPage } from "@/components/subpages/private/AppointmentViewPage";
-import UserView from "@/components/subpages/private/ViewUser";
-import Configuration from "@/pages/admin/Configuration";
-import ManageArticle from "@/components/subpages/private/ManageArticle";
+import MaintenanceMode from "@/pages/MaintenanceMode";
 
-import WalkInsPage from "@/components/subpages/WalkInsPage";
+
+
+
+
 // import ArticleModal from "./components/subpages/ArticleModal";
 
 // sandbox
 import FileUploadDownload from "@/sandbox/FileUploadDownload";
-import FilePreviewer from "@/features/FilePreviewer";
+
+
+
+
 import ModalsTest from "@/sandbox/ModalsTest";
 import RouteFlagToggle from "@/sandbox/RouteFlagToggle";
 import SocketMonitor from "./sandbox/SocketMonitor";
 import TableAndForms from "./sandbox/TableAndForms";
+import ElectionResultParser from "@/pages/ElectionRParser";
 
-
+// Layouts
 import AdminLayout from "@/components/layout/AdminLayout";
 import PublicLayout from "@/components/layout/PublicLayout";
 
@@ -70,13 +113,17 @@ const Router = () => {
   const { login } = useAuth();
   const { flags, loading } = useRouterFlags();
 
-  if (loading) return (
-    <div className="w-screen h-screen flex items-center justify-center fkex-col">
-      <div className="flex flex-col">
-        <div className="w-7 h-7 mx-auto border-2 border-black border-t-transparent animate-spin rounded-full" />
-        <span> Loading routes... </span>
+
+
+  if (loading)
+    return (
+      <div className="w-screen h-screen flex items-center justify-center fkex-col">
+        <div className="flex flex-col">
+          <div className="w-7 h-7 mx-auto border-2 border-black border-t-transparent animate-spin rounded-full" />
+          <span> Loading routes... </span>
+        </div>
       </div>
-    </div>)
+    );
   return (
     <Routes>
       {/* Public routes */}
@@ -110,10 +157,11 @@ const Router = () => {
           </>
         )}
 
-        {flags["about"] && (<>
-          <Route path="/about" element={<About />} />
-          <Route path="/about/support" element={<Support />} />
-        </>
+        {flags["about"] && (
+          <>
+            <Route path="/about" element={<About />} />
+            <Route path="/about/support" element={<Support />} />
+          </>
         )}
         {flags["acquisition_public"] && (
           <Route
@@ -153,8 +201,14 @@ const Router = () => {
           {flags["acquisition"] && (
             <>
               <Route path="acquisition" element={<Acquisition />} />
-              <Route path="acquisition/lending/:encoded" element={<AcquisitionViewPage />} />
-              <Route path="acquisition/donation/:encoded" element={<AcquisitionViewPage />} />
+              <Route
+                path="acquisition/lending/:encoded"
+                element={<AcquisitionViewPage />}
+              />
+              <Route
+                path="acquisition/donation/:encoded"
+                element={<AcquisitionViewPage />}
+              />
               {/* acquisition/donation/don1/dW5kZWZpbmVk/preview/dW5kZWZpbmVk/ */}
               <Route
                 path="acquisition/lending/:encoded/preview/:encoded"
@@ -165,7 +219,10 @@ const Router = () => {
                 element={<FilePreviewer />}
               />
 
-              <Route path="acquisition/add-artifact" element={<AddArtifact />} />
+              <Route
+                path="acquisition/add-artifact"
+                element={<AddArtifact />}
+              />
             </>
           )}
           {flags["schedule"] && (
@@ -192,7 +249,10 @@ const Router = () => {
                 path="appointment/:encoded"
                 element={<AppointmentViewPage />}
               />
-              <Route path="appointment/walk-ins/:encoded" element={<WalkInsPage />} />
+              <Route
+                path="appointment/walk-ins/:encoded"
+                element={<WalkInsPage />}
+              />
             </>
           )}
 
@@ -208,14 +268,17 @@ const Router = () => {
           {flags["sandbox"] && (
             <>
               <Route path="sandbox" element={<FileUploadDownload />} />
-              <Route path="sandbox/preview/:encoded" element={<FilePreviewer />} />
+              <Route
+                path="sandbox/preview/:encoded"
+                element={<FilePreviewer />}
+              />
               <Route path="sandbox/modal" element={<ModalsTest />} />
               <Route path="sandbox/router-flag" element={<RouteFlagToggle />} />
-              <Route path="sandbox/socket-monitor" element={<SocketMonitor />} />
+              <Route
+                path="sandbox/socket-monitor"
+                element={<SocketMonitor />}
+              />
               <Route path="sandbox/table-forms" element={<TableAndForms />} />
-
-
-
             </>
           )}
 

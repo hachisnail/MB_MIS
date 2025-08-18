@@ -1,4 +1,5 @@
 import { useState, useRef, useMemo, useCallback, useEffect } from "react";
+import ReCAPTCHA from "react-google-recaptcha";
 import axiosClient from "@/lib/axiosClient";
 import ConfirmationModal from "@/components/modals/ConfirmationModal";
 import PopupModal from "@/components/modals/PopupModal";
@@ -44,6 +45,7 @@ const AppointmentForm = ({ user }) => {
     const [apiError, setApiError] = useState(null);
     const [showSuccessModal, setShowSuccessModal] = useState(false);
 
+    const recaptchaRef = useRef(null);
     const socket = useSocketClient();
 
     // Schedule-related state
@@ -172,6 +174,14 @@ const AppointmentForm = ({ user }) => {
             setShowSubmitConfirm(false);
             showToast('Submitting appointment...', 'info');
 
+            // Execute captcha for non-logged-in users
+            let captchaToken = null;
+            if (!formData.userLoggedIn) {
+                if (!recaptchaRef.current) throw new Error("Captcha not ready");
+                captchaToken = await recaptchaRef.current.executeAsync();
+                recaptchaRef.current.reset();
+            }
+
             let startTimeValue = null;
             let endTimeValue = null;
 
@@ -208,7 +218,8 @@ const AppointmentForm = ({ user }) => {
                 preferred_time: formData.selectedTime,
                 start_time: startTimeValue,
                 end_time: endTimeValue,
-                additional_notes: formData.additionalNotes
+                additional_notes: formData.additionalNotes,
+                captchaToken: captchaToken
             };
 
             const response = await axiosClient.post('/auth/appointment', payload);
@@ -340,6 +351,13 @@ const AppointmentForm = ({ user }) => {
                 message={toast.message}
                 duration={3000}
                 onClose={hideToast}
+            />
+
+            {/* Invisible reCAPTCHA */}
+            <ReCAPTCHA
+                sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY}
+                size="invisible"
+                ref={recaptchaRef}
             />
         </div>
     );

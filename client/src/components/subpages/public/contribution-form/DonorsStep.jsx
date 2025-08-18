@@ -47,6 +47,7 @@ const DonorsStep = ({
     control,
     watch,
     getValues,
+    setValue,
     formState: { errors },
   } = useForm({
     defaultValues: initialData,
@@ -77,19 +78,28 @@ const DonorsStep = ({
   // Handle address changes and sync with form
   const handleProvinceChange = (province) => {
     setSelectedProvince(province);
-    setFormData(prev => ({ ...prev, province: province?.name || '', city: '', barangay: '' }));
+    const provinceName = province?.name || '';
+    setValue('province', provinceName, { shouldValidate: true });
+    setValue('city', '', { shouldValidate: false });
+    setValue('barangay', '', { shouldValidate: false });
+    setFormData(prev => ({ ...prev, province: provinceName, city: '', barangay: '' }));
     setIsDirty(true);
   };
 
   const handleCityChange = (city) => {
     setSelectedCity(city);
-    setFormData(prev => ({ ...prev, city: city?.name || '', barangay: '' }));
+    const cityName = city?.name || '';
+    setValue('city', cityName, { shouldValidate: true });
+    setValue('barangay', '', { shouldValidate: false });
+    setFormData(prev => ({ ...prev, city: cityName, barangay: '' }));
     setIsDirty(true);
   };
 
   const handleBarangayChange = (barangay) => {
     setSelectedBarangay(barangay);
-    setFormData(prev => ({ ...prev, barangay: barangay?.name || '' }));
+    const barangayName = barangay?.name || '';
+    setValue('barangay', barangayName, { shouldValidate: true });
+    setFormData(prev => ({ ...prev, barangay: barangayName }));
     setIsDirty(true);
   };
 
@@ -133,10 +143,15 @@ const DonorsStep = ({
     return () => subscription.unsubscribe();
   }, [watch, setFormData]);
 
+  const handleFormSubmit = (data) => {
+    // The form data already includes the address values from setValue calls
+    onNext(data);
+  };
+
   return (
     <div className="w-[85rem] h-fit ">
       <form
-        onSubmit={handleSubmit((data) => onNext(data))}
+        onSubmit={handleSubmit(handleFormSubmit)}
         className="w-full h-[46rem] flex flex-col items-center justify-between"
       >
         <div className="w-full h-[40rem] flex flex-col shadow-md rounded-lg justify-center shadow-gray-500 px-20 py-10">
@@ -267,20 +282,24 @@ const DonorsStep = ({
               </label>
               <div className="w-full h-fit flex justify-between">
                 <div className="w-[32rem]">
+                  {/* Hidden input for province */}
+                  <input type="hidden" {...register("province")} />
                   <TypedDropdown
                     placeholder="Type to search provinces..."
                     options={provinces}
                     selectedItem={selectedProvince}
                     onChange={handleProvinceChange}
                     isLoading={isLoadingProvinces}
-                    error={errors.province ? "Province is required" : provincesError}
+                    error={errors.province?.message || provincesError}
                     filterFunction={getFilteredProvinces}
                     maxSuggestions={10}
-                    variant="default"
+                    variant="rounded"
                     size="medium"
                   />
                 </div>
                 <div className="w-[32rem]">
+                  {/* Hidden input for city */}
+                  <input type="hidden" {...register("city")} />
                   <TypedDropdown
                     placeholder={selectedProvince ? "Type to search cities..." : "Select province first"}
                     options={cities}
@@ -288,10 +307,10 @@ const DonorsStep = ({
                     onChange={handleCityChange}
                     disabled={!selectedProvince}
                     isLoading={isLoadingCities}
-                    error={errors.city ? "City is required" : citiesError}
+                    error={errors.city?.message || citiesError}
                     filterFunction={getFilteredCities}
                     maxSuggestions={10}
-                    variant="default"
+                    variant="rounded"
                     size="medium"
                   />
                 </div>
@@ -306,6 +325,8 @@ const DonorsStep = ({
               </label>
               <div className="w-full h-fit flex justify-between">
                 <div className="w-[32rem]">
+                  {/* Hidden input for barangay */}
+                  <input type="hidden" {...register("barangay")} />
                   <TypedDropdown
                     placeholder={selectedCity ? "Type to search barangays..." : "Select city first"}
                     options={barangays}
@@ -313,10 +334,10 @@ const DonorsStep = ({
                     onChange={handleBarangayChange}
                     disabled={!selectedCity}
                     isLoading={isLoadingBarangays}
-                    error={errors.barangay ? "Barangay is required" : barangaysError}
+                    error={errors.barangay?.message || barangaysError}
                     filterFunction={getFilteredBarangays}
                     maxSuggestions={12}
-                    variant="default"
+                    variant="rounded"
                     size="medium"
                   />
                 </div>

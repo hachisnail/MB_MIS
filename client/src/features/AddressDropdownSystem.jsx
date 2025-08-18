@@ -78,31 +78,31 @@ function TypedDropdown({
 
     // Style variants
     const getVariantStyles = () => {
-        const baseStyles = "flex border transition-colors";
+        const baseStyles = "flex items-center border transition-colors";
 
         switch (variant) {
             case "rounded":
-                return `${baseStyles} rounded-full px-4 py-1`;
+                return `${baseStyles} rounded-2xl px-4 py-2`;
             case "minimal":
-                return `${baseStyles} border-0 border-b-2 px-2 py-2 rounded-none`;
+                return `${baseStyles} border-0 border-b-2 px-2 py-1 rounded-none`;
             default:
-                return `${baseStyles} rounded-lg px-3 py-2`;
+                return `${baseStyles} rounded-lg px-3 py-1`;
         }
     };
 
     const getSizeStyles = () => {
         switch (size) {
             case "small":
-                return "text-sm";
+                return "text-sm h-6";
             case "large":
-                return "text-lg py-3";
+                return "text-lg h-10";
             default:
-                return "text-md";
+                return "text-md h-8";
         }
     };
 
     const getInputStyles = () => {
-        const baseStyles = "outline-none flex-grow placeholder-gray-400 bg-transparent";
+        const baseStyles = "outline-none flex-grow placeholder-gray-400 bg-transparent py-0 leading-tight appearance-none";
         const variantStyles = getSizeStyles();
 
         return `${baseStyles} ${variantStyles}`;
@@ -244,7 +244,7 @@ function TypedDropdown({
                 {selectedItem && !disabled && !isLoading && showClearButton && (
                     <button
                         type="button"
-                        className="ml-2 text-gray-500 hover:text-gray-700 transition-colors p-1 rounded"
+                        className={`ml-2 text-gray-500 hover:text-gray-700 transition-colors p-1 ${variant === "rounded" ? "rounded" : "rounded"}`}
                         onClick={handleClear}
                         title="Clear selection"
                         aria-label="Clear selection"
@@ -263,7 +263,7 @@ function TypedDropdown({
             {showDropdown && !disabled && showSuggestions && (
                 <div
                     ref={dropdownRef}
-                    className="absolute z-20 mt-1 w-full max-h-60 overflow-auto bg-white border border-gray-300 shadow-lg rounded-md"
+                    className={`absolute z-20 mt-1 w-full max-h-60 overflow-auto bg-white border border-gray-300 shadow-lg ${variant === "rounded" ? "rounded" : "rounded-md"}`}
                     style={dropdownStyle}
                     role="listbox"
                 >

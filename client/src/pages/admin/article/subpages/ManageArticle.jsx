@@ -42,8 +42,12 @@ import Highlight from "@tiptap/extension-highlight";
 import Youtube from "@tiptap/extension-youtube";
 // import { HardBreak } from '@tiptap/extension-hard-break';
 
+import Dropcursor from '@tiptap/extension-dropcursor';
+
 import ConfirmDialog from "@/components/modals/ConfirmDialog";
 import FontSize from "../components/FontSize";
+import CustomImage from "../components/CustomImage";
+
 import { useAuth } from "@/context/authContext";
 import useAutosave, { loadDraft, clearDraft } from "@/features/ContentDrafting.jsx";
 
@@ -71,7 +75,9 @@ const ArticleEditorForm = () => {
         alignments: ["left", "center", "right", "justify"],
       }),
       TextStyle,
-      Image,
+      Image.configure({
+        draggable: true,
+      }),
       ColumnBlock,
       Column,
       FontSize,
@@ -89,6 +95,12 @@ const ArticleEditorForm = () => {
       }),
       Highlight,
       Youtube,
+      Dropcursor.configure({
+      color: 'blue',
+      width: 2,
+    }),
+    CustomImage,
+
       // HardBreak.configure({
       //   HTMLAttributes: {
       //     class: 'hard-break',
@@ -98,10 +110,45 @@ const ArticleEditorForm = () => {
     content: "",
     editable: !isReviewer,
     editorProps: {
-      handleKeyDown(view, event) {
-        // ...custom logic...
-      },
-    },
+  handleKeyDown(view, event) {
+    // custom shortcuts...
+  },
+  handleDrop(view, event, slice, moved) {
+    const hasFiles = event.dataTransfer?.files?.length
+
+    // CASE 1: Moving existing node inside editor
+    if (moved) {
+      return false // allow default behavior (reposition nodes)
+    }
+
+    // CASE 2: Dropping new files
+    if (hasFiles) {
+      const images = Array.from(event.dataTransfer.files).filter(file =>
+        file.type.startsWith("image/")
+      )
+
+      if (images.length === 0) return false
+
+      images.forEach(file => {
+        const reader = new FileReader()
+        reader.onload = () => {
+          const url = reader.result
+          view.dispatch(
+            view.state.tr.replaceSelectionWith(
+              view.state.schema.nodes.image.create({ src: url })
+            )
+          )
+        }
+        reader.readAsDataURL(file)
+      })
+
+      return true
+    }
+
+    return false
+  },
+},
+
     onUpdate: ({ editor }) => {
     setIsDirty(true); // <-- Add this line to mark the form as dirty on every editor change
   },

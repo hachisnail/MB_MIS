@@ -14,10 +14,16 @@ import {
   ColumnsIcon,
   TypeIcon,
   XIcon,
+  List, 
+  ListOrdered,
+  Highlighter as HighlighterIcon,
+  Video as VideoIcon
+ 
 } from "lucide-react";
 
 import axios from "axios";
 import Button from "../../../../components/buttons/artclbtn";
+
 import { useParams } from "react-router-dom";
 import { useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
@@ -591,6 +597,7 @@ useEffect(() => {
   const handleFontSizeChange = (e) => {
     const fontSize = e.target.value;
     editor?.chain().focus().setFontSize(fontSize).run();
+    setIsDirty(true)
   };
 
   // Handle removing the thumbnail
@@ -957,16 +964,16 @@ useEffect(() => {
                     <div className="flex items-center gap-1">
                       <TypeIcon size={16} className="text-gray-600" />
                       <select
-                        onChange={handleFontSizeChange}
-                        className="px-1 py-1 border rounded text-sm"
-                        defaultValue="1em"
-                      >
-                        {fontSizes.map((size) => (
-                          <option key={size.value} value={size.value}>
-                            {size.label}
-                          </option>
-                        ))}
-                      </select>
+                          onChange={handleFontSizeChange}
+                          className="px-1 py-1 border rounded text-sm"
+                          defaultValue="1em"
+                        >
+                          {fontSizes.map((size) => (
+                            <option key={size.value} value={size.value}>
+                              {size.label}
+                            </option>
+                          ))}
+                        </select>
                       {/* Highlight (moved here) */}
                       <button
                         type="button"
@@ -981,7 +988,7 @@ useEffect(() => {
                         }`}
                         title="Highlight"
                       >
-                        <i className="fas fa-highlighter" />
+                        <HighlighterIcon size={11} />
                       </button>
                     </div>
     
@@ -1196,25 +1203,64 @@ useEffect(() => {
                     {/* Divider before list buttons */}
                     <div className="border-l h-6 mx-2" />
     
-                    {/* List Buttons */}
-                    <div className="flex gap-1">
-                      {/* Bullet List */}
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          editor?.chain().focus().toggleBulletList().run();
-                          setIsDirty(true);
-                        }}
-                        className={`p-1 border rounded ${
-                          editor?.isActive("bulletList") ? "bg-white" : ""
-                        }`}
-                        title="Bullet List"
-                      >
-                        <i className="fas fa-list-ul" />
-                      </button>
-                    </div>
+{/* List Buttons */}
+<div className="flex gap-1">
+  {/* Bullet List */}
+  <button
+    type="button"
+    onClick={(e) => {
+      console.log("Before toggle:", editor?.isActive("bulletList"));
+      e.preventDefault();
+      e.stopPropagation();
+      editor?.chain().focus().toggleBulletList().run();
+      setIsDirty(true);
+      console.log("After toggle:", editor?.isActive("bulletList"));
+    }}
+    className={`p-1 border rounded ${
+      editor?.isActive("bulletList") ? "bg-white" : ""
+    }`}
+    title="Bullet List"
+  >
+    <List size={18} />
+  </button>
+
+  {/* Roman List */}
+  <button
+    type="button"
+    onClick={(e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      editor?.chain().focus().toggleOrderedList().run();
+      editor?.chain().focus().updateAttributes("orderedList", { class: "roman-list" }).run();
+      setIsDirty(true);
+    }}
+    className={`p-1 border rounded ${
+      editor?.isActive("orderedList", { class: "roman-list" }) ? "bg-white" : ""
+    }`}
+    title="Roman List"
+  >
+    <ListOrdered size={18} />
+  </button>
+
+  {/* Letter List */}
+  <button
+    type="button"
+    onClick={(e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      editor?.chain().focus().toggleOrderedList().run();
+      editor?.chain().focus().updateAttributes("orderedList", { class: "letter-list" }).run();
+      setIsDirty(true);
+    }}
+    className={`p-1 border rounded ${
+      editor?.isActive("orderedList", { class: "letter-list" }) ? "bg-white" : ""
+    }`}
+    title="Letter List"
+  >
+    <ListOrdered size={18} />
+  </button>
+</div>
+
     
                     {/* Divider before image/youtube/highlight */}
                     <div className="border-l h-6 mx-2" />
@@ -1261,7 +1307,7 @@ useEffect(() => {
                         className="p-1 border rounded"
                         title="Embed YouTube Video"
                       >
-                        <i className="fab fa-youtube" />
+                        <VideoIcon size={18} />
                       </button>
                     </div>
                   </div>

@@ -100,6 +100,37 @@ input:-webkit-autofill {
     margin-bottom: 0.5em;
 }
 
+
+.ProseMirror h1 {
+    font-size: 2em;
+    font-weight: bold;
+    margin-bottom: 0.5em;
+}
+
+.ProseMirror h2 {
+    font-size: 1.5em;
+    font-weight: bold;
+    margin-bottom: 0.5em;
+}
+
+.ProseMirror h3 {
+    font-size: 1.3em;
+    font-weight: bold;
+    margin-bottom: 0.5em;
+}
+
+.ProseMirror h4 {
+    font-size: 1.2em;
+    font-weight: bold;
+    margin-bottom: 0.5em;
+}
+
+.ProseMirror h5 {
+    font-size: 1.1em;
+    font-weight: bold;
+    margin-bottom: 0.5em;
+}
+
 /* Text alignment styles */
 .editor-content-preview [data-text-align="center"] {
     text-align: center;
@@ -176,4 +207,104 @@ input:-webkit-autofill {
     /* Necessary to prevent overflow in flex layout */
     padding: 0 0.75rem;
     /* Optional: column padding */
+}
+
+/* Remove blue border on focus for the Tiptap editor */
+.ProseMirror:focus,
+.ProseMirror:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Custom list styles for Tiptap editor */
+.ProseMirror ol,
+.ProseMirror ul {
+  color: #111 !important;
+}
+.ProseMirror ol.circle-number-list {
+  list-style-type: decimal;
+}
+.ProseMirror ol.circle-number-list > li::marker,
+.ProseMirror ol.roman-list > li::marker,
+.ProseMirror ol.letter-list > li::marker,
+.ProseMirror ol > li::marker,
+.ProseMirror ul > li::marker {
+  color: #111 !important;
+}
+.ProseMirror ol.roman-list {
+  list-style-type: upper-roman;
+}
+.ProseMirror ol.letter-list {
+  list-style-type: upper-alpha;
+}
+
+/* Bullet lists */
+.ProseMirror ul > li::marker {
+  color: #111 !important;
+}
+
+/* Ensure lists are visible in the editor */
+.ProseMirror ul,
+.ProseMirror ol {
+  list-style-position: inside !important;
+  color: #111 !important;
+}
+
+.ProseMirror ul > li::marker,
+.ProseMirror ol > li::marker {
+  color: #111 !important;
+  font-size: 1em;
+  opacity: 1 !important;
+}
+
+/* Optional: Remove any prose class hiding bullets */
+.prose ul,
+.prose ol {
+  list-style-type: initial !important;
+  margin-left: 1.5em !important;
+}
+
+.ProseMirror ul,
+.ProseMirror ul > li::marker {
+  color: #111 !important;
+  list-style-type: disc !important;
+}
+
+/* Fix bullet alignment for Tiptap's <li><p> structure */
+.ProseMirror ul,
+.ProseMirror ol {
+  padding-left: 1.5em !important;
+  margin-left: 0 !important;
+}
+
+.ProseMirror li > p {
+  display: inline;
+  margin: 0;
+  padding: 0;
+}
+
+/* Add these rules to your stylesheet */
+
+.editor-content-preview [style*="font-size: 0.75em"] {
+  font-size: 0.75em;
+}
+
+.editor-content-preview [style*="font-size: 1em"] {
+  font-size: 1em;
+}
+
+.editor-content-preview [style*="font-size: 1.25em"] {
+  font-size: 1.25em;
+}
+
+.editor-content-preview [style*="font-size: 1.5em"] {
+  font-size: 1.5em;
+}
+
+.editor-content-preview [style*="font-size: 1.75em"] {
+  font-size: 1.75em;
+}
+
+.editor-content-preview [style*="font-size: 2em"] {
+  font-size: 2em;
 }

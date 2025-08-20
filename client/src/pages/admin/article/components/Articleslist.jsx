@@ -49,6 +49,8 @@ const Articleslist = ({ article, handleStatusChange, userRole, getStatusBadge })
               ${article.status === "pending" ? "bg-yellow-100 text-yellow-700" : ""}
               ${article.status === "rejected" ? "bg-red-100 text-red-700" : ""}
               ${article.status === "archived" ? "bg-gray-100 text-gray-700" : ""}
+              ${article.status === "scheduled" ? "bg-gray-100 text-blue-700" : ""}
+
             `}
             style={{
               minWidth: "7rem",
@@ -67,6 +69,9 @@ const Articleslist = ({ article, handleStatusChange, userRole, getStatusBadge })
             </option>
             <option value="archived" className="text-gray-700 bg-gray-100">
               Archived
+            </option>
+            <option value="scheduled" className="text-gray-700 bg-blue-100">
+              Scheduled
             </option>
           </select>
         ) : (

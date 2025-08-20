@@ -13,6 +13,8 @@ import authRoutes from "./src/routes/auth.js";
 import uploadRoutes from "./src/routes/uploadRoutes.js";
 import { initializeSocket } from "./src/configs/socketServer.js";
 import { requireAuth,requireRole } from "./src/middlewares/authMiddlewares.js";
+import { startArticleScheduler } from './src/services/scheduler.js';
+
 
 dotenv.config();
 
@@ -154,6 +156,9 @@ if (process.env.NODE_ENV === 'production') {
     await sessionStore.sync();
     await mainDb.sync();
 
+
+// Start the article scheduler here
+    startArticleScheduler()
 
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`API Server running on port ${PORT}`);

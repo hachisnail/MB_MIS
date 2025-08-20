@@ -35,17 +35,7 @@ export const createArticle = async (req, res) => {
       reviewerNotes
     } = req.body;
 
-    let thumbnail = null;
-    if (req.file) {
-      thumbnail = req.file.filename;
-    }
-
-    let editImagesString = null;
-    if (editImages) {
-      editImagesString = typeof editImages === 'string' ? editImages : JSON.stringify(editImages);
-    }
-
-    const article = await Article.create({
+    const articleData = {
       title,
       article_category,
       description,
@@ -54,22 +44,35 @@ export const createArticle = async (req, res) => {
       address,
       barangay,
       upload_date: selectedDate,
-      images: thumbnail,
-      editImages: editImagesString,
+      images: req.file ? req.file.filename : null,
+      editImages: editImages,
       caption,
       status,
-      upload_period_start: uploadPeriodStart,
-      upload_period_end: uploadPeriodEnd,
       reviewer_notes: reviewerNotes
-    });
+    };
+
+    // Conditionally set the scheduling dates based on status
+    if (status === 'schedule') {
+      articleData.upload_period_start = uploadPeriodStart;
+      articleData.upload_period_end = uploadPeriodEnd;
+    } else if (status === 'posted') {
+      articleData.upload_period_start = new Date();
+      articleData.upload_period_end = null;
+    } else {
+      articleData.upload_period_start = null;
+      articleData.upload_period_end = null;
+    }
+
+    const article = await Article.create(articleData);
 
     return res.status(201).json(article);
   } catch (error) {
     console.error('Error creating article:', error);
-    return res.status(500).json({ message: 'Server error creating article.' });
+    return res.status(500).json({
+      message: 'Server error creating article.'
+    });
   }
 };
-
 // Retrieve ALL articles (admin or private usage)
 export const getAllArticles = async (req, res) => {
   try {
@@ -147,7 +150,6 @@ export const getPublicArticle = async (req, res) => {
 };
 
 // Update an existing article
-// Update an existing article
 export const updateArticle = async (req, res) => {
   console.log('Update request body:', req.body);
   console.log('Update request file:', req.file);
@@ -170,40 +172,41 @@ export const updateArticle = async (req, res) => {
       reviewer_notes
     } = req.body;
 
-    let thumbnail = null;
-    if (req.file) {
-      thumbnail = req.file.filename;
-    }
+    const updateData = {
+      title,
+      article_category,
+      description,
+      user_id,
+      author,
+      address,
+      barangay,
+      upload_date: selectedDate,
+      images: req.file ? req.file.filename : undefined,
+      editImages: editImages,
+      caption,
+      status,
+      reviewer_notes: reviewer_notes,
+      updated_at: new Date(),
+    };
 
-    let editImagesString = null;
-    if (editImages) {
-      if (typeof editImages === 'string') {
-        editImagesString = editImages;
-      } else {
-        editImagesString = JSON.stringify(editImages);
-      }
+    // Conditionally set the scheduling dates based on status
+    if (status === 'schedule') {
+      updateData.upload_period_start = uploadPeriodStart;
+      updateData.upload_period_end = uploadPeriodEnd;
+    } else if (status === 'posted') {
+      updateData.upload_period_start = new Date();
+      updateData.upload_period_end = null;
+    } else {
+      updateData.upload_period_start = null;
+      updateData.upload_period_end = null;
     }
 
     const [updatedCount] = await Article.update(
-      {
-        title,
-        article_category,
-        description,
-        user_id,
-        author,
-        address,
-        barangay: barangay || undefined,
-        upload_date: selectedDate,
-        images: thumbnail || undefined,
-        editImages: editImagesString,
-        caption: caption || undefined,
-        status: status || undefined,
-        upload_period_start: uploadPeriodStart || undefined,
-        upload_period_end: uploadPeriodEnd || undefined,
-        updated_at: new Date(),
-        reviewer_notes: reviewer_notes || null
-      },
-      { where: { article_id: id } }
+      updateData, {
+        where: {
+          article_id: id
+        }
+      }
     );
 
     if (updatedCount === 0) {
@@ -212,7 +215,11 @@ export const updateArticle = async (req, res) => {
       });
     }
 
-    const updatedArticle = await Article.findOne({ where: { article_id: id } });
+    const updatedArticle = await Article.findOne({
+      where: {
+        article_id: id
+      }
+    });
     return res.status(200).json({
       message: 'Article updated successfully',
       article: updatedArticle

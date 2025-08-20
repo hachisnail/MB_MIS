@@ -59,17 +59,17 @@ const Article = sequelize.define('Article', {
     allowNull: true,
   },
   status: {
-    type: DataTypes.ENUM('pending', 'posted'),
+    type: DataTypes.ENUM('pending', 'posted', 'scheduled', 'rejected', 'archived'),
     defaultValue: 'pending',
     allowNull: false,
   },
-  upload_period_start: {
+  uploadPeriodStart: {
     type: DataTypes.DATE,
-    allowNull: true,
+    field: "upload_period_start"
   },
-  upload_period_end: {
+  uploadPeriodEnd: {
     type: DataTypes.DATE,
-    allowNull: true,
+    field: "upload_period_end"
   },
   created_at: {
     type: DataTypes.DATE,

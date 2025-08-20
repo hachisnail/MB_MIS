@@ -287,38 +287,31 @@ const ArticleEditorForm = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     const formData = new FormData();
+
+      console.log("Current status before submit:", status); 
+
     formData.append("title", title);
     formData.append("article_category", category);
     formData.append("description", editor?.getHTML() || "");
-    formData.append("user_id", 1);
+    formData.append("user_id", userRole);
     formData.append("author", author);
     formData.append("address", municipality);
     formData.append("selectedDate", selectedDate);
     formData.append("editImages", JSON.stringify(contentImages));
     formData.append("caption", caption);
     formData.append("barangay", barangay);
-    formData.append("status", status);  
-    
     formData.append("reviewer_notes", reviewerNotes || "");
-    let finalUploadPeriodStart = null;
-        let finalUploadPeriodEnd = null;
-
-        if (status === 'post') {
-            finalUploadPeriodStart = new Date().toISOString();
-        } else if (status === 'schedule') {
-  
-            finalUploadPeriodStart = uploadPeriodStart;
-            finalUploadPeriodEnd = uploadPeriodEnd;
-        }
-
-
-    formData.append("upload_period_start", uploadPeriodStart);
-    formData.append("upload_period_end", uploadPeriodEnd);
-
-
-    if (thumbnail && thumbnail instanceof File) {
-    formData.append("thumbnail", thumbnail);
-    }
+    formData.append("status", status);
+    if (status === 'schedule') {
+        formData.append("uploadPeriodStart", uploadPeriodStart);
+        formData.append("uploadPeriodEnd", uploadPeriodEnd);
+      } else {
+        formData.append("uploadPeriodStart", null);
+        formData.append("uploadPeriodEnd", null);
+      }
+      if (thumbnail && thumbnail instanceof File) {
+        formData.append("thumbnail", thumbnail);
+      }
     
     console.log("Submitting with thumbnail:", thumbnail);
     console.log("Caption state value:", caption);
@@ -536,11 +529,6 @@ useEffect(() => {
     }
   };
 
-
-  
-
- 
-  
   // Handle form submission
   const handleFormSubmit = (e) => {
     e.preventDefault();
@@ -557,9 +545,6 @@ useEffect(() => {
     }
 
   };
-
-
-
 
   // Update hasThumbnail when thumbnail changes
   useEffect(() => {
@@ -887,8 +872,8 @@ useEffect(() => {
                                 >
                                     <option value="pending">Pending</option>
                                     <option value="schedule">Schedule</option>
-                                    <option value="post">Post</option>
-                                    <option value="draft">Draft</option>
+                                    <option value="posted">Post</option>
+                                    {/* <option value="draft">Draft</option> */}
       </select>
 </div>
 
@@ -902,7 +887,7 @@ useEffect(() => {
                                         </label>
                                         <input
                                             id="uploadPeriodStart"
-                                            type="datetime-local"
+                                            type="date"
                                             className={`w-full px-4 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 ${
                                                 errors.uploadPeriodStart ? "border-red-600" : "border-black"
                                             }`}
@@ -922,7 +907,7 @@ useEffect(() => {
                 </label>
                 <input
                     id="uploadPeriodEnd"
-                      type="datetime-local"
+                      type="date"
                       className={`w-full px-4 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 ${
                           errors.uploadPeriodEnd ? "border-red-600" : "border-black"
                       }`}
@@ -1481,6 +1466,7 @@ useEffect(() => {
                 <option value="posted">Post</option>
                 <option value="rejected">Reject</option>
                 <option value="archived">Archive</option>
+                <option value="scheduled">Scheduled</option>
               </select>
             </div>
             

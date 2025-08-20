@@ -119,6 +119,15 @@ const ArticleForm = () => {
   const pendingCount = articles.filter(
     (article) => article.status === "pending"
   ).length;
+  const rejectedCount = articles.filter(
+    (article) => article.status === "rejected"
+  ).length;
+  const archivedCount = articles.filter(
+    (article) => article.status === "archived"
+  ).length;
+  const scheduledCount = articles.filter(
+    (article) => article.status === "scheduled"
+  ).length;
   const totalCount = articles.length;
 
   const handleStatusChange = async (articleId, newStatus) => {
@@ -163,6 +172,11 @@ const ArticleForm = () => {
         bg = "bg-gray-100";
         label = "Archived";
         break;
+      case "scheduled": // Added archived status styling
+        color = "text-blue-700";
+        bg = "bg-blue-100";
+        label = "Scheduled";
+        break;        
       default:
         color = "text-gray-700";
         bg = "bg-gray-200";
@@ -192,6 +206,7 @@ const ArticleForm = () => {
     { label: "Posted", value: "posted" },
     { label: "Rejected", value: "rejected" },
     { label: "Archived", value: "archived" },
+    { label: "Scheduled", value: "scheduled" },
   ];
 
   const CatOptions = [
@@ -220,6 +235,9 @@ const ArticleForm = () => {
           summaryData={[
             { label: "Posted", value: postedCount || 0 },
             { label: "Pending", value: pendingCount || 0 },
+            { label: "Rejected", value: rejectedCount || 0 },
+            { label: "Archived", value: archivedCount || 0 },
+            { label: "Scheduled", value: scheduledCount || 0 },
           ]}
           button={
             userRole && allowedRoles.includes(userRole)

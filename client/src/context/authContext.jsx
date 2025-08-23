@@ -1,11 +1,13 @@
-// AuthProvider.jsx
 import { createContext, useContext, useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import axiosClient from "@/lib/axiosClient";
 import { getSocketClient } from "@/lib/socketSingleton";
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
+  const navigate = useNavigate();
+
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(false);
   const [forcedLogoutReason, setForcedLogoutReason] = useState(null);
@@ -43,37 +45,38 @@ export function AuthProvider({ children }) {
   const initializeSocket = (userId = null) => {
     const socketClient = getSocketClient();
     socketRef.current = socketClient;
-    socketClient.registerUser(userId); // just register/re-register the user
+    socketClient.registerUser(userId);
   };
 
-useEffect(() => {
-  const socketClient = getSocketClient();
-  socketRef.current = socketClient;
+  useEffect(() => {
+    const socketClient = getSocketClient();
+    socketRef.current = socketClient;
 
-  const handleReady = () => {
-    if (isMountedRef.current) setSocketReady(true);
-  };
+    const handleReady = () => {
+      if (isMountedRef.current) setSocketReady(true);
+    };
 
-  const handleForceLogout = (data) => {
-    setForcedLogoutReason(data.reason || "You have been logged out.");
-    safeSetUser(null);
-    setSocketReady(false);
-    localStorage.setItem("logout-event", Date.now());
-    console.log("[Socket] Forced logout. Switching to guest mode...");
-    socketClient.registerUser(null); // fallback to guest mode
-  };
+    const handleForceLogout = (data) => {
+      setForcedLogoutReason(data.reason || "You have been logged out.");
+      safeSetUser(null);
+      setSocketReady(false);
+      localStorage.setItem("logout-event", Date.now());
+      console.log("[Socket] Forced logout. Switching to guest mode...");
+      socketClient.registerUser(null);
 
-  socketClient.onReady(handleReady);
-  socketClient.onForceLogout(handleForceLogout);
+      // Redirect on forced logout
+      navigate("/", { replace: true });
+    };
 
-  return () => {
-    socketClient.offReady(handleReady);
-    socketClient.offForceLogout(handleForceLogout);
-  };
-}, []);
+    socketClient.onReady(handleReady);
+    socketClient.onForceLogout(handleForceLogout);
 
+    return () => {
+      socketClient.offReady(handleReady);
+      socketClient.offForceLogout(handleForceLogout);
+    };
+  }, [navigate]);
 
-  // On mount, check if user exists and init socket
   useEffect(() => {
     const init = async () => {
       const currentUser = await fetchCurrentUser();
@@ -99,6 +102,9 @@ useEffect(() => {
       if (loggedInUser?.id) {
         socketRef.current?.registerUser(loggedInUser.id);
         console.log("[Auth] User logged in:", loggedInUser.username || loggedInUser.id);
+
+        // Redirect after login
+        navigate("/admin", { replace: true });
       }
 
       return { success: true, user: loggedInUser };
@@ -132,6 +138,9 @@ useEffect(() => {
 
       console.log("[Auth] Logged out successfully. Reinitializing as guest...");
       initializeSocket(null);
+
+      // Redirect after logout
+      navigate("/", { replace: true });
     }
   };
 
@@ -144,12 +153,15 @@ useEffect(() => {
           socketRef.current = null;
         }
         if (isMountedRef.current) setSocketReady(false);
+
+        // Redirect when another tab logs out
+        navigate("/", { replace: true });
       }
     };
 
     window.addEventListener("storage", syncLogout);
     return () => window.removeEventListener("storage", syncLogout);
-  }, []);
+  }, [navigate]);
 
   return (
     <AuthContext.Provider

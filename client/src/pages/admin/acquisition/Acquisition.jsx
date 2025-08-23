@@ -1,16 +1,35 @@
-import { useState, useCallback } from "react";
-import TimelineDatePicker from "@/features/TimelineDatePicker";
-import { SearchBar, CardDropdownPicker } from "@/features/Utilities";
-import Toast from "@/features/Toast";
-import useToast from "../../../components/commons";
-import { formatDateForDisplay } from "@/components/commons";
+import { useState, useCallback, useEffect } from "react";
+import {
+  SearchBar,
+  CardDropdownPicker,
+  TableHeaderContainer,
+  SummaryPanel,
+} from "@/features/Utilities";
+import {
+  formatDateForDisplay,
+  ErrorBox,
+  EmptyMessage,
+  LoadingSpinner,
+} from "@/components/commons";
+
+import ListRenderer from "@/components/tables/ListRenderer";
 import { useNavigate } from "react-router-dom";
-import { TableHeaderContainer, SummaryPanel } from "../../../features/Utilities";
+import { AcquisitionItem } from "./components/Acquisitonlist";
+import TimelineDatePicker from "@/features/TimelineDatePicker";
+import Toast from "@/features/Toast";
+import axiosClient from "@/lib/axiosClient";
+import useToast from "@/components/commons";
 
 const Acquisition = () => {
   const [activeTab, setActiveTab] = useState("form");
   const [selectedDate, setSelectedDate] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("All Statuses");
+  const [acquisitions, setAcquisiitons] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+  // ✅ Add missing state
+  const [transferFilter, setTransferFilter] = useState("All");
 
   const navigate = useNavigate();
 
@@ -22,16 +41,16 @@ const Acquisition = () => {
   ];
 
   const formHeaders = [
-    { label: "Date", width: 15 },
-    { label: "Donator Name", width: "auto" },
-    { label: "Title" },
-    { label: "Status", width: "1fr" },
-    { label: "Updated", width: 10 },
+    { label: "Creation Date", width: 13 },
+    { label: "Donors Name", width: "1fr" },
+    { label: "Title", width: "1fr" },
+    { label: "Status", width: 12 },
+    { label: "Type", width: 10 },
   ];
 
   const transferHeaders = [
     { label: "Date", width: 15 },
-    { label: "Donator Name", width: 15 },
+    { label: "Donors Name", width: 15 },
     { label: "Title" },
     { label: "Status", width: 15 },
     { label: "Transfer Status", width: 15 },
@@ -40,7 +59,7 @@ const Acquisition = () => {
 
   const recordHeaders = [
     { label: "Date", width: "w-60" },
-    { label: "Name of Donator/Lender", width: "" },
+    { label: "Name of Donor/Lender", width: "" },
     { label: "Donations", width: "w-60" },
   ];
 
@@ -65,39 +84,99 @@ const Acquisition = () => {
     [showToast]
   );
 
+  const filteredAcquisitions = acquisitions.filter((item) => {
+    const statusMatch =
+      statusFilter === "All Statuses" ||
+      item.status?.toLowerCase() === statusFilter.toLowerCase();
+
+    const transferMatch =
+      transferFilter === "All" ||
+      item.transfer_status?.toLowerCase() === transferFilter.toLowerCase();
+
+    const searchMatch =
+      item?.ContributionArtifact?.title
+        ?.toLowerCase()
+        .includes(searchQuery.toLowerCase()) ||
+      item?.Contributor?.first_name
+        ?.toLowerCase()
+        .includes(searchQuery.toLowerCase()) ||
+      item?.Contributor?.last_name
+        ?.toLowerCase()
+        .includes(searchQuery.toLowerCase());
+
+    return statusMatch && transferMatch && searchMatch;
+  });
+
   const headersMap = {
-    "form": formHeaders,
+    form: formHeaders,
     "transfer-status": transferHeaders,
     "donator-records": recordHeaders,
   };
 
+  useEffect(() => {
+    fetchAcquiisitons();
+  }, []);
+
+  const fetchAcquiisitons = async () => {
+    try {
+      setIsLoading(true);
+      const response = await axiosClient.get(`/auth/contributions`);
+      setAcquisiitons(response.data);
+      setIsLoading(false);
+    } catch (err) {
+      console.error("Error fetching articles:", err);
+      setError(
+        "Failed to load articles. Check that the API server is running."
+      );
+      setAcquisiitons([]);
+      setIsLoading(false);
+    }
+  };
+  // console.log(acquisitions);
+  const totalCount = acquisitions.length;
+  const approvedCount = acquisitions.filter(
+    (a) => a.status === "approved"
+  ).length;
+  const rejectedCount = acquisitions.filter(
+    (a) => a.status === "rejected"
+  ).length;
+  const pendingCount = acquisitions.filter(
+    (a) => a.status === "pending"
+  ).length;
+  const donationCount = acquisitions.filter(
+    (a) => a.contribution_type === "donation"
+  ).length;
+  const lendingCount = acquisitions.filter(
+    (a) => a.contribution_type === "lending"
+  ).length;
+
   return (
     <>
       <div className="w-full h-full flex gap-x-15 overflow-scroll lg:flex-row flex-col">
-        
         <SummaryPanel
           tabs={tabs}
           activeTab={activeTab}
           onTabChange={setActiveTab}
-          title="Total Forms"
-          totalCount={0}
+          title="Total Acquisitions"
+          totalCount={totalCount}
           dateLabel={formatDateForDisplay(selectedDate || new Date())}
           summaryData={[
-            { label: "Approved", value: "0" },
-            { label: "Rejected", value: "0" },
-            { label: "Donation", value: "0" },
-            { label: "Lend", value: "0" },
+            { label: "Approved", value: approvedCount },
+            { label: "Rejected", value: rejectedCount },
+            { label: "Pending", value: pendingCount },
+            { label: "Donation", value: donationCount },
+            { label: "Lend", value: lendingCount },
           ]}
           button={{
-            label: "Add new artifacts",
-            onClick: () => navigate("/admin/acquisition/add-artifact")
+            label: "Add new acquisition",
+            onClick: () => navigate("/admin/acquisition/add-artifact"),
           }}
         />
 
         <div className="w-full h-full flex flex-col min-w-[43.75rem] gap-y-7">
           {/* table */}
-          <div className="w-full min-h-[3.2rem] flex gap-x-3 items-center ">
-            {/* table utilities */}
+          <div className="w-full min-h-[3.2rem] flex gap-x-3 items-center">
+            {/* Date filter */}
             <TimelineDatePicker
               defaultValue={
                 selectedDate ? selectedDate.toISOString().split("T")[0] : ""
@@ -108,74 +187,44 @@ const Acquisition = () => {
               theme="light"
             />
 
+            {/* Search bar */}
             <div className="[&_input]:text-black [&_input]:placeholder-gray-500">
               <SearchBar
                 theme="light"
+                value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search History"
               />
             </div>
 
+            {/* Status filter */}
             <CardDropdownPicker
-              // value={`${columnFilter}|${sortDirection}`}
-              // onChange={(value) => {
-              //   const [column, direction] = value.split('|');
-              //   setColumnFilter(column);
-              //   setSortDirection(direction || 'asc');
-              // }}
-              placeholder="Sort By..."
-              theme="light"
-              // options={[
-              //   { value: '', label: 'Sort By...' },
-              //   ...(activeTab === 'forms' ? [
-              //     { value: 'creation_date|asc', label: 'Creation Date (Oldest First)' },
-              //     { value: 'creation_date|desc', label: 'Creation Date (Newest First)' },
-              //     { value: 'visitor_name|asc', label: 'Visitor Name (A-Z)' },
-              //     { value: 'visitor_name|desc', label: 'Visitor Name (Z-A)' },
-              //     { value: 'preferred_time|asc', label: 'Preferred Time (Earliest First)' },
-              //     { value: 'preferred_time|desc', label: 'Preferred Time (Latest First)' },
-              //     { value: 'status|asc', label: 'Status (A-Z)' },
-              //     { value: 'status|desc', label: 'Status (Z-A)' },
-              //     { value: 'visitor_count|asc', label: 'Visitor Count (Low-High)' },
-              //     { value: 'visitor_count|desc', label: 'Visitor Count (High-Low)' },
-              //     { value: 'updated_at|asc', label: 'Last Updated (Oldest First)' },
-              //     { value: 'updated_at|desc', label: 'Last Updated (Newest First)' }
-              //   ] : activeTab === 'attendance' ? [
-              //     { value: 'date|asc', label: 'Date (Oldest First)' },
-              //     { value: 'date|desc', label: 'Date (Newest First)' },
-              //     { value: 'visitor_name|asc', label: 'Visitor Name (A-Z)' },
-              //     { value: 'visitor_name|desc', label: 'Visitor Name (Z-A)' },
-              //     { value: 'purpose|asc', label: 'Purpose of Visit (A-Z)' },
-              //     { value: 'purpose|desc', label: 'Purpose of Visit (Z-A)' },
-              //     { value: 'preferred_date|asc', label: 'Preferred Date (Oldest First)' },
-              //     { value: 'preferred_date|desc', label: 'Preferred Date (Newest First)' },
-              //     { value: 'expected_visitor|asc', label: 'Expected Visitors (Low-High)' },
-              //     { value: 'expected_visitor|desc', label: 'Expected Visitors (High-Low)' },
-              //     { value: 'present|asc', label: 'Present Count (Low-High)' },
-              //     { value: 'present|desc', label: 'Present Count (High-Low)' }
-              //   ] : [
-              //     { value: 'date|asc', label: 'Date (Oldest First)' },
-              //     { value: 'date|desc', label: 'Date (Newest First)' },
-              //     { value: 'visitor_name|asc', label: 'Visitor Name (A-Z)' },
-              //     { value: 'visitor_name|desc', label: 'Visitor Name (Z-A)' },
-              //     { value: 'visit_counts|asc', label: 'Visit Counts (Low-High)' },
-              //     { value: 'visit_counts|desc', label: 'Visit Counts (High-Low)' }
-              //   ])
-              // ]}
-            />
-            <CardDropdownPicker
-              // value={statusFilter}
-              // onChange={setStatusFilter}
+              value={statusFilter}
+              onChange={setStatusFilter}
               placeholder="All Statuses"
               theme="light"
-              // options={[
-              //   { value: 'All Statuses', label: 'All Statuses' },
-              //   { value: 'Confirmed', label: 'Confirmed' },
-              //   { value: 'Rejected', label: 'Rejected' },
-              //   { value: 'Failed', label: 'Failed' },
-              //   { value: 'To Review', label: 'To Review' },
-              //   { value: 'Completed', label: 'Completed' }
-              // ]}
+              options={[
+                { value: "All Statuses", label: "All Statuses" },
+                { value: "Approved", label: "Approved" },
+                { value: "Rejected", label: "Rejected" },
+                { value: "Pending", label: "Pending" },
+              ]}
+            />
+
+            {/* Transfer status filter */}
+            <CardDropdownPicker
+              value={transferFilter}
+              onChange={setTransferFilter}
+              placeholder="All Transfer Statuses"
+              theme="light"
+              options={[
+                { value: "All", label: "All Transfer Statuses" },
+                { value: "Confirmed", label: "Confirmed" },
+                { value: "Rejected", label: "Rejected" },
+                { value: "Failed", label: "Failed" },
+                { value: "To Review", label: "To Review" },
+                { value: "Completed", label: "Completed" },
+              ]}
             />
           </div>
 
@@ -184,22 +233,18 @@ const Acquisition = () => {
 
             <TableHeaderContainer headers={headersMap[activeTab]} />
 
-            <div className="w-full h-[52rem] 3xl:h-[67rem] border-y border-gray-400">
+            <div className="w-full h-[52rem] 3xl:h-[67rem] border-y overflow-y-auto border-gray-400">
               {activeTab === "form" && (
                 <>
-                  {/* display list that contains forms */}
-                  <div
-                    onClick={() => navigate("lending/acq1")}
-                    className="text-2xl font-semibold py-2 flex justify-center border-gray-400 border-b-1"
-                  >
-                    <span>acquisition forms</span>
-                  </div>
-                  <div
-                    onClick={() => navigate("donation/don1")}
-                    className="text-2xl font-semibold py-2 flex justify-center border-gray-400 border-b-1"
-                  >
-                    <span>donation forms</span>
-                  </div>
+                  <ListRenderer
+                    isLoading={isLoading}
+                    error={error}
+                    items={filteredAcquisitions}
+                    renderItem={(item) => (
+                      <AcquisitionItem key={item.contribution_id} item={item} headers={formHeaders} />
+                    )}
+                    emptyMessage="No acquisitions found!"
+                  />
                 </>
               )}
               {activeTab === "donator-records" && (

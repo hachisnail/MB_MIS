@@ -974,10 +974,7 @@ const WalkInsPage = () => {
             {PromptModal}
             {/* Main Container */}
             <div className="w-full h-full bg-white">
-                {/* Header */}
-                <div className="border-b border-gray-300 p-6">
-                    <h1 className="text-3xl font-bold text-gray-900">New Walk-in Appointment</h1>
-                </div>
+
 
                 {/* Content */}
                 <div className="flex-1">

@@ -6,11 +6,7 @@ import { SearchBar, CardDropdownPicker } from "../../../features/Utilities";
 import Articleslist from "./components/Articleslist";
 import { useAuth } from "../../../context/authContext";
 import { TableHeaderContainer, SummaryPanel } from "../../../features/Utilities";
-import {
-  LoadingSpinner,
-  ErrorBox,
-  EmptyMessage,
-} from "@/components/commons";
+import ListRenderer from "../../../components/tables/ListRenderer";
 
 const ArticleForm = () => {
   const [articles, setArticles] = useState([]);
@@ -29,11 +25,11 @@ const ArticleForm = () => {
   ];
 
   const articleHeaders = [
-    { label: "Date", width: "1fr" },
+    { label: "Date", width: 12 },
     { label: "Title", width: "1fr" },
     { label: "Author", width: "1fr" },
-    { label: "Category", width: "1fr" },
-    { label: "Status", width: "1fr" },
+    { label: "Category", width: 10 },
+    { label: "Status", width: 12 },
   ];
 
   
@@ -278,28 +274,23 @@ const ArticleForm = () => {
             <div className="w-full h-[52rem] 3xl:h-[67rem] overflow-y-auto border-y border-gray-400">
               {activeTab === "forms" && (
                 <>
-                  {loading ? (
-                    <div className="absolute inset-0 z-10 flex items-center justify-center ">
-                      <LoadingSpinner />
-                    </div>
-                  ) : error ? (
-                    <ErrorBox message={error} />
-
-                  ) : filteredArticles.length > 0 ? (
-                    filteredArticles.map((article) => (
+                  <ListRenderer
+                    isLoading={loading}
+                    error={error}
+                    items={filteredArticles}
+                    emptyMessage="No appointment data available"
+                    renderItem={(article) => (
                       <Articleslist
                         key={article.article_id}
                         article={article}
                         // handleRowClick={handleRowClick}
+                        headers={articleHeaders}
                         handleStatusChange={handleStatusChange}
                         userRole={userRole}
                         getStatusBadge={getStatusBadge}
                       />
-                    ))
-                  ) : (
-                    <EmptyMessage message="No appointment data available" />
-
-                  )}
+                    )}
+                  />
                 </>
               )}
             </div>

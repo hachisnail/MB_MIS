@@ -2,7 +2,7 @@ import { useLocation, NavLink, matchPath } from "react-router-dom";
 
 const routeMeta = [
   { path: "/admin/inventory", title: "Inventory of Artifact" },
-  { path: "/admin/inventory/:encoded", title: "artifact name " },
+  { path: "/admin/inventory/:encoded", title: "Artifact Name" },
   {
     path: "/admin/acquisition",
     title: "Donations/Acquisitions/Lending Management",
@@ -14,7 +14,7 @@ const routeMeta = [
   { path: "/admin/acquisition/lending/:encoded", title: "Lending Form" },
   { path: "/admin/acquisition/donation/:encoded", title: "Donation Form" },
   { path: "/admin/logs", title: "Activities", theme: "text-gray-400" },
-  { path: "/admin/logs/:log", title: "Activity", theme: "text-gray-400" },
+  { path: "/admin/logs/:encoded", title: "Activity", theme: "text-gray-400" },
   { path: "/admin/view", title: "View Artifacts" },
   { path: "/admin/user", title: "User Management", theme: "text-gray-400" },
   {
@@ -51,6 +51,15 @@ const routeMeta = [
   { path: "/admin/article/edit-article/:encoded", title: "Edit Article" },
 ];
 
+function decodeLabelWithoutId(encoded) {
+  try {
+    const decoded = atob(encoded); // decode Base64
+    return decoded.replace(/^\d+\s+/, "");
+  } catch {
+    return encoded;
+  }
+}
+
 function safeDecodeBase64(str) {
   if (typeof str !== "string" || str.length < 8 || str.length % 4 !== 0)
     return str;
@@ -60,9 +69,8 @@ function safeDecodeBase64(str) {
 
   try {
     const decoded = atob(str);
-    if (btoa(decoded) === str) {
-      if (/^[\x20-\x7E\s]+$/.test(decoded)) return decoded;
-    }
+    if (btoa(decoded) === str && /^[\x20-\x7E\s]+$/.test(decoded))
+      return decoded;
     return str;
   } catch {
     return str;
@@ -89,21 +97,8 @@ const Breadcrumb = () => {
   const matchedRoute = routeMeta.find(({ path }) =>
     matchPath({ path, end: true }, location.pathname)
   );
-
   if (matchedRoute?.title) {
-    if (matchedRoute.path === "/admin/inventory/:encoded") {
-      const encodedParam = pathSegments[pathSegments.length - 1];
-      const decoded = safeDecodeBase64(decodeURIComponent(encodedParam));
-      pageTitle = decoded
-        .replace(/-/g, " ")
-        .replace(/\s+/g, " ")
-        .trim()
-        .split(" ")
-        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-        .join(" ");
-    } else {
-      pageTitle = matchedRoute.title;
-    }
+    pageTitle = matchedRoute.title;
   }
 
   const theme = matchedRoute?.theme || "text-gray-700";
@@ -113,7 +108,7 @@ const Breadcrumb = () => {
     .map((segment, index, arr) => {
       currentLink += `/${segment}`;
 
-      // Skip these segments in breadcrumb display
+      // Skip segments in breadcrumb display
       if (
         [
           "admin",
@@ -129,27 +124,17 @@ const Breadcrumb = () => {
         return null;
       }
 
-      let raw = decodeURIComponent(segment);
-      let decoded = safeDecodeBase64(raw);
-      let label = decoded;
+      let label = decodeURIComponent(segment);
 
-      // For preview route, use filename from decoded encoded param for last crumb
+      // For preview or any :encoded route, remove leading numeric ID
       if (
-        isPreview &&
-        index === arr.length - 1 &&
-        segment === encodedParam
-      ) {
-        label = decoded.split("/").pop();
-      }
-
-      // For inventory/:encoded route, decode artifact name
-      if (
-        matchedRoute?.path === "/admin/inventory/:encoded" &&
+        (isPreview || matchedRoute?.path.includes(":encoded")) &&
         index === arr.length - 1
       ) {
-        label = decoded;
+        label = decodeLabelWithoutId(segment);
       }
 
+      // Format label nicely
       label = label
         .replace(/-/g, " ")
         .replace(/\s+/g, " ")

@@ -5,26 +5,23 @@ import axiosClient from "@/lib/axiosClient";
 import TimelineDatePicker from "@/features/TimelineDatePicker";
 import Toast from "@/features/Toast";
 import { SearchBar, CardDropdownPicker } from "@/features/Utilities";
-import {
-  LoadingSpinner,
-  ErrorBox,
-  EmptyMessage,
-} from "@/components/commons";
+import { LoadingSpinner, ErrorBox, EmptyMessage } from "@/components/commons";
 
 import {
   AppointmentFormItem,
   AttendanceItem,
   VisitorRecordItem,
-  standardizeStatus,
-  formatDate,
   AppointmentPreview,
 } from "./components/AppointmentsList";
+import { formatDate } from "./components/dateUtils";
+import { standardizeStatus } from "./components/statusUtils";
 import { formatDateForDisplay } from "@/components/commons";
 import {
   TableHeaderContainer,
   SummaryPanel,
 } from "../../../features/Utilities";
 import ContextMenu from "../../../components/modals/ContextMenu";
+import ListRenderer from "../../../components/tables/ListRenderer";
 
 import useToast from "../../../components/commons";
 
@@ -580,16 +577,12 @@ const Appointments = () => {
             <div className="w-full h-[52rem]  border-y border-gray-400">
               {activeTab === "forms" && (
                 <>
-                  {isLoading && (
-                    <div className="absolute inset-0 z-10 flex items-center justify-center ">
-                      <LoadingSpinner />
-                    </div>
-                  )}
-
-                  {error ? (
-                    <ErrorBox message={error} />
-                  ) : filteredData.appointments.length > 0 ? (
-                    filteredData.appointments.map((appt) => (
+                  <ListRenderer
+                    isLoading={isLoading}
+                    error={error}
+                    items={filteredData.appointments}
+                    emptyMessage="No appointment data available"
+                    renderItem={(appt) => (
                       <div
                         key={appt.appointment_id}
                         onClick={() => {
@@ -599,44 +592,39 @@ const Appointments = () => {
                       >
                         <AppointmentFormItem
                           activePreview={activePreviewId}
-                          key={appt.appointment_id}
                           appointment={appt}
                           cameFrom="forms"
                         />
                       </div>
-                    ))
-                  ) : !isLoading && filteredData.appointments.length === 0 ? (
-                    <EmptyMessage message="No appointment data available" />
-                  ) : null}
+                    )}
+                  />
                 </>
               )}
               {activeTab === "attendance" && (
                 <>
-                  {isLoading ? (
-                    <LoadingSpinner />
-                  ) : error ? (
-                    <ErrorBox message={error} />
-                  ) : filteredData.attendanceData.length > 0 ? (
-                    filteredData.attendanceData.map((row, i) => (
+                  <ListRenderer
+                    isLoading={isLoading}
+                    error={error}
+                    items={filteredData.attendanceData}
+                    emptyMessage="No attendance records found"
+                    renderItem={(row, i) => (
                       <AttendanceItem
                         key={i}
                         attendance={row}
                         cameFrom="attendance"
                       />
-                    ))
-                  ) : (
-                    <EmptyMessage message="No attendance records found" />
-                  )}
+                    )}
+                  />
                 </>
               )}
               {activeTab === "visitorRecords" && (
                 <>
-                  {isLoading ? (
-                    <LoadingSpinner />
-                  ) : error ? (
-                    <ErrorBox message={error} />
-                  ) : filteredData.visitorRecords.length > 0 ? (
-                    filteredData.visitorRecords.map((record) => (
+                  <ListRenderer
+                    isLoading={isLoading}
+                    error={error}
+                    items={filteredData.visitorRecords}
+                    emptyMessage="No visitor records available"
+                    renderItem={(record) => (
                       <VisitorRecordItem
                         key={record.id}
                         record={record}
@@ -644,15 +632,14 @@ const Appointments = () => {
                         onToggle={toggleRecordExpansion}
                         cameFrom="visitorRecords"
                       />
-                    ))
-                  ) : (
-                    <EmptyMessage message="No visitor records available" />
-                  )}
+                    )}
+                  />
                 </>
               )}
             </div>
           </div>
         </div>
+
         {isPreview === true && (
           <div className="w-full max-w-[35rem] h-[99%] shadow-md shadow-gray-700 rounded-md flex flex-col mt-[2px] mr-[.5rem]">
             <div className="min-h-[4rem] flex pl-5 pr-3 rounded-md items-center bg-black justify-between">

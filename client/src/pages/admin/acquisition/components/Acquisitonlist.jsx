@@ -3,7 +3,73 @@ import { useLocation, useNavigate } from "react-router-dom";
 import ContextMenu from "../../../../components/modals/ContextMenu";
 import { handlePreview } from "../../../../components/commons";
 import { ImageCarousel } from "../../../../features/Utilities";
+import { formatDateForDisplay } from "@/components/commons";
+import ListRowRenderer from "../../../../components/tables/ListRowRenderer";
 
+
+const sampleDetails = [
+  {
+    purpose: "Research",
+    visitorCount: 3,
+    present: "Yes",
+    date: "2025-08-23",
+  },
+  {
+    purpose: "Exhibition",
+    visitorCount: 5,
+    present: "No",
+    date: "2025-08-24",
+  },
+];
+
+
+const acquisitionColumns = [
+  {
+    key: "submission_date",
+    render: (date) => formatDateForDisplay(date),
+  },
+  {
+    key: "Contributor",
+    render: (_, item) =>
+      `${item.Contributor?.first_name || ""} ${item.Contributor?.last_name || ""}`,
+  },
+  {
+    key: "ContributionArtifact",
+    render: (_, item) => item.ContributionArtifact?.title || "Untitled",
+  },
+  {
+    key: "status",
+    render: (value) => (
+      <span
+        className={`px-3 rounded font-semibold ${
+          value === "approved"
+            ? "bg-green-100 text-green-700"
+            : value === "pending"
+            ? "bg-yellow-100 text-yellow-700"
+            : "bg-red-100 text-red-700"
+        }`}
+      >
+        {value?.charAt(0).toUpperCase() + value?.slice(1)}
+      </span>
+    ),
+  },
+  {
+    key: "contribution_type",
+    render: (v) => (v ? v.charAt(0).toUpperCase() + v.slice(1) : ""),
+  },
+];
+
+export function AcquisitionItem({ item, headers }) {
+  return (
+    <ListRowRenderer
+      item={item}
+      columns={acquisitionColumns}
+      headers={headers}
+      // details={sampleDetails} // manually pass expanded data here
+      onRowClick={`/admin/dashboard`}
+    />
+  );
+}
 
 export function RenderRelatedDocs({ relatedImages = [], attachedFiles = [] }) {
   const [imageCurrentPage, setImageCurrentPage] = useState(1);
@@ -181,12 +247,10 @@ export function RenderRelatedDocs({ relatedImages = [], attachedFiles = [] }) {
                     {
                       label: "Download",
                       onClick: () => alert("download clicked"),
-                      
                     },
                     {
                       label: "Delete",
                       onClick: () => alert("delete clicked"),
-
                     },
                   ]}
                 >
@@ -292,13 +356,15 @@ export function RenderArtifactInformation({
             key={label}
             className="w-full flex flex-col h-fit text-2xl font-medium"
           >
-            <span id="value" className="font-normal">{label}</span>
+            <span id="value" className="font-normal">
+              {label}
+            </span>
             <span className="text-blue-500 font-normal">{value}</span>
           </div>
         ))}
       </div>
 
-<ImageCarousel images={artifactImg}/>
+      <ImageCarousel images={artifactImg} />
     </div>
   );
 }

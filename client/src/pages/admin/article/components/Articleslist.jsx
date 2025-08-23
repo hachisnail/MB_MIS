@@ -1,48 +1,37 @@
-import React from "react";
+import ListRowRenderer from "../../../../components/tables/ListRowRenderer";
 import { useNavigate } from "react-router-dom";
 
-const Articleslist = ({ article, handleStatusChange, userRole, getStatusBadge }) => {
+const ArticlesListRow = ({ article, handleStatusChange, userRole, getStatusBadge, headers }) => {
   const navigate = useNavigate();
 
-  const handleRowClick = (prop) => {
-  const encodedId = btoa(prop);
-  navigate(`/admin/article/edit-article/${encodedId}`);
-};
-
-
-  return (
-    <div
-      key={article.article_id}
-      className="min-w-[60rem] text-xl h-fit font-semibold grid grid-cols-5 cursor-pointer hover:bg-gray-300"
-      onClick={() => handleRowClick(article.article_id + " " + article.title)}
-    >
-      <div className="px-4 py-3 border-b-1 border-gray-400">
-        {article.upload_date
+  const columns = [
+    {
+      key: "date",
+      render: () =>
+        article.upload_date
           ? new Date(article.upload_date).toLocaleDateString()
-          : new Date(article.created_at).toLocaleDateString()}
-      </div>
-
-      <div className="px-4 py-3 border-b-1 border-gray-400 truncate">
-        {article.title}
-      </div>
-
-      <div className="px-4 py-3 border-b-1 border-gray-400">
-        {article.author || "Unknown"}
-      </div>
-
-      <div className="px-4 py-3 border-b-1 border-gray-400">
-        {article.article_category}
-      </div>
-
-      <div className="px-4 py-3 border-b-1 border-gray-400">
-        {userRole == 1 ? (
+          : new Date(article.created_at).toLocaleDateString(),
+    },
+    {
+      key: "title",
+      render: () => article.title,
+    },
+    {
+      key: "author",
+      render: () => article.author || "Unknown",
+    },
+    {
+      key: "category",
+      render: () => article.article_category,
+    },
+    {
+      key: "status",
+      render: () =>
+        userRole === 1 ? (
           <select
             value={article.status}
-            onChange={(e) => {
-              e.stopPropagation(); // Prevent triggering row click
-              handleStatusChange(article.article_id, e.target.value);
-            }}
-            onClick={(e) => e.stopPropagation()} // Prevent triggering row click
+            onChange={(e) => handleStatusChange(article.article_id, e.target.value)}
+            onClick={(e) => e.stopPropagation()} // Prevent row click
             className={`
               border rounded px-2 py-1 font-semibold
               ${article.status === "posted" ? "bg-green-100 text-green-700" : ""}
@@ -50,36 +39,37 @@ const Articleslist = ({ article, handleStatusChange, userRole, getStatusBadge })
               ${article.status === "rejected" ? "bg-red-100 text-red-700" : ""}
               ${article.status === "archived" ? "bg-gray-100 text-gray-700" : ""}
               ${article.status === "scheduled" ? "bg-gray-100 text-blue-700" : ""}
-
             `}
-            style={{
-              minWidth: "7rem",
-              transition: "background 0.2s, color 0.2s",
-            }}
+            style={{ minWidth: "7rem", transition: "background 0.2s, color 0.2s" }}
           >
-            <option value="pending" className="text-yellow-700 bg-yellow-100">
-              Pending
-            </option>
-            <option value="posted" className="text-green-700 bg-green-100">
-              Posted
-            </option>
-            {/* Add new options for the other statuses */}
-            <option value="rejected" className="text-red-700 bg-red-100">
-              Rejected
-            </option>
-            <option value="archived" className="text-gray-700 bg-gray-100">
-              Archived
-            </option>
-            <option value="scheduled" className="text-gray-700 bg-blue-100">
-              Scheduled
-            </option>
+            <option value="pending">Pending</option>
+            <option value="posted">Posted</option>
+            <option value="rejected">Rejected</option>
+            <option value="archived">Archived</option>
+            <option value="scheduled">Scheduled</option>
           </select>
         ) : (
           getStatusBadge(article.status)
-        )}
-      </div>
-    </div>
+        ),
+    },
+  ];
+
+  const handleRowClick = () => {
+    const encodedId = btoa(article.article_id + " " + article.title);
+    navigate(`/admin/article/edit-article/${encodedId}`);
+  };
+
+
+  return (
+    <ListRowRenderer
+      item={article}
+      columns={columns}
+      headers={headers}
+      onRowClick={handleRowClick}
+      rowClassName="min-w-[60rem] h-fit font-semibold text-xl"
+      hoverEffect={true}
+    />
   );
 };
 
-export default Articleslist;
+export default ArticlesListRow;

@@ -1,102 +1,22 @@
 import { NavLink, useNavigate } from "react-router-dom";
+import { formatDate, formatTimeDisplay } from "./dateUtils";
+import { getStatusLabel } from "./statusUtils";
 
-// Status color mapping
-const statusColorMap = {
-  confirmed: "bg-green-500 text-white",
-  rejected: "bg-red-600 text-white",
-  failed: "bg-orange-600 text-white",
-  "to review": "bg-purple-200 text-black",
-  completed: "bg-blue-600 text-white",
-  default: "bg-gray-200 text-gray-800",
-};
-
-// Helper functions
-export const convertTo12Hour = (timeStr) => {
-  if (!timeStr) return "";
-  const cleanTime = timeStr.includes(":")
-    ? timeStr.split(":").slice(0, 2).join(":")
-    : timeStr;
-  const [hourStr, minuteStr] = cleanTime.split(":");
-  let hour = parseInt(hourStr, 10);
-  const minute = parseInt(minuteStr || "0", 10);
-  const period = hour >= 12 ? "PM" : "AM";
-  hour = hour % 12 || 12;
-  return `${hour}:${minute.toString().padStart(2, "0")} ${period}`;
-};
-
-export const formatTimeDisplay = (start_time, end_time) => {
-  if (!start_time || !end_time) {
-    return "Flexible";
-  }
-  const formattedStart = convertTo12Hour(start_time);
-  const formattedEnd = convertTo12Hour(end_time);
-  if (formattedStart && formattedEnd) {
-    return `${formattedStart} - ${formattedEnd}`;
-  }
-  return "Flexible";
-};
-
-export const standardizeStatus = (status) => {
-  if (!status) return "To Review";
-  const formatted = status.toLowerCase().replace(/_/g, " ");
-  return formatted
-    .split(" ")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
-};
-
-export const getStatusLabel = (status) => {
-  const standardStatus = standardizeStatus(status);
-  const colorClass =
-    statusColorMap[standardStatus.toLowerCase()] || statusColorMap.default;
-
-  return (
-    <span
-      className={`${colorClass} h-9 w-30 px-2 py-1 rounded inline-flex items-center justify-center`}
-    >
-      {standardStatus}
-    </span>
-  );
-};
-
-export const formatDate = (dateStr) => {
-  if (!dateStr) return "N/A";
-  const date = new Date(dateStr);
-  return `${String(date.getMonth() + 1).padStart(2, "0")}-${String(
-    date.getDate()
-  ).padStart(2, "0")}-${date.getFullYear()}`;
-};
-
-// Appointment Form Item Component
+// ---------------- Appointment Form Item ----------------
 export const AppointmentFormItem = ({
   activePreview,
   appointment,
   cameFrom = "forms",
 }) => {
-  const status = standardizeStatus(
-    appointment.AppointmentStatus?.status || "To Review"
-  );
+  const status = appointment.AppointmentStatus?.status || "To Review";
   const updatedAt = appointment.AppointmentStatus?.updated_at
     ? new Date(appointment.AppointmentStatus.updated_at).toLocaleString()
     : "N/A";
-  // Include visitor name, status, and date in the encoded string for better breadcrumb display
+
   const visitorName =
     `${appointment.Visitor?.first_name || ""} ${
       appointment.Visitor?.last_name || ""
     }`.trim() || "Unknown Visitor";
-  const appointmentDate =
-    appointment.preferred_date || appointment.creation_date;
-  const formattedDate = appointmentDate
-    ? new Date(appointmentDate).toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-      })
-    : "";
-  const timeSlot = formatTimeDisplay(
-    appointment.start_time,
-    appointment.end_time
-  );
-  const visitorCount = appointment.population_count || "0";
 
   return (
     <div
@@ -105,20 +25,18 @@ export const AppointmentFormItem = ({
         activePreview === appointment.appointment_id
           ? "bg-black rounded-md text-white hover:bg-gray-900"
           : "hover:bg-gray-300"
-      } text-xl h-fit font-semibold grid grid-cols-[15rem_1fr_11.7rem_9.5rem_12rem_16rem] cursor-pointer `}
+      } text-xl h-fit grid grid-cols-[15rem_1fr_11.7rem_9.5rem_12rem_16rem] cursor-pointer `}
     >
       <div className="px-4 py-3 border-b-1 border-gray-400">
         {appointment.creation_date
           ? new Date(appointment.creation_date).toLocaleString()
           : "N/A"}
       </div>
-      <div className="px-4 py-3 border-b-1 border-gray-400">
-        {appointment.Visitor?.first_name} {appointment.Visitor?.last_name}
-      </div>
+      <div className="px-4 py-3 border-b-1 border-gray-400">{visitorName}</div>
       <div className="px-4 py-3 border-b-1 border-gray-400">
         {formatTimeDisplay(appointment.start_time, appointment.end_time)}
       </div>
-      <div className="px-4 py-3 border-b-1 border-gray-400">
+      <div className="px-4 flex items-center  border-b-1 border-gray-400">
         {getStatusLabel(status)}
       </div>
       <div className="px-4 py-3 border-b-1 border-gray-400">
@@ -129,69 +47,27 @@ export const AppointmentFormItem = ({
   );
 };
 
+// ---------------- Appointment Preview ----------------
 export const AppointmentPreview = ({ appointment, cameFrom = "forms" }) => {
+  const navigate = useNavigate();
+  const visitorName =
+    `${appointment.Visitor?.first_name || ""} ${
+      appointment.Visitor?.last_name || ""
+    }`.trim() || "Unknown Visitor";
+
+  const breadcrumbText = `${appointment.appointment_id} ${visitorName}`;
+  const encodedId = btoa(breadcrumbText);
+
   const appointmentInfo = [
     {
-      icon: (
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="20"
-          height="20"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="#000000"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="M3 7a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v10a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-10z" />
-          <path d="M3 7l9 6l9 -6" />
-        </svg>
-      ),
       Label: "Email",
-      Value: appointment.Visitor?.email,
+      Value: appointment.Visitor?.email || "No Email",
     },
-
-    
     {
-      icon: (
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="20"
-          height="20"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="#000000"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-         <path d="M5 4h4l2 5l-2.5 1.5a11 11 0 0 0 5 5l1.5 -2.5l5 2v4a2 2 0 0 1 -2 2a16 16 0 0 1 -15 -15a2 2 0 0 1 2 -2" />
-
-        </svg>
-      ),
       Label: "Phone Number",
       Value: appointment.Visitor?.phone || "No contact info",
     },
-
-    
     {
-      icon: (
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="20"
-          height="20"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="#000000"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-  <path d="M9 11a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" />
-  <path d="M17.657 16.657l-4.243 4.243a2 2 0 0 1 -2.827 0l-4.244 -4.243a8 8 0 1 1 11.314 0z" />
-        </svg>
-      ),
       Label: "Address",
       Value:
         appointment.Visitor?.street +
@@ -202,57 +78,23 @@ export const AppointmentPreview = ({ appointment, cameFrom = "forms" }) => {
           " " +
           appointment.Visitor?.province || "No Address",
     },
-
-    
     {
-      icon: (
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="20"
-          height="20"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="#000000"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-        <path d="M5.931 6.936l1.275 4.249m5.607 5.609l4.251 1.275" />
-        <path d="M11.683 12.317l5.759 -5.759" />
-        <path d="M5.5 5.5m-1.5 0a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0 -3 0" />
-        <path d="M18.5 5.5m-1.5 0a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0 -3 0" />
-        <path d="M18.5 18.5m-1.5 0a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0 -3 0" />
-        <path d="M8.5 15.5m-4.5 0a4.5 4.5 0 1 0 9 0a4.5 4.5 0 1 0 -9 0" />
-        </svg>
-      ),
       Label: "Organization",
       Value: appointment.Visitor?.organization || "No Organization",
     },
   ];
 
-    const visitorName =
-    `${appointment.Visitor?.first_name || ""} ${
-      appointment.Visitor?.last_name || ""
-    }`.trim() || "Unknown Visitor";
-
-  const breadcrumbText = `${appointment.appointment_id} ${visitorName}`;
-  const encodedId = btoa(breadcrumbText);
-
-  const navigate = useNavigate();
-
   return (
     <div className="w-full h-full flex flex-col gap-y-7">
-      <div className="  border-b-1 border-gray-400 flex items-center justify-between">
-        <span className="mb-3 text-3xl font-semibold">
-          {appointment.Visitor?.first_name} {appointment.Visitor?.last_name}
-        </span>
+      <div className="border-b-1 border-gray-400 flex items-center justify-between">
+        <span className="mb-3 text-3xl font-semibold">{visitorName}</span>
         <span className="text-lg">{formatDate(appointment.creation_date)}</span>
       </div>
 
-      <div className="w-full  h-fit flex flex-col gap-y-3 border-b-1 border-gray-400 pb-5">
-        {appointmentInfo.map(({ icon, Label, Value }) => (
+      {/* Contact Info */}
+      <div className="w-full h-fit flex flex-col gap-y-3 border-b-1 border-gray-400 pb-5">
+        {appointmentInfo.map(({ Label, Value }) => (
           <div key={Label} className="flex gap-x-2 w-full h-fit">
-            <div className="min-w-fit h-fit">{icon}</div>
             <div className="w-full h-fit flex flex-col">
               <span className="text-xl font-semibold">{Label}</span>
               <span className="h-5 text-lg text-[#4E84D4]">{Value}</span>
@@ -261,83 +103,60 @@ export const AppointmentPreview = ({ appointment, cameFrom = "forms" }) => {
         ))}
       </div>
 
-      <div className="w-full h-fit gap-y-3 flex flex-col ">
+      {/* Extra Info */}
+      <div className="w-full h-fit gap-y-3 flex flex-col">
         <div className="flex flex-col">
-            <span className="text-xl font-semibold">Purpose of visit:</span>
-            <span className="h-5 text-lg text-[#4E84D4]">{appointment.purpose_of_visit}</span>
+          <span className="text-xl font-semibold">Purpose of visit:</span>
+          <span className="h-5 text-lg text-[#4E84D4]">
+            {appointment.purpose_of_visit}
+          </span>
         </div>
         <div className="flex flex-col">
-            <span className="text-xl  font-semibold">Population count:</span>
-            <span className="h-5 text-lg text-[#4E84D4]">{appointment.population_count }</span>
+          <span className="text-xl font-semibold">Population count:</span>
+          <span className="h-5 text-lg text-[#4E84D4]">
+            {appointment.population_count}
+          </span>
         </div>
         <div className="flex justify-between h-fit w-full">
-        <div className="flex flex-col">
-            <span className="text-xl  font-semibold">Preffered date:</span>
-            <span className="h-5 text-lg text-[#4E84D4]">{appointment.preferred_date || "No preferred date"}</span>
-        </div>
-
-                <div className="flex flex-col">
-            <span className="text-xl  font-semibold">Preferred Time:</span>
-            <span className="h-5 text-lg text-[#4E84D4]">{appointment.preferred_time || "No preferred time"}</span>
-        </div>
-
+          <div className="flex flex-col">
+            <span className="text-xl font-semibold">Preferred date:</span>
+            <span className="h-5 text-lg text-[#4E84D4]">
+              {appointment.preferred_date || "No preferred date"}
+            </span>
+          </div>
+          <div className="flex flex-col">
+            <span className="text-xl font-semibold">Preferred Time:</span>
+            <span className="h-5 text-lg text-[#4E84D4]">
+              {appointment.preferred_time || "No preferred time"}
+            </span>
+          </div>
         </div>
 
         <div className="w-full mt-7 h-fit rounded-md bg-gray-200 p-5 flex flex-col">
-            <span className="text-xl">Notes:</span>
-            <span className="h-37 overflow-y-auto  text-lg text-[#4E84D4]">
-                {appointment.additional_notes}
-            </span>
-
+          <span className="text-xl">Notes:</span>
+          <span className="h-37 overflow-y-auto text-lg text-[#4E84D4]">
+            {appointment.additional_notes}
+          </span>
         </div>
       </div>
 
+      {/* Open Button */}
       <div className="w-full h-10 flex justify-end">
-        <button className="flex items-center justify-center gap-x-2 px-4 rounded-sm bg-[#4E84D4] hover:bg-blue-900" onClick={() => navigate(encodedId)}>
-        <span className="text-white font-medium">Open</span>
-        <svg
-        xmlns="http://www.w3.org/2000/svg"
-        width="18"
-        height="18"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="#FFFFFF"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
+        <button
+          className="flex items-center justify-center gap-x-2 px-4 rounded-sm bg-[#4E84D4] hover:bg-blue-900"
+          onClick={() => navigate(encodedId)}
         >
-        <path d="M20 12l-10 0" />
-        <path d="M20 12l-4 4" />
-        <path d="M20 12l-4 -4" />
-        <path d="M4 4l0 16" />
-        </svg>
-
+          <span className="text-white font-medium">Open</span>
         </button>
-
       </div>
     </div>
   );
 };
 
-// Attendance Item Component
+// ---------------- Attendance Item ----------------
 export const AttendanceItem = ({ attendance, cameFrom = "attendance" }) => {
   const presentValue = attendance.present ?? "ongoing";
-  // Include visitor name and date in the encoded string for better breadcrumb display
   const visitorName = attendance.visitorName || "Unknown Visitor";
-  const attendanceDate = attendance.preferredDate || attendance.date;
-  const formattedDate = attendanceDate
-    ? new Date(attendanceDate).toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      })
-    : "";
-  const purposeShort = attendance.purpose
-    ? attendance.purpose.substring(0, 30) +
-      (attendance.purpose.length > 30 ? "..." : "")
-    : "";
-
-  // Create a simple, readable breadcrumb
   const breadcrumbText = `${attendance.appointment_id} ${visitorName}`;
   const encodedId = attendance.appointment_id ? btoa(breadcrumbText) : "#";
 
@@ -345,7 +164,7 @@ export const AttendanceItem = ({ attendance, cameFrom = "attendance" }) => {
     <NavLink
       to={encodedId}
       state={{ cameFrom }}
-      className=" text-xl min-w-fit h-fit font-semibold grid grid-cols-[15rem_1fr_12.3rem_11.5rem_12.5rem_13rem] hover:bg-gray-300 cursor-pointer"
+      className="text-xl min-w-fit h-fit grid grid-cols-[15rem_1fr_12.3rem_11.5rem_12.5rem_13rem] hover:bg-gray-300 cursor-pointer"
     >
       <div className="px-4 py-3 border-b-1 border-gray-400">
         {attendance.date}
@@ -367,6 +186,7 @@ export const AttendanceItem = ({ attendance, cameFrom = "attendance" }) => {
   );
 };
 
+// ---------------- Visitor Record Item ----------------
 export const VisitorRecordItem = ({
   record,
   isExpanded,
@@ -377,27 +197,13 @@ export const VisitorRecordItem = ({
     <>
       {/* Main Row */}
       <div
-        className=" text-xl h-fit font-semibold grid grid-cols-[1fr_1fr_39rem] cursor-pointer hover:bg-gray-300 border-b-1 border-gray-400"
+        className="text-xl h-fit  grid grid-cols-[1fr_1fr_39rem] cursor-pointer hover:bg-gray-300 border-b-1 border-gray-400"
         onClick={() => onToggle(record.id)}
       >
         <div className="px-4 py-3">{formatDate(record.date)}</div>
         <div className="px-4 py-3">{record.visitorName}</div>
         <div className="px-4 py-3 flex justify-between items-center">
           <span>{record.visitCount}</span>
-          <svg
-            className={`w-5 h-5 mr-4 text-gray-500 transform ${
-              isExpanded ? "rotate-180" : ""
-            }`}
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <polyline points="6 9 12 15 18 9" />
-          </svg>
         </div>
       </div>
 
@@ -406,15 +212,7 @@ export const VisitorRecordItem = ({
         <div className="w-full flex justify-end">
           <div className="w-[45%] my-4 mr-4 rounded-lg overflow-hidden shadow-sm shadow-black">
             {record.details && record.details.length > 0 ? (
-              <div
-                style={{
-                  maxHeight:
-                    record.details.length > 3 ? "calc(3*3.5rem)" : "auto",
-                  overflowY: record.details.length > 3 ? "scroll" : "visible",
-                  scrollbarWidth: "thin",
-                  scrollbarColor: "#333 #ccc",
-                }}
-              >
+              <div className="max-h-[10rem] overflow-y-auto">
                 <table className="w-full border-collapse bg-white">
                   <thead className="sticky top-0 bg-white z-10">
                     <tr className="border-b border-gray-400">
@@ -430,7 +228,6 @@ export const VisitorRecordItem = ({
                       <th className="text-center py-3 px-4 font-semibold text-gray-700">
                         Date
                       </th>
-                      <th className="w-10 py-3 px-2 text-right"></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -456,7 +253,7 @@ export const VisitorRecordItem = ({
                           {formatDate(detail.date)}
                         </td>
                         <td className="py-3 px-2 text-right">
-                          {detail.appointment_id ? (
+                          {detail.appointment_id && (
                             <NavLink
                               to={btoa(
                                 `${detail.appointment_id} ${
@@ -467,36 +264,8 @@ export const VisitorRecordItem = ({
                               className="text-blue-500 hover:text-blue-700"
                               onClick={(e) => e.stopPropagation()}
                             >
-                              <svg
-                                className="w-5 h-5"
-                                xmlns="http://www.w3.org/2000/svg"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              >
-                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                                <circle cx="12" cy="12" r="3" />
-                              </svg>
+                              View
                             </NavLink>
-                          ) : (
-                            <span className="text-gray-400">
-                              <svg
-                                className="w-5 h-5"
-                                xmlns="http://www.w3.org/2000/svg"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              >
-                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                                <circle cx="12" cy="12" r="3" />
-                              </svg>
-                            </span>
                           )}
                         </td>
                       </tr>

@@ -308,7 +308,7 @@ const ViewArtifacts = () => {
               </span>
               <div className="w-full h-[30rem] rounded-xl bg-gradient-to-b from-[#FFBE63] to-[#383123] flex flex-col gap-4 p-6" >
                 <span>
-                    Basic Information
+                    Basic Informationsdads
                 </span>
                 
               </div>

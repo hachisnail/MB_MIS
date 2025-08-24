@@ -6,10 +6,10 @@ import {
 
 // ✅ Reusable component for donor info items
 const DonorInfoItem = ({ icon, label, value }) => (
-  <div className="w-full h-[5rem] flex flex-col gap-1">
-    <div className="w-full h-[3rem] flex gap-2 text-black items-end">
+  <div className="w-full h-[3.5rem] flex flex-col gap-1">
+    <div className="w-full h-[2rem] flex gap-2 text-black items-end">
       <div className="w-10 h-10">{icon}</div>
-      <p className="font-bold text-xl font-hind">{label}:</p>
+      <p className="font-bold text-2xl font-hind">{label}:</p>
     </div>
     <div className="w-full h-[2.5rem] flex items-center pl-16">
       <p className="text-2xl font-bold text-[#624925]">{value}</p>
@@ -288,7 +288,7 @@ const ViewArtifacts = () => {
                 <span className="text-4xl font-semibold">
                   Donors Information
                 </span>
-                <div className="w-full h-[30.5rem] px-6 flex flex-col gap-3 py-2">
+                <div className="w-full h-[22.5rem] px-6 flex flex-col gap-3 py-2">
                   {donorDetails.map((item, idx) => (
                     <DonorInfoItem key={idx} {...item} />
                   ))}

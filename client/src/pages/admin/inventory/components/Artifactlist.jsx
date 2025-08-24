@@ -230,7 +230,7 @@ export function RenderRelatedDocs({ relatedImages = [], attachedFiles = [] }) {
 
 export function RenderArtifactInformation({ artifactImg = [] }) {
   return (
-    <div className="w-full max-w-[58rem] h-full flex flex-col gap-y-5 px-15">
+    <div className="w-full max-w-[48rem] h-full flex flex-col gap-y-5 px-15">
       <div className="w-full h-auto p-4 bg-white rounded-xl shadow-[0_2px_16px_2px_rgba(0,0,0,0.25)]">
         <div className="w-fit h-fit flex flex-col gap-2">
           <div className="w-full h-[4rem] px-17 flex gap-3 items-center">
@@ -252,27 +252,27 @@ export function RenderArtifactInformation({ artifactImg = [] }) {
               Artifact Image
             </span>
           </div>
-          <ImageCarousel images={artifactImg} />
+          <ImageCarousel mainSize="w-98 h-98" thumbnailSize="w-22 h-22" images={artifactImg} />
         </div>
       </div>
 
-      <div className="w-full h-[4rem] bg-white rounded-xl shadow-[0_6px_16px_2px_rgba(0,0,0,0.25)] flex items-center justify-between">
-        <div className="w-[26rem] h-full flex items-center justify-center">
-          <p className="text-3xl font-bold font-hind text-[#383123]">
+      <div className="w-full h-[5rem] bg-white rounded-xl shadow-[0_6px_16px_2px_rgba(0,0,0,0.25)] flex items-center justify-between">
+        <div className="w-[22rem] h-full flex items-center justify-center">
+          <p className="text-2xl font-bold font-hind text-[#383123]">
             This artifact is currently
           </p>
         </div>
-        <div className="w-[28rem] h-full flex items-center px-12">
+        <div className="w-[26rem] h-full flex items-center px-12">
           <div className="w-full h-12 bg-[#FFBE63] flex items-center justify-center rounded-xl">
-            <p className="text-2xl font-bold tracking-wider font-hind">
+            <p className="text-xl font-bold tracking-wider font-hind">
               On Maintenance
             </p>
           </div>
         </div>
       </div>
 
-      <div className="w-full h-[24rem] pb-6">
-        <div className="w-full h-full rounded-xl bg-gradient-to-b from-black via-[#2e1c00] to-[#383123] gap-6 flex flex-col px-8 py-12">
+      <div className="w-full h-[23rem]">
+        <div className="w-full h-full rounded-xl bg-gradient-to-b from-black via-[#2e1c00] to-[#383123] gap-6 flex flex-col px-8 py-5">
           <div className="h-auto w-full">
             <span className="text-4xl font-hind text-[#FFBE63] font-semibold tracking-wide">
               Maintenance Description

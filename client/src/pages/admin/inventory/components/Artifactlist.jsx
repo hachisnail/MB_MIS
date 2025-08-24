@@ -248,7 +248,7 @@ export function RenderArtifactInformation({ artifactImg = [] }) {
                 />
               </svg>
             </div>
-            <span className="text-5xl text-[#332613] font-hind font-bold tracking-wider">
+            <span className="text-4xl text-[#332613] font-hind font-bold tracking-wider">
               Artifact Image
             </span>
           </div>
@@ -256,7 +256,7 @@ export function RenderArtifactInformation({ artifactImg = [] }) {
         </div>
       </div>
 
-      <div className="w-full h-[8rem] bg-white rounded-xl shadow-[0_6px_16px_2px_rgba(0,0,0,0.25)] flex items-center justify-between">
+      <div className="w-full h-[4rem] bg-white rounded-xl shadow-[0_6px_16px_2px_rgba(0,0,0,0.25)] flex items-center justify-between">
         <div className="w-[26rem] h-full flex items-center justify-center">
           <p className="text-3xl font-bold font-hind text-[#383123]">
             This artifact is currently
@@ -271,15 +271,15 @@ export function RenderArtifactInformation({ artifactImg = [] }) {
         </div>
       </div>
 
-      <div className="w-full h-[30rem] pb-6">
+      <div className="w-full h-[24rem] pb-6">
         <div className="w-full h-full rounded-xl bg-gradient-to-b from-black via-[#2e1c00] to-[#383123] gap-6 flex flex-col px-8 py-12">
           <div className="h-auto w-full">
-            <span className="text-5xl font-hind text-[#FFBE63] font-semibold tracking-wide">
+            <span className="text-4xl font-hind text-[#FFBE63] font-semibold tracking-wide">
               Maintenance Description
             </span>
           </div>
           <div className="w-full h-full">
-            <p className="text-2xl text-white font-hind font-normal text-justify">
+            <p className="text-xl text-white font-hind font-normal text-justify">
               Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do
               eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut
               enim ad minim veniam, quis nostrud exercitation ullamco laboris

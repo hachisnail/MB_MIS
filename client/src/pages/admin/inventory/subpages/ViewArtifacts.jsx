@@ -42,8 +42,8 @@ const ArtifactDamage = ({ relatedImages = [] }) => {
   };
 
   return (
-    <div className="w-full h-full px-4 pt-2  rounded-lg border border-gray-400 flex flex-col">
-      <span className="text-3xl font-semibold">Artifact Damages</span>
+    <div className="w-full h-[30rem] px-4 pt-2  rounded-lg border border-gray-400 flex flex-col">
+      <span className="text-2xl font-bold">Artifact Damages</span>
 
       <div className="max-w-[60rem] h-full flex flex-col items-center gap-y-4 mt-4 justify-center">
         <div className="flex items-center">
@@ -103,9 +103,9 @@ const ArtifactDamage = ({ relatedImages = [] }) => {
 
         {/* Damage Notes Box */}
         <div className="w-full h-[14rem]  flex flex-col items-center py-6 px-12 gap-2"> 
-          <span className="text-3xl font-semibold text-[#393224]">Termite Damage</span>
+          <span className="text-2xl font-semibold text-[#393224]">Termite Damage</span>
 
-          <span className="text-2xl font-semibold text-[#393224]">
+          <span className="text-xl font-semibold text-[#393224]">
             The handle shows visible termite damage, with parts of the wood hollowed out and weakened.
           </span>
         </div>
@@ -302,22 +302,24 @@ const ViewArtifacts = () => {
 
         {activeTab === "right" && (
           <div className="w-full flex h-full gap-x-10">
-            <div className="w-full h-[77rem] min-w-[48rem] flex flex-col p-6 gap-y-6 rounded-xl shadow-[0_2px_16px_2px_rgba(0,0,0,0.25)]">
-              <span className="text-5xl font-semibold text-[#383123]">
+            <div className="w-full h-[62rem] min-w-[48rem] flex flex-col p-6 gap-y-4 rounded-xl shadow-[0_2px_16px_2px_rgba(0,0,0,0.25)]">
+              <span className="text-4xl font-semibold text-[#383123]">
                 Artifact Information
               </span>
-              <div className="w-full h-[30rem] rounded-xl bg-gradient-to-b from-[#FFBE63] to-[#383123] flex flex-col gap-4 p-6" >
+              <div className="w-full h-[26rem] rounded-xl bg-gradient-to-b from-[#FFBE63] to-[#383123] flex flex-col gap-4 p-6" >
                 <span>
                     Basic Informationsdads
                 </span>
                 
               </div>
-              <div className="w-full h-[20rem] rounded-xl bg-gradient-to-b from-[#383123] to-[#010101]" ></div>
-              <div className="w-full h-[27rem] rounded-xl bg-[#000000]" ></div>
+              <div className="w-full h-[16rem] rounded-xl bg-gradient-to-b from-[#383123] to-[#010101]" ></div>
+              <div className="w-full h-[22rem] rounded-xl bg-[#000000]" ></div>
             </div>
 
             <div className="w-full min-w-[64rem] h-full flex flex-col px-10 pb-5 gap-y-6">
-              <div className="w-full h-[36rem] rounded-xl bg-gradient-to-b from-[#000000] to-[#383123]" />
+              <div className="w-full h-[24rem] rounded-xl bg-gradient-to-b from-[#000000] to-[#383123]">
+
+              </div>
               <div className="w-full h-auto">
                 <RenderRelatedDocs
                   relatedImages={relatedImages}

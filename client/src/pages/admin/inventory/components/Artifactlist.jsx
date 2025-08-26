@@ -230,7 +230,7 @@ export function RenderRelatedDocs({ relatedImages = [], attachedFiles = [] }) {
 
 export function RenderArtifactInformation({ artifactImg = [] }) {
   return (
-    <div className="w-full max-w-[48rem] h-full flex flex-col gap-y-5 px-15">
+    <div className="w-full max-w-[48rem] h-[62rem] flex flex-col gap-y-5 px-15">
       <div className="w-full h-auto p-4 bg-white rounded-xl shadow-[0_2px_16px_2px_rgba(0,0,0,0.25)]">
         <div className="w-fit h-fit flex flex-col gap-2">
           <div className="w-full h-[4rem] px-17 flex gap-3 items-center">

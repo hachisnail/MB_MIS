@@ -42,7 +42,7 @@ const ArtifactDamage = ({ relatedImages = [] }) => {
   };
 
   return (
-    <div className="w-full h-[30rem] px-4 pt-2  rounded-lg border border-gray-400 flex flex-col">
+    <div className="w-full h-[30rem] px-4 pt-2 rounded-lg border border-gray-400 flex flex-col">
       <span className="text-2xl font-bold">Artifact Damages</span>
 
       <div className="max-w-[60rem] h-full flex flex-col items-center gap-y-4 mt-4 justify-center">
@@ -102,7 +102,7 @@ const ArtifactDamage = ({ relatedImages = [] }) => {
         </div>
 
         {/* Damage Notes Box */}
-        <div className="w-full h-[14rem]  flex flex-col items-center py-6 px-12 gap-2"> 
+        <div className="w-full h-[8rem]  flex flex-col items-center py-2 px-12 gap-2"> 
           <span className="text-2xl font-semibold text-[#393224]">Termite Damage</span>
 
           <span className="text-xl font-semibold text-[#393224]">
@@ -283,7 +283,7 @@ const ViewArtifacts = () => {
               />
             </div>
 
-            <div className="w-full max-w-[58rem] h-full flex flex-col gap-y-6 ">
+            <div className="w-full max-w-[58rem] h-[62rem]  flex flex-col gap-y-6 ">
               <div className="w-full min-h-fit h-fit rounded-xl shadow-[0_6px_16px_2px_rgba(0,0,0,0.25)] gap-y-5 flex flex-col p-8">
                 <span className="text-4xl font-semibold">
                   Donors Information

@@ -1,10 +1,11 @@
 import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import Logo from '@/assets/LOGO.png';
+import { useNavigate } from "react-router-dom";
 
 const AdminHeader = ({ onClose, onOpen, isSidebarOpen }) => {
   const location = useLocation();
-
+  const navigate =useNavigate();
   const isPreview = location.pathname.includes("/preview/");
 
   useEffect(() => {
@@ -66,7 +67,8 @@ const AdminHeader = ({ onClose, onOpen, isSidebarOpen }) => {
             )}
 
 
-        <div className="w-90 h-10 flex gap-x-3 items-center">
+        <div className="w-90 h-10 flex gap-x-3 items-center cursor-pointer"
+        onClick={() => {navigate(`/`)}}>
             {/* <img src={Logo} className="h-10 w-auto" alt="Museo Bulawan Logo" /> */}
             <div className="w-[1px] h-9 rounded-md bg-white">
             

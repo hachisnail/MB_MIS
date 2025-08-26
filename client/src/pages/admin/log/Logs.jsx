@@ -1,15 +1,11 @@
-import { useState, useEffect, useRef } from "react";
-import { NavLink, useLocation } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import { SearchBar, CardDropdownPicker } from "../../../features/Utilities";
 import axiosClient from "../../../lib/axiosClient";
 import TimelineDatePicker from "../../../features/TimelineDatePicker";
 import { useSocketClient } from "../../../context/authContext";
-import LogItem from "./components/Logslist"
-import {
-  LoadingSpinner,
-  ErrorBox,
-  EmptyMessage,
-} from "../../../components/commons";
+import LogItem from "./components/Logslist";
+import ListRenderer from "../../../components/tables/ListRenderer";
 import { rolePermissions, actionLabels } from "../../../components/commons";
 import { TableHeaderContainer } from "../../../features/Utilities";
 
@@ -18,10 +14,16 @@ const Logs = () => {
   const [logs, setLogs] = useState([]);
   const [errorLogs, setErrorLogs] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedDate, setSelectedDate] = useState("");
+
+  // Filter states
+  const [selectedDate, setSelectedDate] = useState(""); // UI single-date picker
   const [selectedRole, setSelectedRole] = useState("");
   const [selectedAction, setSelectedAction] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+
+  // Range filters (params only)
+  const [startDate, setStartDate] = useState(null);
+  const [endDate, setEndDate] = useState(null);
 
   const socket = useSocketClient();
 
@@ -33,6 +35,10 @@ const Logs = () => {
       if (location.state.date) setSelectedDate(location.state.date);
       if (location.state.search)
         setSearchQuery(location.state.search.toLowerCase());
+
+      // Accept date range params
+      if (location.state.startDate) setStartDate(new Date(location.state.startDate));
+      if (location.state.endDate) setEndDate(new Date(location.state.endDate));
     }
   }, [location.state]);
 
@@ -54,13 +60,13 @@ const Logs = () => {
       });
       setLogs(response.data);
     } catch (error) {
-      // console.error("Failed to fetch logs!", err);
       setErrorLogs("Failed to fetch logs!\n" + error);
     } finally {
       setIsLoading(false);
     }
   };
 
+  // Role dropdown options
   const uniqueRoles = Array.from(
     new Set(logs.map((log) => log.user?.roleId))
   ).filter(Boolean);
@@ -73,12 +79,13 @@ const Logs = () => {
     })),
   ];
 
+  // Action dropdown options
   const uniqueActions = Array.from(
     new Set(logs.map((log) => log.action))
   ).filter(Boolean);
 
   const actionOptions = [
-    { value: "*", label: "*" },
+    { value: "*", label: "Filter by action" },
     ...uniqueActions.map((action) => ({
       value: action,
       label: actionLabels[action] || action,
@@ -89,11 +96,11 @@ const Logs = () => {
     fetchLogs();
   }, []);
 
+  // Re-fetch logs on socket events
   useEffect(() => {
     if (!socket) return;
 
     const handleLogChange = () => {
-      // console.log("[Socket] Log changed – fetching logs...");
       fetchLogs();
     };
 
@@ -124,8 +131,11 @@ const Logs = () => {
 
   const handleDateFilter = (date) => {
     setSelectedDate(date);
+    setStartDate(null); // clear range when UI date is used
+    setEndDate(null);
   };
 
+  // Filter logs
   const filtered = logs.filter((log) => {
     const searchableString = [
       log.user?.fname || "",
@@ -141,32 +151,47 @@ const Logs = () => {
     const matchesSearch = searchableString.includes(searchQuery);
     const matchesRole = matchesFilter(log.user?.roleId, selectedRole);
     const matchesAction = matchesFilter(log.action, selectedAction);
-    const matchesDate = selectedDate
-      ? new Date(log.createdAt).toDateString() ===
-        new Date(selectedDate).toDateString()
-      : true;
+
+    let matchesDate = true;
+    const logDate = new Date(log.createdAt);
+
+    if (startDate && endDate) {
+      matchesDate = logDate >= startDate && logDate <= endDate;
+    } else if (selectedDate) {
+      matchesDate =
+        logDate.toDateString() === new Date(selectedDate).toDateString();
+    }
 
     return matchesSearch && matchesRole && matchesAction && matchesDate;
   });
 
   const logHeaders = [
-    {label:"Actor", width: 15},
-    {label:"Timestamp", width: 18.5},
-    {label:"Tab", width: 13},
-    {label:"Action", width: 12.5},
-    {label:"Description"},
-  ]
+    { label: "Actor", width: 15 },
+    { label: "Timestamp", width: 18.5 },
+    { label: "Tab", width: 13 },
+    { label: "Action", width: 12.5 },
+    { label: "Description" },
+  ];
 
-  console.log(logs)
   return (
-    <div className="w-full min-w-fit h-full  1xl:max-h-[69rem] 2xl:max-h-[81rem]  3xl:max-h-[88rem]">
+    <div className="w-full min-w-fit h-full 1xl:max-h-[69rem] 2xl:max-h-[81rem] 3xl:max-h-[88rem]">
       <div className="w-full h-full flex flex-col gap-y-[2rem]">
         <div className="w-full h-fit flex gap-x-3">
-          <TimelineDatePicker onDateChange={handleDateFilter} theme="dark" />
+          {/* Controlled Date picker (still works for single-day filter) */}
+          <TimelineDatePicker
+            value={selectedDate}
+            onDateChange={handleDateFilter}
+            theme="dark"
+          />
 
-          {/* searchbar */}
-          <SearchBar theme="dark" onChange={handleSearch} />
+          {/* Controlled Searchbar */}
+          <SearchBar
+            theme="dark"
+            value={searchQuery}
+            onChange={handleSearch}
+          />
 
+          {/* Controlled Role dropdown */}
           <CardDropdownPicker
             value={selectedRole}
             onChange={setSelectedRole}
@@ -175,6 +200,7 @@ const Logs = () => {
             options={roleOptions}
           />
 
+          {/* Controlled Action dropdown */}
           <CardDropdownPicker
             value={selectedAction}
             onChange={setSelectedAction}
@@ -186,44 +212,25 @@ const Logs = () => {
 
         <div className="w-full h-full flex flex-col ">
           {/* Table Header */}
-            <TableHeaderContainer headers={logHeaders} theme="dark"/>
+          <TableHeaderContainer headers={logHeaders} theme="dark" />
 
-          {/* <div className="w-full min-w-fit h-12 grid grid-cols-[15rem_18.5rem_13rem_12.5rem_1fr]  ">
-            {["Actor", "Timestamp", "Tab", "Action", "Description"].map(
-              (label) => (
-                <div
-                  key={label}
-                  className="h-10 min-w-fit flex pl-5  items-center col-span-1"
-                >
-                  <span className="text-2xl ">{label}</span>
-                </div>
-              )
-            )}
-          </div> */}
-
-          <div className="w-full h-[52rem]  border-y-1 border-gray-600 flex flex-col overflow-scroll">
+          <div className="w-full h-[52rem] border-y-1 border-gray-400 flex flex-col overflow-scroll">
             <div className="relative w-full h-full">
-              {/* Overlayed Spinner */}
-              {isLoading && (
-                <div className="absolute inset-0 z-10 flex items-center justify-center ">
-                  <LoadingSpinner />
-                </div>
-              )}
-
-              {/* Error State */}
-              {errorLogs ? (
-                <ErrorBox message={errorLogs} />
-              ) : filtered.length > 0 ? (
-                filtered.map((log) => (
+              <ListRenderer
+                isLoading={isLoading}
+                error={errorLogs}
+                items={filtered}
+                emptyMessage="Empty logs"
+                renderItem={(log) => (
                   <LogItem
                     key={log.id}
                     log={log}
                     formatCreatedAt={formatCreatedAt}
+                    headers={logHeaders}
+                    theme="dark"
                   />
-                ))
-              ) : !isLoading && filtered.length === 0 ? (
-                <EmptyMessage message="Empty logs" />
-              ) : null}
+                )}
+              />
             </div>
           </div>
         </div>

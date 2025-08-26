@@ -153,7 +153,7 @@ const AcquisitionViewPage = () => {
   const email = "juandelacruz@gmail.com";
 
   return (
-    <div className="flex flex-col justify-between w-full h-full items-center">
+    <div className="flex flex-col justify-center gap-y-3 w-full h-full items-center">
       <div className=" flex">
         {/* button right */}
         {activeTab === "right" && (

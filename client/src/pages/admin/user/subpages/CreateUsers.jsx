@@ -167,7 +167,7 @@ const CreateUsers = () => {
       {PromptModal}
 
       {/* Form */}
-      <div className="w-full h-full flex flex-col 1xl:h-[69rem] 2xl:max-h-[81rem] 3xl:max-h-[88rem]">
+      <div className="w-full h-full flex flex-col 1xl:h-[62rem] 2xl:max-h-[81rem] 3xl:max-h-[88rem]">
         <div className="w-full h-full overflow-y-scroll flex-col xl:flex-row py-5 items-center flex border-t-1 border-[#373737]">
           <form
             className="min-w-fit flex flex-col lg:flex-row h-full gap-y-5 gap-x-10"

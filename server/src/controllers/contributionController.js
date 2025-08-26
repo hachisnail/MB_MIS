@@ -147,9 +147,53 @@ export const uploadContributionFiles = async (req, res) => {
 
 export const getAllContributions = async (req, res) => {
   try {
+    const {
+      status,
+      type,
+      contributorName,
+      contributorEmail,
+      fromDate,
+      toDate,
+      province,
+      city,
+    } = req.query;
+
+    // build base filter for Contributions
+    const where = {};
+    if (status) where.status = status; // e.g. approved, pending
+    if (type) where.contribution_type = type; // lending / donation
+    if (fromDate && toDate) {
+      where.submission_date = {
+        [Op.between]: [new Date(fromDate), new Date(toDate)],
+      };
+    } else if (fromDate) {
+      where.submission_date = { [Op.gte]: new Date(fromDate) };
+    } else if (toDate) {
+      where.submission_date = { [Op.lte]: new Date(toDate) };
+    }
+
+    // contributor filters
+    const contributorWhere = {};
+    if (contributorName) {
+      contributorWhere[Op.or] = [
+        { first_name: { [Op.like]: `%${contributorName}%` } },
+        { last_name: { [Op.like]: `%${contributorName}%` } },
+      ];
+    }
+    if (contributorEmail) {
+      contributorWhere.email = { [Op.like]: `%${contributorEmail}%` };
+    }
+    if (province) contributorWhere.province = province;
+    if (city) contributorWhere.city = city;
+
     const contributions = await Contributions.findAll({
+      where,
       include: [
-        { model: Contributors, attributes: ["first_name", "last_name", "email"] },
+        {
+          model: Contributors,
+          attributes: ["first_name", "last_name", "email", "province", "city"],
+          where: Object.keys(contributorWhere).length ? contributorWhere : undefined,
+        },
         { model: LendingDetails },
         { model: ContributionArtifacts },
       ],
@@ -164,7 +208,9 @@ export const getAllContributions = async (req, res) => {
     return res.json(parsed);
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ message: "Server error retrieving contributions." });
+    return res
+      .status(500)
+      .json({ message: "Server error retrieving contributions." });
   }
 };
 
@@ -227,5 +273,73 @@ export const getContributionStats = async (req, res) => {
   } catch (err) {
     console.error(err);
     return res.status(500).json({ message: "Server error retrieving stats" });
+  }
+};
+
+
+export const getDonorRecords = async (req, res) => {
+  try {
+    const { fromDate, toDate } = req.query;
+
+    // filter contributions by date if provided
+    const where = {};
+    if (fromDate && toDate) {
+      where.submission_date = {
+        [Op.between]: [new Date(fromDate), new Date(toDate)],
+      };
+    }
+
+    const donors = await Contributors.findAll({
+      attributes: [
+        "contributor_id",
+        "first_name",
+        "last_name",
+        "email",
+        "province",
+        "city",
+      ],
+      include: [
+        {
+          model: Contributions,
+          attributes: [
+            "contribution_id",
+            "status",
+            "contribution_type",
+            "submission_date",
+          ],
+          where,
+          include: [
+            {
+              model: ContributionArtifacts,
+              attributes: [
+                "artifact_id",
+                "title",
+                "description",
+                "acquisition_details",
+                "additional_info",
+                "narrative",
+                "images",
+                "documents",
+              ],
+            },
+          ],
+        },
+      ],
+      order: [[{ model: Contributions }, "submission_date", "DESC"]],
+    });
+
+    // reshape: add total_contributions manually
+    const result = donors.map((donor) => {
+      const donorJson = donor.toJSON();
+      donorJson.total_contributions = donorJson.Contributions?.length || 0;
+      return donorJson;
+    });
+
+    return res.json(result);
+  } catch (err) {
+    console.error(err);
+    return res
+      .status(500)
+      .json({ message: "Server error retrieving donor records." });
   }
 };

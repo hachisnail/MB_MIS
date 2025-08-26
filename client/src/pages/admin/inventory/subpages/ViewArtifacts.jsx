@@ -250,7 +250,7 @@ const ViewArtifacts = () => {
   ];
 
   return (
-    <div className="flex flex-col justify-between w-full h-full items-center">
+    <div className="flex flex-col justify-center w-full h-full items-center gap-y-3">
       <div className="flex">
         {/* button right */}
         {activeTab === "right" && (
@@ -275,8 +275,8 @@ const ViewArtifacts = () => {
         )}
 
         {activeTab === "left" && (
-          <div className="flex gap-x-10 w-fit h-[77rem]">
-            <div className="w-fit h-full">
+          <div className="flex gap-x-10 w-fit h-[62rem]">
+            <div className="w-fit h-fit">
               <RenderArtifactInformation
                
                 artifactImg={artifactImg}

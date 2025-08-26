@@ -5,18 +5,15 @@ import axiosClient from "../../../lib/axiosClient";
 import TooltipButton from "../../../components/buttons/TooltipButton";
 import ConfirmationModal from "../../../components/modals/ConfirmationModal";
 import PopupModal from "../../../components/modals/PopupModal";
-import {
-  UserItem,
-  PendingInviteItem,
-} from "./components/UsersInviteslist";
+import { UserItem, PendingInviteItem } from "./components/UsersInviteslist";
 import {
   LoadingSpinner,
   ErrorBox,
   EmptyMessage,
 } from "../../../components/commons";
+import ListRenderer from "../../../components/tables/ListRenderer";
 
 import { useSocketClient } from "../../../context/authContext";
-
 
 const User = () => {
   const [users, setUsers] = useState([]);
@@ -96,7 +93,6 @@ const User = () => {
   }, [socket]);
 
   const handleOpen = (user) => {
-
     navigate(`/admin/user/${user.id}`);
   };
 
@@ -114,9 +110,8 @@ const User = () => {
   };
 
   const closeViewInvite = () => {
-  setViewInvite({ isOpen: false, invite: null });
-};
-
+    setViewInvite({ isOpen: false, invite: null });
+  };
 
   const openPopup = (title, message, type = "info") => {
     setPopup({ isOpen: true, title, message, type });
@@ -138,10 +133,9 @@ const User = () => {
         );
         openPopup("Success", response.data.message || "Invitation resent!");
       } else if (action === "revoke") {
-        response = await axiosClient.delete(
-          `/auth/invitation/${id}/revoke`,
-          { withCredentials: true }
-        );
+        response = await axiosClient.delete(`/auth/invitation/${id}/revoke`, {
+          withCredentials: true,
+        });
         openPopup("Success", response.data.message || "Invitation revoked!");
       }
       fetchPendingInvitations();
@@ -172,14 +166,13 @@ const User = () => {
   };
 
   const formatDate = (dateString) => {
-  const date = new Date(dateString);
-  return date.toLocaleDateString('en-PH', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
-};
-
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-PH", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  };
 
   return (
     <>
@@ -304,25 +297,16 @@ const User = () => {
           <div className="w-full h-full overflow-x-scroll flex flex-col min-w-fit max-h-[38rem] bg-[#1C1B19] border-[#373737] border-1 rounded-md">
             {/* Upper right panel */}
             <div className="relative w-full h-full">
-              {/* Overlayed Spinner */}
-              {userLoading && (
-                <div className="absolute inset-0 z-10 flex items-center justify-center ">
-                  <LoadingSpinner />
-                </div>
-              )}
-
-              {/* Error State */}
-              {userError ? (
-                <ErrorBox message={userError} />
-              ) : users.length > 0 ? (
-                users.map((user) => (
+              <ListRenderer
+                isLoading={userLoading}
+                error={userError}
+                items={users}
+                emptyMessage="No users!"
+                renderItem={(user) => (
                   <UserItem key={user.id} user={user} handleOpen={handleOpen} />
-                ))
-              ) : !userLoading && users.length === 0 ? (
-                <EmptyMessage message="No users!" />
-              ) : null}
+                )}
+              />
             </div>
-
           </div>
         </div>
         <div className="w-full min-h-1/2 py-5 overflow-y-scroll flex-col xl:flex-row border-t-1 items-center border-[#373737] flex">
@@ -335,34 +319,25 @@ const User = () => {
             </span>
           </div>
           <div className="w-full max-h-[35rem] min-w-fit flex flex-col h-full bg-[#1C1B19] border-[#373737] border-1 rounded-md">
-           <div className="relative w-full h-full">
-            {/* Overlayed Spinner */}
-            {inviteLoading && (
-              <div className="absolute inset-0 z-10 flex items-center justify-center ">
-                <LoadingSpinner />
-              </div>
-            )}
-
-            {/* Error State */}
-            {inviteError ? (
-              <ErrorBox message={inviteError} />
-            ) : pendingInvitations.length > 0 ? (
-              pendingInvitations.map((invite) => (
-                <PendingInviteItem
-                  key={invite.id}
-                  invite={invite}
-                  onResend={(id) => openConfirmModal("resend", id)}
-                  onRevoke={(id) => openConfirmModal("revoke", id)}
-                  processingId={processingInviteId}
-                  action={processingAction}
-                  setViewInvite={setViewInvite}
-                />
-              ))
-            ) : !inviteLoading && pendingInvitations.length === 0 ? (
-              <EmptyMessage message="No pending invitations!" />
-            ) : null}
-          </div>
-
+            <div className="relative w-full h-full">
+              <ListRenderer
+                isLoading={inviteLoading}
+                error={inviteError}
+                items={pendingInvitations}
+                emptyMessage="No pending invitations!"
+                renderItem={(invite) => (
+                  <PendingInviteItem
+                    key={invite.id}
+                    invite={invite}
+                    onResend={(id) => openConfirmModal("resend", id)}
+                    onRevoke={(id) => openConfirmModal("revoke", id)}
+                    processingId={processingInviteId}
+                    action={processingAction}
+                    setViewInvite={setViewInvite}
+                  />
+                )}
+              />
+            </div>
           </div>
         </div>
       </div>

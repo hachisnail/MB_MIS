@@ -6,7 +6,7 @@ const ListRowRenderer = ({
   columns = [],
   headers = [],
   details = [], 
-  onRowClick, // function or path string
+  onRowClick, 
   rowClassName = "",
   hoverEffect = true,
 }) => {

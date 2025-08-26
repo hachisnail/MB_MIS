@@ -14,6 +14,7 @@ import {
   EmptyMessage,
 } from "../../../components/commons";
 import { TableHeaderContainer } from "../../../features/Utilities";
+import ListRenderer from "../../../components/tables/ListRenderer";
 
 const Configuration = () => {
   const socket = useSocketClient();
@@ -233,22 +234,18 @@ const Configuration = () => {
   };
 
   const logHeaders = [
-    {label:"TimeStamp"},
-    {label:"Flag"},
-    {label:"Status"},
-    {label:"Actor"},
-  ]
+    { label: "TimeStamp" },
+    { label: "Flag" },
+    { label: "Status" },
+    { label: "Actor" },
+  ];
 
   return (
     <>
       <div className="w-full min-w-fit h-full  1xl:max-h-[69rem] 2xl:max-h-[81rem] 3xl:max-h-[88rem]">
         <div className="w-full h-full justify-center gap-x-5   flex  gap-y-[2rem]">
           <div className="w-[82rem] flex flex-col justify-between space-y-1 h-full ">
-            <div className="h-15 border border-[#373737] flex items-center justify-center">
-              <span className="text-xl">
-                Some Buttons for editong about and other misc.
-              </span>
-            </div>
+
             <div className="flex justify-between items-center w-full border-b border-[#373737] pb-5">
               <div className="flex flex-col">
                 <span className="text-2xl font-semibold mb-2">
@@ -284,11 +281,11 @@ const Configuration = () => {
                 {/* Overlayed Spinner */}
                 {flagsLoading && (
                   <div className="absolute inset-0 z-10 flex items-center justify-center ">
-                    <LoadingSpinner />
+                    {" "}
+                    <LoadingSpinner />{" "}
                   </div>
-                )}
-
-                {/* Error State */}
+                )}{" "}
+                {/* Error State */}{" "}
                 {flagsError ? (
                   <ErrorBox message={flagsError} />
                 ) : currentFlags.length > 0 ? (
@@ -299,7 +296,6 @@ const Configuration = () => {
                         (f) => f.route_key === "maintenance"
                       )?.is_enabled;
                       const isToggleable = route_key !== "maintenance";
-
                       return (
                         <FlagItem
                           key={route_key}
@@ -383,28 +379,24 @@ const Configuration = () => {
 
             <span className="text-2xl font-semibold w-fit mb-[2rem]">Logs</span>
 
-            <TableHeaderContainer headers={logHeaders} theme="dark" className="w-full" />
+            <TableHeaderContainer
+              headers={logHeaders}
+              theme="dark"
+              className="w-full"
+            />
 
-
-            <div className="w-full h-[52rem] overflow-y-scroll border-y border-gray-700">
+            <div className="w-full h-[30rem] overflow-y-scroll border-y border-gray-700">
               <div className="relative w-full h-full">
-                {/* Overlayed Spinner */}
-                {logsLoading && (
-                  <div className="absolute inset-0 z-10 flex items-center justify-center ">
-                    <LoadingSpinner />
-                  </div>
-                )}
-
-                {/* Error State */}
-                {logsError ? (
-                  <ErrorBox message={logsError} />
-                ) : availableLogs.length > 0 ? (
-                  availableLogs.map((log, index) => (
+                <ListRenderer
+                  isLoading={logsLoading}
+                  error={logsError}
+                  items={availableLogs}
+                  emptyMessage="Empty logs!"
+                  renderItem={(log, index) => (
                     <ConfigLogslist key={index} log={log} />
-                  ))
-                ) : !logsLoading && availableLogs.length === 0 ? (
-                  <EmptyMessage message="Empty logs!" />
-                ) : null}
+                  )}
+                  theme="dark"
+                />
               </div>
             </div>
           </div>

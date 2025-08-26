@@ -66,7 +66,6 @@ const ArticlesListRow = ({ article, handleStatusChange, userRole, getStatusBadge
       columns={columns}
       headers={headers}
       onRowClick={handleRowClick}
-      rowClassName="min-w-[60rem] h-fit font-semibold text-xl"
       hoverEffect={true}
     />
   );

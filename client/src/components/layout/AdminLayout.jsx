@@ -22,9 +22,9 @@ const AdminLayout = () => {
   );
 
   const itemRoutes = [
-    "/admin/acquisition/lending/*",
-    "/admin/acquisition/donation/*",
-    "/admin/invemtory/*",
+    "/admin/acquisition/lending/:encoded",
+    "/admin/acquisition/donation/:encoded",
+    "/admin/inventory/:encoded",
   ];
 
   const isItemView = itemRoutes.some((path) =>
@@ -72,7 +72,7 @@ const AdminLayout = () => {
 
       {/* Main content */}
       <main
-        className={`col-span-4 row-span-3 col-start-2 row-start-3 h-full w-full overflow-auto ${theme} pb-5 ${
+        className={`col-span-4 row-span-3 col-start-2 row-start-3  h-full w-full overflow-auto ${theme} pb-5 ${
           isItemView ? "pl-15 pr-0" : " px-15"
         } `}
       >

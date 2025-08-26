@@ -1,16 +1,44 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import TimelineDatePicker from "@/features/TimelineDatePicker";
 import useToast from "../../../components/commons";
 import Toast from "@/features/Toast";
 import { SearchBar, CardDropdownPicker } from "@/features/Utilities";
 import { formatDateForDisplay } from "../../../components/commons";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 const Inventory = () => {
-  const [activeTab, setActiveTab] = useState("artifacts");
-  const [selectedDate, setSelectedDate] = useState(null);
-  const [searchQuery, setSearchQuery] = useState("");
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const initialFilter = location.state?.filter || "artifacts";
+
+  const [activeTab, setActiveTab] = useState("artifacts");
+  const [artifactFilter, setArtifactFilter] = useState(null); // <-- secondary filter
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedDate, setSelectedDate] = useState(null);
+
+  useEffect(() => {
+    switch (initialFilter) {
+      case "artifacts":
+        setActiveTab("artifacts");
+        setArtifactFilter(null);
+        break;
+      case "acquired":
+        setActiveTab("acquired");
+        break;
+      case "borrowing":
+        setActiveTab("borrowing");
+        break;
+      case "displayed":
+        setActiveTab("artifacts");      // tab stays artifacts
+        setArtifactFilter("displayed"); // filter applied
+        console.log("displayed filter")
+        break;
+      default:
+        setActiveTab("artifacts");
+        setArtifactFilter(null);
+    }
+  }, [initialFilter]);
 
   const inventorySuammary = [
     { label: "Total Artifacts", Value: "0" },
@@ -84,7 +112,7 @@ const Inventory = () => {
           {inventorySuammary.map(({ label, Value }) => (
             <div
               key={label}
-              className="w-70 rounded-sm h-25 text-white bg-black font-semibold  flex flex-col items-center justify-center"
+              className="w-70 rounded-xl h-25 text-white bg-black font-semibold  flex flex-col items-center justify-center"
             >
               <span className="text-sm">{label}</span>
               <span className="text-5xl">{Value}</span>
@@ -104,7 +132,10 @@ const Inventory = () => {
                       ? "bg-black text-white border-black"
                       : "border-gray-500"
                   }`}
-                  onClick={() => setActiveTab(key)}
+                  onClick={() => {
+                    setActiveTab(key);
+                    if (key === "artifacts") setArtifactFilter(null);
+                  }}
                 >
                   {label}
                 </button>
@@ -128,38 +159,6 @@ const Inventory = () => {
                 placeholder="Search History"
               />
             </div>
-
-            <CardDropdownPicker
-              // value={`${columnFilter}|${sortDirection}`}
-              // onChange={(value) => {
-              //   const [column, direction] = value.split('|');
-              //   setColumnFilter(column);
-              //   setSortDirection(direction || 'asc');
-              // }}
-              placeholder="Sort By..."
-              theme="light"
-              // options={[
-              //   { value: '', label: 'Sort By...' },
-              //   ...(activeTab === 'forms' ? [
-              //     { value: 'creation_date|asc', label: 'Creation Date (Oldest First)' },
-              //     { value: 'creation_date|desc', label: 'Creation Date (Newest First)' },
-              // ]}
-            />
-            <CardDropdownPicker
-              // value={statusFilter}
-              // onChange={setStatusFilter}
-              placeholder="All Statuses"
-              theme="light"
-              // options={[
-              //   { value: 'All Statuses', label: 'All Statuses' },
-
-              // ]}
-            />
-            <div className="h-full justify-end min-w-[13rem] flex items-center">
-              <span className="text-2xl font-semibold text-[#727272]">
-                {formatDateForDisplay(selectedDate || new Date())}
-              </span>
-            </div>
           </div>
 
           {/* table data */}
@@ -175,7 +174,6 @@ const Inventory = () => {
                   "grid-cols-[1fr_1fr_auto_auto_auto_auto_auto]")
               } py-4 gap-y-5 h-fit`}
             >
-              {/* table header */}
               {(headersMap[activeTab] || []).map(({ label, width }) => (
                 <div
                   key={label}
@@ -185,36 +183,35 @@ const Inventory = () => {
                 </div>
               ))}
             </div>
+
             <div className="w-full h-[43.7rem] border-y border-gray-400">
               {activeTab === "artifacts" && (
                 <>
-                  {/* display list that artifacts records*/}
-                  <div onClick={() => navigate(`YXJ0aWZhY3Qx`)} className="text-2xl font-semibold py-2 flex justify-center border-gray-400 border-b-1">
-                    <span>artifacts artifacts</span>
+                  <div
+                  onClick={() => navigate(`artifact1`)}
+                   className="text-2xl font-semibold py-2 flex justify-center border-gray-400 border-b-1">
+                    {artifactFilter === "displayed" ? (
+                      <span>Showing only displayed artifacts</span>
+                    ) : (
+                      <span>All artifacts</span>
+                    )}
                   </div>
                 </>
               )}
               {activeTab === "acquired" && (
-                <>
-                  {/* display list that contains acquired artifacts */}
-                  <div className="text-2xl font-semibold py-2 flex justify-center border-gray-400 border-b-1">
-                    <span>acquired artifacts</span>
-                  </div>
-                </>
+                <div className="text-2xl font-semibold py-2 flex justify-center border-gray-400 border-b-1">
+                  <span>acquired artifacts</span>
+                </div>
               )}
               {activeTab === "borrowing" && (
-                <>
-                  {/* display list that contains borrowing artifacts */}
-                  <div className="text-2xl font-semibold py-2 flex justify-center border-gray-400 border-b-1">
-                    <span>borrowing artifacts</span>
-                  </div>
-                </>
+                <div className="text-2xl font-semibold py-2 flex justify-center border-gray-400 border-b-1">
+                  <span>borrowing artifacts</span>
+                </div>
               )}
             </div>
           </div>
         </div>
       </div>
-      {/* modals below */}
       <Toast
         message={toastConfig.message}
         type={toastConfig.type}

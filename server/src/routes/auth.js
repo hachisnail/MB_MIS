@@ -41,7 +41,8 @@ import {
   getContributionById,
   updateContributionStatus,
   getContributionStats,
-  uploadContributionFiles
+  uploadContributionFiles,
+  getDonorRecords
 } from '../controllers/contributionController.js';
 
 import { upload, multerErrorHandler } from '../middlewares/multerMiddleware.js';
@@ -122,6 +123,6 @@ router.get('/contributions', requireAuth, requireRole([1, 2, 5]), getAllContribu
 router.get('/contributions/stats', requireAuth, requireRole([1, 2, 5]), getContributionStats); // Admin only
 router.get('/contributions/:id', requireAuth, requireRole([1, 2, 5]), getContributionById); // Admin only
 router.patch('/contributions/:id/status', requireAuth, requireRole([1, 2, 5]), updateContributionStatus); // Admin only
-
+router.get("/donors", requireAuth, requireRole([1, 2, 5]), getDonorRecords);
 
 export default router;

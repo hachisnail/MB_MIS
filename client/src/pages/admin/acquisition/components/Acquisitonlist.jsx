@@ -5,22 +5,8 @@ import { handlePreview } from "../../../../components/commons";
 import { ImageCarousel } from "../../../../features/Utilities";
 import { formatDateForDisplay } from "@/components/commons";
 import ListRowRenderer from "../../../../components/tables/ListRowRenderer";
+import { formatDate } from "../../appointments/components/dateUtils";
 
-
-const sampleDetails = [
-  {
-    purpose: "Research",
-    visitorCount: 3,
-    present: "Yes",
-    date: "2025-08-23",
-  },
-  {
-    purpose: "Exhibition",
-    visitorCount: 5,
-    present: "No",
-    date: "2025-08-24",
-  },
-];
 
 
 const acquisitionColumns = [
@@ -70,6 +56,48 @@ export function AcquisitionItem({ item, headers }) {
     />
   );
 }
+
+export const DonorRecordsList   = ({ data }) => {
+  const headers = [
+    { label: "Name", width: "1fr" },
+    { label: "Email", width: "1fr" },
+    { label: "Province", width: "1fr" },
+    { label: "City", width: "1fr" },
+    { label: "Total Contributions", width: "12rem" },
+  ];
+
+  const columns = [
+    {
+      key: "first_name",
+      render: (_, item) => `${item.first_name} ${item.last_name}`,
+    },
+    { key: "email" },
+    { key: "province" },
+    { key: "city" },
+    { key: "total_contributions" },
+  ];
+
+  return (
+    <div className="flex flex-col w-full">
+      {data.map((contributor) => (
+        <ListRowRenderer
+          key={contributor.contributor_id}
+          item={contributor}
+          headers={headers}
+          columns={columns}
+          details={contributor.Contributions.map((c) => ({
+            ID: c.contribution_id,
+            Title: c.ContributionArtifact?.title,
+            Status: c.status,
+            Type: c.contribution_type,
+            Date: formatDateForDisplay(new Date(c.submission_date)),
+          }))}
+        />
+      ))}
+    </div>
+  );
+};
+
 
 export function RenderRelatedDocs({ relatedImages = [], attachedFiles = [] }) {
   const [imageCurrentPage, setImageCurrentPage] = useState(1);
@@ -350,7 +378,7 @@ export function RenderArtifactInformation({
     <div className="w-full max-w-[58rem] just h-full flex flex-col gap-y-5 px-15">
       <span className="text-4xl font-semibold">About The Artifact</span>
 
-      <div className="max-h-[24rem] h-full gap-y-5 flex flex-col overflow-auto ">
+      <div className="max-h-[24rem] h-full gap-y-5 flex flex-col overflow-auto border-b border-gray-400  pr-5">
         {artifactInfo.map(({ label, value }) => (
           <div
             key={label}

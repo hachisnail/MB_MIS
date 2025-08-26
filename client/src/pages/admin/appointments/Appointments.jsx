@@ -404,7 +404,7 @@ const Appointments = () => {
               { label: "Expected Visitors", value: stats.expectedVisitors },
               { label: "Present", value: stats.present },
             ]}
-            button={{
+            button={activeTab === "forms" &&{
               label: "Walk ins",
               onClick: () => {
                 const walkInsBreadcrumb = "Walk Ins";

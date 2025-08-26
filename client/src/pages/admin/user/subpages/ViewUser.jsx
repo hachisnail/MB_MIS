@@ -6,6 +6,7 @@ import { useSocketClient } from "@/context/authContext";
 import BackButton from "@/components/buttons/BackButton";
 import { EmptyMessage, ErrorBox, LoadingSpinner } from "@/components/commons";
 import { ViewUserItem,ViewUserSessionItem } from "../components/ViewUserlist";
+import ListRenderer from "../../../../components/tables/ListRenderer";
 
 const ViewUser = () => {
   const [userData, setUserData] = useState(null);
@@ -72,19 +73,21 @@ const ViewUser = () => {
     setIsDetailsOpen(true);
   };
 
-  const handleSessionFilter = () => {
-    if (selectedSession) {
-      navigate("/admin/logs", {
-        state: {
-          date: selectedSession.loginAt,
-          search: user.username,
-          role: user.roleId,
-        },
-      });
-      setIsDetailsOpen(false);
-      setSelectedSession(null);
-    }
-  };
+const handleSessionFilter = () => {
+  if (selectedSession) {
+    navigate("/admin/logs", {
+      state: {
+        search: user.username,       // still filter by user
+        role: user.roleId,
+        start: selectedSession.loginAt,
+        end: selectedSession.logoutAt || new Date().toISOString(), // active session = now
+      },
+    });
+    setIsDetailsOpen(false);
+    setSelectedSession(null);
+  }
+};
+
 
   const handleCancelConfirm = () => {
     setIsDetailsOpen(false);
@@ -122,28 +125,20 @@ const ViewUser = () => {
             <div className="w-full h-[59rem] overflow-y-auto flex flex-col border-t-1 border-gray-600">
               <div className="relative w-full h-full">
                 {/* Overlayed Spinner */}
-                {isLoading && (
-                  <div className="absolute inset-0 z-10 flex items-center justify-center ">
-                    <LoadingSpinner />
-                  </div>
+                <ListRenderer
+                isLoading={isLoading}
+                error={sessionError}
+                items={sessions.sort((a, b) => new Date(b.loginAt) - new Date(a.loginAt))}
+                emptyMessage="Empty user sessions!"
+                renderItem={(session) => (
+                  <ViewUserSessionItem
+                    key={session.id}
+                    session={session}
+                    onClick={() => handleDetails(session)}
+                  />
                 )}
+              />
 
-                {/* Error State */}
-                {sessionError ? (
-                  <ErrorBox message={sessionError} />
-                ) : sessions.length > 0 ? (
-                  sessions
-                    .sort((a, b) => new Date(b.loginAt) - new Date(a.loginAt))
-                    .map((session) => (
-                      <ViewUserSessionItem
-                        key={session.id}
-                        session={session}
-                        onClick={() => handleDetails(session)}
-                      />
-                    ))
-                ) : !isLoading && sessions.length === 0 ? (
-                  <EmptyMessage message="Empty user sessions!" />
-                ) : null}
               </div>
             </div>
           </div>

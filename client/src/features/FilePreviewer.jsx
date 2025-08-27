@@ -82,52 +82,32 @@ console.log(fileUrl)
   const [excelData, setExcelData] = useState([]); // for Excel
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    if (!fileUrl || !fileType) {
-      setError("Missing file information.");
-      return;
-    }
+useEffect(() => {
+  if (!fileUrl || !fileType) return;
 
-    setFileContent("");
-    setExcelData([]);
-    setError("");
+  if (fileType === "docx") {
+    const renderDocx = async () => {
+      try {
+        const res = await fetch(fileUrl);
+        if (!res.ok) throw new Error("File not found");
+        const blob = await res.blob();
+        // Ensure proper MIME type
+        const docBlob = new Blob([blob], { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
+        
+        if (docxContainerRef.current) {
+          docxContainerRef.current.innerHTML = "";
+          await renderAsync(docBlob, docxContainerRef.current);
+        }
+      } catch (err) {
+        console.error("DOCX render failed:", err);
+        setError("Could not render DOCX!");
+      }
+    };
 
-    if (["xlsx", "xls"].includes(fileType)) {
-      fetch(fileUrl)
-        .then((res) => res.arrayBuffer())
-        .then((data) => {
-          const workbook = XLSX.read(data, { type: "array" });
-          const sheetName = workbook.SheetNames[0];
-          const sheet = workbook.Sheets[sheetName];
-          const json = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-          setExcelData(json);
-        })
-        .catch(() => setError("Failed to load Excel file."));
-    }
+    renderDocx();
+  }
+}, [fileUrl, fileType]);
 
-    if (["txt", "json", "js", "html", "css"].includes(fileType)) {
-      fetch(fileUrl)
-        .then((res) => {
-          if (!res.ok) throw new Error("File not found");
-          return res.text();
-        })
-        .then(setFileContent)
-        .catch(() => setFileContent("Error loading text content."));
-    }
-
-    if (fileType === "docx") {
-      fetch(fileUrl)
-        .then((res) => res.blob())
-        .then((blob) => {
-          if (docxContainerRef.current) {
-            docxContainerRef.current.innerHTML = "";
-            renderAsync(blob, docxContainerRef.current).catch(() => {
-              setError("Could not render DOCX!");
-            });
-          }
-        });
-    }
-  }, [fileUrl, fileType]);
 
   const renderPreview = () => {
     if (error) return <p className="text-red-500">{error}</p>;

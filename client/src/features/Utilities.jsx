@@ -6,6 +6,7 @@ import {
 } from "@headlessui/react";
 import { Fragment, useState, useRef, useEffect } from "react";
 import { scrollToElementById } from "@/components/commons";
+import ImageViewerModal from "./ImageViewerModal";
 
 // admin utilities
 export function SearchBar({ placeholder = "Search History", onChange, theme }) {
@@ -624,120 +625,125 @@ export function ImageCarousel({
   mainSize = "w-[32rem] h-[32rem]",
 }) {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const handlePrev = () => {
-    setCurrentIndex((prev) => (prev > 0 ? prev - 1 : images.length - 1));
+    setCurrentIndex((prev) =>
+      images.length > 0 ? (prev > 0 ? prev - 1 : images.length - 1) : 0
+    );
   };
 
   const handleNext = () => {
-    setCurrentIndex((prev) => (prev < images.length - 1 ? prev + 1 : 0));
+    setCurrentIndex((prev) =>
+      images.length > 0 ? (prev < images.length - 1 ? prev + 1 : 0) : 0
+    );
   };
 
-  // Calculate the visible thumbnails
-  const getVisibleThumbnails = () => {
-    if (images.length <= 4) return images;
-
-    let start = currentIndex - 1;
-    let end = currentIndex + 3;
-
-    // Adjust if we're near the start
-    if (start < 0) {
-      start = 0;
-      end = 4;
-    }
-
-    // Adjust if we're near the end
-    if (end > images.length) {
-      end = images.length;
-      start = images.length - 4;
-    }
-
-    return images.slice(start, end);
-  };
-
-  const visibleThumbnails = getVisibleThumbnails();
+  // Always show 4 thumbnail slots
+  const thumbnailSlots = Array.from({ length: 4 }, (_, idx) => {
+    return images[idx] || { src: null, label: "Placeholder" };
+  });
 
   return (
-    <div className="w-full h-full flex justify-center items-center gap-4">
-      {/* Prev Button */}
-      <button
-        onClick={handlePrev}
-        disabled={images.length <= 1}
-        className="h-full hover:text-gray-600 cursor-pointer disabled:opacity-50"
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="32"
-          height="32"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1"
-          strokeLinecap="round"
-          strokeLinejoin="round"
+    <>
+      <div className="w-full h-full flex justify-center items-center gap-4">
+        {/* Prev Button */}
+        <button
+          onClick={handlePrev}
+          disabled={images.length <= 1}
+          className="h-full hover:text-gray-600 cursor-pointer disabled:opacity-50"
         >
-          <path d="M13 20l-3 -8l3 -8" />
-        </svg>
-      </button>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="32"
+            height="32"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M13 20l-3 -8l3 -8" />
+          </svg>
+        </button>
 
-      {/* Side thumbnails + Main image */}
-      <div className="w-fit h-full flex items-center justify-center gap-4">
-        {/* Thumbnails */}
-        <div className="w-fit flex flex-col items-center justify-center gap-4">
-          {visibleThumbnails.map((img, idx) => {
-            const realIndex = images.indexOf(img); // find actual index in full array
-            return (
+        {/* Thumbnails + Main image */}
+        <div className="w-fit h-full flex items-center justify-center gap-4">
+          {/* Thumbnails */}
+          <div className="w-fit flex flex-col items-center justify-center gap-4">
+            {thumbnailSlots.map((img, idx) => (
               <div
-                key={realIndex}
+                key={idx}
                 className={`border rounded-lg overflow-hidden flex items-center justify-center ${thumbnailSize} cursor-pointer ${
-                  realIndex === currentIndex ? "ring-2 ring-blue-500" : ""
+                  idx === currentIndex ? "" : ""
                 }`}
-                onClick={() => setCurrentIndex(realIndex)}
+                onClick={() => img.src && setCurrentIndex(idx)}
               >
-                <img
-                  src={img.src}
-                  alt={img.label}
-                  className="object-cover w-full h-full"
-                />
+                {img.src ? (
+                  <img
+                    src={img.src}
+                    alt={img.label}
+                    className="object-cover w-full h-full"
+                  />
+                ) : (
+                  <div className="flex items-center justify-center w-full h-full bg-gray-200 text-gray-400 text-sm">
+                    No Image
+                  </div>
+                )}
               </div>
-            );
-          })}
+            ))}
+          </div>
+
+          {/* Main image */}
+          <div
+            className={`${mainSize} border rounded-lg overflow-hidden flex flex-col items-center justify-center cursor-pointer`}
+            onClick={() => images[currentIndex] && setIsModalOpen(true)}
+          >
+            {images[currentIndex] ? (
+              <img
+                src={images[currentIndex].src}
+                alt={images[currentIndex].label}
+                className="object-cover w-full h-full"
+              />
+            ) : (
+              <div className="flex items-center justify-center w-full h-full bg-gray-200 text-gray-400 text-xl">
+                No Image
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Main image */}
-        <div
-          className={`${mainSize} border rounded-lg overflow-hidden flex flex-col items-center justify-center`}
+        {/* Next Button */}
+        <button
+          onClick={handleNext}
+          disabled={images.length <= 1}
+          className="hover:text-gray-600 h-full cursor-pointer disabled:opacity-50"
         >
-          {images[currentIndex] && (
-            <img
-              src={images[currentIndex].src}
-              alt={images[currentIndex].label}
-              className="object-cover w-full h-full"
-            />
-          )}
-        </div>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="32"
+            height="32"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M11 4l3 8l-3 8" />
+          </svg>
+        </button>
       </div>
 
-      {/* Next Button */}
-      <button
-        onClick={handleNext}
-        disabled={images.length <= 1}
-        className="hover:text-gray-600 h-full cursor-pointer disabled:opacity-50"
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="32"
-          height="32"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="M11 4l3 8l-3 8" />
-        </svg>
-      </button>
-    </div>
+      {/* Modal */}
+      {isModalOpen && (
+        <ImageViewerModal
+          images={images}
+          initialIndex={currentIndex}
+          onClose={() => setIsModalOpen(false)}
+        />
+      )}
+    </>
   );
 }

@@ -6,15 +6,12 @@ import {
   SummaryPanel,
 } from "@/features/Utilities";
 import {
-  formatDateForDisplay,
-  ErrorBox,
-  EmptyMessage,
-  LoadingSpinner,
+  formatDateForDisplay
 } from "@/components/commons";
 
 import ListRenderer from "@/components/tables/ListRenderer";
 import { useNavigate } from "react-router-dom";
-import { AcquisitionItem, DonorRecordsList } from "./components/Acquisitonlist";
+import { AcquisitionItem, DonorRecordsItem } from "./components/Acquisitonlist";
 import TimelineDatePicker from "@/features/TimelineDatePicker";
 import Toast from "@/features/Toast";
 import axiosClient from "@/lib/axiosClient";
@@ -28,6 +25,14 @@ const Acquisition = () => {
   const [acquisitions, setAcquisiitons] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [summaryData, setSummaryData] = useState({
+    totalCount: 0,
+    approvedCount: 0,
+    rejectedCount: 0,
+    pendingCount: 0,
+    donationCount: 0,
+    lendingCount: 0,
+  });
   // ✅ Add missing state
   const [transferFilter, setTransferFilter] = useState("All");
 
@@ -50,17 +55,19 @@ const Acquisition = () => {
 
   const pendingHeaders = [
     { label: "Date", width: 15 },
-    { label: "Donors Name", width: 15 },
+    { label: "Donors Name" },
     { label: "Title" },
     { label: "Status", width: 15 },
-    { label: "Transfer Status", width: 15 },
+    { label: "Transfer Type", width: 15 },
     { label: "Acquisiton Date", width: 15 },
   ];
 
   const recordHeaders = [
-    { label: "Date", width: "w-60" },
-    { label: "Name of Donor/Lender", width: "" },
-    { label: "Donations", width: "w-60" },
+    { label: "Name", width: "1fr" },
+    { label: "Email", width: 20 },
+    { label: "Province", width: 15 },
+    { label: "City", width: 15 },
+    { label: "Contributions", width: 15 },
   ];
 
   const formSummary = [
@@ -113,111 +120,129 @@ const Acquisition = () => {
     "donator-records": recordHeaders,
   };
 
-useEffect(() => {
-  fetchAcquisitons();
-}, [activeTab, statusFilter]);
-
-
-const fetchAcquisitons = async () => {
-  try {
-    setIsLoading(true);
-    setError("");
-
-    let params = {};
-    let endpoint = "/auth/contributions"; 
-
-    switch (activeTab) {
-      case "pendings":
-        endpoint = "/auth/contributions"; 
-        params.status = "pending";
-        break;
-
-      case "form":
-        endpoint = "/auth/contributions"; 
-        if (
-          statusFilter.toLowerCase() !== "pending" &&
-          statusFilter !== "All Statuses"
-        ) {
-          params.status = statusFilter.toLowerCase();
-        }
-        break;
-
-      case "donator-records":
-        endpoint = "/auth/donors/"; 
-        break;
-
-      default:
-        break;
-    }
-
-    Object.keys(params).forEach(
-      (key) => params[key] === undefined && delete params[key]
-    );
-
-    const response = await axiosClient.get(endpoint, { params });
-    let data = response.data || [];
-
-    if (activeTab === "form") {
-      data = data.filter((item) => item.status !== "pending");
-    }
-
-    setAcquisiitons(data);
-    console.log("Fetched:", data);
-  } catch (err) {
-    console.error("Error fetching acquisitions:", err);
-    setError("Failed to load acquisitions. Check that the API server is running.");
+  useEffect(() => {
     setAcquisiitons([]);
-  } finally {
-    setIsLoading(false);
-  }
-};
+    setError("");
+    setIsLoading(true);
+    fetchAcquisitons();
+    fetchSummary();
+  }, [activeTab, statusFilter]);
 
+  const fetchAcquisitons = async () => {
+    try {
+      setIsLoading(true);
+      setError("");
+
+      let params = {};
+      let endpoint = "/auth/contributions";
+
+      switch (activeTab) {
+        case "pendings":
+          endpoint = "/auth/contributions";
+          params.status = "pending";
+          break;
+
+        case "form":
+          endpoint = "/auth/contributions";
+          if (
+            statusFilter.toLowerCase() !== "pending" &&
+            statusFilter !== "All Statuses"
+          ) {
+            params.status = statusFilter.toLowerCase();
+          }
+          break;
+
+        case "donator-records":
+          endpoint = "/auth/contributions/donors/";
+          break;
+
+        default:
+          break;
+      }
+
+      Object.keys(params).forEach(
+        (key) => params[key] === undefined && delete params[key]
+      );
+
+      const response = await axiosClient.get(endpoint, { params });
+      let data = response.data || [];
+
+      if (activeTab === "form") {
+        data = data.filter((item) => item.status !== "pending");
+      }
+
+      setAcquisiitons(data);
+      console.log("Fetched:", data);
+    } catch (err) {
+      console.error("Error fetching acquisitions:", err);
+      setError(
+        "Failed to load acquisitions. Check that the API server is running."
+      );
+      setAcquisiitons([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchSummary = async () => {
+    try {
+      // Optionally, pass date filters if needed
+      const params = {};
+      if (selectedDate) {
+        params.fromDate = selectedDate.toISOString().split("T")[0];
+        params.toDate = selectedDate.toISOString().split("T")[0];
+      }
+
+      const response = await axiosClient.get("/auth/contributions/summary", {
+        params,
+      });
+      const data = response.data;
+
+      setSummaryData({
+        totalCount: data.totalCount,
+        approvedCount: data.approvedCount,
+        rejectedCount: data.rejectedCount,
+        pendingCount: data.pendingCount,
+        donationCount: data.donationCount,
+        lendingCount: data.lendingCount,
+      });
+    } catch (err) {
+      console.error("Error fetching summary:", err);
+      setSummaryData({
+        totalCount: 0,
+        approvedCount: 0,
+        rejectedCount: 0,
+        pendingCount: 0,
+        donationCount: 0,
+        lendingCount: 0,
+      });
+    }
+  };
 
   // console.log(acquisitions);
-  const totalCount = acquisitions.length;
-  const approvedCount = acquisitions.filter(
-    (a) => a.status === "approved"
-  ).length;
-  const rejectedCount = acquisitions.filter(
-    (a) => a.status === "rejected"
-  ).length;
-  const pendingCount = acquisitions.filter(
-    (a) => a.status === "pending"
-  ).length;
-  const donationCount = acquisitions.filter(
-    (a) => a.contribution_type === "donation"
-  ).length;
-  const lendingCount = acquisitions.filter(
-    (a) => a.contribution_type === "lending"
-  ).length;
 
   return (
     <>
       <div className="w-full h-full flex gap-x-15 overflow-scroll lg:flex-row flex-col">
-          <SummaryPanel
-            tabs={tabs}
-            activeTab={activeTab}
-            onTabChange={setActiveTab}
-            title="Total Acquisitions"
-            totalCount={totalCount}
-            dateLabel={formatDateForDisplay(selectedDate || new Date())}
-            summaryData={[
-              { label: "Approved", value: approvedCount },
-              { label: "Rejected", value: rejectedCount },
-              { label: "Pending", value: pendingCount },
-              { label: "Donation", value: donationCount },
-              { label: "Lend", value: lendingCount },
-            ]}
-            button={
-              activeTab === "pendings"
-                && {
-                    label: "Add new acquisition",
-                    onClick: () => navigate("/admin/acquisition/add-artifact"),
-                  }
-                
-            }
-          />
-
+        <SummaryPanel
+          tabs={tabs}
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          title="Total Acquisitions"
+          totalCount={summaryData.totalCount}
+          dateLabel={formatDateForDisplay(selectedDate || new Date())}
+          summaryData={[
+            { label: "Approved", value: summaryData.approvedCount },
+            { label: "Rejected", value: summaryData.rejectedCount },
+            { label: "Pending", value: summaryData.pendingCount },
+            { label: "Donation", value: summaryData.donationCount },
+            { label: "Lend", value: summaryData.lendingCount },
+          ]}
+          button={{
+            label: "Add new acquisition",
+            onClick: () => navigate("/admin/acquisition/add-artifact"),
+          }}
+        />
 
         <div className="w-full h-full flex flex-col min-w-[43.75rem] gap-y-7">
           {/* table */}
@@ -244,129 +269,87 @@ const fetchAcquisitons = async () => {
             </div>
 
             {/* Status filter */}
-            <CardDropdownPicker
-              value={statusFilter}
-              onChange={setStatusFilter}
-              placeholder="All Statuses"
-              theme="light"
-              options={[
-                { value: "All Statuses", label: "All Statuses" },
-                { value: "Approved", label: "Approved" },
-                { value: "Rejected", label: "Rejected" },
-                { value: "Pending", label: "Pending" },
-              ]}
-            />
+            {activeTab === "donator-records" ? null : (
+              <>
+                <CardDropdownPicker
+                  value={statusFilter}
+                  onChange={setStatusFilter}
+                  placeholder="All Statuses"
+                  theme="light"
+                  options={[
+                    { value: "All Statuses", label: "All Statuses" },
+                    { value: "Approved", label: "Approved" },
+                    { value: "Rejected", label: "Rejected" },
+                    { value: "Pending", label: "Pending" },
+                  ]}
+                />
 
-            {/* Transfer status filter */}
-            <CardDropdownPicker
-              value={transferFilter}
-              onChange={setTransferFilter}
-              placeholder="All Transfer Statuses"
-              theme="light"
-              options={[
-                { value: "All", label: "All Transfer Statuses" },
-                { value: "Confirmed", label: "Confirmed" },
-                { value: "Rejected", label: "Rejected" },
-                { value: "Failed", label: "Failed" },
-                { value: "To Review", label: "To Review" },
-                { value: "Completed", label: "Completed" },
-              ]}
-            />
+                {/* Transfer status filter */}
+                <CardDropdownPicker
+                  value={transferFilter}
+                  onChange={setTransferFilter}
+                  placeholder="All Transfer Statuses"
+                  theme="light"
+                  options={[
+                    { value: "All", label: "All Transfer Statuses" },
+                    { value: "Confirmed", label: "Confirmed" },
+                    { value: "Rejected", label: "Rejected" },
+                    { value: "Failed", label: "Failed" },
+                    { value: "To Review", label: "To Review" },
+                    { value: "Completed", label: "Completed" },
+                  ]}
+                />
+              </>
+            )}
           </div>
 
           <div className="w-full h-full flex flex-col">
             {/* table */}
 
             <TableHeaderContainer headers={headersMap[activeTab]} />
-
             <div className="w-full h-[52rem] 3xl:h-[67rem] border-y overflow-y-auto border-gray-400">
-              {/* {activeTab === "form" && (
-                <>
-                  <ListRenderer
-                    isLoading={isLoading}
-                    error={error}
-                    items={filteredAcquisitions}
-                    renderItem={(item) => (
-                      <AcquisitionItem key={item.contribution_id} item={item} headers={formHeaders} />
-                    )}
-                    emptyMessage="No acquisitions found!"
-                  />
-                </>
-              )}
-              {activeTab === "donator-records" && (
-                <>
-
-                  <ListRenderer
-                    isLoading={isLoading}
-                    error={error}
-                    items={filteredAcquisitions}
-                    renderItem={(item) => (
-                      <DonorRecordsItem key={item.contribution_id} item={item} headers={recordHeaders} />
-                    )}
-                    emptyMessage="No donors found!"
-                  />
-                </>
-              )}
-              {activeTab === "pendings" && (
-                <>
-
-                  <div
-                                    onClick={() => navigate(`lending/artifact1`)}
-                  
-                  className="text-2xl font-semibold py-2 flex justify-center border-gray-400 border-b-1">
-                    <span>Pendings</span>
-                  </div>
-                </>
-              )} */}
-
               <ListRenderer
-  isLoading={isLoading}
-  error={error}
-  items={
-    activeTab === "donator-records" 
-      ? acquisitions // donor records, no extra filter
-      : filteredAcquisitions // forms + pendings use filters
-  }
-  renderItem={(item) => {
-    if (activeTab === "form") {
-      return (
-        <AcquisitionItem
-          key={item.contribution_id}
-          item={item}
-          headers={formHeaders}
-        />
-      );
-    }
+                isLoading={isLoading}
+                error={error}
+                items={
+                  activeTab === "donator-records"
+                    ? acquisitions
+                    : filteredAcquisitions
+                }
+                renderItem={(item, index) => {
+                  if (activeTab === "form") {
+                    return (
+                      <AcquisitionItem
+                        key={`${item.contribution_id}-${index}`}
+                        item={item}
+                        headers={formHeaders}
+                      />
+                    );
+                  }
 
-    if (activeTab === "donator-records") {
-      return (
-        <DonorRecordsList
-          key={item.contributor_id} // ✅ donor-level ID
-          item={item}
-          headers={recordHeaders}
-        />
-      );
-    }
+                  if (activeTab === "donator-records") {
+                    return (
+                      <DonorRecordsItem
+                        key={`${item.contributor_id}-${index}`}
+                        item={item}
+                        headers={recordHeaders}
+                      />
+                    );
+                  }
 
-    if (activeTab === "pendings") {
-      return (
-        <AcquisitionItem
-          key={item.contribution_id}
-          item={item}
-          headers={pendingHeaders}
-        />
-      );
-    }
+                  if (activeTab === "pendings") {
+                    return (
+                      <AcquisitionItem
+                        key={`${item.contribution_id}-${index}`}
+                        item={item}
+                        headers={pendingHeaders}
+                      />
+                    );
+                  }
 
-    return null;
-  }}
-  emptyMessage={
-    activeTab === "donator-records"
-      ? "No donors found!"
-      : "No acquisitions found!"
-  }
-/>
-
+                  return null;
+                }}
+              />
             </div>
           </div>
         </div>

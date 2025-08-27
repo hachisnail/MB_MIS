@@ -1,19 +1,26 @@
 import { useLocation } from "react-router-dom";
-import { useState, useEffect, act } from "react";
-
+import { useState, useEffect } from "react";
+import axiosClient from "@/lib/axiosClient";
 import {
   RenderRelatedDocs,
   RenderLendingReason,
   RenderArtifactInformation,
-} from "../components/Acquisitonlist";
+} from "../components/ViewPageRenderer";
 import StyledButton from "@/components/buttons/StyledButton";
 import MultiLineInput from "@/features/MultiLineInput";
+import { decodeBase64 } from "@/utils/base64";
+import ImageViewerModal from "../../../../features/ImageViewerModal";
 
+import { LoadingSpinner } from "../../../../components/commons";
 const AcquisitionViewPage = () => {
   const location = useLocation();
   const [acquisitionType, setAcquisitionType] = useState("");
   const [activeTab, setActiveTab] = useState("left");
   const [messageReply, setMessageReply] = useState();
+  const [contributionData, setContributionData] = useState(null);
+  const [loading, setLoading] = useState(true); // <-- loading state
+
+  const SERVER_URL = import.meta.env.VITE_SERVER_URL;
 
   useEffect(() => {
     if (location.pathname.includes("lending")) {
@@ -23,145 +30,159 @@ const AcquisitionViewPage = () => {
     }
   }, [location.pathname]);
 
-  // set values here
+  useEffect(() => {
+    fetchContribution();
+  }, [location.pathname]);
 
-  const donatorInformation = [
-    { label: "From", value: "Juan Dela Cruz" },
-    { label: "Email", value: "juandelacruz@gmail.com" },
-    { label: "Phone Number", value: "09123456789" },
-    {
-      label: "Address",
-      value: "Ofelia Street, Barangay 2, Daet, Camarines Norte",
-    },
-    { label: "Organization", value: "Juan dela Cruz Elementary School" },
-  ];
+  const fetchContribution = async () => {
+    try {
+      setLoading(true); // start loading
+      const segments = location.pathname.split("/");
+      const encodedId = segments[segments.length - 1];
+      const decoded = decodeBase64(encodedId);
+      const [id, ...titleParts] = decoded.split(" ");
+      const title = titleParts.join(" ");
 
-  const lendingReason = [
-    {
-      label: "Propose duration of the loan:",
-      value: "5 years, January 2024 - June 1, 2024",
-    },
-    {
-      label:
-        "Specific conditions or requirements for handling of the artifact:",
-      value:
-        "The artifact should be places somewhere there’s no much moist to avoid more rusting",
-    },
-    {
-      label:
-        "Specific liability concerns or requirements regarding the artifact:",
-      value:
-        "If the artifact get damaged you must compensate me with a value that is agreeable by the both party.If the artifact get damaged you must compensate me with a value that is agreeable by the both party.",
-    },
-    {
-      label: "Reason for lending:",
-      value:
-        "I got a feeling that the artifact should be seen by everyone do be much more aware from where we came from.",
-    },
-  ];
+      const endpoint = `/auth/contributions/${id}`;
+      const response = await axiosClient.get(endpoint);
+      setContributionData(response.data);
+    } catch (error) {
+      console.error("Error fetching contribution:", error);
+      setContributionData(null);
+    } finally {
+      setLoading(false); // stop loading
+    }
+  };
 
-  const relatedImages = [
-    {
-      key: "1",
-      src: "https://placehold.co/600x600?text=Overview+1",
-      label: "Overview 1",
-    },
-    {
-      key: "2",
-      src: "https://placehold.co/600x600?text=Detail+2",
-      label: "Detail 2",
-    },
-    {
-      key: "3",
-      src: "https://placehold.co/600x600?text=Angle+3",
-      label: "Angle 3",
-    },
-    {
-      key: "4",
-      src: "https://placehold.co/600x600?text=Angle+4",
-      label: "Angle 4",
-    },
-    {
-      key: "5",
-      src: "https://placehold.co/600x600?text=Context+5",
-      label: "Context 5",
-    },
-    {
-      key: "6",
-      src: "https://placehold.co/600x600?text=Close‑up+6",
-      label: "Close‑up 6",
-    },
-  ];
+  const donatorInformation = contributionData
+    ? [
+        {
+          label: "From",
+          value: `${contributionData.Contributor?.first_name} ${contributionData.Contributor?.last_name}`,
+        },
+        { label: "Email", value: contributionData.Contributor?.email },
+        {
+          label: "Phone Number",
+          value: contributionData.Contributor?.phone_number || "Not provided",
+        },
+        {
+          label: "Address",
+          value:
+            [
+              contributionData.Contributor?.street,
+              contributionData.Contributor?.barangay,
+              contributionData.Contributor?.city,
+              contributionData.Contributor?.province,
+            ]
+              .filter(Boolean)
+              .join(", ") || "Not provided",
+        },
+        {
+          label: "Organization",
+          value: contributionData.Contributor?.organization || "Not provided",
+        },
+      ]
+    : [];
 
-  const attachedFiles = [
-    { key: "1", filename: "file 1", category: "file" },
-    { key: "2", filename: "file 2", category: "file" },
-    { key: "3", filename: "file 3", category: "file" },
-    { key: "4", filename: "file 4", category: "file" },
-    { key: "5", filename: "file 5", category: "file" },
-  ];
+  const lendingReason = contributionData?.LendingDetail
+    ? [
+        {
+          label: "Propose duration of the loan:",
+          value: `${contributionData.LendingDetail.duration_from} - ${contributionData.LendingDetail.duration_to}`,
+        },
+        {
+          label:
+            "Specific conditions or requirements for handling of the artifact:",
+          value: contributionData.LendingDetail.lend_conditions || "Not provided",
+        },
+        {
+          label:
+            "Specific liability concerns or requirements regarding the artifact:",
+          value: contributionData.LendingDetail.lend_liabilities || "Not provided",
+        },
+        {
+          label: "Reason for lending:",
+          value: contributionData.LendingDetail.lending_reason || "Not provided",
+        },
+      ]
+    : [];
 
-  const artifactInfo = [
-    {
-      label: "Title/Name of the Artifact:",
-      value: "My Great Grandfather's Bolo during World War  2",
-    },
-    {
-      label: "Artifact Description:",
-      value:
-        "The Bolo is Still intact,  there is a little rust near the handle an the scabbard is already missing.",
-    },
-    {
-      label: "How and where was the artifact acquired:",
-      value:
-        "It was given to me by my father and it is passed through generations so it is like a family helium.",
-    },
-    {
-      label: "Information about the artifact that the museum should know:",
-      value: "The Blade is a little bit loose so you must be careful about it.",
-    },
-    {
-      label: "Brief narrative or story related to the artifact.",
-      value:
-        "The artifact is used by my grandfather on the WWII and during a unit practice. U.S. Army’s 1st Filipino Infantry Regiment.",
-    },
-  ];
+  const relatedImages =
+    contributionData?.ContributionArtifact?.related_images?.map((img, idx) => ({
+      key: idx.toString(),
+      src: `${SERVER_URL}/uploads/private/pictures/${img}`,
+      label: `Related Image ${idx + 1}`,
+    })) || [];
 
-  const artifactImg = [
-    {
-      src: "https://placehold.co/600x600?text=Front+View",
-      label: "Front View",
-    },
-    {
-      src: "https://placehold.co/600x600?text=Side+View",
-      label: "Side View",
-    },
-    {
-      src: "https://placehold.co/600x600?text=Back+View",
-      label: "Back View",
-    },
-    {
-      src: "https://placehold.co/600x600?text=Close-up",
-      label: "Close‑up",
-    },
-    {
-      src: "https://placehold.co/600x600?text=Display+Case",
-      label: "Display Case",
-    },
-  ];
+  const attachedFiles =
+    contributionData?.ContributionArtifact?.documents?.map((doc, idx) => ({
+      key: idx.toString(),
+      filename: doc,
+      category: "file",
+      url: `${SERVER_URL}/uploads/private/files/${doc}`,
+    })) || [];
 
-  const email = "juandelacruz@gmail.com";
+  const artifactInfo = contributionData?.ContributionArtifact
+    ? [
+        {
+          label: "Title/Name of the Artifact:",
+          value: contributionData.ContributionArtifact.title || "Not provided",
+        },
+        {
+          label: "Artifact Description:",
+          value: contributionData.ContributionArtifact.description || "Not provided",
+        },
+        {
+          label: "How and where was the artifact acquired:",
+          value:
+            contributionData.ContributionArtifact.acquisition_details || "Not provided",
+        },
+        {
+          label: "Additional Information:",
+          value: contributionData.ContributionArtifact.additional_info || "Not provided",
+        },
+        {
+          label: "Brief narrative or story related to the artifact:",
+          value: contributionData.ContributionArtifact.narrative || "Not provided",
+        },
+      ]
+    : [];
+
+  const artifactImg =
+    contributionData?.ContributionArtifact?.images?.map((img, idx) => ({
+      src: `http://localhost:5000/uploads/private/pictures/${img}`,
+      label: `Image ${idx + 1}`,
+    })) || [];
+
+  const email = contributionData?.Contributor?.email || "";
+
+  if (loading) {
+    return (
+      <div className="w-full h-full flex items-center justify-center">
+        <LoadingSpinner />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col justify-center gap-y-3 w-full h-full items-center">
+      {!contributionData ? (
+        <div className="w-full h-full flex items-center justify-center text-2xl text-gray-500">
+          No contribution data found or invalid ID.
+        </div>
+      ) : (
+        <>
       <div className=" flex">
         {/* button right */}
         {activeTab === "right" && (
           <button
-            className="w-fit h-full hover:text-gray-500 cursor-pointer"
+            className="w-fit h-full hover:text-gray-500 cursor-pointer border-r bg-gradient-to-l rounded-sm from-gray-300 to-white"
             onClick={() => setActiveTab("left")}
           >
             {/* pagination */}
+            <span className="[writing-mode:vertical-rl] rotate-180 text-xl font-bold">
+              Previous Page
+            </span>
 
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -182,7 +203,7 @@ const AcquisitionViewPage = () => {
         {activeTab === "left" && (
           <div className="flex gap-x-10 w-fit h-full">
             <div className="w-full max-w-[58rem] h-full flex flex-col gap-y-10">
-              <div className="w-full min-h-fit h-fit border gap-y-5 border-gray-400 rounded-lg flex flex-col p-8">
+              <div className="w-[55rem] min-h-fit h-fit border gap-y-5 border-gray-400 rounded-lg flex flex-col p-8">
                 <span className="text-4xl font-semibold">
                   Donators Information
                 </span>
@@ -192,7 +213,11 @@ const AcquisitionViewPage = () => {
                     className="flex gap-x-5 w-full text-2xl h-fit font-semibold "
                   >
                     <span className="w-45">{label}</span>
-                    <span className="font-normal text-[#333333]">{value}</span>
+                    <span
+                      className={` font-normal text-[#333333] overflow-x-scroll`}
+                    >
+                      {value}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -202,6 +227,7 @@ const AcquisitionViewPage = () => {
                 <RenderRelatedDocs
                   relatedImages={relatedImages}
                   attachedFiles={attachedFiles}
+
                 />
               )}
             </div>
@@ -216,7 +242,7 @@ const AcquisitionViewPage = () => {
         )}
 
         {activeTab === "right" && (
-          <div className="w-full flex h-full gap-x-10">
+          <div className="w-full px-15 flex h-full gap-x-10">
             {acquisitionType === "lending" ? (
               <RenderRelatedDocs
                 relatedImages={relatedImages}
@@ -229,7 +255,7 @@ const AcquisitionViewPage = () => {
               />
             )}
 
-            <form className="w-full min-w-[58rem] h-full rounded-lg bg-gray-200 flex flex-col px-10 pt-15 pb-5">
+            <form className="w-[58rem] h-full rounded-lg bg-gray-200 flex flex-col px-10 pt-15 pb-5">
               <span className="text-4xl font-semibold">Respond</span>
               <div className="p-5 flex flex-col gap-5">
                 <span className="text-2xl font-semibold w-40">Approve?</span>
@@ -275,9 +301,13 @@ const AcquisitionViewPage = () => {
         {/* button left */}
         {activeTab === "left" && (
           <button
-            className="w-fit h-full hover:text-gray-500 cursor-pointer"
+            className="w-fit h-full hover:text-gray-500 cursor-pointer border-l bg-gradient-to-r rounded-sm from-gray-300 to-white"
             onClick={() => setActiveTab("right")}
           >
+            <span className="[writing-mode:vertical-rl] rotate-360 text-xl font-bold ">
+              Next Page
+            </span>
+
             <svg
               xmlns="http://www.w3.org/2000/svg"
               width="32"
@@ -306,6 +336,9 @@ const AcquisitionViewPage = () => {
           }`}
         ></div>
       </div>
+      </>
+    )}
+
     </div>
   );
 };

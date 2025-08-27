@@ -157,11 +157,15 @@ export function scrollToElementById(id, offset) {
 }
 
 
-export function handlePreview( navigate,category, filename) {
-  const encoded = btoa(`${category}/${filename}`);
-  const basePath = `${location.pathname}/preview/${encoded}`
+// export function handlePreview( navigate,category, filename) {
+//   const encoded = btoa(`${category}/${filename}`);
+//   const basePath = `${location.pathname}/preview/${encoded}`
 
-  navigate(basePath);
+//   navigate(basePath);
+// }
+
+export function handlePreview(navigate, path, fileUrl, filename, fileType) {
+  navigate(path, { state: { fileUrl, filename, fileType } });
 }
 
 

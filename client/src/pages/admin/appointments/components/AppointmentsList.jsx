@@ -25,7 +25,7 @@ export const AppointmentFormItem = ({
         activePreview === appointment.appointment_id
           ? "bg-black rounded-md text-white hover:bg-gray-900"
           : "hover:bg-gray-300"
-      } text-xl h-fit grid grid-cols-[15rem_1fr_11.7rem_9.5rem_12rem_16rem] cursor-pointer `}
+      } text-xl h-fit grid grid-cols-[19rem_1fr_11.7rem_9.5rem_12rem_16rem] cursor-pointer `}
     >
       <div className="px-4 py-3 border-b-1 border-gray-400">
         {appointment.creation_date

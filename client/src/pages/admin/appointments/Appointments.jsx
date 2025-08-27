@@ -71,7 +71,7 @@ const Appointments = () => {
   ];
 
   const formHeaders = [
-    { label: "Creation Date", width: 15 },
+    { label: "Creation Date", width: 19 },
     { label: "Visitor Name", width: "1fr" },
     { label: "Preferred Time", width: 11.7 },
     { label: "Status", width: 9.5 },

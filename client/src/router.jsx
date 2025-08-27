@@ -211,11 +211,11 @@ const Router = () => {
               />
               {/* acquisition/donation/don1/dW5kZWZpbmVk/preview/dW5kZWZpbmVk/ */}
               <Route
-                path="acquisition/lending/:encoded/preview/:encoded"
+                path="acquisition/lending/:encoded/view"
                 element={<FilePreviewer />}
               />
               <Route
-                path="acquisition/donation/:encoded/preview/:encoded"
+                path="acquisition/donation/:encoded/view"
                 element={<FilePreviewer />}
               />
 

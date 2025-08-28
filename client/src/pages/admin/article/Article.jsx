@@ -16,12 +16,12 @@ const ArticleForm = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedStatusFilter, setSelectedStatusFilter] = useState("");
   const [selectedCat, setSelectedCat] = useState("");
-  const [activeTab, setActiveTab] = useState("forms");
+  const [activeTab, setActiveTab] = useState("articles");
 
   const tabs = [
-    { key: "forms", label: "Forms" },
-    {key:"pending", label: "Pending"},
-    {key:"posted", label: "Posted"},
+    { key: "articles", label: "Articles" },
+    { key: "pending", label: "Pending" },
+    { key: "posted", label: "Posted" },
   ];
 
   const articleHeaders = [
@@ -32,9 +32,9 @@ const ArticleForm = () => {
     { label: "Status", width: 12 },
   ];
 
-  
+
   // set the ehaders here
-    const pendingHeaders = [
+  const pendingHeaders = [
     // { label: "Date", width: "1fr" },
     // { label: "Title", width: "1fr" },
     // { label: "Author", width: "1fr" },
@@ -42,7 +42,7 @@ const ArticleForm = () => {
     // { label: "Status", width: "1fr" },
   ];
 
-    const postedHeaders = [
+  const postedHeaders = [
     // { label: "Date", width: "1fr" },
     // { label: "Title", width: "1fr" },
     // { label: "Author", width: "1fr" },
@@ -52,7 +52,7 @@ const ArticleForm = () => {
 
 
   const headersMap = {
-    forms: articleHeaders,
+    articles: articleHeaders,
     pending: pendingHeaders,
     posted: postedHeaders,
 
@@ -81,7 +81,7 @@ const ArticleForm = () => {
       setError(
         "Failed to load articles. Check that the API server is running."
       );
-      setArticles([]); 
+      setArticles([]);
       setLoading(false);
     }
   };
@@ -104,7 +104,7 @@ const ArticleForm = () => {
 
     const matchesDate = filterDate
       ? new Date(article.created_at).toDateString() ===
-        new Date(filterDate).toDateString()
+      new Date(filterDate).toDateString()
       : true;
     return matchesSearch && matchesCategory && matchesStatus && matchesDate;
   });
@@ -172,7 +172,7 @@ const ArticleForm = () => {
         color = "text-blue-700";
         bg = "bg-blue-100";
         label = "Scheduled";
-        break;        
+        break;
       default:
         color = "text-gray-700";
         bg = "bg-gray-200";
@@ -238,9 +238,9 @@ const ArticleForm = () => {
           button={
             userRole && allowedRoles.includes(userRole)
               ? {
-                  label: "Add new article",
-                  onClick: () => navigate("/admin/article/add-article"),
-                }
+                label: "Add new article",
+                onClick: () => navigate("/admin/article/add-article"),
+              }
               : undefined
           }
         />
@@ -272,7 +272,7 @@ const ArticleForm = () => {
           <div className="w-full h-full flex flex-col">
             <TableHeaderContainer headers={headersMap[activeTab]} />
             <div className="w-full h-[52rem] 3xl:h-[67rem] overflow-y-auto border-y border-gray-400">
-              {activeTab === "forms" && (
+              {activeTab === "articles" && (
                 <>
                   <ListRenderer
                     isLoading={loading}

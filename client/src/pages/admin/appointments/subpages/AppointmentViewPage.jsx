@@ -125,7 +125,7 @@ export const AppointmentViewPage = ({
       const cameFrom = location.state?.cameFrom;
       if (cameFrom === 'schedule') {
         navigate('/admin/schedule');
-      } else if (cameFrom === 'attendance' || cameFrom === 'visitorRecords') {
+      } else if (cameFrom === 'visitorRecords' || cameFrom === 'forms' || cameFrom === 'pending') {
         // Navigate back to appointments page with the correct tab
         navigate('/admin/appointment', { state: { activeTab: cameFrom } });
       } else {

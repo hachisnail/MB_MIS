@@ -286,17 +286,44 @@ export const getAllAppointments = async (req, res) => {
       order: [['creation_date', 'DESC']] // Sort by date, newest first
     });
 
-    // Process data to prioritize "To Review" status
+    // Helper function to format time display
+    const formatTimeDisplay = (start_time, end_time) => {
+      if (!start_time || !end_time) return "Flexible";
+
+      const formatTime = (time) => {
+        if (!time) return '';
+        // Handle time string that might be in HH:MM:SS format
+        if (time.includes(':')) {
+          const [hours, minutes] = time.split(':');
+          const hour = parseInt(hours);
+          const ampm = hour >= 12 ? 'PM' : 'AM';
+          const displayHour = hour > 12 ? hour - 12 : (hour === 0 ? 12 : hour);
+          return `${displayHour}:${minutes} ${ampm}`;
+        }
+        return time;
+      };
+
+      const formattedStart = formatTime(start_time);
+      const formattedEnd = formatTime(end_time);
+
+      return formattedStart && formattedEnd ? `${formattedStart} - ${formattedEnd}` : "Flexible";
+    };
+
+    // Process data to prioritize "To Review" status and add preferred_time field
     const toReview = [];
     const others = [];
 
-    // Split appointments into two categories
+    // Split appointments into two categories and add formatted preferred_time
     appointments.forEach(appointment => {
-      const status = appointment.AppointmentStatus?.status?.toUpperCase() || 'TO_REVIEW';
+      // Convert to plain object and add preferred_time
+      const appointmentData = appointment.toJSON();
+      appointmentData.preferred_time = formatTimeDisplay(appointmentData.start_time, appointmentData.end_time);
+      
+      const status = appointmentData.AppointmentStatus?.status?.toUpperCase() || 'TO_REVIEW';
       if (status === 'TO_REVIEW') {
-        toReview.push(appointment);
+        toReview.push(appointmentData);
       } else {
-        others.push(appointment);
+        others.push(appointmentData);
       }
     });
 

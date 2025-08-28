@@ -131,6 +131,7 @@ const Schedule = () => {
       }
 
       // CONFIRMED APPOINTMENTS ONLY - Filter by status and date
+      // EXCLUDE appointments with flexible time from DayScheduler only
       const confirmedAppointments = appointmentsResponse.data.filter(appointment => {
         if (!appointment || !appointment.preferred_date) {
           return false;
@@ -140,6 +141,15 @@ const Schedule = () => {
         const status = appointment.AppointmentStatus?.status || '';
         const isConfirmed = status.toUpperCase() === 'CONFIRMED';
 
+        // Check if appointment has flexible time (both start_time and end_time are null)
+        const hasFlexibleTime = !appointment.start_time && !appointment.end_time;
+
+        // Exclude flexible time appointments from DayScheduler
+        if (hasFlexibleTime) {
+          console.log("Excluding flexible time appointment from DayScheduler:", appointment.appointment_id);
+          return false;
+        }
+
         // Normalize date format by removing any time portion
         const appointmentDate = appointment.preferred_date.split('T')[0];
 
@@ -147,7 +157,7 @@ const Schedule = () => {
         const matches = appointmentDate === formattedDate && isConfirmed;
 
         if (matches) {
-          console.log("Found CONFIRMED appointment for selected date:", appointment);
+          console.log("Found CONFIRMED appointment with fixed time for selected date:", appointment);
         }
 
         return matches;
@@ -270,10 +280,18 @@ const Schedule = () => {
           return status === 'CONFIRMED' || status === 'COMPLETED';
         })
         .map(appointment => {
+          // Check if appointment has flexible time
+          const hasFlexibleTime = !appointment.start_time && !appointment.end_time;
+
           let startTime = "09:00";
           let endTime = "10:00";
 
-          if (appointment.start_time && appointment.end_time) {
+          if (hasFlexibleTime) {
+            // For flexible time appointments, use special markers
+            startTime = "Flexible";
+            endTime = "";
+            console.log(`Appointment ${appointment.appointment_id} has flexible time`);
+          } else if (appointment.start_time && appointment.end_time) {
             startTime = appointment.start_time;
             endTime = appointment.end_time;
             console.log(`Using direct time fields for ${appointment.appointment_id}: ${startTime}-${endTime}`);
@@ -300,7 +318,8 @@ const Schedule = () => {
             startTime,
             endTime,
             isDone: (appointment.AppointmentStatus?.status || '').toUpperCase() === 'COMPLETED',
-            isAppointment: true
+            isAppointment: true,
+            hasFlexibleTime // Add flag to indicate flexible time
           };
         });
 
@@ -383,6 +402,7 @@ const Schedule = () => {
           const dateStr = appointment.preferred_date.split('T')[0];
           const appointmentDate = new Date(dateStr);
 
+          // Include all appointments (both flexible and fixed time) for calendar indicators
           return !isNaN(appointmentDate.getTime()) &&
             appointmentDate.getMonth() === month &&
             appointmentDate.getFullYear() === year;

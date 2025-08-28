@@ -9,7 +9,7 @@ import {
 import StyledButton from "@/components/buttons/StyledButton";
 import MultiLineInput from "@/features/MultiLineInput";
 import { decodeBase64 } from "@/utils/base64";
-import ImageViewerModal from "../../../../features/ImageViewerModal";
+import { Transition } from "@headlessui/react";
 
 import { LoadingSpinner } from "../../../../components/commons";
 const AcquisitionViewPage = () => {
@@ -20,6 +20,8 @@ const AcquisitionViewPage = () => {
   const [contributionData, setContributionData] = useState(null);
   const [loading, setLoading] = useState(true); // <-- loading state
 
+ const [itemTab, setItemTab] = useState("Donor");
+const tabs = ["Donor", "Artifact Information"];
   const SERVER_URL = import.meta.env.VITE_SERVER_URL;
 
   useEffect(() => {
@@ -93,16 +95,19 @@ const AcquisitionViewPage = () => {
         {
           label:
             "Specific conditions or requirements for handling of the artifact:",
-          value: contributionData.LendingDetail.lend_conditions || "Not provided",
+          value:
+            contributionData.LendingDetail.lend_conditions || "Not provided",
         },
         {
           label:
             "Specific liability concerns or requirements regarding the artifact:",
-          value: contributionData.LendingDetail.lend_liabilities || "Not provided",
+          value:
+            contributionData.LendingDetail.lend_liabilities || "Not provided",
         },
         {
           label: "Reason for lending:",
-          value: contributionData.LendingDetail.lending_reason || "Not provided",
+          value:
+            contributionData.LendingDetail.lending_reason || "Not provided",
         },
       ]
     : [];
@@ -130,23 +135,30 @@ const AcquisitionViewPage = () => {
         },
         {
           label: "Artifact Description:",
-          value: contributionData.ContributionArtifact.description || "Not provided",
+          value:
+            contributionData.ContributionArtifact.description || "Not provided",
         },
         {
           label: "How and where was the artifact acquired:",
           value:
-            contributionData.ContributionArtifact.acquisition_details || "Not provided",
+            contributionData.ContributionArtifact.acquisition_details ||
+            "Not provided",
         },
         {
           label: "Additional Information:",
-          value: contributionData.ContributionArtifact.additional_info || "Not provided",
+          value:
+            contributionData.ContributionArtifact.additional_info ||
+            "Not provided",
         },
         {
           label: "Brief narrative or story related to the artifact:",
-          value: contributionData.ContributionArtifact.narrative || "Not provided",
+          value:
+            contributionData.ContributionArtifact.narrative || "Not provided",
         },
       ]
     : [];
+
+  
 
   const artifactImg =
     contributionData?.ContributionArtifact?.images?.map((img, idx) => ({
@@ -165,18 +177,48 @@ const AcquisitionViewPage = () => {
   }
 
   return (
-    <div className="flex flex-col justify-center gap-y-3 w-full h-full items-center">
+    <div className="flex flex-col justify-center gap-y-3 w-full h-full items-center overflow-hidden">
       {!contributionData ? (
         <div className="w-full h-full flex items-center justify-center text-2xl text-gray-500">
           No contribution data found or invalid ID.
         </div>
       ) : (
-        <>
+      <>
+        {/* <div className="w-full h-full flex flex-col px-15">
+          <div className="w-full h-fit flex">
+            {tabs.map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setItemTab(tab)}
+            className={`px-4 w-80 py-2 font-semibold rounded-t-md transition-colors duration-300 ${
+              itemTab === tab
+                ? "bg-white border-t border-l border-r border-gray-500 text-black"
+                : "bg-gray-200 border-b border-gray-500 text-gray-600 hover:bg-gray-300"
+            }`}
+          >
+            {tab}
+          </button>
+        ))}
+                <div className="w-full h-full border-b border-gray-500">
+
+        </div>
+          </div>
+          <div className="p-5 border-x border-b border-gray-500 rounded-b-md bg-white w-full h-full">
+        {itemTab === "Donor" && <div className="w-full h-full flex items-center justify-center">Donor content goes here</div>}
+        {itemTab === "Artifact Information" && (
+          <div className="w-full h-full flex items-center justify-center">Artifact Information content goes here</div>
+        )}
+        {itemTab === "Interact" && <div className="w-full h-full flex items-center justify-center">Interact content goes here</div>}
+
+      </div>
+
+        </div> */}
+
       <div className=" flex">
         {/* button right */}
         {activeTab === "right" && (
           <button
-            className="w-fit h-full hover:text-gray-500 cursor-pointer border-r bg-gradient-to-l rounded-sm from-gray-300 to-white"
+            className="w-fit h-full hover:text-gray-500 cursor-pointer border-l bg-gradient-to-r rounded-sm from-gray-300 to-white"
             onClick={() => setActiveTab("left")}
           >
             {/* pagination */}
@@ -195,11 +237,12 @@ const AcquisitionViewPage = () => {
               strokeLinecap="round"
               strokeLinejoin="round"
             >
-              <path d="M13 20l-3 -8l3 -8" />
+              <path d="M11 4l3 8l-3 8" />
+
             </svg>
           </button>
         )}
-
+        
         {activeTab === "left" && (
           <div className="flex gap-x-10 w-fit h-full">
             <div className="w-full max-w-[58rem] h-full flex flex-col gap-y-10">
@@ -301,7 +344,7 @@ const AcquisitionViewPage = () => {
         {/* button left */}
         {activeTab === "left" && (
           <button
-            className="w-fit h-full hover:text-gray-500 cursor-pointer border-l bg-gradient-to-r rounded-sm from-gray-300 to-white"
+            className="w-fit h-full hover:text-gray-500 cursor-pointer border-r bg-gradient-to-l rounded-sm from-gray-300 to-white"
             onClick={() => setActiveTab("right")}
           >
             <span className="[writing-mode:vertical-rl] rotate-360 text-xl font-bold ">
@@ -319,7 +362,8 @@ const AcquisitionViewPage = () => {
               strokeLinecap="round"
               strokeLinejoin="round"
             >
-              <path d="M11 4l3 8l-3 8" />
+              <path d="M13 20l-3 -8l3 -8" />
+
             </svg>
           </button>
         )}
@@ -336,9 +380,10 @@ const AcquisitionViewPage = () => {
           }`}
         ></div>
       </div>
-      </>
-    )}
 
+
+      </>
+      )}
     </div>
   );
 };

@@ -43,6 +43,10 @@ const acquisitionColumns = [
     key: "contribution_type",
     render: (v) => (v ? v.charAt(0).toUpperCase() + v.slice(1) : ""),
   },
+  {
+    key: "updated_at",
+    render: (date) => formatDateForDisplay(date),
+  }
 ];
 
 export function AcquisitionItem({ item, headers }) {

@@ -59,7 +59,7 @@ const Acquisition = () => {
     { label: "Title" },
     { label: "Status", width: 15 },
     { label: "Transfer Type", width: 15 },
-    { label: "Acquisiton Date", width: 15 },
+    { label: "Last Updated", width: 15 },
   ];
 
   const recordHeaders = [

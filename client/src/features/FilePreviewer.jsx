@@ -71,87 +71,112 @@ const FilePreviewer = () => {
   const navigate = useNavigate();
   const docxContainerRef = useRef(null);
 
+  const { fileUrl, filename, fileType } = location.state || {};
 
-
-// Destructure the state passed from handlePreview
-const { fileUrl, filename, fileType } = location.state || {};
-
-console.log(fileUrl)
-
-  const [fileContent, setFileContent] = useState(""); // for text
-  const [excelData, setExcelData] = useState([]); // for Excel
+  const [fileContent, setFileContent] = useState("");
+  const [excelData, setExcelData] = useState([]);
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
 
-useEffect(() => {
-  if (!fileUrl || !fileType) return;
+  useEffect(() => {
+    if (!fileUrl || !fileType) return;
 
-  if (fileType === "docx") {
-    const renderDocx = async () => {
+    const fetchFile = async () => {
+      setLoading(true);
+      setError("");
+      setFileContent("");
+      setExcelData([]);
+
       try {
-        const res = await fetch(fileUrl);
-        if (!res.ok) throw new Error("File not found");
-        const blob = await res.blob();
-        // Ensure proper MIME type
-        const docBlob = new Blob([blob], { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
-        
-        if (docxContainerRef.current) {
-          docxContainerRef.current.innerHTML = "";
-          await renderAsync(docBlob, docxContainerRef.current);
+        // Fetch file with credentials (session cookie)
+        const res = await fetch(fileUrl, { credentials: "include" });
+        if (!res.ok) throw new Error("Unauthorized or file not found");
+
+        // Handle DOCX
+        if (fileType === "docx") {
+          const blob = await res.blob();
+          if (docxContainerRef.current) {
+            docxContainerRef.current.innerHTML = "";
+            await renderAsync(
+              new Blob([blob], {
+                type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+              }),
+              docxContainerRef.current
+            );
+          }
         }
+
+        // Handle text files
+        else if (["txt", "json", "js", "html", "css"].includes(fileType)) {
+          const text = await res.text();
+          setFileContent(text);
+        }
+
+        // Handle Excel
+        else if (["xlsx", "xls"].includes(fileType)) {
+          const data = await res.arrayBuffer();
+          const workbook = XLSX.read(data, { type: "array" });
+          const sheetName = workbook.SheetNames[0];
+          const sheet = workbook.Sheets[sheetName];
+          const json = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+          setExcelData(json);
+        }
+
+        setLoading(false);
       } catch (err) {
-        console.error("DOCX render failed:", err);
-        setError("Could not render DOCX!");
+        console.error(err);
+        setError(err.message || "Failed to load file");
+        setLoading(false);
       }
     };
 
-    renderDocx();
-  }
-}, [fileUrl, fileType]);
-
+    fetchFile();
+  }, [fileUrl, fileType]);
 
   const renderPreview = () => {
-    if (error) return <p className="text-red-500">{error}</p>;
+    if (loading)
+      return (
+        <p className="text-gray-500 text-xl text-center py-10">Loading...</p>
+      );
+    if (error)
+      return <p className="text-red-500 text-xl text-center py-10">{error}</p>;
 
-    if (["jpg", "jpeg", "png", "gif", "webp"].includes(fileType)) {
+    if (["jpg", "jpeg", "png", "gif", "webp"].includes(fileType))
       return (
         <img
           src={fileUrl}
           alt={filename}
-          className="h-[64rem] mx-auto rounded"
+          className="h-[55.5rem] mx-auto rounded"
         />
       );
-    }
 
-    if (fileType === "pdf") {
+    if (fileType === "pdf")
       return (
         <iframe
           src={fileUrl}
           title="PDF Preview"
-          className="w-full h-[64rem] border rounded"
+          className="w-full h-[55.5rem] border rounded"
         />
       );
-    }
 
-    if (fileType === "docx") {
+    if (fileType === "docx")
       return (
         <div
           ref={docxContainerRef}
-          className="prose h-[64rem] overflow-scroll max-w-full p-4 bg-white border rounded"
+          className="prose h-[55.5rem] overflow-scroll max-w-full p-4 bg-white border rounded"
         />
       );
-    }
 
-    if (["txt", "json", "js", "html", "css"].includes(fileType)) {
+    if (["txt", "json", "js", "html", "css"].includes(fileType))
       return (
-        <pre className="bg-gray-100 text-sm p-4 rounded overflow-auto h-[64rem] whitespace-pre-wrap">
+        <pre className="bg-gray-100 text-sm p-4 rounded overflow-auto h-[55.5rem] whitespace-pre-wrap">
           {fileContent}
         </pre>
       );
-    }
 
-    if (["xlsx", "xls"].includes(fileType)) {
+    if (["xlsx", "xls"].includes(fileType))
       return (
-        <div className="overflow-auto h-[64rem] border rounded p-2 bg-white text-sm">
+        <div className="overflow-auto h-[55.5rem] border rounded p-2 bg-white text-sm">
           <table className="w-full border-collapse">
             <tbody>
               {excelData.map((row, i) => (
@@ -167,9 +192,8 @@ useEffect(() => {
           </table>
         </div>
       );
-    }
 
-    if (["zip", "rar", "7z"].includes(fileType)) {
+    if (["zip", "rar", "7z"].includes(fileType))
       return (
         <div className="text-center text-sm text-gray-600">
           Archive preview not supported.{" "}
@@ -178,7 +202,6 @@ useEffect(() => {
           </a>
         </div>
       );
-    }
 
     return (
       <div className="text-center text-red-500">
@@ -208,11 +231,10 @@ useEffect(() => {
     : icons.unknown;
 
   return (
-    <div className="w-full px-5 min-w-fit h-full py-5 1xl:max-h-[69rem] 2xl:max-h-[81rem]  3xl:max-h-[88rem]">
+    <div className="w-full px-5 min-w-fit h-full py-5 1xl:max-h-[69rem] 2xl:max-h-[81rem] 3xl:max-h-[88rem]">
       <div className="flex items-center gap-3 mb-4 border-b pb-4">
         {fileIcon}
         <h1 className="text-2xl font-semibold break-all">{filename}</h1>
-
         <div className="ml-auto flex gap-2">
           {fileUrl && (
             <a href={fileUrl} download={filename}>

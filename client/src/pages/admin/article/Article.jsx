@@ -32,30 +32,26 @@ const ArticleForm = () => {
     { label: "Status", width: 12 },
   ];
 
-
-  // set the ehaders here
   const pendingHeaders = [
-    // { label: "Date", width: "1fr" },
-    // { label: "Title", width: "1fr" },
-    // { label: "Author", width: "1fr" },
-    // { label: "Category", width: "1fr" },
-    // { label: "Status", width: "1fr" },
+    { label: "Date", width: 12 },
+    { label: "Title", width: "1fr" },
+    { label: "Author", width: "1fr" },
+    { label: "Category", width: 10 },
+    { label: "Status", width: 12 },
   ];
 
   const postedHeaders = [
-    // { label: "Date", width: "1fr" },
-    // { label: "Title", width: "1fr" },
-    // { label: "Author", width: "1fr" },
-    // { label: "Category", width: "1fr" },
-    // { label: "Status", width: "1fr" },
+    { label: "Date", width: 12 },
+    { label: "Title", width: "1fr" },
+    { label: "Author", width: "1fr" },
+    { label: "Category", width: 10 },
+    { label: "Status", width: 12 },
   ];
-
 
   const headersMap = {
     articles: articleHeaders,
     pending: pendingHeaders,
     posted: postedHeaders,
-
   };
 
   const allowedRoles = [1, 2, 5];
@@ -108,6 +104,10 @@ const ArticleForm = () => {
       : true;
     return matchesSearch && matchesCategory && matchesStatus && matchesDate;
   });
+
+  // Filtered lists for each tab
+  const filteredPending = filteredArticles.filter((a) => a.status === "pending");
+  const filteredPosted = filteredArticles.filter((a) => a.status === "posted");
 
   const postedCount = articles.filter(
     (article) => article.status === "posted"
@@ -273,25 +273,58 @@ const ArticleForm = () => {
             <TableHeaderContainer headers={headersMap[activeTab]} />
             <div className="w-full h-[52rem] 3xl:h-[67rem] overflow-y-auto border-y border-gray-400">
               {activeTab === "articles" && (
-                <>
-                  <ListRenderer
-                    isLoading={loading}
-                    error={error}
-                    items={filteredArticles}
-                    emptyMessage="No appointment data available"
-                    renderItem={(article) => (
-                      <Articleslist
-                        key={article.article_id}
-                        article={article}
-                        // handleRowClick={handleRowClick}
-                        headers={articleHeaders}
-                        handleStatusChange={handleStatusChange}
-                        userRole={userRole}
-                        getStatusBadge={getStatusBadge}
-                      />
-                    )}
-                  />
-                </>
+                <ListRenderer
+                  isLoading={loading}
+                  error={error}
+                  items={filteredArticles}
+                  emptyMessage="No appointment data available"
+                  renderItem={(article) => (
+                    <Articleslist
+                      key={article.article_id}
+                      article={article}
+                      headers={articleHeaders}
+                      handleStatusChange={handleStatusChange}
+                      userRole={userRole}
+                      getStatusBadge={getStatusBadge}
+                    />
+                  )}
+                />
+              )}
+              {activeTab === "pending" && (
+                <ListRenderer
+                  isLoading={loading}
+                  error={error}
+                  items={filteredPending}
+                  emptyMessage="No pending articles"
+                  renderItem={(article) => (
+                    <Articleslist
+                      key={article.article_id}
+                      article={article}
+                      headers={pendingHeaders}
+                      handleStatusChange={handleStatusChange}
+                      userRole={userRole}
+                      getStatusBadge={getStatusBadge}
+                    />
+                  )}
+                />
+              )}
+              {activeTab === "posted" && (
+                <ListRenderer
+                  isLoading={loading}
+                  error={error}
+                  items={filteredPosted}
+                  emptyMessage="No posted articles"
+                  renderItem={(article) => (
+                    <Articleslist
+                      key={article.article_id}
+                      article={article}
+                      headers={postedHeaders}
+                      handleStatusChange={handleStatusChange}
+                      userRole={userRole}
+                      getStatusBadge={getStatusBadge}
+                    />
+                  )}
+                />
               )}
             </div>
           </div>

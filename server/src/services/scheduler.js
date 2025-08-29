@@ -2,14 +2,15 @@
 
 // server/scheduler.js
 import cron from 'node-cron';
-import Article from '../models/Article.js'; // Adjust the import path as necessary
+import Article from '../models/Article.js';
 import { Op } from 'sequelize';
 
 export const startArticleScheduler = () => {
     // This job runs every minute
     cron.schedule('* * * * *', async () => {
-        console.log('Running article status check job...');
         const now = new Date();
+        // Log the current time being checked (in ISO and Asia/Manila)
+        console.log('Running article status check job at:', now.toISOString(), '| Manila:', now.toLocaleString('en-PH', { timeZone: 'Asia/Manila' }));
 
         try {
             // Find articles that should be posted
@@ -17,7 +18,7 @@ export const startArticleScheduler = () => {
                 { status: 'posted' },
                 {
                     where: {
-                        status: 'schedule',
+                        status: 'scheduled',
                         upload_period_start: {
                             [Op.lte]: now, // Op.lte means "less than or equal to"
                         },

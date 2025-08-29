@@ -63,13 +63,13 @@ const Article = sequelize.define('Article', {
     defaultValue: 'pending',
     allowNull: false,
   },
-  uploadPeriodStart: {
+  upload_period_start: {
     type: DataTypes.DATE,
-    field: "upload_period_start"
+    allowNull: true 
   },
-  uploadPeriodEnd: {
+  upload_period_end: {
     type: DataTypes.DATE,
-    field: "upload_period_end"
+    allowNull: true 
   },
   created_at: {
     type: DataTypes.DATE,

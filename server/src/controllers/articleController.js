@@ -51,10 +51,11 @@ export const createArticle = async (req, res) => {
       reviewer_notes: reviewerNotes
     };
 
+
     // Conditionally set the scheduling dates based on status
-    if (status === 'schedule') {
-      articleData.upload_period_start = uploadPeriodStart;
-      articleData.upload_period_end = uploadPeriodEnd;
+    if (status === 'schedule' || status === 'scheduled') {
+      articleData.upload_period_start = uploadPeriodStart ? new Date(uploadPeriodStart) : null;
+      articleData.upload_period_end = uploadPeriodEnd ? new Date(uploadPeriodEnd) : null;
     } else if (status === 'posted') {
       articleData.upload_period_start = new Date();
       articleData.upload_period_end = null;
@@ -151,8 +152,6 @@ export const getPublicArticle = async (req, res) => {
 
 // Update an existing article
 export const updateArticle = async (req, res) => {
-  console.log('Update request body:', req.body);
-  console.log('Update request file:', req.file);
   try {
     const { id } = req.params;
     const {
@@ -189,13 +188,10 @@ export const updateArticle = async (req, res) => {
       updated_at: new Date(),
     };
 
-    // Conditionally set the scheduling dates based on status
-    if (status === 'schedule') {
-      updateData.upload_period_start = uploadPeriodStart;
-      updateData.upload_period_end = uploadPeriodEnd;
-    } else if (status === 'posted') {
-      updateData.upload_period_start = new Date();
-      updateData.upload_period_end = null;
+    // Set scheduling dates based on status
+    if (status === 'schedule' || status === 'scheduled') {
+      updateData.upload_period_start = uploadPeriodStart ? new Date(uploadPeriodStart) : null;
+      updateData.upload_period_end = uploadPeriodEnd ? new Date(uploadPeriodEnd) : null;
     } else {
       updateData.upload_period_start = null;
       updateData.upload_period_end = null;
@@ -210,9 +206,7 @@ export const updateArticle = async (req, res) => {
     );
 
     if (updatedCount === 0) {
-      return res.status(404).json({
-        message: `Article ID ${id} not found or no changes made.`
-      });
+      return res.status(404).json({ message: 'Article not found' });
     }
 
     const updatedArticle = await Article.findOne({

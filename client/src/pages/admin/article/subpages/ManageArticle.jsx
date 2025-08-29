@@ -203,6 +203,9 @@ const ArticleEditorForm = () => {
       const { encoded } = useParams();
       const [isGeneratingCaption, setIsGeneratingCaption] = useState(false); // New state for AI generation
 
+      // Add these states near your other useState hooks:
+const [uploadPeriodStartTime, setUploadPeriodStartTime] = useState("");
+const [uploadPeriodEndTime, setUploadPeriodEndTime] = useState("");
       
 
       let articleId = null;
@@ -302,14 +305,26 @@ const ArticleEditorForm = () => {
     formData.append("barangay", barangay);
     formData.append("reviewer_notes", reviewerNotes || "");
     formData.append("status", status);
-    if (status === 'schedule') {
-        formData.append("uploadPeriodStart", uploadPeriodStart);
-        formData.append("uploadPeriodEnd", uploadPeriodEnd);
-      } else {
-        formData.append("uploadPeriodStart", null);
-        formData.append("uploadPeriodEnd", null);
-      }
-      if (thumbnail && thumbnail instanceof File) {
+    let startDateTime = "";
+    let endDateTime = "";
+
+if (status === "scheduled") {
+  startDateTime =
+    uploadPeriodStart && uploadPeriodStartTime
+      ? `${uploadPeriodStart}T${uploadPeriodStartTime}:00`
+      : uploadPeriodStart || "";
+  endDateTime =
+    uploadPeriodEnd && uploadPeriodEndTime
+      ? `${uploadPeriodEnd}T${uploadPeriodEndTime}:00`
+      : uploadPeriodEnd || "";
+
+  formData.append("uploadPeriodStart", startDateTime);
+  formData.append("uploadPeriodEnd", endDateTime);
+} else {
+  formData.append("uploadPeriodStart", "");
+  formData.append("uploadPeriodEnd", "");
+}
+    if (thumbnail && thumbnail instanceof File) {
         formData.append("thumbnail", thumbnail);
       }
     
@@ -469,6 +484,20 @@ useEffect(() => {
                     setPreviewImage(null);
                 }
                 setThumbnail(null);
+                
+                setUploadPeriodStart(data.upload_period_start ? data.upload_period_start.split('T')[0] : "");
+                setUploadPeriodEnd(data.upload_period_end ? data.upload_period_end.split('T')[0] : "");
+
+                setUploadPeriodStartTime(
+                  data.upload_period_start
+                    ? new Date(data.upload_period_start).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Manila' })
+                    : ""
+                );
+                setUploadPeriodEndTime(
+                  data.upload_period_end
+                    ? new Date(data.upload_period_end).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Manila' })
+                    : ""
+                );
 
             } catch (err) {
                 console.error("Failed to fetch article:", err);
@@ -871,20 +900,21 @@ useEffect(() => {
                                     }}
                                 >
                                     <option value="pending">Pending</option>
-                                    <option value="schedule">Schedule</option>
+                                    <option value="scheduled">Schedule</option>
                                     <option value="posted">Post</option>
                                     {/* <option value="draft">Draft</option> */}
       </select>
 </div>
 
       {/* Conditional rendering for scheduled posts */}
-      {status === 'schedule' && (
+      {status === 'scheduled' && (
         <>
-            {/* Start Date Input */}
+            {/* Start Date & Time Input */}
             <div className="flex-1">
-                                        <label htmlFor="uploadPeriodStart" className={`font-bold`}>
+                                        <label htmlFor="uploadPeriodStart" className="font-bold">
                                             Start Date
                                         </label>
+                                        <div className="flex gap-2">
                                         <input
                                             id="uploadPeriodStart"
                                             type="date"
@@ -898,13 +928,25 @@ useEffect(() => {
                                                 clearFieldError("uploadPeriodStart");
                                             }}
                                         />
+                                        <input
+                                            id="uploadPeriodStartTime"
+                                            type="time"
+                                            className="w-32 px-2 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 border-black"
+                                            value={uploadPeriodStartTime}
+                                            onChange={(e) => {
+                                                setUploadPeriodStartTime(e.target.value);
+                                                setIsDirty(true);
+                                            }}
+                                        />
+                                        </div>
             </div>
 
-            {/* End Date Input */}
+            {/* End Date & Time Input */}
             <div className="flex-1">
-                <label htmlFor="uploadPeriodEnd" className={`font-bold`}>
+                <label htmlFor="uploadPeriodEnd" className="font-bold">
                                             End Date
                 </label>
+                <div className="flex gap-2">
                 <input
                     id="uploadPeriodEnd"
                       type="date"
@@ -917,8 +959,19 @@ useEffect(() => {
                           setIsDirty(true);
                           clearFieldError("uploadPeriodEnd");
                       }}
-                    min={uploadPeriodStart}
+                      min={uploadPeriodStart}
                 />
+                <input
+                    id="uploadPeriodEndTime"
+                    type="time"
+                    className="w-32 px-2 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 border-black"
+                    value={uploadPeriodEndTime}
+                    onChange={(e) => {
+                        setUploadPeriodEndTime(e.target.value);
+                        setIsDirty(true);
+                    }}
+                />
+                </div>
             </div>
         </>
       )}

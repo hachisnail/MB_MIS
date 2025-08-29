@@ -1,26 +1,71 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useForm, Controller } from 'react-hook-form';
+import { yupResolver } from '@hookform/resolvers/yup';
+import * as yup from 'yup';
 import axiosClient from '@/lib/axiosClient';
 import StyledButton from '@/components/buttons/StyledButton';
 import Toast from '@/features/Toast';
 import usePrompt from '@/hooks/usePrompt';
 import { format } from 'date-fns';
 import Calendar from 'react-calendar';
+import TimePicker from 'react-time-picker';
 import 'react-calendar/dist/Calendar.css';
+import 'react-time-picker/dist/TimePicker.css';
 import {
-    StyledInput,
-    LabeledInput,
-    StyledSelect,
-} from '@/features/Utilities';
+    FormInput,
+    DropdownInput,
+    ContactNumberInput,
+    EmailInput,
+    DateInput,
+} from '@/features/FormUtilities';
 import { useSocketClient } from '@/context/authContext';
 import { TypedDropdown, useAddressLogic } from '@/features/AddressDropdownSystem';
 import {
     checkTimeSlotAvailability,
     checkDateAvailability,
-    checkMonthlyAvailability
+    checkMonthlyAvailability,
+    validateAppointmentSchedule
 } from '@/utils/scheduleValidation';
-import { getLocalDateString } from '@/utils/scheduleUtils';
+import { getLocalDateString, timeStringToMinutes } from '@/utils/scheduleUtils';
 import ConfirmationModal from '@/components/modals/ConfirmationModal';
+
+// Validation schemas for each page
+const page1Schema = yup.object({
+    firstName: yup.string().required('First name is required'),
+    lastName: yup.string().required('Last name is required'),
+    email: yup.string().email('Please enter a valid email').required('Email is required'),
+    phone: yup.string().matches(/^(09|\+639)\d{9}$/, 'Please enter a valid phone number').nullable(),
+    organization: yup.string().nullable(),
+    street: yup.string().nullable(),
+    province: yup.string().required('Province is required'),
+    city: yup.string().required('City is required'),
+    barangay: yup.string().required('Barangay is required'),
+    purpose: yup.string().required('Please select a purpose'),
+    populationCount: yup.number()
+        .typeError('Please enter a valid number')
+        .positive('Population count must be greater than 0')
+        .integer('Population count must be a whole number')
+        .required('Population count is required'),
+});
+
+const page2Schema = yup.object({
+    selectedTime: yup.string().when('purpose', {
+        is: 'School Field Trip',
+        then: (schema) => schema.required('Please select a time slot'),
+        otherwise: (schema) => schema.nullable(),
+    }),
+    timePreference: yup.string().when('purpose', {
+        is: (value) => value !== 'School Field Trip',
+        then: (schema) => schema.required('Please select a time preference'),
+        otherwise: (schema) => schema.nullable(),
+    }),
+    manualStartTime: yup.string().nullable(),
+    manualEndTime: yup.string().nullable(),
+    additionalNotes: yup.string()
+        .max(500, 'Notes cannot exceed 500 characters')
+        .nullable(),
+});
 
 const WalkInsPage = () => {
     const [currentPage, setCurrentPage] = useState(1); // 1 or 2 for the two pages
@@ -73,11 +118,26 @@ const WalkInsPage = () => {
         // Date and Time
         visitDate: format(new Date(), 'yyyy-MM-dd'),
         selectedTime: '',
+        timePreference: 'specific', // 'specific' or 'flexible'
+        manualStartTime: null,
+        manualEndTime: null,
         additionalNotes: ''
     };
 
-    const [formData, setFormData] = useState(initialFormData);
-    const [formErrors, setFormErrors] = useState({});
+    // React Hook Form setup for Page 1
+    const page1Form = useForm({
+        defaultValues: initialFormData,
+        resolver: yupResolver(page1Schema),
+        mode: 'onTouched'
+    });
+
+    // React Hook Form setup for Page 2
+    const page2Form = useForm({
+        defaultValues: initialFormData,
+        resolver: yupResolver(page2Schema),
+        mode: 'onTouched'
+    });
+
     const [selectedDate, setSelectedDate] = useState(new Date()); // Calendar date selection
 
     // Time slot availability states
@@ -100,16 +160,127 @@ const WalkInsPage = () => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const phoneRegex = /^(09|\+639)\d{9}$/;
 
-    // Check if form has unsaved changes
-    const isDirty = JSON.stringify(formData) !== JSON.stringify(initialFormData) ||
-        selectedProvince || selectedCity || selectedBarangay;
+    // Get current form data from both forms
+    const getCurrentFormData = () => {
+        const page1Data = page1Form.getValues();
+        const page2Data = page2Form.getValues();
+        return { ...page1Data, ...page2Data };
+    };
+
+    // State for tracking unsaved changes
+    const [isDirty, setIsDirty] = useState(false);
+    const [hasUserInteracted, setHasUserInteracted] = useState(false);
 
     // Use the prompt hook to warn about unsaved changes
     const { PromptModal } = usePrompt(
         "You have unsaved changes. Are you sure you want to leave?",
-        isDirty,
+        isDirty && hasUserInteracted,
         "light"
     );
+
+    // Track if user has actually interacted with the form
+    const markAsInteracted = useCallback(() => {
+        if (!hasUserInteracted) {
+            setHasUserInteracted(true);
+        }
+    }, [hasUserInteracted]);
+
+    // Check if form has actual changes (not just initialization)
+    const checkForRealChanges = useCallback(() => {
+        const page1Values = page1Form.getValues();
+        const page2Values = page2Form.getValues();
+
+        // Check if any field has a non-empty, non-default value
+        const hasPage1Changes =
+            page1Values.firstName !== '' ||
+            page1Values.lastName !== '' ||
+            page1Values.email !== '' ||
+            page1Values.phone !== '' ||
+            page1Values.organization !== '' ||
+            page1Values.street !== '' ||
+            page1Values.province !== '' ||
+            page1Values.city !== '' ||
+            page1Values.barangay !== '' ||
+            page1Values.purpose !== '' ||
+            (page1Values.populationCount !== '' && page1Values.populationCount !== undefined);
+
+        const hasPage2Changes =
+            page2Values.selectedTime !== '' ||
+            page2Values.manualStartTime !== null ||
+            page2Values.manualEndTime !== null ||
+            page2Values.additionalNotes !== '';
+
+        return hasPage1Changes || hasPage2Changes;
+    }, [page1Form, page2Form]);
+
+    // Watch for form changes in both forms
+    useEffect(() => {
+        let isFirstRender = true;
+
+        const subscription1 = page1Form.watch((value, { name, type }) => {
+            // Skip the initial subscription call
+            if (isFirstRender) {
+                isFirstRender = false;
+                return;
+            }
+
+            // Mark as interacted when user types
+            if (type === 'change' && !hasUserInteracted) {
+                markAsInteracted();
+            }
+
+            // Only set dirty if user has interacted and there are real changes
+            if (type === 'change') {
+                const hasChanges = checkForRealChanges();
+                setIsDirty(hasChanges);
+            }
+        });
+
+        return () => {
+            subscription1.unsubscribe();
+        };
+    }, [page1Form, hasUserInteracted, checkForRealChanges, markAsInteracted]);
+
+    useEffect(() => {
+        let isFirstRender = true;
+
+        const subscription2 = page2Form.watch((value, { name, type }) => {
+            // Skip the initial subscription call
+            if (isFirstRender) {
+                isFirstRender = false;
+                return;
+            }
+
+            // Mark as interacted when user types
+            if (type === 'change' && !hasUserInteracted) {
+                markAsInteracted();
+            }
+
+            // Only set dirty if user has interacted and there are real changes
+            if (type === 'change') {
+                const hasChanges = checkForRealChanges();
+                setIsDirty(hasChanges);
+            }
+        });
+
+        return () => {
+            subscription2.unsubscribe();
+        };
+    }, [page2Form, hasUserInteracted, checkForRealChanges, markAsInteracted]);
+
+    // Reset isDirty when form is submitted
+    useEffect(() => {
+        const handleFormSubmitted = () => {
+            setIsDirty(false);
+            setHasUserInteracted(false);
+        };
+
+        window.addEventListener('formSubmitted', handleFormSubmitted);
+
+        return () => {
+            window.removeEventListener('formSubmitted', handleFormSubmitted);
+        };
+    }, []);
 
     const showToast = useCallback((message, type = 'success') => {
         setToastConfig({
@@ -135,167 +306,348 @@ const WalkInsPage = () => {
         }
     }, [toastConfig.message]);
 
-    const validateField = useCallback((fieldName, value, currentProvince = null, currentCity = null, currentBarangay = null) => {
-        setFormErrors((prev) => {
-            const errors = { ...prev };
+    // Handle address changes and sync with form
+    const handleProvinceChange = (province) => {
+        markAsInteracted();
+        setSelectedProvince(province);
+        const provinceName = province?.name || '';
+        page1Form.setValue('province', provinceName, { shouldValidate: true });
+        page1Form.setValue('city', '', { shouldValidate: false });
+        page1Form.setValue('barangay', '', { shouldValidate: false });
+        setSelectedCity(null);
+        setSelectedBarangay(null);
 
-            switch (fieldName) {
-                case 'firstName':
-                case 'lastName':
-                    if (!value.trim()) {
-                        errors[fieldName] = true;
-                    } else {
-                        delete errors[fieldName];
-                    }
-                    break;
-                case 'email':
-                    if (!value.trim()) {
-                        errors[fieldName] = true;
-                    } else if (!emailRegex.test(value)) {
-                        errors[fieldName] = true;
-                    } else {
-                        delete errors[fieldName];
-                    }
-                    break;
-                case 'phone':
-                    if (value && !phoneRegex.test(value)) {
-                        errors[fieldName] = true;
-                    } else {
-                        delete errors[fieldName];
-                    }
-                    break;
-                case 'province':
-                    if (!currentProvince && !selectedProvince) {
-                        errors[fieldName] = true;
-                    } else {
-                        delete errors[fieldName];
-                    }
-                    break;
-                case 'city':
-                    if (!currentCity && !selectedCity) {
-                        errors[fieldName] = true;
-                    } else {
-                        delete errors[fieldName];
-                    }
-                    break;
-                case 'barangay':
-                    if (!currentBarangay && !selectedBarangay) {
-                        errors[fieldName] = true;
-                    } else {
-                        delete errors[fieldName];
-                    }
-                    break;
-                case 'purpose':
-                    if (!value) {
-                        errors[fieldName] = true;
-                    } else {
-                        delete errors[fieldName];
-                    }
-                    break;
-                case 'populationCount':
-                    if (!value || isNaN(value) || parseInt(value) <= 0) {
-                        errors[fieldName] = true;
-                    } else {
-                        delete errors[fieldName];
-                    }
-                    break;
-                case 'selectedTime':
-                    if (!value) {
-                        errors[fieldName] = true;
-                    } else {
-                        delete errors[fieldName];
-                    }
-                    break;
-                default:
-                    break;
-            }
-
-            return errors;
-        });
-    }, [emailRegex, phoneRegex, selectedProvince, selectedCity, selectedBarangay]);
-
-    const handleInputChange = (field, value) => {
-        setFormData(prev => ({ ...prev, [field]: value }));
-        validateField(field, value);
+        // Clear error when province is selected
+        if (province) {
+            page1Form.clearErrors('province');
+        }
     };
 
-    const validatePage = (page) => {
-        let isValid = true;
-        const errors = {};
+    const handleCityChange = (city) => {
+        markAsInteracted();
+        setSelectedCity(city);
+        const cityName = city?.name || '';
+        page1Form.setValue('city', cityName, { shouldValidate: true });
+        page1Form.setValue('barangay', '', { shouldValidate: false });
+        setSelectedBarangay(null);
 
-        if (page === 1) {
-            // Validate Page 1 fields - mandatory fields
-            if (!formData.firstName.trim()) {
-                errors.firstName = true;
-                isValid = false;
-            }
-            if (!formData.lastName.trim()) {
-                errors.lastName = true;
-                isValid = false;
-            }
-            // Email is now mandatory
-            if (!formData.email.trim()) {
-                errors.email = true;
-                isValid = false;
-            } else if (!emailRegex.test(formData.email)) {
-                errors.email = true;
-                isValid = false;
-            }
-            // Province, City, Barangay are now mandatory
-            if (!selectedProvince) {
-                errors.province = true;
-                isValid = false;
-            }
-            if (!selectedCity) {
-                errors.city = true;
-                isValid = false;
-            }
-            if (!selectedBarangay) {
-                errors.barangay = true;
-                isValid = false;
-            }
-            // Phone validation (optional)
-            if (formData.phone && !phoneRegex.test(formData.phone)) {
-                errors.phone = true;
-                isValid = false;
-            }
-            if (!formData.purpose) {
-                errors.purpose = true;
-                isValid = false;
-            }
-            if (!formData.populationCount || isNaN(formData.populationCount) || parseInt(formData.populationCount) <= 0) {
-                errors.populationCount = true;
-                isValid = false;
-            }
-        } else if (page === 2) {
-            // Validate Page 2 fields - Time slot is only required for School Field Trip
-            if (formData.purpose === 'School Field Trip' && !formData.selectedTime) {
-                errors.selectedTime = true;
-                isValid = false;
-            }
+        // Clear error when city is selected
+        if (city) {
+            page1Form.clearErrors('city');
+        }
+    };
+
+    const handleBarangayChange = (barangay) => {
+        markAsInteracted();
+        setSelectedBarangay(barangay);
+        const barangayName = barangay?.name || '';
+        page1Form.setValue('barangay', barangayName, { shouldValidate: true });
+
+        // Clear error when barangay is selected
+        if (barangay) {
+            page1Form.clearErrors('barangay');
+        }
+    };
+
+    // Initialize address selections from form data
+    useEffect(() => {
+        if (initialFormData.province && provinces.length > 0) {
+            const prov = provinces.find((p) => p.name === initialFormData.province);
+            if (prov) setSelectedProvince(prov);
+        }
+    }, [initialFormData.province, provinces]);
+
+    useEffect(() => {
+        if (initialFormData.city && cities.length > 0) {
+            const city = cities.find((c) => c.name === initialFormData.city);
+            if (city) setSelectedCity(city);
+        }
+    }, [initialFormData.city, cities]);
+
+    useEffect(() => {
+        if (initialFormData.barangay && barangays.length > 0) {
+            const barangay = barangays.find((b) => b.name === initialFormData.barangay);
+            if (barangay) setSelectedBarangay(barangay);
+        }
+    }, [initialFormData.barangay, barangays]);
+
+    const handleNext = async () => {
+        // First, manually validate address fields since they're not directly controlled by react-hook-form
+        let hasErrors = false;
+
+        if (!selectedProvince) {
+            page1Form.setError('province', { type: 'manual', message: 'Province is required' });
+            hasErrors = true;
+        } else {
+            page1Form.clearErrors('province');
         }
 
-        setFormErrors(errors);
-        return isValid;
-    };
+        if (!selectedCity) {
+            page1Form.setError('city', { type: 'manual', message: 'City is required' });
+            hasErrors = true;
+        } else {
+            page1Form.clearErrors('city');
+        }
 
-    const handleNext = () => {
-        if (validatePage(1)) {
+        if (!selectedBarangay) {
+            page1Form.setError('barangay', { type: 'manual', message: 'Barangay is required' });
+            hasErrors = true;
+        } else {
+            page1Form.clearErrors('barangay');
+        }
+
+        // Trigger validation for all other fields
+        const isValid = await page1Form.trigger();
+
+        if (isValid && !hasErrors) {
+            // Sync data between forms
+            const page1Data = page1Form.getValues();
+            page2Form.reset({ ...page2Form.getValues(), ...page1Data });
             setCurrentPage(2);
         } else {
-            showToast('Please fill in all required fields correctly', 'error');
+            showToast('Please complete all required fields', 'error');
         }
     };
 
     const handlePrevious = () => {
+        // Sync data between forms
+        const page2Data = page2Form.getValues();
+        page1Form.reset({ ...page1Form.getValues(), ...page2Data });
         setCurrentPage(1);
     };
 
-    const handleSubmit = () => {
-        if (!validatePage(2)) {
-            showToast('Please fill in all required fields correctly', 'error');
+    // Helper function to fetch existing events for validation
+    const fetchExistingEvents = async (date) => {
+        try {
+            const formattedDate = format(date, 'yyyy-MM-dd');
+
+            const [schedulesResponse, appointmentsResponse] = await Promise.all([
+                axiosClient.get('/auth/schedules'),
+                axiosClient.get('/auth/appointment')
+            ]);
+
+            // Transform schedules to match validation format
+            const schedules = schedulesResponse.data
+                .filter(schedule => {
+                    if (!schedule.date || !schedule.start_time || !schedule.end_time) return false;
+                    const scheduleDate = schedule.date.split('T')[0];
+                    return scheduleDate === formattedDate && schedule.status !== 'COMPLETED';
+                })
+                .map(schedule => ({
+                    date: schedule.date.split('T')[0],
+                    startTime: schedule.start_time.substring(0, 5), // Extract HH:MM format
+                    endTime: schedule.end_time.substring(0, 5), // Extract HH:MM format
+                    availability: schedule.availability || 'SHARED',
+                    isSchedule: true
+                }));
+
+            // Transform appointments to match validation format - CRITICAL FIX
+            // Include ALL confirmed appointments AND walk-ins regardless of status
+            const appointments = appointmentsResponse.data
+                .filter(appointment => {
+                    if (!appointment.preferred_date) return false;
+                    const appointmentDate = appointment.preferred_date.split('T')[0];
+                    const status = (appointment.AppointmentStatus?.status || '').toUpperCase();
+
+                    // Include CONFIRMED appointments AND ALL walk-ins (even pending ones)
+                    // Walk-ins are auto-confirmed so we count them all
+                    return appointmentDate === formattedDate &&
+                        (status === 'CONFIRMED' || appointment.is_walk_in === true || appointment.is_walk_in === 1);
+                })
+                .map(appointment => {
+                    // Handle different time formats properly
+                    let startTime = null;
+                    let endTime = null;
+
+                    if (appointment.start_time && appointment.end_time) {
+                        startTime = appointment.start_time.substring(0, 5);
+                        endTime = appointment.end_time.substring(0, 5);
+                    } else if (appointment.preferred_time && appointment.preferred_time.includes('-')) {
+                        // Handle School Field Trip time slots
+                        const [start, end] = appointment.preferred_time.split('-');
+
+                        // Convert afternoon slots properly (01:00-05:00 PM = 13:00-17:00)
+                        const convertSlotTime = (timeStr) => {
+                            const [hourStr, minuteStr] = timeStr.trim().split(':');
+                            let hour = parseInt(hourStr, 10);
+                            const minute = parseInt(minuteStr || '0', 10);
+
+                            // Convert afternoon slots (1-5 PM)
+                            if (hour >= 1 && hour <= 5) {
+                                hour += 12;
+                            }
+
+                            return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+                        };
+
+                        startTime = convertSlotTime(start);
+                        endTime = convertSlotTime(end);
+                    }
+
+                    // Only return appointments that have valid times for validation
+                    if (!startTime || !endTime) {
+                        return null; // Filter out appointments without times
+                    }
+
+                    return {
+                        date: appointment.preferred_date.split('T')[0],
+                        startTime,
+                        endTime,
+                        isSchedule: false,
+                        isAppointment: true,
+                        appointmentId: appointment.appointment_id,
+                        isWalkIn: appointment.is_walk_in
+                    };
+                })
+                .filter(Boolean); // Remove null entries
+
+            console.log(`Found ${appointments.length} existing appointments/walk-ins for ${formattedDate}`);
+            return [...schedules, ...appointments];
+        } catch (error) {
+            console.error('Error fetching existing events:', error);
+            return [];
+        }
+    };
+
+    // Helper function to convert AM/PM time to 24-hour format for validation
+    const convertTimeForValidation = (timeStr) => {
+        if (!timeStr) return null;
+
+        const hasAMPM = timeStr.toLowerCase().includes('am') || timeStr.toLowerCase().includes('pm');
+
+        if (hasAMPM) {
+            const isPM = timeStr.toLowerCase().includes('pm');
+            const cleanTime = timeStr.toLowerCase().replace(/am|pm/g, '').trim();
+            const [hourStr, minuteStr] = cleanTime.split(':');
+            let hour = parseInt(hourStr, 10);
+            const minute = parseInt(minuteStr || '0', 10);
+
+            if (isPM && hour < 12) hour += 12;
+            if (!isPM && hour === 12) hour = 0;
+
+            return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+        } else {
+            // Already in 24-hour format
+            const [hourStr, minuteStr] = timeStr.split(':');
+            const hour = parseInt(hourStr, 10);
+            const minute = parseInt(minuteStr || '0', 10);
+            return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+        }
+    };
+
+    const handleSubmit = async () => {
+        const isValid = await page2Form.trigger();
+        if (!isValid) {
+            showToast('Please complete all required fields', 'error');
             return;
         }
+
+        const currentFormData = getCurrentFormData();
+
+        // Check if manual times are provided for validation
+        const hasManualTimes = currentFormData.purpose !== 'School Field Trip' &&
+            currentFormData.manualStartTime &&
+            currentFormData.manualEndTime;
+
+        if (hasManualTimes) {
+            try {
+                // Convert times to 24-hour format for validation
+                const startTime24 = convertTimeForValidation(currentFormData.manualStartTime);
+                const endTime24 = convertTimeForValidation(currentFormData.manualEndTime);
+
+                if (!startTime24 || !endTime24) {
+                    showToast('Invalid time format selected', 'error');
+                    return;
+                }
+
+                // Fetch existing events for the selected date
+                const existingEvents = await fetchExistingEvents(selectedDate);
+
+                // Prepare appointment data for validation
+                const appointmentData = {
+                    date: format(selectedDate, 'yyyy-MM-dd'),
+                    startTime: startTime24,
+                    endTime: endTime24
+                };
+
+                // Validate the appointment schedule
+                const validationResult = validateAppointmentSchedule(appointmentData, existingEvents);
+
+                if (!validationResult.isValid) {
+                    showToast(`Time conflict: ${validationResult.error}`, 'error');
+                    return;
+                }
+            } catch (error) {
+                console.error('Validation error:', error);
+                showToast('Time validation failed. Please try again.', 'error');
+                return;
+            }
+        }
+
+        // Validate School Field Trip appointments for 5-appointment limit
+        if (currentFormData.purpose === 'School Field Trip' && currentFormData.selectedTime) {
+            try {
+                // Convert selected time slot to start/end times for validation
+                const [startTime, endTime] = currentFormData.selectedTime.split('-');
+
+                // Convert time slot format (e.g., "09:00" or "01:00") to 24-hour format
+                const convertSlotTo24Hour = (timeStr) => {
+                    const [hourStr, minuteStr] = timeStr.split(':');
+                    let hour = parseInt(hourStr, 10);
+                    // Handle afternoon slots (01:00-05:00 PM should be 13:00-17:00)
+                    if (hour >= 1 && hour <= 5) {
+                        hour += 12;
+                    }
+                    return `${hour.toString().padStart(2, '0')}:${minuteStr}`;
+                };
+
+                const startTime24 = convertSlotTo24Hour(startTime);
+                const endTime24 = convertSlotTo24Hour(endTime);
+
+                // Fetch existing events for the selected date
+                const existingEvents = await fetchExistingEvents(selectedDate);
+
+                // Count overlapping events manually for School Field Trip
+                const overlappingEvents = existingEvents.filter(event => {
+                    const eventStart = timeStringToMinutes(event.startTime);
+                    const eventEnd = timeStringToMinutes(event.endTime);
+                    const slotStart = timeStringToMinutes(startTime24);
+                    const slotEnd = timeStringToMinutes(endTime24);
+
+                    // Check if there's any overlap
+                    return (slotStart < eventEnd && eventStart < slotEnd);
+                });
+
+                console.log(`Overlapping events count: ${overlappingEvents.length}`);
+
+                // Check if adding this appointment would exceed the limit
+                if (overlappingEvents.length >= 5) {
+                    showToast(`Cannot add appointment: This time slot already has 5 overlapping events (limit reached)`, 'error');
+                    return;
+                }
+
+                // Also check for exclusive schedules
+                const hasExclusiveConflict = existingEvents.some(event => {
+                    if (!event.isSchedule || event.availability !== 'EXCLUSIVE') return false;
+                    const eventStart = timeStringToMinutes(event.startTime);
+                    const eventEnd = timeStringToMinutes(event.endTime);
+                    const slotStart = timeStringToMinutes(startTime24);
+                    const slotEnd = timeStringToMinutes(endTime24);
+                    return (slotStart < eventEnd && eventStart < slotEnd);
+                });
+
+                if (hasExclusiveConflict) {
+                    showToast('Cannot schedule during an exclusive event time slot', 'error');
+                    return;
+                }
+            } catch (error) {
+                console.error('Time slot validation error:', error);
+                showToast('Time slot validation failed. Please try again.', 'error');
+                return;
+            }
+        }
+
+        // If validation passes or no manual times provided, show confirmation modal
         setShowConfirmModal(true);
     };
 
@@ -303,14 +655,14 @@ const WalkInsPage = () => {
         setShowConfirmModal(false);
         setIsSubmitting(true);
 
-        showToast('Submitting walk-in appointment...', 'info');
+        const currentFormData = getCurrentFormData();
 
         // Time conversion logic (same as Appointment.jsx)
         let startTimeValue = null;
         let endTimeValue = null;
 
-        if (formData.selectedTime) {
-            const [startTime, endTime] = formData.selectedTime.split('-');
+        if (currentFormData.purpose === 'School Field Trip' && currentFormData.selectedTime) {
+            const [startTime, endTime] = currentFormData.selectedTime.split('-');
             const convertTo24Hour = (timeStr) => {
                 const [hourStr, minuteStr] = timeStr.split(':');
                 let hour = parseInt(hourStr, 10);
@@ -322,26 +674,56 @@ const WalkInsPage = () => {
 
             startTimeValue = convertTo24Hour(startTime);
             endTimeValue = convertTo24Hour(endTime);
+        } else if (currentFormData.purpose !== 'School Field Trip' && currentFormData.timePreference === 'specific' && currentFormData.manualStartTime && currentFormData.manualEndTime) {
+            // For manual time input, convert from 12-hour to 24-hour format with seconds
+            const convertTo24Hour = (timeStr) => {
+                if (!timeStr) return null;
+
+                const hasAMPM = timeStr.toLowerCase().includes('am') || timeStr.toLowerCase().includes('pm');
+
+                if (hasAMPM) {
+                    const isPM = timeStr.toLowerCase().includes('pm');
+                    const cleanTime = timeStr.toLowerCase().replace(/am|pm/g, '').trim();
+                    const [hourStr, minuteStr] = cleanTime.split(':');
+                    let hour = parseInt(hourStr, 10);
+                    const minute = parseInt(minuteStr || '0', 10);
+
+                    if (isPM && hour < 12) hour += 12;
+                    if (!isPM && hour === 12) hour = 0;
+
+                    return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00`;
+                } else {
+                    // Already in 24-hour format
+                    return `${timeStr}:00`;
+                }
+            };
+
+            startTimeValue = convertTo24Hour(currentFormData.manualStartTime);
+            endTimeValue = convertTo24Hour(currentFormData.manualEndTime);
         }
 
         // Payload structure matching Appointment.jsx exactly
         const payload = {
-            first_name: formData.firstName,
-            last_name: formData.lastName,
-            email: formData.email,
-            phone: formData.phone,
-            organization: formData.organization,
+            first_name: currentFormData.firstName,
+            last_name: currentFormData.lastName,
+            email: currentFormData.email,
+            phone: currentFormData.phone,
+            organization: currentFormData.organization,
             province: selectedProvince?.name || '',
             barangay: selectedBarangay?.name || '',
             city_municipality: selectedCity?.name || '',
-            street: formData.street,
-            purpose_of_visit: formData.purpose,
-            population_count: formData.populationCount,
-            preferred_date: formData.visitDate,
-            preferred_time: formData.selectedTime,
+            street: currentFormData.street,
+            purpose_of_visit: currentFormData.purpose,
+            population_count: currentFormData.populationCount,
+            preferred_date: currentFormData.visitDate,
+            preferred_time: currentFormData.purpose === 'School Field Trip'
+                ? currentFormData.selectedTime
+                : (currentFormData.manualStartTime && currentFormData.manualEndTime)
+                    ? `${currentFormData.manualStartTime}-${currentFormData.manualEndTime}`
+                    : null,
             start_time: startTimeValue,
             end_time: endTimeValue,
-            additional_notes: formData.additionalNotes,
+            additional_notes: currentFormData.additionalNotes,
             // Walk-in specific flags
             is_walk_in: true,
             status: 'confirmed' // Walk-ins are automatically confirmed
@@ -351,11 +733,11 @@ const WalkInsPage = () => {
             const response = await axiosClient.post('/auth/appointment', payload);
 
             if (response.status === 201) {
-                showToast('Walk-in appointment submitted successfully! Visitor has been registered.', 'success');
+                showToast('Walk-in visitor registered successfully!', 'success');
 
-                // Reset form
-                setFormData(initialFormData);
-                setFormErrors({});
+                // Reset forms
+                page1Form.reset(initialFormData);
+                page2Form.reset(initialFormData);
                 setCurrentPage(1);
 
                 // Reset address selections
@@ -366,30 +748,33 @@ const WalkInsPage = () => {
                 // Reset selected date to current date
                 setSelectedDate(new Date());
 
+                // Trigger form reset event
+                window.dispatchEvent(new Event('formSubmitted'));
+
                 // Stay on the same page (page 1) for next walk-in entry
                 // No navigation - just reset to page 1 for continuous walk-in processing
             }
         } catch (error) {
             console.error('Request failed:', error);
 
-            // Error handling matching Appointment.jsx
+            // Error handling
             if (error.response) {
                 const status = error.response.status;
                 const message = error.response.data?.message || 'Unknown error occurred';
 
                 if (status === 400) {
-                    showToast(`Validation Error: ${message}`, 'error');
+                    showToast(`Validation error: ${message}`, 'error');
                 } else if (status === 409) {
-                    showToast('Time slot conflict: Please select a different time', 'error');
+                    showToast('Time slot conflict detected', 'error');
                 } else if (status === 500) {
-                    showToast('Server error: Please try again later', 'error');
+                    showToast('Server error occurred', 'error');
                 } else {
-                    showToast(`Error ${status}: ${message}`, 'error');
+                    showToast(`Error: ${message}`, 'error');
                 }
             } else if (error.request) {
-                showToast('Network error: Please check your connection and try again', 'error');
+                showToast('Network connection error', 'error');
             } else {
-                showToast('Failed to submit walk-in appointment. Please try again.', 'error');
+                showToast('Registration failed. Please try again.', 'error');
             }
         } finally {
             setIsSubmitting(false);
@@ -417,9 +802,9 @@ const WalkInsPage = () => {
         // Always update form data with selected date regardless of page
         if (selectedDate) {
             const dateString = format(selectedDate, 'yyyy-MM-dd');
-            setFormData(prev => ({ ...prev, visitDate: dateString }));
+            page2Form.setValue('visitDate', dateString);
         }
-    }, [selectedDate, currentPage]);
+    }, [selectedDate, currentPage, page2Form]);
 
     // Check monthly availability when component mounts or when month changes
     useEffect(() => {
@@ -489,10 +874,84 @@ const WalkInsPage = () => {
 
     const handleDateSelect = (date) => {
         setSelectedDate(date);
+        // Trigger form change event
+        window.dispatchEvent(new Event('formChanged'));
     };
 
-    const handleTimeSelect = (time) => {
-        handleInputChange('selectedTime', time);
+    const handleTimeSelect = async (time) => {
+        // Validate time slot before allowing selection
+        try {
+            // Convert selected time slot to start/end times for validation
+            const [startTime, endTime] = time.split('-');
+
+            // Convert time slot format to 24-hour format
+            const convertSlotTo24Hour = (timeStr) => {
+                const [hourStr, minuteStr] = timeStr.split(':');
+                let hour = parseInt(hourStr, 10);
+                // Handle afternoon slots (01:00-05:00 PM should be 13:00-17:00)
+                if (hour >= 1 && hour <= 5) {
+                    hour += 12;
+                }
+                return `${hour.toString().padStart(2, '0')}:${minuteStr}`;
+            };
+
+            const startTime24 = convertSlotTo24Hour(startTime);
+            const endTime24 = convertSlotTo24Hour(endTime);
+
+            // Fetch existing events for the selected date
+            const existingEvents = await fetchExistingEvents(selectedDate);
+
+            // Prepare appointment data for validation
+            const appointmentData = {
+                date: format(selectedDate, 'yyyy-MM-dd'),
+                startTime: startTime24,
+                endTime: endTime24
+            };
+
+            // Validate the appointment schedule
+            const validationResult = validateAppointmentSchedule(appointmentData, existingEvents);
+
+            if (!validationResult.isValid) {
+                showToast(`Time slot unavailable: ${validationResult.error}`, 'error');
+                return;
+            }
+
+            // If validation passes, set the time
+            page2Form.setValue('selectedTime', time);
+
+            // Trigger form change event
+            window.dispatchEvent(new Event('formChanged'));
+        } catch (error) {
+            console.error('Time slot validation error:', error);
+            showToast('Time slot validation failed', 'error');
+        }
+    };
+
+    const handleManualStartTimeChange = (time) => {
+        page2Form.setValue('manualStartTime', time);
+        // Trigger form change event
+        window.dispatchEvent(new Event('formChanged'));
+    };
+
+    const handleManualEndTimeChange = (time) => {
+        page2Form.setValue('manualEndTime', time);
+        // Trigger form change event
+        window.dispatchEvent(new Event('formChanged'));
+    };
+
+    const handleTimePreferenceChange = (preference) => {
+        page2Form.setValue('timePreference', preference);
+        // Clear time fields when switching to flexible
+        if (preference === 'flexible') {
+            page2Form.setValue('manualStartTime', null);
+            page2Form.setValue('manualEndTime', null);
+        } else {
+            // Set default times when switching to specific (optional)
+            page2Form.setValue('manualStartTime', null);
+            page2Form.setValue('manualEndTime', null);
+        }
+        // Trigger form change event
+        window.dispatchEvent(new Event('formChanged'));
     };
 
     // Socket integration for real-time updates
@@ -542,13 +1001,13 @@ const WalkInsPage = () => {
 
     // Page 1 Component
     const renderPage1 = () => (
-        <div className="w-full max-w-7xl mx-auto p-8">
+        <div className="w-full max-w-[1200px] mx-auto p-8">
             {/* About the Visitor Section */}
             <div className="mb-12">
                 <div className="grid grid-cols-12 gap-8 mb-6">
                     {/* Left side - Title */}
                     <div className="col-span-3">
-                        <h2 className="text-2xl font-semibold text-gray-900">About the Visitor</h2>
+                        <h2 className="text-3xl font-semibold text-gray-900">About the Visitor</h2>
                     </div>
 
                     {/* Right side - Empty for alignment */}
@@ -564,156 +1023,153 @@ const WalkInsPage = () => {
 
                     {/* Right side - Form Fields */}
                     <div className="col-span-9">
-                        <div className="grid grid-cols-2 gap-6 mb-6">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    First Name <span className="text-red-500">*</span>
-                                </label>
-                                <input
-                                    type="text"
-                                    value={formData.firstName}
-                                    onChange={(e) => handleInputChange('firstName', e.target.value)}
-                                    className={`w-full px-3 py-2 border ${formErrors.firstName ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
-                                />
-                                {formErrors.firstName && (
-                                    <p className="mt-1 text-sm text-red-600">First name is required</p>
-                                )}
+                        <form onSubmit={page1Form.handleSubmit(() => { })}>
+                            <div className="grid grid-cols-2 gap-6 mb-6">
+                                <div>
+                                    <label className="block text-base font-medium text-gray-700 mb-2">
+                                        First Name <span className="text-red-500">*</span>
+                                    </label>
+                                    <FormInput
+                                        placeholder="First Name"
+                                        register={page1Form.register}
+                                        name="firstName"
+                                        error={page1Form.formState.errors.firstName || ""}
+                                        className="w-full h-12 text-base"
+                                        onFocus={markAsInteracted}
+                                        onChange={markAsInteracted}
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-base font-medium text-gray-700 mb-2">
+                                        Last Name <span className="text-red-500">*</span>
+                                    </label>
+                                    <FormInput
+                                        placeholder="Last Name"
+                                        register={page1Form.register}
+                                        name="lastName"
+                                        error={page1Form.formState.errors.lastName || ""}
+                                        className="w-full h-12 text-base"
+                                        onFocus={markAsInteracted}
+                                        onChange={markAsInteracted}
+                                    />
+                                </div>
                             </div>
 
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Last Name <span className="text-red-500">*</span>
-                                </label>
-                                <input
-                                    type="text"
-                                    value={formData.lastName}
-                                    onChange={(e) => handleInputChange('lastName', e.target.value)}
-                                    className={`w-full px-3 py-2 border ${formErrors.lastName ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
-                                />
-                                {formErrors.lastName && (
-                                    <p className="mt-1 text-sm text-red-600">Last name is required</p>
-                                )}
-                            </div>
-                        </div>
+                            <div className="grid grid-cols-2 gap-6 mb-6">
+                                <div>
+                                    <label className="block text-base font-medium text-gray-700 mb-2">
+                                        Email <span className="text-red-500">*</span>
+                                    </label>
+                                    <EmailInput
+                                        control={page1Form.control}
+                                        name="email"
+                                        error={page1Form.formState.errors.email || ""}
+                                        className="w-full h-12 text-base"
+                                    />
+                                </div>
 
-                        <div className="grid grid-cols-2 gap-6 mb-6">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Email <span className="text-red-500">*</span>
-                                </label>
-                                <input
-                                    type="email"
-                                    value={formData.email}
-                                    onChange={(e) => handleInputChange('email', e.target.value)}
-                                    className={`w-full px-3 py-2 border ${formErrors.email ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
-                                />
-                                {formErrors.email && (
-                                    <p className="mt-1 text-sm text-red-600">Please enter a valid email</p>
-                                )}
+                                <div>
+                                    <label className="block text-base font-medium text-gray-700 mb-2">
+                                        Phone Number
+                                    </label>
+                                    <div className="w-full [&>div]:w-full [&_input]:w-full [&_input]:h-12 [&_input]:text-base">
+                                        <ContactNumberInput
+                                            control={page1Form.control}
+                                            name="phone"
+                                            error={page1Form.formState.errors.phone || ""}
+                                            className="w-full"
+                                        />
+                                    </div>
+                                </div>
                             </div>
 
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Phone Number
-                                </label>
-                                <input
-                                    type="tel"
-                                    value={formData.phone}
-                                    onChange={(e) => handleInputChange('phone', e.target.value)}
-                                    className={`w-full px-3 py-2 border ${formErrors.phone ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
-                                />
-                                {formErrors.phone && (
-                                    <p className="mt-1 text-sm text-red-600">Please enter a valid phone number</p>
-                                )}
-                            </div>
-                        </div>
+                            <div className="grid grid-cols-2 gap-6 mb-6">
+                                <div>
+                                    <label className="block text-base font-medium text-gray-700 mb-2">
+                                        Province <span className="text-red-500">*</span>
+                                    </label>
+                                    <TypedDropdown
+                                        placeholder="Type to search..."
+                                        options={provinces}
+                                        selectedItem={selectedProvince}
+                                        onChange={handleProvinceChange}
+                                        isLoading={isLoadingProvinces}
+                                        error={page1Form.formState.errors.province?.message || provincesError || ""}
+                                        filterFunction={getFilteredProvinces}
+                                        maxSuggestions={10}
+                                        variant="rounded"
+                                        size="medium"
+                                    />
+                                </div>
 
-                        <div className="grid grid-cols-2 gap-6 mb-6">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Province <span className="text-red-500">*</span>
-                                </label>
-                                <TypedDropdown
-                                    placeholder="Type to search..."
-                                    options={provinces}
-                                    selectedItem={selectedProvince}
-                                    onChange={(item) => {
-                                        setSelectedProvince(item);
-                                        validateField('province', item, item, null, null);
-                                    }}
-                                    isLoading={isLoadingProvinces}
-                                    error={formErrors.province ? 'Please select a province' : null}
-                                    filterFunction={getFilteredProvinces}
-                                    maxSuggestions={10}
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    City <span className="text-red-500">*</span>
-                                </label>
-                                <TypedDropdown
-                                    placeholder={selectedProvince ? "Type to search..." : "Select province first"}
-                                    options={cities}
-                                    selectedItem={selectedCity}
-                                    onChange={(item) => {
-                                        setSelectedCity(item);
-                                        validateField('city', item, null, item, null);
-                                    }}
-                                    disabled={!selectedProvince}
-                                    isLoading={isLoadingCities}
-                                    error={formErrors.city ? 'Please select a city' : null}
-                                    filterFunction={getFilteredCities}
-                                    maxSuggestions={10}
-                                />
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-6 mb-6">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Barangay <span className="text-red-500">*</span>
-                                </label>
-                                <TypedDropdown
-                                    placeholder={selectedCity ? "Type to search..." : "Select city first"}
-                                    options={barangays}
-                                    selectedItem={selectedBarangay}
-                                    onChange={(item) => {
-                                        setSelectedBarangay(item);
-                                        validateField('barangay', item, null, null, item);
-                                    }}
-                                    disabled={!selectedCity}
-                                    isLoading={isLoadingBarangays}
-                                    error={formErrors.barangay ? 'Please select a barangay' : null}
-                                    filterFunction={getFilteredBarangays}
-                                    maxSuggestions={12}
-                                />
+                                <div>
+                                    <label className="block text-base font-medium text-gray-700 mb-2">
+                                        City <span className="text-red-500">*</span>
+                                    </label>
+                                    <TypedDropdown
+                                        placeholder={selectedProvince ? "Type to search..." : "Select province first"}
+                                        options={cities}
+                                        selectedItem={selectedCity}
+                                        onChange={handleCityChange}
+                                        disabled={!selectedProvince}
+                                        isLoading={isLoadingCities}
+                                        error={page1Form.formState.errors.city?.message || citiesError || ""}
+                                        filterFunction={getFilteredCities}
+                                        maxSuggestions={10}
+                                        variant="rounded"
+                                        size="medium"
+                                    />
+                                </div>
                             </div>
 
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Street
+                            <div className="grid grid-cols-2 gap-6 mb-6">
+                                <div>
+                                    <label className="block text-base font-medium text-gray-700 mb-2">
+                                        Barangay <span className="text-red-500">*</span>
+                                    </label>
+                                    <TypedDropdown
+                                        placeholder={selectedCity ? "Type to search..." : "Select city first"}
+                                        options={barangays}
+                                        selectedItem={selectedBarangay}
+                                        onChange={handleBarangayChange}
+                                        disabled={!selectedCity}
+                                        isLoading={isLoadingBarangays}
+                                        error={page1Form.formState.errors.barangay?.message || barangaysError || ""}
+                                        filterFunction={getFilteredBarangays}
+                                        maxSuggestions={12}
+                                        variant="rounded"
+                                        size="medium"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-base font-medium text-gray-700 mb-2">
+                                        Street
+                                    </label>
+                                    <FormInput
+                                        placeholder="Street"
+                                        register={page1Form.register}
+                                        name="street"
+                                        error={page1Form.formState.errors.street || ""}
+                                        className="w-full h-12 text-base"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="mb-6">
+                                <label className="block text-base font-medium text-gray-700 mb-2">
+                                    Organization
                                 </label>
-                                <input
-                                    type="text"
-                                    value={formData.street}
-                                    onChange={(e) => handleInputChange('street', e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                <FormInput
+                                    placeholder="Organization"
+                                    register={page1Form.register}
+                                    name="organization"
+                                    error={page1Form.formState.errors.organization || ""}
+                                    className="w-full h-12 text-base"
                                 />
                             </div>
-                        </div>
-
-                        <div className="mb-6">
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Organization
-                            </label>
-                            <input
-                                type="text"
-                                value={formData.organization}
-                                onChange={(e) => handleInputChange('organization', e.target.value)}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            />
-                        </div>
+                        </form>
                     </div>
                 </div>
             </div>
@@ -723,7 +1179,7 @@ const WalkInsPage = () => {
                 <div className="grid grid-cols-12 gap-8">
                     {/* Left side - Title */}
                     <div className="col-span-3">
-                        <h2 className="text-2xl font-semibold text-gray-900 mb-2">About Visit</h2>
+                        <h2 className="text-3xl font-semibold text-gray-900 mb-2">About Visit</h2>
                     </div>
 
                     {/* Right side - Empty for alignment */}
@@ -740,42 +1196,39 @@ const WalkInsPage = () => {
                     {/* Right side - Form Fields */}
                     <div className="col-span-9">
                         <div className="mb-6">
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                            <label className="block text-base font-medium text-gray-700 mb-2">
                                 Purpose Visits <span className="text-red-500">*</span>
                             </label>
-                            <select
-                                value={formData.purpose}
-                                onChange={(e) => handleInputChange('purpose', e.target.value)}
-                                className={`w-full px-3 py-2 border ${formErrors.purpose ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white`}
-                            >
-                                <option value="">Choose Purpose</option>
-                                <option value="Research Paper">Research Paper</option>
-                                <option value="School Field Trip">School Field Trip</option>
-                                <option value="Museum Group Tour">Museum Group Tour</option>
-                                <option value="Interviews">Interviews</option>
-                                <option value="Collaboration Meetings">Collaboration Meetings</option>
-                                <option value="Photography or Media Projects">Photography or Media Projects</option>
-                                <option value="Conservation Consultation">Conservation Consultation</option>
-                            </select>
-                            {formErrors.purpose && (
-                                <p className="mt-1 text-sm text-red-600">Please select a purpose</p>
-                            )}
+                            <DropdownInput
+                                control={page1Form.control}
+                                name="purpose"
+                                error={page1Form.formState.errors.purpose || ""}
+                                options={[
+                                    { value: "", label: "Choose Purpose" },
+                                    { value: "Research Paper", label: "Research Paper" },
+                                    { value: "School Field Trip", label: "School Field Trip" },
+                                    { value: "Museum Group Tour", label: "Museum Group Tour" },
+                                    { value: "Interviews", label: "Interviews" },
+                                    { value: "Collaboration Meetings", label: "Collaboration Meetings" },
+                                    { value: "Photography or Media Projects", label: "Photography or Media Projects" },
+                                    { value: "Conservation Consultation", label: "Conservation Consultation" }
+                                ]}
+                                className="w-full h-12 text-base"
+                            />
                         </div>
 
                         <div className="mb-6">
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                            <label className="block text-base font-medium text-gray-700 mb-2">
                                 Population Count <span className="text-red-500">*</span>
                             </label>
-                            <input
+                            <FormInput
+                                placeholder="Number of visitors"
+                                register={page1Form.register}
+                                name="populationCount"
                                 type="number"
-                                value={formData.populationCount}
-                                onChange={(e) => handleInputChange('populationCount', e.target.value)}
-                                className={`w-full px-3 py-2 border ${formErrors.populationCount ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
-                                min="1"
+                                error={page1Form.formState.errors.populationCount || ""}
+                                className="w-full h-12 text-base"
                             />
-                            {formErrors.populationCount && (
-                                <p className="mt-1 text-sm text-red-600">Please enter a valid number of visitors</p>
-                            )}
                         </div>
                     </div>
                 </div>
@@ -784,220 +1237,326 @@ const WalkInsPage = () => {
     );
 
     // Page 2 Component
-    const renderPage2 = () => (
-        <div className="w-full max-w-7xl mx-auto p-8">
-            {/* Date and Time of the Visit Section */}
-            <div className="mb-12">
-                <div className="grid grid-cols-12 gap-8">
-                    {/* Left side - Title */}
-                    <div className="col-span-3">
-                        <h2 className="text-2xl font-semibold text-gray-900 mb-2">Date and Time of the Visit</h2>
+    const renderPage2 = () => {
+        const formData = getCurrentFormData();
+
+        return (
+            <div className="w-full max-w-[1200px] mx-auto p-8">
+                {/* Date and Time of the Visit Section */}
+                <div className="mb-12">
+                    <div className="grid grid-cols-12 gap-8">
+                        {/* Left side - Title */}
+                        <div className="col-span-3">
+                            <h2 className="text-3xl font-semibold text-gray-900 mb-2">Date and Time of the Visit</h2>
+                        </div>
+
+                        {/* Right side - Empty for alignment */}
+                        <div className="col-span-9"></div>
                     </div>
 
-                    {/* Right side - Empty for alignment */}
-                    <div className="col-span-9"></div>
-                </div>
+                    {/* Full width horizontal line */}
+                    <hr className="border-gray-300 mb-8" />
 
-                {/* Full width horizontal line */}
-                <hr className="border-gray-300 mb-8" />
+                    <div className="grid grid-cols-12 gap-8">
+                        {/* Left side - Empty for alignment */}
+                        <div className="col-span-3"></div>
 
-                <div className="grid grid-cols-12 gap-8">
-                    {/* Left side - Empty for alignment */}
-                    <div className="col-span-3"></div>
+                        {/* Right side - Calendar and Time Selection */}
+                        <div className="col-span-9">
+                            <div className="grid grid-cols-2 gap-8 mb-8">
+                                {/* Left side - Calendar */}
+                                <div className="max-w-sm">
+                                    <label className="block text-base font-medium text-gray-700 mb-4">
+                                        Select preferred date <span className="text-red-500">*</span>
+                                    </label>
+                                    <div className="rounded-xl bg-black p-3 shadow-xl inline-block">
+                                        <Calendar
+                                            onChange={handleDateSelect}
+                                            value={selectedDate}
+                                            tileClassName="relative"
+                                            onActiveStartDateChange={({ activeStartDate }) => {
+                                                setViewedDate(activeStartDate);
+                                            }}
+                                            tileContent={({ date, view }) => {
+                                                if (view === 'month') {
+                                                    const ds = getLocalDateString(date);
 
-                    {/* Right side - Calendar and Time Selection */}
-                    <div className="col-span-9">
-                        <div className="grid grid-cols-2 gap-8 mb-8">
-                            {/* Left side - Calendar */}
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-4">
-                                    Select preferred date <span className="text-red-500">*</span>
-                                </label>
-                                <div className="rounded-xl bg-black p-3 shadow-xl">
-                                    <Calendar
-                                        onChange={handleDateSelect}
-                                        value={selectedDate}
-                                        tileClassName="relative"
-                                        onActiveStartDateChange={({ activeStartDate }) => {
-                                            setViewedDate(activeStartDate);
-                                        }}
-                                        tileContent={({ date, view }) => {
-                                            if (view === 'month') {
-                                                const ds = getLocalDateString(date);
+                                                    const activeSchedules = calendarEvents.filter(event =>
+                                                        event.date === ds && event.isSchedule && event.isActive
+                                                    ).length;
 
-                                                const activeSchedules = calendarEvents.filter(event =>
-                                                    event.date === ds && event.isSchedule && event.isActive
-                                                ).length;
+                                                    const confirmedAppointments = calendarEvents.filter(event =>
+                                                        event.date === ds && event.isAppointment && event.isActive
+                                                    ).length;
 
-                                                const confirmedAppointments = calendarEvents.filter(event =>
-                                                    event.date === ds && event.isAppointment && event.isActive
-                                                ).length;
+                                                    const totalCount = activeSchedules + confirmedAppointments;
 
-                                                const totalCount = activeSchedules + confirmedAppointments;
-
-                                                return totalCount > 0 ? (
-                                                    <span className="absolute top-1 right-1 rounded-full bg-red-500 text-white text-[10px] w-4 h-4 flex items-center justify-center">
-                                                        {totalCount}
-                                                    </span>
-                                                ) : null;
-                                            }
-                                            return null;
-                                        }}
-                                        tileDisabled={({ date }) => {
-                                            const dateString = getLocalDateString(date);
-                                            return disabledDates.includes(dateString);
-                                        }}
-                                        showNeighboringMonth={false}
-                                        className="p-2 rounded-lg mx-auto text-lg"
-                                    />
+                                                    return totalCount > 0 ? (
+                                                        <span className="absolute top-1 right-1 rounded-full bg-red-500 text-white text-[10px] w-4 h-4 flex items-center justify-center">
+                                                            {totalCount}
+                                                        </span>
+                                                    ) : null;
+                                                }
+                                                return null;
+                                            }}
+                                            tileDisabled={({ date }) => {
+                                                const dateString = getLocalDateString(date);
+                                                return disabledDates.includes(dateString);
+                                            }}
+                                            showNeighboringMonth={false}
+                                            className="p-2 rounded-lg text-base"
+                                        />
+                                    </div>
+                                    {selectedDate && (
+                                        <div className="mt-2 text-sm text-gray-600">
+                                            Selected: <span className="font-semibold">{format(selectedDate, 'MMMM d, yyyy')}</span>
+                                        </div>
+                                    )}
+                                    {isLoadingDateAvailability && (
+                                        <p className="mt-2 text-sm text-gray-500">Checking date availability...</p>
+                                    )}
                                 </div>
-                                {selectedDate && (
-                                    <div className="mt-2 text-sm text-gray-600">
-                                        Selected: <span className="font-semibold">{format(selectedDate, 'MMMM d, yyyy')}</span>
+
+                                {/* Right side - Time slots for School Field Trip */}
+                                {formData.purpose === 'School Field Trip' && (
+                                    <div>
+                                        <label className="block text-lg font-medium text-gray-700 mb-6">
+                                            Select preferred time <span className="text-red-500">*</span>
+                                        </label>
+                                        <div className="grid grid-cols-1 gap-4">
+                                            {['09:00-10:29', '10:30-11:59', '01:00-02:29', '02:30-04:00'].map((time) => {
+                                                const isExclusive = timeSlotExclusive[time];
+                                                const hasConfirmedAppointment = confirmedSlots[time];
+                                                const slotOverlapCount = timeSlotCounts[time] || 0;
+                                                const isOverLimit = slotOverlapCount >= 5;
+                                                const isUnavailable = isExclusive || hasConfirmedAppointment || isOverLimit;
+                                                const isSelected = formData.selectedTime === time;
+
+                                                return (
+                                                    <div key={time} className="relative group">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => !isUnavailable && handleTimeSelect(time)}
+                                                            disabled={isUnavailable}
+                                                            className={`w-full px-6 py-4 border-2 rounded-lg text-left transition-colors relative text-lg
+                                                            ${isSelected
+                                                                    ? 'bg-blue-50 border-blue-500 text-blue-700'
+                                                                    : isUnavailable
+                                                                        ? 'bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed'
+                                                                        : 'bg-white border-gray-300 hover:bg-gray-50 hover:border-gray-400'
+                                                                }
+                                                        `}
+                                                        >
+                                                            <span className={`font-medium ${isUnavailable ? 'line-through' : ''}`}>
+                                                                {time}
+                                                            </span>
+                                                            {slotOverlapCount > 0 && !isUnavailable && (
+                                                                <span className="text-sm text-gray-500 block">
+                                                                    {slotOverlapCount}/5 slots used
+                                                                </span>
+                                                            )}
+                                                            {isUnavailable && (
+                                                                <span className="absolute inset-0 flex items-center justify-center text-red-600">
+                                                                    <i className="fa-solid fa-times text-2xl"></i>
+                                                                </span>
+                                                            )}
+                                                        </button>
+
+                                                        {isUnavailable && (
+                                                            <div className="absolute z-10 bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-56 p-3 bg-gray-800 text-white text-sm rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
+                                                                {isExclusive ? 'This time slot has an exclusive schedule' :
+                                                                    hasConfirmedAppointment ? 'This time slot already has a confirmed appointment' :
+                                                                        isOverLimit ? 'This time slot has reached the maximum limit of 5 overlapping events' :
+                                                                            'This time slot is unavailable'}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                        {page2Form.formState.errors.selectedTime && (
+                                            <p className="mt-3 text-lg text-red-600">Please select a time slot</p>
+                                        )}
+                                        {isLoadingTimeSlots && (
+                                            <p className="mt-3 text-lg text-gray-500">Checking time slot availability...</p>
+                                        )}
                                     </div>
                                 )}
-                                {isLoadingDateAvailability && (
-                                    <p className="mt-2 text-sm text-gray-500">Checking date availability...</p>
+
+                                {/* Right side - Manual time selection for other purposes */}
+                                {formData.purpose && formData.purpose !== 'School Field Trip' && (
+                                    <div>
+                                        <label className="block text-lg font-medium text-gray-700 mb-6">
+                                            Select visit time <span className="text-gray-500">(Optional)</span>
+                                        </label>
+                                        <div className="grid grid-cols-2 gap-6">
+                                            <div className="flex flex-col">
+                                                <label htmlFor="manual-start-time" className="text-lg text-gray-600 mb-2">
+                                                    Start Time <span className="text-gray-500">(Optional)</span>
+                                                </label>
+                                                <Controller
+                                                    name="manualStartTime"
+                                                    control={page2Form.control}
+                                                    render={({ field }) => (
+                                                        <TimePicker
+                                                            id="manual-start-time"
+                                                            onChange={(time) => {
+                                                                field.onChange(time);
+                                                                handleManualStartTimeChange(time);
+                                                            }}
+                                                            value={field.value}
+                                                            format="hh:mm a"
+                                                            disableClock
+                                                            className="w-full p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#A6A3F6] text-lg"
+                                                        />
+                                                    )}
+                                                />
+                                                {page2Form.formState.errors.manualStartTime && (
+                                                    <p className="mt-2 text-lg text-red-600">
+                                                        {page2Form.formState.errors.manualStartTime.message}
+                                                    </p>
+                                                )}
+                                            </div>
+                                            <div className="flex flex-col">
+                                                <label htmlFor="manual-end-time" className="text-lg text-gray-600 mb-2">
+                                                    End Time <span className="text-gray-500">(Optional)</span>
+                                                </label>
+                                                <Controller
+                                                    name="manualEndTime"
+                                                    control={page2Form.control}
+                                                    render={({ field }) => (
+                                                        <TimePicker
+                                                            id="manual-end-time"
+                                                            onChange={(time) => {
+                                                                field.onChange(time);
+                                                                handleManualEndTimeChange(time);
+                                                            }}
+                                                            value={field.value}
+                                                            format="hh:mm a"
+                                                            disableClock
+                                                            className="w-full p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#A6A3F6] text-lg"
+                                                        />
+                                                    )}
+                                                />
+                                                {page2Form.formState.errors.manualEndTime && (
+                                                    <p className="mt-2 text-lg text-red-600">
+                                                        {page2Form.formState.errors.manualEndTime.message}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+                                            <div className="flex items-start">
+                                                <svg
+                                                    className="w-6 h-6 text-blue-500 mr-3 mt-0.5 flex-shrink-0"
+                                                    xmlns="http://www.w3.org/2000/svg"
+                                                    viewBox="0 0 24 24"
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    strokeWidth="2"
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                >
+                                                    <circle cx="12" cy="12" r="10" />
+                                                    <path d="M12 16v-4" />
+                                                    <path d="M12 8h.01" />
+                                                </svg>
+                                                <p className="text-lg text-blue-700">
+                                                    <span className="font-medium">Note:</span> Time selection is optional for walk-in visitors.
+                                                    If no specific time is provided, the visit will be recorded without time constraints.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
                                 )}
                             </div>
+                        </div>
+                    </div>
+                </div>
 
-                            {/* Right side - Time slots */}
-                            {formData.purpose === 'School Field Trip' && (
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-4">
-                                        Select preferred time <span className="text-red-500">*</span>
+                {/* About Visit Section */}
+                <div className="mb-8">
+                    <div className="grid grid-cols-12 gap-8">
+                        {/* Left side - Title */}
+                        <div className="col-span-3">
+                            <h2 className="text-3xl font-semibold text-gray-900 mb-2">About Visit</h2>
+                        </div>
+
+                        {/* Right side - Empty for alignment */}
+                        <div className="col-span-9"></div>
+                    </div>
+
+                    {/* Full width horizontal line */}
+                    <hr className="border-gray-300 mb-6" />
+
+                    <div className="grid grid-cols-12 gap-8">
+                        {/* Left side - Empty for alignment */}
+                        <div className="col-span-3"></div>
+
+                        {/* Right side - Form Fields */}
+                        <div className="col-span-9">
+                            <form onSubmit={page2Form.handleSubmit(() => { })}>
+                                <div className="mb-6">
+                                    <label className="block text-base font-medium text-gray-700 mb-2">
+                                        Note
                                     </label>
-                                    <div className="grid grid-cols-1 gap-3">
-                                        {['09:00-10:29', '10:30-11:59', '01:00-02:29', '02:30-04:00'].map((time) => {
-                                            const isExclusive = timeSlotExclusive[time];
-                                            const hasConfirmedAppointment = confirmedSlots[time];
-                                            const slotOverlapCount = timeSlotCounts[time] || 0;
-                                            const isOverLimit = slotOverlapCount >= 5;
-                                            const isUnavailable = isExclusive || hasConfirmedAppointment || isOverLimit;
-                                            const isSelected = formData.selectedTime === time;
-
-                                            return (
-                                                <div key={time} className="relative group">
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => !isUnavailable && handleTimeSelect(time)}
-                                                        disabled={isUnavailable}
-                                                        className={`w-full px-4 py-3 border-2 rounded-lg text-left transition-colors relative
-                                                        ${isSelected
-                                                                ? 'bg-blue-50 border-blue-500 text-blue-700'
-                                                                : isUnavailable
-                                                                    ? 'bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed'
-                                                                    : 'bg-white border-gray-300 hover:bg-gray-50 hover:border-gray-400'
-                                                            }
-                                                    `}
-                                                    >
-                                                        <span className={`font-medium ${isUnavailable ? 'line-through' : ''}`}>
-                                                            {time}
-                                                        </span>
-                                                        {slotOverlapCount > 0 && !isUnavailable && (
-                                                            <span className="text-xs text-gray-500 block">
-                                                                {slotOverlapCount}/5 slots used
-                                                            </span>
-                                                        )}
-                                                        {isUnavailable && (
-                                                            <span className="absolute inset-0 flex items-center justify-center text-red-600">
-                                                                <i className="fa-solid fa-times text-xl"></i>
-                                                            </span>
-                                                        )}
-                                                    </button>
-
-                                                    {isUnavailable && (
-                                                        <div className="absolute z-10 bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-48 p-2 bg-gray-800 text-white text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
-                                                            {isExclusive ? 'This time slot has an exclusive schedule' :
-                                                                hasConfirmedAppointment ? 'This time slot already has a confirmed appointment' :
-                                                                    isOverLimit ? 'This time slot has reached the maximum limit of 5 overlapping events' :
-                                                                        'This time slot is unavailable'}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            );
-                                        })}
+                                    <div className="relative">
+                                        <textarea
+                                            {...page2Form.register('additionalNotes')}
+                                            rows="6"
+                                            maxLength="500"
+                                            placeholder="Additional notes (optional)"
+                                            className={`w-full px-3 py-2 border text-base rounded-lg focus:outline-none resize-none ${page2Form.formState.errors.additionalNotes
+                                                ? "border-red-600"
+                                                : "border-black"
+                                                }`}
+                                            style={{
+                                                boxShadow: "inset 0 1px 1px rgba(1, 1, 1, 0.50)",
+                                            }}
+                                        />
+                                        <div className="flex justify-between items-center mt-1">
+                                            <span className="text-red-600 text-sm h-5 pl-1">
+                                                {page2Form.formState.errors.additionalNotes?.message || ""}
+                                            </span>
+                                            <span className="text-sm text-gray-500 pr-1">
+                                                {page2Form.watch('additionalNotes')?.length || 0}/500
+                                            </span>
+                                        </div>
                                     </div>
-                                    {formErrors.selectedTime && (
-                                        <p className="mt-2 text-sm text-red-600">Please select a time slot</p>
-                                    )}
-                                    {isLoadingTimeSlots && (
-                                        <p className="mt-2 text-sm text-gray-500">Checking time slot availability...</p>
-                                    )}
                                 </div>
-                            )}
+                            </form>
                         </div>
                     </div>
                 </div>
             </div>
-
-            {/* About Visit Section */}
-            <div className="mb-8">
-                <div className="grid grid-cols-12 gap-8">
-                    {/* Left side - Title */}
-                    <div className="col-span-3">
-                        <h2 className="text-2xl font-semibold text-gray-900 mb-2">About Visit</h2>
-                    </div>
-
-                    {/* Right side - Empty for alignment */}
-                    <div className="col-span-9"></div>
-                </div>
-
-                {/* Full width horizontal line */}
-                <hr className="border-gray-300 mb-6" />
-
-                <div className="grid grid-cols-12 gap-8">
-                    {/* Left side - Empty for alignment */}
-                    <div className="col-span-3"></div>
-
-                    {/* Right side - Form Fields */}
-                    <div className="col-span-9">
-                        <div className="mb-6">
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Note
-                            </label>
-                            <textarea
-                                rows="6"
-                                value={formData.additionalNotes}
-                                onChange={(e) => handleInputChange('additionalNotes', e.target.value)}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                            />
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
+        );
+    };
 
     return (
         <>
             {PromptModal}
             {/* Main Container */}
             <div className="w-full h-full bg-white">
-
-
                 {/* Content */}
                 <div className="flex-1">
                     {currentPage === 1 ? renderPage1() : renderPage2()}
                 </div>
 
                 {/* Footer with buttons */}
-                <div className="border-t border-gray-200 p-6">
-                    <div className="flex justify-between items-center max-w-7xl mx-auto">
+                <div className="border-t border-gray-200 p-8">
+                    <div className="flex justify-between items-center max-w-[1400px] mx-auto">
                         <div>
                             {currentPage === 1 ? (
                                 <button
-                                    onClick={() => {
-                                        navigate('/admin/appointment');
-                                    }}
-                                    className="px-6 py-2 bg-black text-white rounded hover:bg-gray-800 transition-colors"
+                                    onClick={() => navigate('/admin/appointment')}
+                                    className="px-8 py-3 bg-black text-white text-lg rounded hover:bg-gray-800 transition-colors"
                                 >
                                     Return
                                 </button>
                             ) : (
                                 <button
                                     onClick={handlePrevious}
-                                    className="px-6 py-2 bg-black text-white rounded hover:bg-gray-800 transition-colors"
+                                    className="px-8 py-3 bg-black text-white text-lg rounded hover:bg-gray-800 transition-colors"
                                 >
                                     PREV
                                 </button>
@@ -1008,7 +1567,7 @@ const WalkInsPage = () => {
                             {currentPage === 1 ? (
                                 <button
                                     onClick={handleNext}
-                                    className="px-6 py-2 bg-black text-white rounded hover:bg-gray-800 transition-colors"
+                                    className="px-8 py-3 bg-black text-white text-lg rounded hover:bg-gray-800 transition-colors"
                                 >
                                     NEXT
                                 </button>
@@ -1016,10 +1575,10 @@ const WalkInsPage = () => {
                                 <button
                                     onClick={handleSubmit}
                                     disabled={isSubmitting}
-                                    className="px-6 py-2 bg-black text-white rounded hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                    className="px-8 py-3 bg-black text-white text-lg rounded hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                                 >
                                     {isSubmitting && (
-                                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
                                     )}
                                     {isSubmitting ? 'SUBMITTING...' : 'DONE'}
                                 </button>
@@ -1037,14 +1596,22 @@ const WalkInsPage = () => {
                 title="Confirm Walk-in Registration"
                 message={
                     <div className="space-y-3">
-                        <p>Are you sure you want to register this walk-in visitor?</p>
+                        <div>
+                            <p>Are you sure you want to register this walk-in visitor?</p>
+                        </div>
                         <div className="bg-gray-50 p-3 rounded-md text-sm">
-                            <p><strong>Name:</strong> {formData.firstName} {formData.lastName}</p>
-                            <p><strong>Email:</strong> {formData.email}</p>
-                            <p><strong>Purpose:</strong> {formData.purpose}</p>
-                            <p><strong>Date:</strong> {selectedDate ? format(selectedDate, 'MMMM d, yyyy') : 'Not selected'}</p>
-                            <p><strong>Time:</strong> {formData.selectedTime || 'Not selected'}</p>
-                            <p><strong>Population:</strong> {formData.populationCount} visitor(s)</p>
+                            <div><strong>Name:</strong> {getCurrentFormData().firstName} {getCurrentFormData().lastName}</div>
+                            <div><strong>Email:</strong> {getCurrentFormData().email}</div>
+                            <div><strong>Purpose:</strong> {getCurrentFormData().purpose}</div>
+                            <div><strong>Date:</strong> {selectedDate ? format(selectedDate, 'MMMM d, yyyy') : 'Not selected'}</div>
+                            <div><strong>Time:</strong> {
+                                getCurrentFormData().purpose === 'School Field Trip'
+                                    ? (getCurrentFormData().selectedTime || 'Not selected')
+                                    : getCurrentFormData().manualStartTime && getCurrentFormData().manualEndTime
+                                        ? `${getCurrentFormData().manualStartTime} - ${getCurrentFormData().manualEndTime}`
+                                        : 'No specific time (flexible)'
+                            }</div>
+                            <div><strong>Population:</strong> {getCurrentFormData().populationCount} visitor(s)</div>
                         </div>
                         <p className="text-sm text-gray-600">This visitor will be automatically confirmed and registered.</p>
                     </div>

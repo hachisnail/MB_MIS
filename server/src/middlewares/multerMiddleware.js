@@ -18,13 +18,17 @@ const storage = multer.diskStorage({
   destination: async (req, file, cb) => {
     try {
       let category = req.body.category || "uncategorized";
+
+      // Auto-assign category if uncategorized
       if (category === "uncategorized") category = getFileCategory(file.mimetype);
 
       if (!VALID_CATEGORIES.includes(category))
         return cb(new Error("Invalid category"), null);
 
       let subDir = "";
+
       if (category === "private") {
+        // Private uploads: allow logged-in users without CAPTCHA
         if (!req.session?.user) {
           const token = req.body.captchaToken;
           if (!token)
@@ -39,7 +43,7 @@ const storage = multer.diskStorage({
             return cb(new Error("Captcha verification failed"), null);
           }
         }
-        subDir = getFileCategory(file.mimetype); 
+        subDir = getFileCategory(file.mimetype); // separate folder by file type
       }
 
       const dir = path.join(UPLOAD_BASE_DIR, category, subDir);

@@ -131,6 +131,7 @@ const Schedule = () => {
       }
 
       // CONFIRMED APPOINTMENTS ONLY - Filter by status and date
+      // EXCLUDE appointments with flexible time from DayScheduler only
       const confirmedAppointments = appointmentsResponse.data.filter(appointment => {
         if (!appointment || !appointment.preferred_date) {
           return false;
@@ -140,6 +141,15 @@ const Schedule = () => {
         const status = appointment.AppointmentStatus?.status || '';
         const isConfirmed = status.toUpperCase() === 'CONFIRMED';
 
+        // Check if appointment has flexible time (both start_time and end_time are null)
+        const hasFlexibleTime = !appointment.start_time && !appointment.end_time;
+
+        // Exclude flexible time appointments from DayScheduler
+        if (hasFlexibleTime) {
+          console.log("Excluding flexible time appointment from DayScheduler:", appointment.appointment_id);
+          return false;
+        }
+
         // Normalize date format by removing any time portion
         const appointmentDate = appointment.preferred_date.split('T')[0];
 
@@ -147,7 +157,7 @@ const Schedule = () => {
         const matches = appointmentDate === formattedDate && isConfirmed;
 
         if (matches) {
-          console.log("Found CONFIRMED appointment for selected date:", appointment);
+          console.log("Found CONFIRMED appointment with fixed time for selected date:", appointment);
         }
 
         return matches;
@@ -270,10 +280,18 @@ const Schedule = () => {
           return status === 'CONFIRMED' || status === 'COMPLETED';
         })
         .map(appointment => {
+          // Check if appointment has flexible time
+          const hasFlexibleTime = !appointment.start_time && !appointment.end_time;
+
           let startTime = "09:00";
           let endTime = "10:00";
 
-          if (appointment.start_time && appointment.end_time) {
+          if (hasFlexibleTime) {
+            // For flexible time appointments, use special markers
+            startTime = "Flexible";
+            endTime = "";
+            console.log(`Appointment ${appointment.appointment_id} has flexible time`);
+          } else if (appointment.start_time && appointment.end_time) {
             startTime = appointment.start_time;
             endTime = appointment.end_time;
             console.log(`Using direct time fields for ${appointment.appointment_id}: ${startTime}-${endTime}`);
@@ -300,7 +318,8 @@ const Schedule = () => {
             startTime,
             endTime,
             isDone: (appointment.AppointmentStatus?.status || '').toUpperCase() === 'COMPLETED',
-            isAppointment: true
+            isAppointment: true,
+            hasFlexibleTime // Add flag to indicate flexible time
           };
         });
 
@@ -383,6 +402,7 @@ const Schedule = () => {
           const dateStr = appointment.preferred_date.split('T')[0];
           const appointmentDate = new Date(dateStr);
 
+          // Include all appointments (both flexible and fixed time) for calendar indicators
           return !isNaN(appointmentDate.getTime()) &&
             appointmentDate.getMonth() === month &&
             appointmentDate.getFullYear() === year;
@@ -709,9 +729,9 @@ const Schedule = () => {
                   background-color: #6b7280;
                 }
               `}</style>
-              <div className="w-full xl:min-w-[31rem] xl:max-w-[31rem] flex flex-col h-[35rem] bg-white rounded-xl shadow-md shadow-gray-600 p-5">
+              <div className="w-full xl:min-w-[31rem] xl:max-w-[31rem] flex flex-col h-[29rem] bg-white rounded-xl shadow-md shadow-gray-600 p-5">
                 <span className="text-2xl font-semibold mb-4">Today's Scheduled Tours</span>
-                <div className="w-full border-t border-gray-200 pt-4 space-y-3 h-[calc(100%-1rem)] overflow-y-auto overflow-x-hidden pr-2 custom-scrollbar">
+                <div className="w-full border-t border-gray-200 pt-4 space-y-3 h-[calc(100%-10rem)] overflow-y-auto overflow-x-hidden pr-2 custom-scrollbar">
                   {todayTours.length === 0 && (
                     <div className="bg-gray-100 text-gray-700 p-3 rounded-lg">
                       No Scheduled Tours
@@ -788,7 +808,7 @@ const Schedule = () => {
             </div>
 
             <div className="w-full xl:w-[31rem] h-full flex flex-col gap-y-5">
-              <div className="w-full rounded-xl bg-white shadow-md shadow-gray-600 p-6 flex items-center justify-center gap-x-8 ">
+              <div className="w-full rounded-xl bg-white shadow-md shadow-gray-600 p-3 flex items-center justify-center gap-x-8 ">
                 <div className="bg-gray-100 p-3 rounded-full">
                   <svg
                     className="w-12 h-12 text-[#9590FF]"
@@ -809,7 +829,7 @@ const Schedule = () => {
                 </div>
               </div>
 
-              <div className="w-full max-w-lg mx-auto rounded-2xl bg-white shadow-md shadow-gray-600 p-8 space-y-6">
+              <div className="w-full max-w-lg mx-auto rounded-2xl bg-white shadow-md shadow-gray-600 p-5 space-y-5">
                 <div>
                   <span className="text-2xl font-bold block mb-2 text-gray-800">
                     Add a Schedule for
@@ -819,7 +839,7 @@ const Schedule = () => {
                   </span>
                 </div>
 
-                <div className="space-y-4">
+                <div className="space-y-3">
                   <div className="flex flex-col">
                     <label htmlFor="event-title" className="text-sm text-gray-600 mb-1">
                       Event Title
@@ -965,7 +985,7 @@ const Schedule = () => {
                 </div>
               </div>
 
-              <div className="w-full shadow-md shadow-gray-600 bg-white rounded-xl p-6">
+              <div className="w-full h-[12rem] overflow-y-auto shadow-md shadow-gray-600 bg-white rounded-xl p-6">
                 <h2 className="text-xl font-bold mb-4">Selected Event</h2>
                 {selectedAppointment ? (
                   <>

@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 const ListRowRenderer = ({
+  cameFrom,
   item,
   columns = [],
   headers = [],
@@ -9,10 +10,12 @@ const ListRowRenderer = ({
   onRowClick, 
   rowClassName = "",
   hoverEffect = true,
+  rowKey, // pass a unique key for the row
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const navigate = useNavigate();
 
+  // Generate grid template from headers
   const gridCols = headers
     .map(({ width }) => {
       if (typeof width === "number") return `${width}rem`;
@@ -26,7 +29,9 @@ const ListRowRenderer = ({
     if (details.length > 0) {
       // Toggle expansion if details exist
       setIsExpanded((prev) => !prev);
-    } else if (onRowClick) {
+    } else if (onRowClick,  {
+      state: { cameFrom }, 
+    }) {
       // Navigate if a path string is passed
       if (typeof onRowClick === "string") {
         navigate(onRowClick);
@@ -38,31 +43,30 @@ const ListRowRenderer = ({
 
   return (
     <>
-      <div className="flex flex-col border-b border-gray-400">
-        {/* Main Row */}
-        <div
-          className={`grid text-xl ${
-            hoverEffect ? "cursor-pointer hover:bg-gray-200" : ""
-          } ${rowClassName}`}
-          style={{ gridTemplateColumns: gridCols }}
-          onClick={handleRowClick}
-        >
-          {columns.map(({ key, render, className }, idx) => (
-            <div
-              key={idx}
-              className={`px-4 h-13 items-center flex truncate ${
-                className || ""
-              }`}
-            >
-              {render ? render(item[key], item) : item[key]}
-            </div>
-          ))}
-        </div>
+    <div key={rowKey || item?.id || Math.random()} className={`flex flex-col border-b border-gray-400`}>
+      {/* Main Row */}
+      <div
+        className={`grid text-xl ${
+          hoverEffect ? "cursor-pointer hover:bg-gray-200" : ""
+        } ${rowClassName}`}
+        style={{ gridTemplateColumns: gridCols }}
+        onClick={handleRowClick}
+      >
+        {columns.map(({ key, render, className }) => (
+          <div
+            key={key} // ✅ use column key for uniqueness
+            className={`px-4 h-13 items-center flex truncate ${className || ""}`}
+          >
+            {render ? render(item[key], item) : item[key]}
+          </div>
+        ))}
       </div>
 
-      {/* Expanded Section */}
+
+    </div>
+          {/* Expanded Section */}
       {isExpanded && details.length > 0 && (
-        <div className="flex flex-col items-end">
+        <div className={` flex flex-col items-end`}>
           <div className="w-5 h-5 rotate-45 relative right-10 top-3 z-0 bg-gray-400" />
           <div className="mb-4 mr-1 rounded-lg overflow-hidden shadow-sm shadow-black w-full max-w-3xl">
             <div className="max-h-[10rem] overflow-y-auto">
@@ -80,18 +84,14 @@ const ListRowRenderer = ({
                   </tr>
                 </thead>
                 <tbody>
-                  {details.map((detail, idx) => (
+                  {details.map((detail) => (
                     <tr
-                      key={idx}
-                      className={
-                        idx !== details.length - 1
-                          ? "border-b border-gray-200"
-                          : ""
-                      }
+                      key={detail.key} // ✅ use unique key from detail object
+                      className="border-b border-gray-200"
                     >
-                      {Object.values(detail).map((val, i) => (
+                      {Object.values(detail).map((val, idx) => (
                         <td
-                          key={i}
+                          key={idx} // static within row
                           className="py-3 px-4 text-gray-800 text-center"
                         >
                           {val}

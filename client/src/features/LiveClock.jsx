@@ -31,10 +31,10 @@ const LiveClock = () => {
 
     return (
         <div className="flex flex-col items-center">
-            <div className="text-3xl font-bold text-[#9590FF] mb-1">
+            <div className="text-2xl font-bold text-[#9590FF] mb-1">
                 {formatTime(currentTime)}
             </div>
-            <div className="text-sm text-gray-600 text-center">
+            <div className="text-xs text-gray-600 text-center">
                 {formatDate(currentTime)}
             </div>
         </div>

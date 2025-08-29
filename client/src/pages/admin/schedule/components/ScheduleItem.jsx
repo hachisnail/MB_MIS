@@ -1,6 +1,9 @@
 import { memo } from 'react';
 
 const ScheduleItem = memo(({ tour, idx, formatTimeTo12H }) => {
+    // Check if this is a flexible time appointment
+    const isFlexibleTime = tour.startTime === "Flexible" || tour.hasFlexibleTime;
+
     return (
         <div
             className={`
@@ -15,7 +18,10 @@ const ScheduleItem = memo(({ tour, idx, formatTimeTo12H }) => {
             px-3 py-1.5 rounded mr-3 text-sm
           `}
                 >
-                    {formatTimeTo12H(tour.startTime)}-{formatTimeTo12H(tour.endTime)}
+                    {isFlexibleTime
+                        ? "Flexible"
+                        : `${formatTimeTo12H(tour.startTime)}-${formatTimeTo12H(tour.endTime)}`
+                    }
                 </div>
                 <div className="flex-grow">
                     <div className="font-medium">

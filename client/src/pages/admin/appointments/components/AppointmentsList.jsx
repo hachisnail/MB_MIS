@@ -14,18 +14,16 @@ export const AppointmentFormItem = ({
     : "N/A";
 
   const visitorName =
-    `${appointment.Visitor?.first_name || ""} ${
-      appointment.Visitor?.last_name || ""
-    }`.trim() || "Unknown Visitor";
+    `${appointment.Visitor?.first_name || ""} ${appointment.Visitor?.last_name || ""
+      }`.trim() || "Unknown Visitor";
 
   return (
     <div
       state={{ cameFrom }}
-      className={`${
-        activePreview === appointment.appointment_id
-          ? "bg-black rounded-md text-white hover:bg-gray-900"
-          : "hover:bg-gray-300"
-      } text-xl h-fit grid grid-cols-[15rem_1fr_11.7rem_9.5rem_12rem_16rem] cursor-pointer `}
+      className={`${activePreview === appointment.appointment_id
+        ? "bg-black rounded-md text-white hover:bg-gray-900"
+        : "hover:bg-gray-300"
+        } text-xl h-fit grid grid-cols-[19rem_1fr_11.7rem_9.5rem_12rem_16rem] cursor-pointer `}
     >
       <div className="px-4 py-3 border-b-1 border-gray-400">
         {appointment.creation_date
@@ -34,7 +32,18 @@ export const AppointmentFormItem = ({
       </div>
       <div className="px-4 py-3 border-b-1 border-gray-400">{visitorName}</div>
       <div className="px-4 py-3 border-b-1 border-gray-400">
-        {formatTimeDisplay(appointment.start_time, appointment.end_time)}
+        {(() => {
+          // First check if there's a preferred_time field with time range
+          if (appointment.preferred_time && appointment.preferred_time.includes('-')) {
+            return appointment.preferred_time;
+          }
+          // Then check for start_time and end_time
+          if (appointment.start_time || appointment.end_time) {
+            return formatTimeDisplay(appointment.start_time, appointment.end_time);
+          }
+          // Default to showing preferred_time if it exists, otherwise "Flexible"
+          return appointment.preferred_time || "Flexible";
+        })()}
       </div>
       <div className="px-4 flex items-center  border-b-1 border-gray-400">
         {getStatusLabel(status)}
@@ -51,9 +60,8 @@ export const AppointmentFormItem = ({
 export const AppointmentPreview = ({ appointment, cameFrom = "forms" }) => {
   const navigate = useNavigate();
   const visitorName =
-    `${appointment.Visitor?.first_name || ""} ${
-      appointment.Visitor?.last_name || ""
-    }`.trim() || "Unknown Visitor";
+    `${appointment.Visitor?.first_name || ""} ${appointment.Visitor?.last_name || ""
+      }`.trim() || "Unknown Visitor";
 
   const breadcrumbText = `${appointment.appointment_id} ${visitorName}`;
   const encodedId = btoa(breadcrumbText);
@@ -71,12 +79,12 @@ export const AppointmentPreview = ({ appointment, cameFrom = "forms" }) => {
       Label: "Address",
       Value:
         appointment.Visitor?.street +
-          " " +
-          appointment.Visitor?.barangay +
-          " " +
-          appointment.Visitor?.city_municipality +
-          " " +
-          appointment.Visitor?.province || "No Address",
+        " " +
+        appointment.Visitor?.barangay +
+        " " +
+        appointment.Visitor?.city_municipality +
+        " " +
+        appointment.Visitor?.province || "No Address",
     },
     {
       Label: "Organization",
@@ -127,7 +135,7 @@ export const AppointmentPreview = ({ appointment, cameFrom = "forms" }) => {
           <div className="flex flex-col">
             <span className="text-xl font-semibold">Preferred Time:</span>
             <span className="h-5 text-lg text-[#4E84D4]">
-              {appointment.preferred_time || "No preferred time"}
+              {appointment.preferred_time || "Flexible"}
             </span>
           </div>
         </div>
@@ -144,45 +152,12 @@ export const AppointmentPreview = ({ appointment, cameFrom = "forms" }) => {
       <div className="w-full h-10 flex justify-end">
         <button
           className="flex items-center justify-center gap-x-2 px-4 rounded-sm bg-[#4E84D4] hover:bg-blue-900"
-          onClick={() => navigate(encodedId)}
+          onClick={() => navigate(encodedId, { state: { cameFrom } })}
         >
           <span className="text-white font-medium">Open</span>
         </button>
       </div>
     </div>
-  );
-};
-
-// ---------------- Attendance Item ----------------
-export const AttendanceItem = ({ attendance, cameFrom = "attendance" }) => {
-  const presentValue = attendance.present ?? "ongoing";
-  const visitorName = attendance.visitorName || "Unknown Visitor";
-  const breadcrumbText = `${attendance.appointment_id} ${visitorName}`;
-  const encodedId = attendance.appointment_id ? btoa(breadcrumbText) : "#";
-
-  return (
-    <NavLink
-      to={encodedId}
-      state={{ cameFrom }}
-      className="text-xl min-w-fit h-fit grid grid-cols-[15rem_1fr_12.3rem_11.5rem_12.5rem_13rem] hover:bg-gray-300 cursor-pointer"
-    >
-      <div className="px-4 py-3 border-b-1 border-gray-400">
-        {attendance.date}
-      </div>
-      <div className="px-4 py-3 border-b-1 border-gray-400">
-        {attendance.visitorName}
-      </div>
-      <div className="px-4 py-3 border-b-1 border-gray-400">
-        {attendance.purpose}
-      </div>
-      <div className="px-4 py-3 border-b-1 border-gray-400">
-        {attendance.preferredDate}
-      </div>
-      <div className="px-4 py-3 border-b-1 border-gray-400">
-        {attendance.expectedVisitor}
-      </div>
-      <div className="px-4 py-3 border-b-1 border-gray-400">{presentValue}</div>
-    </NavLink>
   );
 };
 
@@ -256,8 +231,7 @@ export const VisitorRecordItem = ({
                           {detail.appointment_id && (
                             <NavLink
                               to={btoa(
-                                `${detail.appointment_id} ${
-                                  record.visitorName || "Unknown Visitor"
+                                `${detail.appointment_id} ${record.visitorName || "Unknown Visitor"
                                 }`
                               )}
                               state={{ cameFrom }}

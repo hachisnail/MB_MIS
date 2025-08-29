@@ -71,7 +71,7 @@ export const ContextMenu = ({ children, menuItems, theme = "light" }) => {
   };
 
   return (
-    <div className="w-full" onContextMenu={onContextMenu} style={{ display: "inline-block" }}>
+    <div className="w-fit h-fit" onContextMenu={onContextMenu} style={{ display: "inline-block" }}>
       {children}
 
       <Transition

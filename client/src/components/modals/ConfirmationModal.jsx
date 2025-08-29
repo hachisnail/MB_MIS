@@ -7,11 +7,11 @@ export default function ConfirmationModal({
   title = "Are you sure?",
   message = "",
   type = "question",
-  theme = "light", 
+  theme = "light",
 }) {
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={title} type={type} theme={theme}>
-      <p
+      <div
         className={
           theme === "dark"
             ? "text-lg text-gray-300 mb-6"
@@ -19,7 +19,7 @@ export default function ConfirmationModal({
         }
       >
         {message}
-      </p>
+      </div>
       <div className="flex justify-end gap-2">
         <button
           onClick={onClose}

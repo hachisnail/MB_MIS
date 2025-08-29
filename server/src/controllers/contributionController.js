@@ -160,8 +160,8 @@ export const getAllContributions = async (req, res) => {
 
     // build base filter for Contributions
     const where = {};
-    if (status) where.status = status; // e.g. approved, pending
-    if (type) where.contribution_type = type; // lending / donation
+    if (status) where.status = status; 
+    if (type) where.contribution_type = type; 
     if (fromDate && toDate) {
       where.submission_date = {
         [Op.between]: [new Date(fromDate), new Date(toDate)],
@@ -220,7 +220,7 @@ export const getContributionById = async (req, res) => {
     const contribution = await Contributions.findOne({
       where: { contribution_id: id },
       include: [
-        { model: Contributors, attributes: ["first_name", "last_name", "email", "phone_number"] },
+        { model: Contributors },
         { model: LendingDetails },
         { model: ContributionArtifacts },
       ],
@@ -341,5 +341,46 @@ export const getDonorRecords = async (req, res) => {
     return res
       .status(500)
       .json({ message: "Server error retrieving donor records." });
+  }
+};
+
+
+
+export const getContributionsSummary = async (req, res) => {
+  try {
+    // Optional date filtering from query
+    const { fromDate, toDate } = req.query;
+
+    const dateFilter = {};
+    if (fromDate && toDate) {
+      dateFilter.submission_date = { [Op.between]: [new Date(fromDate), new Date(toDate)] };
+    } else if (fromDate) {
+      dateFilter.submission_date = { [Op.gte]: new Date(fromDate) };
+    } else if (toDate) {
+      dateFilter.submission_date = { [Op.lte]: new Date(toDate) };
+    }
+
+    // Counts by status
+    const [totalCount, approvedCount, rejectedCount, pendingCount, donationCount, lendingCount] =
+      await Promise.all([
+        Contributions.count({ where: dateFilter }),
+        Contributions.count({ where: { ...dateFilter, status: "approved" } }),
+        Contributions.count({ where: { ...dateFilter, status: "rejected" } }),
+        Contributions.count({ where: { ...dateFilter, status: "pending" } }),
+        Contributions.count({ where: { ...dateFilter, contribution_type: "donation" } }),
+        Contributions.count({ where: { ...dateFilter, contribution_type: "lending" } }),
+      ]);
+
+    return res.json({
+      totalCount,
+      approvedCount,
+      rejectedCount,
+      pendingCount,
+      donationCount,
+      lendingCount,
+    });
+  } catch (err) {
+    console.error("Error fetching contributions summary:", err);
+    return res.status(500).json({ message: "Server error retrieving summary" });
   }
 };

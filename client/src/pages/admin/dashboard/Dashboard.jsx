@@ -53,7 +53,7 @@ const Dashboard = () => {
               return (
                 <div
                   key={label}
-                  className={`w-[18rem] h-[15rem] rounded-[4rem] shadow-md   stroke-black shadow-gray-600 flex gap-x-[1rem] py-[1.5rem] pl-[1.5rem] ${
+                  className={`w-[18rem] h-[15rem] rounded-[4rem] shadow-md  border-t border-gray-300  stroke-black shadow-gray-600 flex gap-x-[1rem] py-[1.5rem] pl-[1.5rem] ${
                     label === "Total Artifacts" &&
                     "bg-gradient-to-b from-[#251B0E] to-[#523d1f] text-white stroke-white"
                   }`}
@@ -90,7 +90,7 @@ const Dashboard = () => {
           <div className="w-full h-[14rem] flex gap-x-10 items-center justify-center">
             {/* mid container 1/4 */}
 
-            <div className="rounded-[4rem] px-[2rem] w-[38rem] h-[13rem] shadow-gray-600 shadow-md items-center justify-between flex">
+            <div className="rounded-[4rem] px-[2rem] w-[38rem] h-[13rem] shadow-gray-600 shadow-md items-center justify-between flex border-t border-gray-300">
                 <span className="ml-7 text-6xl font-hind font-semibold">Walk-Ins</span>
               <div className="w-fit h-fit flex flex-col items-end rounded-[2rem] gap-y-5">
                 {walkIn.map(({ label, path }, idx)=> {
@@ -122,11 +122,11 @@ const Dashboard = () => {
               <span>to be filled</span>
 
             </div>
-            <div className="flex justify-center items-center w-[28rem] h-[29rem] rounded-[4rem] shadow-gray-600 shadow-md">
+            <div className="flex justify-center items-center w-[28rem] h-[29rem] rounded-[4rem] shadow-gray-600 shadow-md border-t border-gray-300">
               <span>to be filled</span>
 
             </div>
-            <div className=" flex justify-center items-center w-[28rem] h-[29rem] rounded-[4rem] shadow-gray-600 shadow-md">
+            <div className=" flex justify-center items-center w-[28rem] h-[29rem] rounded-[4rem] shadow-gray-600 shadow-md border-t border-gray-300">
               <span>to be filled</span>
 
             </div>

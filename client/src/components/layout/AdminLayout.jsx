@@ -9,7 +9,7 @@ const AdminLayout = () => {
   const location = useLocation();
 
   const themedRoutes = [
-    { path: "/admin/logs", theme: "bg-[#151515] text-white" },
+    { path: "/admin/logs", theme: "bg-[#151515] text-white", },
     { path: "/admin/logs/:log", theme: "bg-[#151515] text-white" },
     { path: "/admin/user", theme: "bg-[#151515] text-white" },
     { path: "/admin/user/:user", theme: "bg-[#151515] text-white" },
@@ -36,11 +36,9 @@ const AdminLayout = () => {
   const isUnauthorized = location.pathname.includes("/unauthorized");
 
   return (
-    <div
-      className={`h-screen w-screen grid grid-cols-[auto_1fr_1fr_1fr_1fr]   grid-rows-[auto_auto_1fr]  overflow-hidden`}
-    >
+    <div className="h-screen w-screen grid grid-cols-[auto_1fr_1fr_1fr] grid-rows-[auto_auto_1fr_1fr] overflow-hidden">
       {/* Header */}
-      <div className="col-span-5 h-[4rem]">
+      <div className="col-span-3 col-start-2 row-start-1 h-[4rem]">
         <AdminHeader
           onOpen={() => setSidebarOpen(true)}
           onClose={() => setSidebarOpen(false)}
@@ -50,21 +48,27 @@ const AdminLayout = () => {
 
       {/* Sidebar */}
       {!isUnauthorized && (
-        <div
-          className={`row-span-4 row-start-2 col-start-1  ${
-            isSidebarOpen ? "w-75" : "w-23"
-          } `}
-        >
-          <AdminNav isOpen={isSidebarOpen} />
-        </div>
+<div
+  className={`row-span-4 row-start-1 col-start-1 transition-all duration-300 ease-in-out ${
+    isSidebarOpen ? "w-75" : "w-17"
+  }`}
+>
+  <AdminNav
+    isOpen={isSidebarOpen}
+    onOpen={() => setSidebarOpen(true)}
+    onClose={() => setSidebarOpen(false)}
+    isSidebarOpen={isSidebarOpen}
+  />
+</div>
+
       )}
 
       {/* Breadcrumb */}
       {!isDashboard && !isUnauthorized && (
         <div
-          className={`h-[12rem] col-span-4 col-start-2 row-start-2  flex items-center px-15 ${theme}`}
+          className={`col-span-3 col-start-2 row-start-2 flex items-center px-15 h-[12rem] ${theme}`}
         >
-          <div className="flex  h-fit flex-col gap-y-1">
+          <div className="flex h-fit flex-col gap-y-1">
             <Breadcrumb />
           </div>
         </div>
@@ -72,9 +76,9 @@ const AdminLayout = () => {
 
       {/* Main content */}
       <main
-        className={`col-span-4 row-span-3 col-start-2 row-start-3  h-full w-full overflow-auto ${theme} pb-5 ${
-          isItemView ? "pl-15" : " px-15"
-        } `}
+        className={`col-span-3 row-span-2 col-start-2 row-start-3 h-full w-full overflow-auto ${theme} pb-5 ${
+          isItemView ? "pl-15" : "px-15"
+        }`}
       >
         <Outlet />
       </main>

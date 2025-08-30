@@ -200,11 +200,6 @@ displayArticles = displayArticles.slice(0, 2);
           direction="left"
 
         />
-
-
-        {/* <span className="text-2xl text-white font-semibold hover:text-gray-600">
-          Learn more.
-        </span> */}
         <div className="w-full xl:justify-between min-h-[85vh] gap-y-20 xl:gap-y-0 h-auto flex xl:flex-row flex-col items-center overflow-hidden">
           <div className="w-fit flex flex-col justify-center pl-20 min-w-fit h-full">
             <span className="w-[50rem] text-5xl font-hina text-justify">
@@ -270,7 +265,7 @@ displayArticles = displayArticles.slice(0, 2);
           direction="left"
         />
 
-        <div className="w-full xl:justify-between min-h-[85vh] gap-y-20 xl:gap-y-0 xl:gap-x-10 h-auto flex xl:flex-row flex-col items-center overflow-hidden ">
+        <div className="w-full xl:justify-between max-h-[85vh] gap-y-20 xl:gap-y-0 xl:gap-x-10 h-auto flex xl:flex-row flex-col items-center overflow-hidden ">
           {/* calendar component */}
           <div className="h-fit min-w-fit w-fit relative">
             <img src={block2} alt="" className="h-[70rem] w-[85rem]" />

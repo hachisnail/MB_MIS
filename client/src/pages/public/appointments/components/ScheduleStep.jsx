@@ -2,13 +2,23 @@ import { useForm, Controller } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { useEffect, useState } from "react";
-import { DateInput } from "../../../../features/FormUtilities";
+import { format } from 'date-fns';
+import Calendar from 'react-calendar';
+import 'react-calendar/dist/Calendar.css';
 
 // Helper function to get today's date at midnight (start of day)
 const getTodayAtMidnight = () => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     return today;
+};
+
+// Helper function to get local date string
+const getLocalDateString = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
 };
 
 const createSchema = (isTimeRequired) => yup.object({
@@ -20,7 +30,9 @@ const createSchema = (isTimeRequired) => yup.object({
     selectedTime: isTimeRequired
         ? yup.string().required("Time selection is required for this purpose")
         : yup.string().nullable(),
-    additionalNotes: yup.string().nullable(),
+    additionalNotes: yup.string()
+        .max(500, 'Notes cannot exceed 500 characters')
+        .nullable(),
 });
 
 const ScheduleStep = ({
@@ -39,8 +51,10 @@ const ScheduleStep = ({
     disabledDates,
     isLoadingDateAvailability,
     onAvailabilityRefresh,
+    calendarEvents = [],
 }) => {
     const [isDirty, setIsDirty] = useState(false);
+    const [selectedDate, setSelectedDate] = useState(initialData?.selectedDate || new Date());
     const schema = createSchema(isTimeRequired);
 
     const {
@@ -52,11 +66,14 @@ const ScheduleStep = ({
         setValue,
         formState: { errors },
     } = useForm({
-        defaultValues: initialData,
+        defaultValues: {
+            ...initialData,
+            selectedDate: initialData?.selectedDate || new Date(),
+        },
         resolver: yupResolver(schema),
     });
 
-    const watchedDate = watch('selectedDate');
+    const watchedNotes = watch('additionalNotes');
 
     useEffect(() => {
         const subscription = watch((values) => {
@@ -78,6 +95,13 @@ const ScheduleStep = ({
         return () => subscription.unsubscribe();
     }, [watch, setFormData]);
 
+    const handleDateSelect = (date) => {
+        setSelectedDate(date);
+        setValue('selectedDate', date, { shouldValidate: true });
+        // Trigger form change event
+        window.dispatchEvent(new Event('formChanged'));
+    };
+
     const timeSlots = ['09:00-10:29', '10:30-11:59', '01:00-02:29', '02:30-04:00'];
 
     return (
@@ -86,81 +110,117 @@ const ScheduleStep = ({
                 onSubmit={handleSubmit((data) => onNext(data))}
                 className="w-full h-[46rem] flex flex-col items-center justify-between"
             >
-                <div className="w-full h-[40rem] flex flex-col shadow-md rounded-lg justify-center shadow-gray-500 px-20 py-10">
-                    <div className="w-full h-fit pb-5 border-b-1">
-                        <span className="text-5xl font-hina">Schedule & Additional Information.</span>
+                <div className="w-full h-[40rem] flex flex-col shadow-md rounded-lg shadow-gray-500 px-12 py-8">
+                    <div className="w-full h-fit pb-5 border-b-1 mb-8">
+                        <span className="text-5xl font-hina">Schedule & Additional Information</span>
                     </div>
-                    <div className="w-full h-full pt-10 flex flex-col justify-evenly">
-                        {/* Preferred Date */}
-                        <div className="w-full h-fit flex">
-                            <label className="min-w-40 text-2xl font-semibold">Date</label>
-                            <div className="w-full h-fit flex justify-between">
-                                <DateInput
-                                    control={control}
-                                    name="selectedDate"
-                                    mode="single"
-                                    placeholder="Select preferred date"
-                                    minDate={(() => {
-                                        const today = new Date();
-                                        today.setHours(0, 0, 0, 0);
-                                        return today;
-                                    })()}
+
+                    {/* Grid layout for calendar and time slots */}
+                    <div className="grid grid-cols-2 gap-12 h-full">
+                        {/* Left side - Calendar */}
+                        <div>
+                            <label className="block text-xl font-semibold text-gray-700 mb-4">
+                                Select preferred date <span className="text-red-500">*</span>
+                            </label>
+                            <div className="rounded-xl bg-black p-3 shadow-xl inline-block">
+                                <Calendar
+                                    onChange={handleDateSelect}
+                                    value={selectedDate}
+                                    tileClassName="relative"
+                                    tileContent={({ date, view }) => {
+                                        if (view === 'month') {
+                                            const ds = getLocalDateString(date);
+
+                                            // Check if date is disabled (fully booked)
+                                            const isDisabled = disabledDates?.includes(ds);
+
+                                            // Show cross mark for fully booked dates
+                                            if (isDisabled) {
+                                                return (
+                                                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                                        <span className="text-red-500 text-3xl font-bold">×</span>
+                                                    </div>
+                                                );
+                                            }
+                                        }
+                                        return null;
+                                    }}
+                                    tileDisabled={({ date }) => {
+                                        const dateString = getLocalDateString(date);
+                                        return disabledDates?.includes(dateString) || false;
+                                    }}
+                                    showNeighboringMonth={false}
+                                    minDate={getTodayAtMidnight()}
                                     maxDate={new Date(2030, 11, 31)}
-                                    error={errors.selectedDate}
-                                    className="w-full"
+                                    className="p-2 rounded-lg text-base"
                                 />
                             </div>
+                            {selectedDate && (
+                                <div className="mt-3 text-base text-gray-600">
+                                    Selected: <span className="font-semibold">{format(selectedDate, 'MMMM d, yyyy')}</span>
+                                </div>
+                            )}
+                            {isLoadingDateAvailability && (
+                                <p className="mt-2 text-sm text-gray-500">Checking date availability...</p>
+                            )}
+                            {errors.selectedDate && (
+                                <p className="mt-2 text-base text-red-600">{errors.selectedDate.message}</p>
+                            )}
                         </div>
 
-                        {/* Time Selection */}
-                        {shouldShowTimeOptions && (
-                            <div className="w-full h-fit flex">
-                                <label className="min-w-40 text-2xl font-semibold">
-                                    Time {isTimeRequired && <span className="text-red-500">*</span>}
-                                </label>
-                                <div className="w-full h-fit flex flex-col">
+                        {/* Right side - Time slots and Notes */}
+                        <div className="space-y-6">
+                            {/* Time Selection */}
+                            {shouldShowTimeOptions && (
+                                <div>
+                                    <label className="block text-xl font-semibold text-gray-700 mb-4">
+                                        Select preferred time {isTimeRequired && <span className="text-red-500">*</span>}
+                                    </label>
                                     <Controller
                                         name="selectedTime"
                                         control={control}
                                         render={({ field }) => (
-                                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 w-full">
+                                            <div className="grid grid-cols-2 gap-3">
                                                 {timeSlots.map((time) => {
                                                     const isExclusive = timeSlotExclusive[time];
                                                     const hasConfirmedAppointment = confirmedSlots[time];
                                                     const slotOverlapCount = timeSlotCounts[time] || 0;
                                                     const isOverLimit = slotOverlapCount >= 5;
                                                     const isUnavailable = isExclusive || hasConfirmedAppointment || isOverLimit;
-                                                    const crossOut = isUnavailable;
+                                                    const isSelected = field.value === time;
 
                                                     return (
                                                         <div key={time} className="relative group">
-                                                            <label
-                                                                className={`cursor-pointer border-2 border-gray-300 px-4 py-2 rounded-lg flex items-center justify-center hover:bg-gray-100 transition-colors text-lg
-                                                                    ${field.value === time ? 'bg-[#f0b001] border-[#f0b001]' : ''} 
-                                                                    ${crossOut ? 'opacity-50 cursor-not-allowed line-through' : ''}`}
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => !isUnavailable && field.onChange(time)}
+                                                                disabled={isUnavailable}
+                                                                className={`w-full px-5 py-3 border-2 rounded-lg text-left transition-colors relative text-lg
+                                                                ${isSelected
+                                                                        ? 'bg-[#f0b001] border-[#f0b001] text-white'
+                                                                        : isUnavailable
+                                                                            ? 'bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed'
+                                                                            : 'bg-white border-gray-300 hover:bg-gray-50 hover:border-gray-400'
+                                                                    }
+                                                            `}
                                                             >
-                                                                <input
-                                                                    type="radio"
-                                                                    name="selectedTime"
-                                                                    value={time}
-                                                                    className="hidden"
-                                                                    onChange={() => {
-                                                                        if (!crossOut) {
-                                                                            field.onChange(time);
-                                                                        }
-                                                                    }}
-                                                                    disabled={crossOut}
-                                                                />
-                                                                <span className="font-medium">{time}</span>
-                                                                {crossOut && (
-                                                                    <span className="absolute inset-0 flex items-center justify-center text-red-600">
-                                                                        <i className="fa-solid fa-times text-xl"></i>
+                                                                <span className={`font-medium ${isUnavailable ? 'line-through' : ''}`}>
+                                                                    {time}
+                                                                </span>
+                                                                {slotOverlapCount > 0 && !isUnavailable && (
+                                                                    <span className="text-sm text-gray-500 block">
+                                                                        {slotOverlapCount}/5 slots used
                                                                     </span>
                                                                 )}
-                                                            </label>
+                                                                {isUnavailable && (
+                                                                    <span className="absolute inset-0 flex items-center justify-center text-red-600">
+                                                                        <i className="fa-solid fa-times text-2xl"></i>
+                                                                    </span>
+                                                                )}
+                                                            </button>
 
-                                                            {crossOut && (
-                                                                <div className="absolute z-10 bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-48 p-2 bg-gray-800 text-white text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
+                                                            {isUnavailable && (
+                                                                <div className="absolute z-10 bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-56 p-3 bg-gray-800 text-white text-sm rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
                                                                     {isExclusive ? 'This time slot has an exclusive schedule' :
                                                                         hasConfirmedAppointment ? 'This time slot already has a confirmed appointment' :
                                                                             isOverLimit ? 'This time slot has reached the maximum limit of 5 overlapping events' :
@@ -174,32 +234,49 @@ const ScheduleStep = ({
                                         )}
                                     />
                                     {isLoadingTimeSlots && (
-                                        <p className="text-lg text-gray-500 mt-2">Checking availability...</p>
+                                        <p className="mt-3 text-base text-gray-500">Checking time slot availability...</p>
                                     )}
                                     {errors.selectedTime && (
-                                        <p className="mt-1 text-lg text-red-600">{errors.selectedTime.message}</p>
+                                        <p className="mt-2 text-base text-red-600">{errors.selectedTime.message}</p>
                                     )}
                                 </div>
-                            </div>
-                        )}
+                            )}
 
-                        {/* Additional Notes */}
-                        <div className="w-full h-fit flex">
-                            <label className="min-w-40 text-2xl font-semibold">Notes</label>
-                            <div className="w-full h-fit flex justify-between">
-                                <textarea
-                                    {...register("additionalNotes")}
-                                    rows="4"
-                                    placeholder="Any extra info or requests"
-                                    className="w-full px-4 py-2 border border-black rounded-2xl focus:outline-none focus:ring-2 focus:ring-gray-300 resize-none text-xl"
-                                    style={{ boxShadow: "inset 0 1px 1px rgba(1, 1, 1, 0.50)" }}
-                                />
+                            {/* Notes Section */}
+                            <div>
+                                <label className="block text-xl font-semibold text-gray-700 mb-3">
+                                    Note
+                                </label>
+                                <div className="relative">
+                                    <textarea
+                                        {...register("additionalNotes")}
+                                        rows="6"
+                                        maxLength="500"
+                                        placeholder="Additional notes (optional)"
+                                        className={`w-full px-4 py-3 border text-base rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-300 resize-none ${errors.additionalNotes
+                                            ? "border-red-600"
+                                            : "border-black"
+                                            }`}
+                                        style={{
+                                            boxShadow: "inset 0 1px 1px rgba(1, 1, 1, 0.50)",
+                                        }}
+                                    />
+                                    <div className="flex justify-between items-center mt-1">
+                                        <span className="text-red-600 text-sm h-5 pl-1">
+                                            {errors.additionalNotes?.message || ""}
+                                        </span>
+                                        <span className="text-sm text-gray-500 pr-1">
+                                            {watchedNotes?.length || 0}/500
+                                        </span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <div className="w-full h-15 flex justify-between">
+                {/* Footer buttons */}
+                <div className="w-full flex justify-between">
                     <button
                         type="button"
                         onClick={() => onBack(getValues())}
@@ -212,7 +289,7 @@ const ScheduleStep = ({
                             <button
                                 type="button"
                                 onClick={() => onClearForm()}
-                                className="w-40 hover:bg-black rounded-md text-2xl bg-gray-900 text-white"
+                                className="w-40 h-15 hover:bg-black rounded-md text-2xl bg-gray-900 text-white"
                             >
                                 Clear Form
                             </button>

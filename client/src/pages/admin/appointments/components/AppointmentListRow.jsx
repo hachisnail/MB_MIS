@@ -12,7 +12,7 @@ const AppointmentListRow = ({
 }) => {
     const navigate = useNavigate();
 
-    const status = appointment.AppointmentStatus?.status || "To Review";
+    const status = appointment.AppointmentStatus?.status || "Pending";
     const updatedAt = appointment.AppointmentStatus?.updated_at
         ? new Date(appointment.AppointmentStatus.updated_at).toLocaleString()
         : "N/A";

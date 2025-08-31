@@ -9,6 +9,7 @@ import Modal from '@/components/modals/Modal';
 import StyledButton from '@/components/buttons/StyledButton';
 import Toast from '@/features/Toast';
 import { validateAppointmentSchedule } from '@/utils/scheduleValidation';
+import { normalizeStatus } from '../components/statusUtils';
 
 export const AppointmentViewPage = ({
   showModal,
@@ -43,8 +44,11 @@ export const AppointmentViewPage = ({
 
     // If we're in route mode, check where we came from
     if (isRouteComponent && location.state?.cameFrom) {
-      // Hide respond section if coming from attendance or visitor records
-      return location.state.cameFrom === 'forms' || location.state.cameFrom === 'schedule';
+      // Show respond section for pending, forms, and schedule tabs
+      // Hide respond section only for visitorRecords (attendance/completed appointments)
+      return location.state.cameFrom === 'pending' ||
+        location.state.cameFrom === 'forms' ||
+        location.state.cameFrom === 'schedule';
     }
 
     return true;
@@ -255,13 +259,14 @@ export const AppointmentViewPage = ({
 
   useEffect(() => {
     if (modalData && modalData.status) {
-      if (modalData.status === 'CONFIRMED' || modalData.status === 'Confirmed' || modalData.status === 'confirmed') {
+      const normalizedStatus = normalizeStatus(modalData.status);
+      if (normalizedStatus === 'APPROVED') {
         setApproveVisit('');
-      } else if (modalData.status === 'REJECTED' || modalData.status === 'Rejected') {
+      } else if (normalizedStatus === 'REJECTED') {
         setApproveVisit('no');
-      } else if (modalData.status === 'COMPLETED' || modalData.status === 'Completed') {
+      } else if (normalizedStatus === 'COMPLETED') {
         setApproveVisit('arrive');
-      } else if (modalData.status === 'FAILED' || modalData.status === 'Failed') {
+      } else if (normalizedStatus === 'FAILED') {
         setApproveVisit('cancel');
       } else {
         setApproveVisit('');
@@ -294,11 +299,13 @@ export const AppointmentViewPage = ({
   if (!isRouteComponent && (!showModal || !modalData)) return null;
   if (isRouteComponent && !modalData) return null;
 
-  const isToReview = modalData.status === 'TO_REVIEW' || modalData.status === 'To Review';
-  const isConfirmed = modalData.status === 'CONFIRMED' || modalData.status === 'Confirmed' || modalData.status === 'confirmed';
-  const isRejected = modalData.status === 'REJECTED' || modalData.status === 'Rejected';
-  const isFailed = modalData.status === 'FAILED' || modalData.status === 'Failed';
-  const isCompleted = modalData.status === 'COMPLETED' || modalData.status === 'Completed';
+  // Use normalized status for consistent checking
+  const normalizedStatus = normalizeStatus(modalData.status);
+  const isPending = normalizedStatus === 'PENDING';
+  const isApproved = normalizedStatus === 'APPROVED';
+  const isRejected = normalizedStatus === 'REJECTED';
+  const isFailed = normalizedStatus === 'FAILED';
+  const isCompleted = normalizedStatus === 'COMPLETED';
   const isCompletedOrFailed = isCompleted || isFailed;
 
   // This function will contain the actual logic to send email and update status
@@ -310,8 +317,8 @@ export const AppointmentViewPage = ({
 
     try {
       if (approveVisit === 'yes') {
-        newStatus = 'CONFIRMED';
-        successMessage = 'Appointment confirmed successfully!';
+        newStatus = 'APPROVED';
+        successMessage = 'Appointment approved successfully!';
       } else if (approveVisit === 'no') {
         newStatus = 'REJECTED';
         successMessage = 'Appointment rejected successfully!';
@@ -400,8 +407,8 @@ export const AppointmentViewPage = ({
   // Handler for the "Done" button click - now triggers confirmation modal
   const handleSend = async () => {
     // --- Validation Logic ---
-    if (isToReview) {
-      // Before confirming, validate the appointment schedule
+    if (isPending) {
+      // Before approving, validate the appointment schedule
       if (approveVisit === 'yes' && modalData) {
         try {
           // Prepare appointment data for validation
@@ -417,14 +424,14 @@ export const AppointmentViewPage = ({
             axiosClient.get('/auth/appointment')
           ]);
 
-          // Filter confirmed appointments for the same date
-          const confirmedAppointments = appointmentsResponse.data.filter(appt => {
+          // Filter approved appointments for the same date
+          const approvedAppointments = appointmentsResponse.data.filter(appt => {
             const apptDate = appt.preferred_date ? appt.preferred_date.split('T')[0] : null;
             const status = appt.AppointmentStatus?.status || '';
-            return apptDate === appointmentData.date && status.toUpperCase() === 'CONFIRMED';
+            return apptDate === appointmentData.date && status.toUpperCase() === 'APPROVED';
           });
 
-          // Combine schedules and confirmed appointments
+          // Combine schedules and approved appointments
           const existingEvents = [
             ...schedulesResponse.data.filter(schedule => schedule.status !== 'COMPLETED').map(schedule => ({
               date: schedule.date,
@@ -433,7 +440,7 @@ export const AppointmentViewPage = ({
               availability: schedule.availability || 'SHARED',
               isSchedule: true
             })),
-            ...confirmedAppointments.map(appt => ({
+            ...approvedAppointments.map(appt => ({
               date: appt.preferred_date.split('T')[0],
               startTime: appt.start_time || '09:00',
               endTime: appt.end_time || '10:00',
@@ -464,10 +471,10 @@ export const AppointmentViewPage = ({
         return;
       }
       setConfirmModalTitle('Confirm Action');
-      setConfirmModalMessage(`Are you sure you want to ${approveVisit === 'yes' ? 'confirm' : 'reject'} this appointment?`);
+      setConfirmModalMessage(`Are you sure you want to ${approveVisit === 'yes' ? 'approve' : 'reject'} this appointment?`);
       setConfirmAction(() => executeAppointmentAction); // Set the function to be called on confirm
       setShowConfirmModal(true);
-    } else if (isConfirmed) {
+    } else if (isApproved) {
       if (!approveVisit) {
         setActionError(true);
         return;
@@ -498,96 +505,96 @@ export const AppointmentViewPage = ({
   const renderContent = () => (
     <>
       {/* Header Section - Enlarged text for full page layout */}
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-5xl font-bold text-gray-900">
+      <div className="flex justify-between items-center mb-10">
+        <h1 className="text-6xl font-bold text-gray-900">
           {modalData.fromFirstName} {modalData.fromLastName}
         </h1>
-        <div className="text-lg text-gray-600">
+        <div className="text-2xl text-gray-600 font-medium">
           {modalData.dateSent || "N/A"}
         </div>
       </div>
 
-      <hr className="border-gray-400 mb-12" />
+      <hr className="border-gray-400 mb-14" />
 
       {/* Main Content Grid - Enlarged text and spacing */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-20">
         {/* Left Column - Contact Information */}
-        <div className="space-y-8">
+        <div className="space-y-10">
           {/* Email */}
-          <div className="flex items-start gap-4">
-            <div className="w-7 h-7 mt-1">
-              <svg className="w-7 h-7 text-gray-700" fill="currentColor" viewBox="0 0 20 20">
+          <div className="flex items-start gap-6">
+            <div className="w-9 h-9 mt-1">
+              <svg className="w-9 h-9 text-gray-700" fill="currentColor" viewBox="0 0 20 20">
                 <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
                 <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
               </svg>
             </div>
             <div>
-              <div className="text-lg font-medium text-gray-900">Email</div>
-              <div className="text-lg text-blue-600">{modalData.email || 'N/A'}</div>
+              <div className="text-2xl font-medium text-gray-900 mb-2">Email</div>
+              <div className="text-2xl text-blue-600 font-medium">{modalData.email || 'N/A'}</div>
             </div>
           </div>
 
           {/* Phone Number */}
-          <div className="flex items-start gap-4">
-            <div className="w-7 h-7 mt-1">
-              <svg className="w-7 h-7 text-gray-700" fill="currentColor" viewBox="0 0 20 20">
+          <div className="flex items-start gap-6">
+            <div className="w-9 h-9 mt-1">
+              <svg className="w-9 h-9 text-gray-700" fill="currentColor" viewBox="0 0 20 20">
                 <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
               </svg>
             </div>
             <div>
-              <div className="text-lg font-medium text-gray-900">Phone Number</div>
-              <div className="text-lg text-blue-600">{modalData.phone || 'N/A'}</div>
+              <div className="text-2xl font-medium text-gray-900 mb-2">Phone Number</div>
+              <div className="text-2xl text-blue-600 font-medium">{modalData.phone || 'N/A'}</div>
             </div>
           </div>
 
           {/* Address */}
-          <div className="flex items-start gap-4">
-            <div className="w-7 h-7 mt-1">
-              <svg className="w-7 h-7 text-gray-700" fill="currentColor" viewBox="0 0 20 20">
+          <div className="flex items-start gap-6">
+            <div className="w-9 h-9 mt-1">
+              <svg className="w-9 h-9 text-gray-700" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
               </svg>
             </div>
             <div>
-              <div className="text-lg font-medium text-gray-900">Address:</div>
-              <div className="text-lg text-blue-600">
+              <div className="text-2xl font-medium text-gray-900 mb-2">Address:</div>
+              <div className="text-2xl text-blue-600 font-medium">
                 {modalData.street || 'N/A'}, {modalData.barangay || 'N/A'}, {modalData.city_municipality || 'N/A'}, {modalData.province || 'N/A'}
               </div>
             </div>
           </div>
 
           {/* Organization */}
-          <div className="flex items-start gap-4">
-            <div className="w-7 h-7 mt-1">
-              <svg className="w-7 h-7 text-gray-700" fill="currentColor" viewBox="0 0 20 20">
+          <div className="flex items-start gap-6">
+            <div className="w-9 h-9 mt-1">
+              <svg className="w-9 h-9 text-gray-700" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2H4zm3 5a1 1 0 011-1h4a1 1 0 110 2H8a1 1 0 01-1-1zm0 3a1 1 0 011-1h4a1 1 0 110 2H8a1 1 0 01-1-1z" clipRule="evenodd" />
               </svg>
             </div>
             <div>
-              <div className="text-lg font-medium text-gray-900">Organization:</div>
-              <div className="text-lg text-blue-600">{modalData.organization || 'N/A'}</div>
+              <div className="text-2xl font-medium text-gray-900 mb-2">Organization:</div>
+              <div className="text-2xl text-blue-600 font-medium">{modalData.organization || 'N/A'}</div>
             </div>
           </div>
 
           {/* Bottom Section - Appointment Details */}
-          <div className="mt-12 bg-gray-100 p-8 rounded-lg space-y-6">
+          <div className="mt-14 bg-gray-100 p-10 rounded-lg space-y-8">
             <div>
-              <div className="text-lg font-medium text-gray-900 mb-2">Purpose of Visit:</div>
-              <div className="text-lg text-blue-600">{modalData.purpose || 'N/A'}</div>
+              <div className="text-2xl font-medium text-gray-900 mb-3">Purpose of Visit:</div>
+              <div className="text-2xl text-blue-600 font-medium">{modalData.purpose || 'N/A'}</div>
             </div>
 
             <div>
-              <div className="text-lg font-medium text-gray-900 mb-2">Population Count:</div>
-              <div className="text-lg text-blue-600">{modalData.populationCount || '0'}</div>
+              <div className="text-2xl font-medium text-gray-900 mb-3">Population Count:</div>
+              <div className="text-2xl text-blue-600 font-medium">{modalData.populationCount || '0'}</div>
             </div>
 
-            <div className="grid grid-cols-2 gap-12">
+            <div className="grid grid-cols-2 gap-14">
               <div>
-                <div className="text-lg font-medium text-gray-900 mb-2">Preferred Date:</div>
-                <div className="text-lg text-blue-600">{modalData.preferredDate || 'N/A'}</div>
+                <div className="text-2xl font-medium text-gray-900 mb-3">Preferred Date:</div>
+                <div className="text-2xl text-blue-600 font-medium">{modalData.preferredDate || 'N/A'}</div>
               </div>
               <div>
-                <div className="text-lg font-medium text-gray-900 mb-2">Preferred Time:</div>
-                <div className="text-lg text-blue-600">
+                <div className="text-2xl font-medium text-gray-900 mb-3">Preferred Time:</div>
+                <div className="text-2xl text-blue-600 font-medium">
                   {modalData.preferredTime
                     ? formatTimeRange(modalData.preferredTime)
                     : (modalData.start_time || modalData.end_time
@@ -604,27 +611,27 @@ export const AppointmentViewPage = ({
         <div>
           {/* Notes Section - Enlarged text */}
           {modalData.notes && (
-            <div className="bg-gray-100 p-8 rounded-lg mb-12">
-              <div className="text-lg font-medium text-gray-900 mb-3">Notes:</div>
-              <div className="text-lg text-blue-600">{modalData.notes}</div>
+            <div className="bg-gray-100 p-10 rounded-lg mb-14">
+              <div className="text-2xl font-medium text-gray-900 mb-4">Notes:</div>
+              <div className="text-2xl text-blue-600 font-medium">{modalData.notes}</div>
             </div>
           )}
 
           {shouldShowRespondSection() && (
             <div>
-              <h3 className="text-3xl font-bold mb-8">Respond</h3>
+              <h3 className="text-4xl font-bold mb-10">Respond</h3>
 
-              {isToReview && (
+              {isPending && (
                 <>
-                  <div className="mb-8">
-                    <div className="text-lg font-medium mb-4">Approve Visit?</div>
-                    <div className="flex gap-6">
+                  <div className="mb-10">
+                    <div className="text-2xl font-medium mb-6">Approve Visit?</div>
+                    <div className="flex gap-8">
                       <button
                         onClick={() => {
                           setApproveVisit('yes');
                           setApprovalError(false);
                         }}
-                        className={`px-12 py-3 text-lg rounded-md font-medium transition-colors ${approveVisit === 'yes'
+                        className={`px-16 py-4 text-2xl rounded-md font-medium transition-colors ${approveVisit === 'yes'
                           ? 'bg-purple-600 text-white'
                           : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                           }`}
@@ -636,7 +643,7 @@ export const AppointmentViewPage = ({
                           setApproveVisit('no');
                           setApprovalError(false);
                         }}
-                        className={`px-12 py-3 text-lg rounded-md font-medium transition-colors ${approveVisit === 'no'
+                        className={`px-16 py-4 text-2xl rounded-md font-medium transition-colors ${approveVisit === 'no'
                           ? 'bg-gray-600 text-white'
                           : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                           }`}
@@ -645,17 +652,17 @@ export const AppointmentViewPage = ({
                       </button>
                     </div>
                     {approvalError && (
-                      <div className="text-lg text-red-500 mt-3 text-center">
+                      <div className="text-2xl text-red-500 mt-4 text-center font-medium">
                         Please select Yes or No before continuing.
                       </div>
                     )}
                   </div>
 
-                  <div className="mb-8">
-                    <div className="text-lg font-medium mb-3">Leave a message</div>
+                  <div className="mb-10">
+                    <div className="text-2xl font-medium mb-4">Leave a message</div>
                     <textarea
-                      className={`w-full p-4 border ${messageError ? 'border-red-500' : 'border-gray-300'
-                        } rounded-md h-[150px] resize-none text-lg`}
+                      className={`w-full p-6 border ${messageError ? 'border-red-500' : 'border-gray-300'
+                        } rounded-md h-[180px] resize-none text-xl`}
                       value={message}
                       onChange={(e) => {
                         setMessage(e.target.value);
@@ -666,22 +673,22 @@ export const AppointmentViewPage = ({
                       placeholder="Enter message here (required)"
                     />
                     {messageError && (
-                      <div className="text-lg text-red-500 mt-2">
+                      <div className="text-2xl text-red-500 mt-3 font-medium">
                         Please enter a message for the visitor.
                       </div>
                     )}
-                    <div className="text-base text-gray-500 mt-3">
+                    <div className="text-xl text-gray-500 mt-4">
                       This will automatically send to{' '}
-                      <span className="text-blue-600">{modalData.email || 'the visitor'}</span>
+                      <span className="text-blue-600 font-medium">{modalData.email || 'the visitor'}</span>
                     </div>
                   </div>
                 </>
               )}
 
-              {isConfirmed && (
+              {isApproved && (
                 <>
-                  <div className="mb-8">
-                    <div className="text-2xl mb-4">Appointment Action</div>
+                  <div className="mb-6">
+                    <div className="text-2xl mb-3">Appointment Action</div>
                     <div className="flex gap-6">
                       <StyledButton
                         onClick={() => {
@@ -692,7 +699,7 @@ export const AppointmentViewPage = ({
                         buttonColor={approveVisit === 'cancel' ? 'bg-red-600' : 'bg-gray-200'}
                         hoverColor={approveVisit === 'cancel' ? 'hover:bg-red-700' : 'hover:bg-gray-300'}
                         textColor={approveVisit === 'cancel' ? 'text-white' : 'text-gray-800'}
-                        className="px-12 py-4 text-xl"
+                        className="px-10 py-3 text-lg"
                       >
                         Cancel
                       </StyledButton>
@@ -705,24 +712,24 @@ export const AppointmentViewPage = ({
                         buttonColor={approveVisit === 'arrive' ? 'bg-green-600' : 'bg-gray-200'}
                         hoverColor={approveVisit === 'arrive' ? 'hover:bg-green-700' : 'hover:bg-gray-300'}
                         textColor={approveVisit === 'arrive' ? 'text-white' : 'text-gray-800'}
-                        className="px-12 py-4 text-xl"
+                        className="px-10 py-3 text-lg"
                       >
                         Arrive
                       </StyledButton>
                     </div>
                     {actionError && (
-                      <div className="text-lg text-red-500 mt-3">
+                      <div className="text-xl text-red-500 mt-3">
                         Please select Cancel or Arrive before continuing.
                       </div>
                     )}
                   </div>
 
                   {approveVisit === 'cancel' && (
-                    <div className="mb-8">
-                      <div className="text-2xl mb-4">Cancellation Message</div>
+                    <div className="mb-6">
+                      <div className="text-2xl mb-3">Cancellation Message</div>
                       <textarea
-                        className={`w-full p-5 border ${messageError ? 'border-red-500' : 'border-gray-300'
-                          } rounded-md h-[180px] overflow-y-auto resize-none text-lg`}
+                        className={`w-full p-4 border ${messageError ? 'border-red-500' : 'border-gray-300'
+                          } rounded-md min-h-[120px] max-h-[160px] overflow-y-auto resize-none text-lg`}
                         value={message}
                         onChange={(e) => {
                           setMessage(e.target.value);
@@ -733,11 +740,11 @@ export const AppointmentViewPage = ({
                         placeholder="Enter cancellation reason (required)"
                       />
                       {messageError && (
-                        <p className="text-lg text-red-500 mt-2">
+                        <p className="text-xl text-red-500 mt-2">
                           Please enter a cancellation reason.
                         </p>
                       )}
-                      <div className="text-lg text-gray-500 mt-3">
+                      <div className="text-xl text-gray-500 mt-3">
                         This will automatically send to{' '}
                         {modalData.email || 'the visitor'}
                       </div>
@@ -745,24 +752,24 @@ export const AppointmentViewPage = ({
                   )}
 
                   {approveVisit === 'arrive' && (
-                    <div className="mb-8 bg-gray-50 p-8 rounded-lg border border-gray-200">
-                      <h4 className="text-2xl font-bold mb-6">Attendance Details</h4>
+                    <div className="mb-4 bg-gray-50 p-4 rounded-lg border border-gray-200">
+                      <h4 className="text-2xl font-bold mb-4">Attendance Details</h4>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 mb-6">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 mb-4">
                         <div>
-                          <div className="text-gray-600 text-lg mb-3">Expected Visitors:</div>
-                          <div className="text-3xl font-semibold">
+                          <div className="text-gray-600 text-lg mb-2">Expected Visitors:</div>
+                          <div className="text-3xl font-semibold text-blue-600">
                             {modalData.populationCount || '0'}
                           </div>
                         </div>
 
                         <div>
-                          <div className="text-gray-600 text-lg mb-3">Present:</div>
-                          <div className="flex items-center gap-4">
+                          <div className="text-gray-600 text-lg mb-2">Present:</div>
+                          <div className="flex items-center gap-2">
                             <input
                               type="number"
                               className={`border ${presentCountError ? 'border-red-500' : 'border-gray-300'
-                                } rounded-md p-4 w-full text-xl`}
+                                } rounded-md p-2 w-full text-lg font-medium`}
                               value={presentCount}
                               onChange={(e) => {
                                 const value = e.target.value;
@@ -771,7 +778,7 @@ export const AppointmentViewPage = ({
                                   setPresentCountError(false);
                                 }
                               }}
-                              placeholder="Enter present count"
+                              placeholder="Enter count"
                               min="0"
                             />
                             <StyledButton
@@ -779,36 +786,35 @@ export const AppointmentViewPage = ({
                               buttonColor="bg-green-500"
                               hoverColor="hover:bg-green-600"
                               textColor="text-white"
-                              className="px-4 py-4 whitespace-nowrap text-lg"
+                              className="px-2 py-2 whitespace-nowrap text-base font-medium"
                             >
                               All Present
                             </StyledButton>
                           </div>
                           {presentCountError && (
-                            <div className="text-lg text-red-500 mt-2">
+                            <div className="text-lg text-red-500 mt-1">
                               Please enter how many visitors attended
                             </div>
                           )}
                         </div>
                       </div>
 
-                      <div className="mt-6">
-                        <div className="text-xl mb-3">Completion Message</div>
+                      <div className="mt-4">
+                        <div className="text-lg font-medium mb-2">Completion Message</div>
                         <textarea
-                          className="w-full p-5 border border-gray-300 rounded-md h-[180px] overflow-y-auto resize-none text-lg"
+                          className="w-full p-3 border border-gray-300 rounded-md min-h-[80px] max-h-[100px] overflow-y-auto resize-none text-base"
                           value={message}
                           onChange={(e) => setMessage(e.target.value)}
                           placeholder="Enter completion message (optional)"
                         />
-                        <div className="text-lg text-gray-500 mt-3">
+                        <div className="text-base text-gray-500 mt-2">
                           This will automatically send to{' '}
-                          {modalData.email || 'the visitor'}
+                          <span className="text-blue-600 font-medium">{modalData.email || 'the visitor'}</span>
                         </div>
                       </div>
 
-                      <div className="text-lg text-gray-500 mt-6">
-                        Enter the number of visitors who actually attended. Click "All Present" if
-                        everyone arrived.
+                      <div className="text-base text-gray-600 mt-3 bg-blue-50 p-3 rounded-md border-l-4 border-blue-400">
+                        <span className="font-medium">Instructions:</span> Enter the number of visitors who actually attended. Click "All Present" if everyone arrived as expected.
                       </div>
                     </div>
                   )}
@@ -832,24 +838,36 @@ export const AppointmentViewPage = ({
                 </div>
               )}
 
-              <div className="flex mt-8">
-                {(isToReview || isConfirmed) && (
-                  <button
-                    onClick={handleSend}
-                    disabled={isLoading}
-                    className={`px-16 py-4 text-xl rounded-md font-medium transition-colors ${isLoading
-                      ? 'bg-gray-400 text-white cursor-not-allowed'
-                      : 'bg-purple-600 text-white hover:bg-purple-700'
-                      }`}
-                  >
-                    {isLoading ? 'Processing...' : 'Done'}
-                  </button>
-                )}
+              <div className="flex justify-between items-center mt-8">
+                <div className="flex gap-4">
+                  {(isPending || isApproved) && (
+                    <button
+                      onClick={handleSend}
+                      disabled={isLoading}
+                      className={`px-16 py-4 text-xl rounded-md font-medium transition-colors ${isLoading
+                        ? 'bg-gray-400 text-white cursor-not-allowed'
+                        : 'bg-purple-600 text-white hover:bg-purple-700'
+                        }`}
+                    >
+                      {isLoading ? 'Processing...' : 'Done'}
+                    </button>
+                  )}
 
-                {(isCompletedOrFailed || isRejected) && (
+                  {(isCompletedOrFailed || isRejected) && (
+                    <button
+                      onClick={onClose}
+                      className="px-16 py-4 text-xl bg-gray-500 text-white rounded-md font-medium hover:bg-gray-600 transition-colors"
+                    >
+                      Close
+                    </button>
+                  )}
+                </div>
+
+                {/* Close button only for pending and approved statuses (not for completed/failed/rejected since they already have close buttons) */}
+                {(isPending || isApproved) && (
                   <button
                     onClick={onClose}
-                    className="px-16 py-4 text-xl bg-gray-500 text-white rounded-md font-medium hover:bg-gray-600 transition-colors"
+                    className="px-8 py-4 text-xl bg-gray-400 text-white rounded-md font-medium hover:bg-gray-500 transition-colors"
                   >
                     Close
                   </button>

@@ -66,21 +66,22 @@ const AdminLayout = () => {
       {/* Breadcrumb + extra content */}
       {!isDashboard && !isUnauthorized && (
         <div
-          className={`col-span-3 col-start-2 row-start-2 flex flex-col gap-x-5 sm:flex-row py-5 sm:py-0 items-center px-15 h-[12rem] ${theme}`}
+          className={`col-span-3 col-start-2 row-start-2 flex flex-col justify-between gap-x-5 sm:flex-row py-5 sm:py-0 items-center px-15 h-[12rem] ${theme}`}
         >
-          <div className="w-full sm:w-1/2 flex h-fit flex-col gap-y-1">
+          <div className="w-full sm:w-fit flex h-fit  flex-col gap-y-1">
             <Breadcrumb />
           </div>
-
-          <div className="w-full sm:w-1/2 h-[10rem] ">
-            {extraBlockContent || null}
-          </div>
+          {extraBlockContent && (
+            <div className="w-full sm:w-fit h-[10rem] ">
+              {extraBlockContent}
+            </div>
+          )}
         </div>
       )}
 
       {/* Main content */}
       <main
-      // ${isItemView ? "pl-15" : "px-15"}
+        // ${isItemView ? "pl-15" : "px-15"}
         className={`col-span-3 row-span-2 col-start-2 row-start-3 h-full w-full ${theme} pb-5 px-15`}
       >
         <Outlet context={{ setExtraBlockContent }} />

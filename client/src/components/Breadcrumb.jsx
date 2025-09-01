@@ -47,7 +47,7 @@ function decodeLabelWithoutId(encoded) {
   return decoded.replace(/^\d+\s+/, "");
 }
 
-const Breadcrumb = () => {
+const Breadcrumb = ({hideTitle = false, overrideTheme=""}) => {
   const location = useLocation();
   const pathSegments = location.pathname.split("/").filter(Boolean);
 
@@ -85,7 +85,7 @@ const Breadcrumb = () => {
 
   return (
     <>
-      <span className="text-4xl font-semibold select-none">{pageTitle}</span>
+      {!hideTitle && <span className="text-4xl font-semibold select-none bg-bl">{pageTitle}</span>}
       <div className="flex select-none items-center gap-x-2 text-xl text-gray-600">
         {crumbs.map((crumb, index) => {
           const isLast = index === crumbs.length - 1;
@@ -93,9 +93,9 @@ const Breadcrumb = () => {
             <div className="flex items-center gap-x-2" key={crumb.path}>
               {index !== 0 && <span className="font-semibold">/</span>}
               {isLast ? (
-                <span className={`${theme} font-semibold`}>{crumb.label}</span>
+                <span className={`${overrideTheme ? overrideTheme : theme} font-semibold`}>{crumb.label}</span>
               ) : (
-                <NavLink to={crumb.path} className={`${theme} hover:underline`}>
+                <NavLink to={crumb.path} className={`${overrideTheme ? overrideTheme : theme} hover:underline`}>
                   {crumb.label}
                 </NavLink>
               )}

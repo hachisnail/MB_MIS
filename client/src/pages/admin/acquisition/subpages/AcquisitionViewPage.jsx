@@ -14,6 +14,7 @@ import { Transition } from "@headlessui/react";
 import { formatDateRange, formatDate } from "../components/formatDateRange";
 import { useAuth } from "../../../../context/authContext";
 import CurvedButton from "../components/CurvedButton";
+import Breadcrumb from "../../../../components/Breadcrumb";
 
 const documentTabs = ["Overview", "Document", "Transaction"];
 
@@ -341,10 +342,12 @@ const AcquisitionViewPage = () => {
             <div className="w-full h-full rounded-md grid grid-cols-[43rem_1fr_40rem]">
               {/* Left column */}
               <div className="col-span-1 w-full h-full bg-black relative overflow-visible flex flex-col">
-                <div className="absolute left-0 -top-[12rem] w-full h-[12rem] bg-black flex items-center justify-center p-4 overflow-hidden">
-                  <span className="text-white text-5xl font-bold text-center break-words line-clamp-3">
+                <div className="absolute left-0 -top-[12rem] w-full h-[12rem] bg-black flex items-start justify-end px-10 pb-5 pt-4 overflow-hidden flex-col">
+                  <span className="text-white text-3xl font-bold text-left break-words line-clamp-3 max-w-[38rem]">
                     {contributionData.ContributionArtifact.title}
                   </span>
+                    <Breadcrumb hideTitle={true} overrideTheme="text-white"/>
+
                 </div>
                 <RenderArtifactImageAndDonatorInfo
                   donatorInformation={donatorInformation}

@@ -88,7 +88,7 @@ const AdminNav = ({ isOpen, onClose, onOpen, isSidebarOpen }) => {
     <div
       className={`${
         isSidebarOpen ? "bg-stone-900" : "bg-[#100E09]"
-      } w-full h-full grid grid-cols-1 grid-rows-[4.25rem_1fr_7rem] `}
+      } w-full h-full grid grid-cols-1 grid-rows-[4.25rem_1fr_7rem]  `}
     >
       <div
         className={`w-full h-full flex justify-start items-center pl-3 transition-all duration-300 ease-in-out `}

@@ -34,7 +34,6 @@ const Appointments = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState(() => {
-    // Check if we're returning from a view page with a specific tab
     return location.state?.activeTab || "pending";
   });
 
@@ -306,7 +305,6 @@ const Appointments = () => {
   const sortedAppointments = sortData(filteredAppointments, "appointments");
   const sortedVisitorRecords = sortData(filteredVisitorRecords, "visitorRecords");
 
-  // Calculate counts
   const toReviewCount = appointments.filter(
     (appt) =>
       !appt.AppointmentStatus?.status ||
@@ -336,9 +334,9 @@ const Appointments = () => {
             button={{
               label: "Walk ins",
               onClick: () => {
-                const walkInsBreadcrumb = "Walk Ins";
-                const encodedParam = btoa(walkInsBreadcrumb);
-                navigate(`/admin/appointment/walk-ins/${encodedParam}`);
+                // const walkInsBreadcrumb = "Walk Ins";
+                // const encodedParam = btoa(walkInsBreadcrumb);
+                navigate(`/admin/appointment/walk-ins/`);
               },
             }}
           />

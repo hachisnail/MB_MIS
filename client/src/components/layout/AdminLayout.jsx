@@ -9,7 +9,7 @@ const AdminLayout = () => {
   const location = useLocation();
 
   const themedRoutes = [
-    { path: "/admin/logs", theme: "bg-[#151515] text-white", },
+    { path: "/admin/logs", theme: "bg-[#151515] text-white" },
     { path: "/admin/logs/:log", theme: "bg-[#151515] text-white" },
     { path: "/admin/user", theme: "bg-[#151515] text-white" },
     { path: "/admin/user/:user", theme: "bg-[#151515] text-white" },
@@ -48,19 +48,18 @@ const AdminLayout = () => {
 
       {/* Sidebar */}
       {!isUnauthorized && (
-<div
-  className={`row-span-4 row-start-1 col-start-1 transition-all duration-300 ease-in-out ${
-    isSidebarOpen ? "w-75" : "w-17"
-  }`}
->
-  <AdminNav
-    isOpen={isSidebarOpen}
-    onOpen={() => setSidebarOpen(true)}
-    onClose={() => setSidebarOpen(false)}
-    isSidebarOpen={isSidebarOpen}
-  />
-</div>
-
+        <div
+          className={`row-span-4 row-start-1 col-start-1 transition-all duration-300 ease-in-out  shadow-2xl shadow-black ${
+            isSidebarOpen ? "w-75" : "w-17"
+          }`}
+        >
+          <AdminNav
+            isOpen={isSidebarOpen}
+            onOpen={() => setSidebarOpen(true)}
+            onClose={() => setSidebarOpen(false)}
+            isSidebarOpen={isSidebarOpen}
+          />
+        </div>
       )}
 
       {/* Breadcrumb */}

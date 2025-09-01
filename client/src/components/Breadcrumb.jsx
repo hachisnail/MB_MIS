@@ -19,7 +19,7 @@ const routeMeta = [
   { path: "/admin/sandbox/preview/:encoded", title: "File Preview" },
   { path: "/admin/appointment", title: "Appointments Management" },
   { path: "/admin/appointment/:encoded", title: "View Appointment", theme: "text-gray-800" },
-  { path: "/admin/appointment/walk-ins/:encoded", title: "New Appointment", theme: "text-gray-800" },
+  { path: "/admin/appointment/walk-ins", title: "New Appointment", theme: "text-gray-800" },
   { path: "/admin/schedule", title: "Schedules Management" },
   { path: "/admin/schedule/:encoded", title: "View Appointment from Schedule", theme: "text-gray-800" },
   { path: "/admin/article", title: "Articles Management" },
@@ -65,7 +65,7 @@ const Breadcrumb = () => {
       currentLink += `/${segment}`;
 
       // Skip segments in breadcrumb display
-      if (["admin", "preview", "files", "pictures", "edit-article", "lending", "donation", "walk-ins"].includes(segment)) return null;
+      if (["admin", "preview", "files", "pictures", "edit-article", "lending", "donation" ].includes(segment)) return null;
 
       // Decode if valid Base64
       let label = decodeLabelWithoutId(segment);

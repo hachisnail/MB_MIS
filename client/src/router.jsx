@@ -250,7 +250,7 @@ const Router = () => {
                 element={<AppointmentViewPage />}
               />
               <Route
-                path="appointment/walk-ins/:encoded"
+                path="appointment/walk-ins/"
                 element={<WalkInsPage />}
               />
             </>

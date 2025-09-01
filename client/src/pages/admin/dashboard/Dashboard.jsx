@@ -32,7 +32,7 @@ const Dashboard = () => {
   ];
 
   const walkIn = [
-    { label: "Appointment", path: "" },
+    { label: "Appointment", path: "/admin/appointment/walk-ins/" },
     { label: "Donation", path: "" },
   ];
 
@@ -96,7 +96,9 @@ const Dashboard = () => {
                 {walkIn.map(({ label, path }, idx)=> {
 
                   return(
-                    <button key={idx} className={`${label === "Appointment" ? "bg-[#332613] text-white " : " border-2 border-[#332613]"} px-5 cursor-pointer flex items-center w-57 h-16 rounded-[4rem] justify-between`}>
+                    <button
+                    onClick={()=> navigate(`/admin/appointment/walk-ins/`)}
+                    key={idx} className={`${label === "Appointment" ? "bg-[#332613] text-white " : " border-2 border-[#332613]"} px-5 cursor-pointer flex items-center w-57 h-16 rounded-[4rem] justify-between`}>
                     <span className="text-xl font-semibold">{label}</span>
 
 

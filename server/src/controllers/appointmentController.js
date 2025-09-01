@@ -150,7 +150,7 @@ export const updateAppointmentStatus = async (req, res) => {
     // Create log entry
     const visitorName = `${appointment.Visitor?.first_name || ''} ${appointment.Visitor?.last_name || ''}`.trim();
     const statusText = status ? status.toLowerCase().replace('_', ' ') : 'status';
-    const description = `Appointment #${id} for ${visitorName} ${action === 'create' ? 'created with' : 'updated to'} ${statusText}`;
+    const description = `Appointment from with an ID of #${id} and a name of ${visitorName} was ${action === 'create' ? 'created with' : 'updated to'} ${statusText}`;
     
     let details = `${username} ${action === 'create' ? 'set' : 'changed'} appointment status to ${statusText}`;
     if (present_count !== undefined && status === 'COMPLETED') {
@@ -159,7 +159,7 @@ export const updateAppointmentStatus = async (req, res) => {
 
     await createLog(
       action,
-      'AppointmentStatus',
+      'APPOINTMENT',
       description,
       userId,
       beforeState,

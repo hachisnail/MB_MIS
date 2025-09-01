@@ -6,6 +6,7 @@ import { useState } from "react";
 
 const AdminLayout = () => {
   const [isSidebarOpen, setSidebarOpen] = useState(true);
+  const [extraBlockContent, setExtraBlockContent] = useState(null); // 👈 new state
   const location = useLocation();
 
   const themedRoutes = [
@@ -36,7 +37,7 @@ const AdminLayout = () => {
   const isUnauthorized = location.pathname.includes("/unauthorized");
 
   return (
-    <div className="h-screen w-screen grid grid-cols-[auto_1fr_1fr_1fr] grid-rows-[auto_auto_1fr_1fr] overflow-hidden">
+    <div className="h-screen w-screen grid grid-cols-[auto_1fr_1fr_1fr] grid-rows-[auto_auto_1fr_1fr] overflow-visible">
       {/* Header */}
       <div className="col-span-3 col-start-2 row-start-1 h-[4rem]">
         <AdminHeader
@@ -49,7 +50,7 @@ const AdminLayout = () => {
       {/* Sidebar */}
       {!isUnauthorized && (
         <div
-          className={`row-span-4 row-start-1 col-start-1 transition-all duration-300 ease-in-out  shadow-2xl shadow-black ${
+          className={`row-span-4 row-start-1 col-start-1 transition-all duration-300 ease-in-out shadow-2xl shadow-black ${
             isSidebarOpen ? "w-75" : "w-17"
           }`}
         >
@@ -62,24 +63,27 @@ const AdminLayout = () => {
         </div>
       )}
 
-      {/* Breadcrumb */}
+      {/* Breadcrumb + extra content */}
       {!isDashboard && !isUnauthorized && (
         <div
-          className={`col-span-3 col-start-2 row-start-2 flex items-center px-15 h-[12rem] ${theme}`}
+          className={`col-span-3 col-start-2 row-start-2 flex flex-col gap-x-5 sm:flex-row py-5 sm:py-0 items-center px-15 h-[12rem] ${theme}`}
         >
-          <div className="flex h-fit flex-col gap-y-1">
+          <div className="w-full sm:w-1/2 flex h-fit flex-col gap-y-1">
             <Breadcrumb />
+          </div>
+
+          <div className="w-full sm:w-1/2 h-[10rem] ">
+            {extraBlockContent || null}
           </div>
         </div>
       )}
 
       {/* Main content */}
       <main
-        className={`col-span-3 row-span-2 col-start-2 row-start-3 h-full w-full overflow-auto ${theme} pb-5 ${
-          isItemView ? "pl-15" : "px-15"
-        }`}
+      // ${isItemView ? "pl-15" : "px-15"}
+        className={`col-span-3 row-span-2 col-start-2 row-start-3 h-full w-full ${theme} pb-5 px-15`}
       >
-        <Outlet />
+        <Outlet context={{ setExtraBlockContent }} />
       </main>
     </div>
   );

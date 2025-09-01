@@ -328,7 +328,7 @@ export function RenderArtifactImageAndDonatorInfo({
         mainSize="w-[29rem] h-[29rem]"
       />
 
-      <div className="max-h-[30rem] h-full gap-y-5 flex flex-col overflow-auto border-t border-gray-400 pt-5 pl-10 pr-5">
+      <div className="max-h-[30rem] h-full gap-y-3 flex flex-col overflow-auto border-t border-gray-400 pt-5 pl-10 pr-5">
         <span className="text-white text-3xl font-hind">
           Donators Information
         </span>
@@ -352,112 +352,6 @@ export function RenderArtifactImageAndDonatorInfo({
   );
 }
 
-// export const RenderArtifactInfo = ({ artifactInfo = [] }) => {
-//   const [modalContent, setModalContent] = useState(null);
-
-//   const handleClick = (label, value, ref) => {
-//     if (ref.current && ref.current.scrollHeight > ref.current.clientHeight) {
-//       setModalContent({ label, value });
-//     }
-//   };
-
-//   return (
-//     <div className="w-full h-full flex flex-col px-10 gap-y-3">
-//       <span className="text-4xl font-bold">About The Artifact</span>
-
-//       {artifactInfo.map(({ label, value }, idx) => {
-//         const textRef = useRef(null);
-
-//         return (
-//           <div key={idx} className="flex h-19 flex-col text-xl">
-//             <span className="font-hind font-bold text-[#555555]">{label}</span>
-//             <div
-//               className="w-full h-full pl-5 overflow-hidden cursor-pointer"
-//               onClick={() => handleClick(label, value, textRef)}
-//             >
-//               <span
-//                 ref={textRef}
-//                 style={{
-//                   display: "-webkit-box",
-//                   WebkitLineClamp: 2,
-//                   WebkitBoxOrient: "vertical",
-//                   overflow: "hidden",
-//                   textOverflow: "ellipsis",
-//                   whiteSpace: "normal",
-//                 }}
-//                 className="block w-full max-w-[38rem] text-[#1D1911] font-bold font-hind break-words"
-//               >
-//                 {value}
-//               </span>
-//             </div>
-//           </div>
-//         );
-//       })}
-
-//       {/* Reusable Modal */}
-//       <InfoModal
-//         isOpen={!!modalContent}
-//         onClose={() => setModalContent(null)}
-//         title={modalContent?.label}
-//         content={modalContent?.value}
-//       />
-//     </div>
-//   );
-// };
-
-
-// export const RenderLendingInfo = ({ lendingReason = [] }) => {
-//   const [modalContent, setModalContent] = useState(null);
-
-//   const handleClick = (label, value, ref) => {
-//     if (ref.current && ref.current.scrollHeight > ref.current.clientHeight) {
-//       setModalContent({ label, value });
-//     }
-//   };
-
-//   return (
-//     <div className="w-full h-full flex justify-end flex-col px-10 gap-y-3">
-//       <span className="text-4xl font-bold mb-2 text-white">About The Artifact</span>
-
-//       {lendingReason.map(({ label, value }, idx) => {
-//         const textRef = useRef(null);
-
-//         return (
-//           <div key={idx} className="flex h-22 flex-col text-xl">
-//             <span className="font-hind font-medium text-xl text-[#CDC469]">{label}</span>
-//             <div
-//               className="w-full h-full pl-5 overflow-hidden cursor-pointer"
-//               onClick={() => handleClick(label, value, textRef)}
-//             >
-//               <span
-//                 ref={textRef}
-//                 style={{
-//                   display: "-webkit-box",
-//                   WebkitLineClamp: 2,
-//                   WebkitBoxOrient: "vertical",
-//                   overflow: "hidden",
-//                   textOverflow: "ellipsis",
-//                   whiteSpace: "normal",
-//                 }}
-//                 className="block w-full max-w-[38rem] text-white text-2xl font-medium font-hind break-words"
-//               >
-//                 {value}
-//               </span>
-//             </div>
-//           </div>
-//         );
-//       })}
-
-//       {/* Reusable Modal */}
-//       <InfoModal
-//         isOpen={!!modalContent}
-//         onClose={() => setModalContent(null)}
-//         title={modalContent?.label}
-//         content={modalContent?.value}
-//       />
-//     </div>
-//   );
-// };
 
 
 export const InfoSection = ({

@@ -241,6 +241,7 @@ const AcquisitionViewPage = () => {
       ]
     : [];
 
+    
   const relatedImages =
     contributionData?.ContributionArtifact?.related_images?.map((img, idx) => ({
       key: idx.toString(),
@@ -313,6 +314,11 @@ const AcquisitionViewPage = () => {
     );
   }
 
+  const handleButtonClick = () => {
+  setActiveDocument("Transaction"); // switch to Transaction tab
+};
+
+
   return (
     <div className="flex flex-col justify-center gap-y-3 w-full h-full items-center ">
       {!contributionData ? (
@@ -354,19 +360,23 @@ const AcquisitionViewPage = () => {
                   items={artifactInfo}
                   labelClassName="font-hind font-bold text-[#555555]"
                   valueClassName="block w-full max-w-[36rem] text-[#1D1911] font-bold font-hind break-words"
-                  itemHeight=" h-19"
+                  itemHeight="h-19"
                 />
 
                 <div className="w-full pb-8 min-h-[32rem] bg-[#1D1911] rounded-r-4xl">
-                  <InfoSection
-                    title="Reason For Lending"
-                    items={lendingReason}
-                    titleClassName="mb-2 text-white"
-                    labelClassName="font-hind font-medium text-xl text-[#CDC469]"
-                    valueClassName="block w-full max-w-[36rem] text-white text-2xl font-medium font-hind break-words"
-                    itemHeight=" h-22"
-                    containerClassName="justify-end"
-                  />
+                {acquisitionType === "lending" ? (<InfoSection
+                  title="Reason For Lending"
+                  items={lendingReason}
+                  titleClassName="mb-2 text-white"
+                  labelClassName="font-hind font-medium text-xl text-[#CDC469]"
+                  valueClassName="block w-full max-w-[36rem] text-white text-2xl font-medium font-hind break-words"
+                  itemHeight="h-22"
+                  containerClassName="justify-end"
+                />) : (
+                  <div className="w-full h-full flex flex-col items-center justify-center">
+                      <span className="text-white text-4xl">To-Do: Progress Bar</span>
+                  </div>
+                )}
                 </div>
               </div>
 
@@ -379,7 +389,7 @@ const AcquisitionViewPage = () => {
                 <div className="w-full  min-h-[32rem]  bg-[#E4E4E4] rounded-r-4xl flex">
                   <div className="w-full max-w-10 h-ull bg-white rounded-r-4xl">
 
-                    
+
                   </div>
                   <div className="w-full h-full px-13 py-10 flex flex-col space-y-5">
                     <span className="text-3xl font-semibold text-[#2F0000]">
@@ -413,7 +423,7 @@ const AcquisitionViewPage = () => {
                         textColor="#FFFFFF" 
                         pressedColor="#512727"
                         fontSize={19} 
-                        onClick={() => alert("Button clicked!")} 
+                        onClick={handleButtonClick} 
                       />
                   </div>
                 </div>

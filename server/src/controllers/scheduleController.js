@@ -99,7 +99,7 @@ export const createSchedule = async (req, res) => {
         }
       });
 
-      // Check existing confirmed appointments
+      // Check existing approved appointments
       let existingAppointments = [];
       try {
         existingAppointments = await Appointment.findAll({
@@ -109,7 +109,7 @@ export const createSchedule = async (req, res) => {
           include: [{
             model: AppointmentStatus,
             where: {
-              status: 'CONFIRMED'
+              status: 'APPROVED'
             },
             required: true
           }]
@@ -165,7 +165,7 @@ export const createSchedule = async (req, res) => {
           include: [{
             model: AppointmentStatus,
             where: {
-              status: 'CONFIRMED'
+              status: 'APPROVED'
             },
             required: true
           }]

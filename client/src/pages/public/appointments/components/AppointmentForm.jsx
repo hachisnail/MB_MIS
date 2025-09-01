@@ -8,6 +8,7 @@ import {
     checkTimeSlotAvailability,
     checkMonthlyAvailability
 } from "../../../../utils/scheduleValidation";
+import { normalizeStatus } from "../../../admin/appointments/components/statusUtils";
 
 import ConfirmationModal from "@/components/modals/ConfirmationModal";
 import PopupModal from "@/components/modals/PopupModal";
@@ -158,7 +159,7 @@ const AppointmentForm = ({ user }) => {
                 .map(appointment => ({
                     id: `appointment-${appointment.appointment_id}`,
                     date: appointment.preferred_date.split('T')[0],
-                    isActive: (appointment.AppointmentStatus?.status || '').toUpperCase() === 'CONFIRMED',
+                    isActive: normalizeStatus(appointment.AppointmentStatus?.status) === 'APPROVED',
                     isAppointment: true
                 }));
 

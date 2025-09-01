@@ -8,7 +8,7 @@ import { SearchBar, CardDropdownPicker } from "@/features/Utilities";
 import AppointmentListRow from "./components/AppointmentListRow";
 import VisitorRecordListRow from "./components/VisitorRecordListRow";
 import { AppointmentPreview } from "./components/AppointmentsList";
-import { standardizeStatus } from "./components/statusUtils";
+import { standardizeStatus, normalizeStatus } from "./components/statusUtils";
 import { formatDateForDisplay } from "@/components/commons";
 import { TableHeaderContainer, SummaryPanel } from "../../../features/Utilities";
 import ListRenderer from "../../../components/tables/ListRenderer";
@@ -207,14 +207,14 @@ const Appointments = () => {
   const filteredAppointments = appointments.filter((appt) => {
     const searchLower = searchQuery.toLowerCase();
 
-    // Tab filter
+    // Tab filter - use normalized status for consistent checking
     let matchesTab = true;
     if (activeTab === "pending") {
-      const status = appt.AppointmentStatus?.status;
-      matchesTab = !status || status.toUpperCase() === "TO_REVIEW" || status === "To Review";
+      const normalizedStatus = normalizeStatus(appt.AppointmentStatus?.status);
+      matchesTab = normalizedStatus === "PENDING" || normalizedStatus === "APPROVED";
     } else if (activeTab === "forms") {
-      const status = appt.AppointmentStatus?.status;
-      matchesTab = status && status.toUpperCase() !== "TO_REVIEW" && status !== "To Review";
+      const normalizedStatus = normalizeStatus(appt.AppointmentStatus?.status);
+      matchesTab = normalizedStatus !== "PENDING" && normalizedStatus !== "APPROVED";
     }
 
     // Search filter
@@ -224,9 +224,9 @@ const Appointments = () => {
       (appt.preferred_time || "").toLowerCase().includes(searchLower) ||
       (appt.AppointmentStatus?.status || "").toLowerCase().includes(searchLower);
 
-    // Status filter
+    // Status filter - use standardized status for display comparison
     const matchesStatus = statusFilter === "All Statuses" ||
-      standardizeStatus(appt.AppointmentStatus?.status || "To Review") === statusFilter;
+      standardizeStatus(appt.AppointmentStatus?.status || "PENDING") === statusFilter;
 
     return matchesTab && matchesSearch && matchesStatus;
   });
@@ -272,8 +272,8 @@ const Appointments = () => {
             compareResult = (a.population_count || 0) - (b.population_count || 0);
             break;
           case "status":
-            const statusA = standardizeStatus(a.AppointmentStatus?.status || "To Review");
-            const statusB = standardizeStatus(b.AppointmentStatus?.status || "To Review");
+            const statusA = standardizeStatus(a.AppointmentStatus?.status || "Pending");
+            const statusB = standardizeStatus(b.AppointmentStatus?.status || "Pending");
             compareResult = statusA.localeCompare(statusB);
             break;
           case "updated_at":
@@ -305,10 +305,13 @@ const Appointments = () => {
   const sortedAppointments = sortData(filteredAppointments, "appointments");
   const sortedVisitorRecords = sortData(filteredVisitorRecords, "visitorRecords");
 
-  const toReviewCount = appointments.filter(
-    (appt) =>
-      !appt.AppointmentStatus?.status ||
-      appt.AppointmentStatus?.status.toUpperCase() === "TO_REVIEW"
+  // Calculate counts - use normalized status for consistent checking
+  const pendingCount = appointments.filter(
+    (appt) => normalizeStatus(appt.AppointmentStatus?.status) === "PENDING"
+  ).length;
+
+  const approvedCount = appointments.filter(
+    (appt) => normalizeStatus(appt.AppointmentStatus?.status) === "APPROVED"
   ).length;
 
   return (
@@ -323,8 +326,8 @@ const Appointments = () => {
             totalCount={appointments.length}
             dateLabel={formatDateForDisplay(selectedDate || new Date())}
             summaryData={[
-              { label: "To Review", value: toReviewCount },
-              { label: "Approved", value: stats.approved },
+              { label: "Pending", value: pendingCount },
+              { label: "Approved", value: approvedCount },
               { label: "Completed", value: stats.completed },
               { label: "Failed", value: stats.failed },
               { label: "Rejected", value: stats.rejected },
@@ -446,10 +449,10 @@ const Appointments = () => {
               theme="light"
               options={[
                 { value: "All Statuses", label: "All Statuses" },
-                { value: "Confirmed", label: "Confirmed" },
+                { value: "Approved", label: "Approved" },
                 { value: "Rejected", label: "Rejected" },
                 { value: "Failed", label: "Failed" },
-                { value: "To Review", label: "To Review" },
+                { value: "Pending", label: "Pending" },
                 { value: "Completed", label: "Completed" },
               ]}
             />
@@ -469,8 +472,18 @@ const Appointments = () => {
                       appointment={appt}
                       headers={headersMap[activeTab]}
                       onRowClick={(appointment) => {
-                        setActivePreviewId(appointment.appointment_id);
-                        setIsPreview(true);
+                        if (activeTab === "forms") {
+                          // Navigate directly to AppointmentViewPage for forms tab
+                          const appointmentBreadcrumb = `${appointment.appointment_id} ${appointment.Visitor?.first_name || ''} ${appointment.Visitor?.last_name || ''}`;
+                          const encodedParam = btoa(appointmentBreadcrumb);
+                          navigate(`/admin/appointment/${encodedParam}`, {
+                            state: { cameFrom: activeTab }
+                          });
+                        } else {
+                          // Show preview for other tabs (pending, etc.)
+                          setActivePreviewId(appointment.appointment_id);
+                          setIsPreview(true);
+                        }
                       }}
                       activePreviewId={activePreviewId}
                       cameFrom={activeTab}
@@ -512,21 +525,22 @@ const Appointments = () => {
                         (a) => a.appointment_id === activePreviewId
                       )?.AppointmentStatus?.status || "";
 
+                    const normalizedStatus = normalizeStatus(status);
                     const colorMap = {
-                      CONFIRMED: "bg-green-600",
+                      APPROVED: "bg-green-600",
                       COMPLETED: "bg-blue-600",
                       REJECTED: "bg-red-600",
                       FAILED: "bg-gray-600",
-                      "To Review": "bg-yellow-600",
+                      PENDING: "bg-yellow-600",
                       CANCELED: "bg-purple-600",
                     };
 
-                    return colorMap[status] || "bg-gray-500";
+                    return colorMap[normalizedStatus] || "bg-gray-500";
                   })()}`}
                 >
-                  {appointments.find(
+                  {standardizeStatus(appointments.find(
                     (a) => a.appointment_id === activePreviewId
-                  )?.AppointmentStatus?.status || "No Status"}
+                  )?.AppointmentStatus?.status) || "No Status"}
                 </span>
               </div>
 

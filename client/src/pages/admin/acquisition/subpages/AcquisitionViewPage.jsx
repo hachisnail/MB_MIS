@@ -13,6 +13,7 @@ import { decodeBase64 } from "@/utils/base64";
 import { Transition } from "@headlessui/react";
 import { formatDateRange, formatDate } from "../components/formatDateRange";
 import { useAuth } from "../../../../context/authContext";
+import CurvedButton from "../components/CurvedButton";
 
 const documentTabs = ["Overview", "Document", "Transaction"];
 
@@ -376,7 +377,10 @@ const AcquisitionViewPage = () => {
                 </div>
 
                 <div className="w-full  min-h-[32rem]  bg-[#E4E4E4] rounded-r-4xl flex">
-                  <div className="w-full max-w-10 h-ull bg-white rounded-r-4xl"></div>
+                  <div className="w-full max-w-10 h-ull bg-white rounded-r-4xl">
+
+                    
+                  </div>
                   <div className="w-full h-full px-13 py-10 flex flex-col space-y-5">
                     <span className="text-3xl font-semibold text-[#2F0000]">
                       Transaction Details
@@ -403,14 +407,14 @@ const AcquisitionViewPage = () => {
                         </span>
                       </div>
                     </div>
-                    
-                    <button className="">
-
-                    </button>
-
-
-
-
+                      <CurvedButton 
+                        text="Click To See Transaction" 
+                        bgColor="#2F0000" 
+                        textColor="#FFFFFF" 
+                        pressedColor="#512727"
+                        fontSize={19} 
+                        onClick={() => alert("Button clicked!")} 
+                      />
                   </div>
                 </div>
               </div>

@@ -26,6 +26,8 @@ import Button from "../../../../components/buttons/artclbtn";
 
 import { useParams } from "react-router-dom";
 import { useEditor } from "@tiptap/react";
+
+
 import StarterKit from "@tiptap/starter-kit";
 import TextAlign from "@tiptap/extension-text-align";
 import Underline from "@tiptap/extension-underline";
@@ -47,6 +49,9 @@ import Dropcursor from '@tiptap/extension-dropcursor';
 import ConfirmDialog from "@/components/modals/ConfirmDialog";
 import FontSize from "../components/FontSize";
 import CustomImage from "../components/CustomImage";
+import StyledButton from "@/components/buttons/StyledButton";
+
+
 
 import { useAuth } from "@/context/authContext";
 import useAutosave, { loadDraft, clearDraft } from "@/features/ContentDrafting.jsx";
@@ -185,7 +190,7 @@ const ArticleEditorForm = () => {
       const [municipality, setMunicipality] = useState("");
       const [contentImages, setContentImages] = useState([]);
       const [caption, setCaption] = useState('');
-      const [barangay, setBarangay] = useState(""); // <-- Add this line
+      const [barangay, setBarangay] = useState(""); 
       const imageInputRef = useRef(null);
       const thumbnailInputRef = useRef(null);
       const [isDirty, setIsDirty] = useState(false);
@@ -193,19 +198,17 @@ const ArticleEditorForm = () => {
       const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
       const [errors, setErrors] = useState({});
       const [removeThumbnail, setRemoveThumbnail] = useState(false);
-      const [hasThumbnail, setHasThumbnail] = useState(
-        !!thumbnail || !!previewImage
-      );
+      const [hasThumbnail, setHasThumbnail] = useState(!!thumbnail || !!previewImage);
       const [articles, setArticles] = useState([]);
       const [loading, setLoading] = useState(true);
       const [error, setError] = useState(null);
       const [editingArticleId, setEditingArticleId] = useState(null);
       const { encoded } = useParams();
-      const [isGeneratingCaption, setIsGeneratingCaption] = useState(false); // New state for AI generation
+      const [isGeneratingCaption, setIsGeneratingCaption] = useState(false); 
+      const [isSummarizing, setIsSummarizing] = useState(false); // Add this state for loading the summarizer
 
-      // Add these states near your other useState hooks:
-const [uploadPeriodStartTime, setUploadPeriodStartTime] = useState("");
-const [uploadPeriodEndTime, setUploadPeriodEndTime] = useState("");
+    const [uploadPeriodStartTime, setUploadPeriodStartTime] = useState("");
+    const [uploadPeriodEndTime, setUploadPeriodEndTime] = useState("");
       
 
       let articleId = null;
@@ -285,6 +288,29 @@ const [uploadPeriodEndTime, setUploadPeriodEndTime] = useState("");
         }
     };
     
+
+  // Function to generate summary using Node Summarizer (backend API)
+  const handleSummarizeCaption = async () => {
+    const articleContent = editor.getText();
+    if (!articleContent.trim()) {
+        window.alert('Please write some content in the editor first to summarize.');
+        return;
+    }
+    setIsSummarizing(true);
+    try {
+        // Replace with your actual backend endpoint
+        const response = await axios.post(
+            `${BASE_URL}/auth/summarize`,
+            { text: articleContent },
+            { withCredentials: true }
+        );
+        setCaption(response.data.summary || "");
+    } catch (error) {
+        window.alert('Failed to summarize. Please try again.');
+        console.error(error);
+    }
+    setIsSummarizing(false);
+};
 
   // Handle new or updated article submission
   const handleSubmit = async (e) => {
@@ -902,7 +928,7 @@ useEffect(() => {
                                     <option value="pending">Pending</option>
                                     <option value="scheduled">Schedule</option>
                                     <option value="posted">Post</option>
-                                    {/* <option value="draft">Draft</option> */}
+                                    <option value="archived">Archive</option>
       </select>
 </div>
 
@@ -1422,14 +1448,24 @@ useEffect(() => {
         <label htmlFor="caption" className="text-xl font-bold text-gray-800">
             Publicly Displayed Caption
         </label>
-        <button
-            type="button"
-            onClick={handleGenerateCaption}
-            disabled={isGeneratingCaption || !editor?.getText()?.trim()}
-            className="px-4 py-2 bg-purple-600 text-white font-semibold rounded-lg shadow-md hover:bg-purple-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
-        >
-            {isGeneratingCaption ? 'Generating...' : 'Generate with AI'}
-        </button>
+        <div className="flex gap-2">
+            <button
+                type="button"
+                onClick={handleGenerateCaption}
+                disabled={isGeneratingCaption || !editor?.getText()?.trim()}
+                className="px-4 py-2 bg-purple-600 text-white font-semibold rounded-lg shadow-md hover:bg-purple-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+            >
+                {isGeneratingCaption ? 'Generating...' : 'Generate with AI'}
+            </button>
+            <button
+                type="button"
+                onClick={handleSummarizeCaption}
+                disabled={isSummarizing || !editor?.getText()?.trim()}
+                className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+            >
+                {isSummarizing ? 'Summarizing...' : 'Summarize with Node'}
+            </button>
+        </div>
     </div>
     <textarea
         id="caption"
@@ -1441,18 +1477,28 @@ useEffect(() => {
     />
 </div>
   {/* Buttons */}
-  <div className="flex justify-between">
-    <Button
-      type="button"
-      onClick={handleCancelClick}
-      className="bg-gray-500 hover:bg-gray-600"
-    >
-      Cancel
-    </Button>
-    <Button type="submit" className="mt-4">
-      {isEditing ? "Save Changes" : "Submit Article"}
-    </Button>
-  </div>
+<div className="flex justify-between">
+  <StyledButton
+    type="button"
+    onClick={handleCancelClick}
+    buttonColor="bg-gray-500"
+    hoverColor="hover:bg-gray-600"
+    textColor="text-white"
+  >
+    Cancel
+  </StyledButton>
+  <StyledButton
+    type="submit"
+    buttonColor="bg-blue-600"
+    hoverColor="hover:bg-[#d69641]"
+    textColor="text-white"
+    className="mt-4"
+  >
+    {isEditing ? "Save Changes" : "Submit Article"}
+  </StyledButton>
+</div>
+
+
   
 </form>
 </div>
@@ -1487,7 +1533,7 @@ useEffect(() => {
               <p className="text-lg font-bold">Current Status:</p>
               <p className="capitalize">{status}</p>
             </div>
-            
+
             {/* Reviewer Notes */}
             <div className="space-y-2">
               <label htmlFor="reviewerNotes" className="text-lg font-bold">Reviewer's Notes</label>
@@ -1523,13 +1569,96 @@ useEffect(() => {
               </select>
             </div>
             
+            {/* Date & Time Pickers for Scheduled */}
+            {status === 'scheduled' && (
+              <div className="flex flex-col gap-4">
+                {/* Start Date & Time Row */}
+                <div className="flex flex-col md:flex-row gap-2">
+                  <div className="flex-1">
+                    <label htmlFor="uploadPeriodStart" className="font-bold">
+                      Start Date
+                    </label>
+                    <input
+                      id="uploadPeriodStart"
+                      type="date"
+                      className={`w-full px-4 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 ${
+                        errors.uploadPeriodStart ? "border-red-600" : "border-black"
+                      }`}
+                      value={uploadPeriodStart}
+                      onChange={(e) => {
+                        setUploadPeriodStart(e.target.value);
+                        setIsDirty(true);
+                        clearFieldError("uploadPeriodStart");
+                      }}
+                      disabled={isViewer}
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <label htmlFor="uploadPeriodStartTime" className="font-bold">
+                      Start Time
+                    </label>
+                    <input
+                      id="uploadPeriodStartTime"
+                      type="time"
+                      className="w-full px-4 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 border-black"
+                      value={uploadPeriodStartTime}
+                      onChange={(e) => {
+                        setUploadPeriodStartTime(e.target.value);
+                        setIsDirty(true);
+                      }}
+                      disabled={isViewer}
+                    />
+                  </div>
+                </div>
+                {/* End Date & Time Row */}
+                <div className="flex flex-col md:flex-row gap-2">
+                  <div className="flex-1">
+                    <label htmlFor="uploadPeriodEnd" className="font-bold">
+                      End Date
+                    </label>
+                    <input
+                      id="uploadPeriodEnd"
+                      type="date"
+                      className={`w-full px-4 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 ${
+                        errors.uploadPeriodEnd ? "border-red-600" : "border-black"
+                      }`}
+                      value={uploadPeriodEnd}
+                      onChange={(e) => {
+                        setUploadPeriodEnd(e.target.value);
+                        setIsDirty(true);
+                        clearFieldError("uploadPeriodEnd");
+                      }}
+                      min={uploadPeriodStart}
+                      disabled={isViewer}
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <label htmlFor="uploadPeriodEndTime" className="font-bold">
+                      End Time
+                    </label>
+                    <input
+                      id="uploadPeriodEndTime"
+                      type="time"
+                      className="w-full px-4 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 border-black"
+                      value={uploadPeriodEndTime}
+                      onChange={(e) => {
+                        setUploadPeriodEndTime(e.target.value);
+                        setIsDirty(true);
+                      }}
+                      disabled={isViewer}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Submit Button */}
             {userRole !== 3 && (
-            <div className="flex justify-end">
-              <Button type="submit" className="w-full md:w-auto px-6 py-3 bg-[#c78216] text-white font-bold rounded-2xl hover:bg-[#d69641] transition-colors">
-                Save Status
-              </Button>
-            </div>
+              <div className="flex justify-end">
+                <Button type="submit" className="w-full md:w-auto px-6 py-3 bg-[#c78216] text-white font-bold rounded-2xl hover:bg-[#d69641] transition-colors">
+                  Save Status
+                </Button>
+              </div>
             )}
           </form>
         </div>

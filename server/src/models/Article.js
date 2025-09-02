@@ -2,6 +2,7 @@ import { DataTypes } from 'sequelize';
 import { mainDb as sequelize } from './authModels.js';
 import User from './Users.js';
 import Credential from './Users.js';
+import { addDbChangeHooks } from '../hooks/emitDbChangeHooks.js'; // <-- ADD THIS LINE
 
 const Article = sequelize.define('Article', {
   article_id: {
@@ -89,5 +90,25 @@ const Article = sequelize.define('Article', {
 });
 
 Article.belongsTo(User, { foreignKey: 'user_id' });
+
+// ADD THIS LINE to enable logging for Article updates/creates/deletes
+addDbChangeHooks(Article, "Article");
+
+// Log status changes
+Article.afterUpdate(async (instance, options) => {
+  // Only log if status actually changed
+  if (instance.changed("status")) {
+    const { Log } = await import("./logModel.js");
+    await Log.create({
+      action: "update",
+      model: "Article",
+      details: { article_id: instance.article_id },
+      description: `Status changed from "${instance._previousDataValues.status}" to "${instance.status}" for article "${instance.title}"`,
+      beforeState: JSON.stringify({ status: instance._previousDataValues.status }),
+      afterState: JSON.stringify({ status: instance.status }),
+      userId: options.userId || instance.user_id, // Prefer userId from options if provided
+    });
+  }
+});
 
 export default Article;

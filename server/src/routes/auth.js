@@ -47,7 +47,7 @@ import {
 } from '../controllers/contributionController.js';
 
 import { upload, multerErrorHandler } from '../middlewares/multerMiddleware.js';
-
+import { SummarizerManager } from "node-summarizer";
 
 
 const router = express.Router();
@@ -116,6 +116,19 @@ router.get('/public-articles', getPublicArticles);
 router.get('/public-article/:id', getPublicArticle);
 router.get('/articles/:id', requireAuth, getArticleById);
 router.put('/article/:id', upload.single('thumbnail'), multerErrorHandler, updateArticle);
+router.post("/summarize", async (req, res) => {
+  try {
+    const { text } = req.body;
+    if (!text || typeof text !== "string") {
+      return res.status(400).json({ error: "No text provided" });
+    }
+    const summarizer = new SummarizerManager(text, 3); // 3 sentences
+    const summaryObject = await summarizer.getSummaryByRank();
+    res.json({ summary: summaryObject.summary });
+  } catch (err) {
+    res.status(500).json({ error: "Summarization failed" });
+  }
+});
 
 // Contributions
 router.post('/contribution', createContribution); 

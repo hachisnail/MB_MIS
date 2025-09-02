@@ -6,6 +6,7 @@ import { useState } from "react";
 
 const AdminLayout = () => {
   const [isSidebarOpen, setSidebarOpen] = useState(true);
+  const [extraBlockContent, setExtraBlockContent] = useState(null); // 👈 new state
   const location = useLocation();
 
   const themedRoutes = [
@@ -36,11 +37,9 @@ const AdminLayout = () => {
   const isUnauthorized = location.pathname.includes("/unauthorized");
 
   return (
-    <div
-      className={`h-screen w-screen grid grid-cols-[auto_1fr_1fr_1fr_1fr]   grid-rows-[auto_auto_1fr]  overflow-hidden`}
-    >
+    <div className="h-screen w-screen grid grid-cols-[auto_1fr_1fr_1fr] grid-rows-[auto_auto_1fr_1fr] overflow-visible">
       {/* Header */}
-      <div className="col-span-5 h-[4rem]">
+      <div className="col-span-3 col-start-2 row-start-1 h-[4rem]">
         <AdminHeader
           onOpen={() => setSidebarOpen(true)}
           onClose={() => setSidebarOpen(false)}
@@ -51,32 +50,41 @@ const AdminLayout = () => {
       {/* Sidebar */}
       {!isUnauthorized && (
         <div
-          className={`row-span-4 row-start-2 col-start-1  ${
-            isSidebarOpen ? "w-75" : "w-23"
-          } `}
+          className={`row-span-4 row-start-1 col-start-1 transition-all duration-300 ease-in-out shadow-2xl shadow-black ${
+            isSidebarOpen ? "w-75" : "w-17"
+          }`}
         >
-          <AdminNav isOpen={isSidebarOpen} />
+          <AdminNav
+            isOpen={isSidebarOpen}
+            onOpen={() => setSidebarOpen(true)}
+            onClose={() => setSidebarOpen(false)}
+            isSidebarOpen={isSidebarOpen}
+          />
         </div>
       )}
 
-      {/* Breadcrumb */}
+      {/* Breadcrumb + extra content */}
       {!isDashboard && !isUnauthorized && (
         <div
-          className={`h-[12rem] col-span-4 col-start-2 row-start-2  flex items-center px-15 ${theme}`}
+          className={`col-span-3 col-start-2 row-start-2 flex flex-col justify-between gap-x-5 sm:flex-row py-5 sm:py-0 items-center px-15 h-[12rem] ${theme}`}
         >
-          <div className="flex  h-fit flex-col gap-y-1">
+          <div className="w-full sm:w-fit flex h-fit  flex-col gap-y-1">
             <Breadcrumb />
           </div>
+          {extraBlockContent && (
+            <div className="w-full sm:w-fit h-[10rem] ">
+              {extraBlockContent}
+            </div>
+          )}
         </div>
       )}
 
       {/* Main content */}
       <main
-        className={`col-span-4 row-span-3 col-start-2 row-start-3  h-full w-full overflow-auto ${theme} pb-5 ${
-          isItemView ? "pl-15" : " px-15"
-        } `}
+        // ${isItemView ? "pl-15" : "px-15"}
+        className={`col-span-3 row-span-2 col-start-2 row-start-3 h-full w-full ${theme} pb-5 px-15`}
       >
-        <Outlet />
+        <Outlet context={{ setExtraBlockContent }} />
       </main>
     </div>
   );

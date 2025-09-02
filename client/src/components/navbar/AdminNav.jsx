@@ -1,13 +1,27 @@
 import { useAuth } from "@/context/authContext";
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import { useRouterFlags } from "@/context/routerFlagProvider";
 import { generateColorFromKey } from "@/components/commons";
+import {
+  Dashboard,
+  Appointment,
+  Schedule,
+  Acquisition,
+  Inventory,
+  Article,
+  User,
+  Config,
+  Logs,
+} from "../../utils/AdminNavIcons";
+import Logo from "../../assets/LOGO.png";
 
 import LogoutButton from "@/components/buttons/LogoutBtn";
 
-const AdminNav = ({ isOpen }) => {
+const AdminNav = ({ isOpen, onClose, onOpen, isSidebarOpen }) => {
   const { user } = useAuth();
   const { flags, loading } = useRouterFlags();
+
+  const navigate = useNavigate();
 
   const firstInitial = user.fname.charAt(0).toUpperCase();
   const lastInitial = user.lname.charAt(0).toUpperCase();
@@ -15,353 +29,277 @@ const AdminNav = ({ isOpen }) => {
   const initials = user.fname.charAt(0) + user.lname.charAt(0);
   const { bg, text } = generateColorFromKey(initials);
 
-  const NavItem = ({ title, to, icon, label }) => (
-    <NavLink
-      title={title}
-      to={to}
-      className={({ isActive }) =>
-        ` rounded transition-none w-full h-15 flex items-center gap-x-2 hover:border-1 ${
-          isOpen ? "pl-0 sm:pl-4" : "flex justify-center items-center"
-        } ${
-          isActive
-            ? "bg-[#FEF7FF] text-black stroke-black"
-            : "bg-transparent text-white stroke-white"
-        }`
+  const alwaysVisible = ["dashboard", "configuration"];
+
+  const tabItems = [
+    {
+      label: "dashboard",
+      path: "/admin/dashboard",
+      icon: <Dashboard />,
+    },
+    {
+      label: "appointment",
+      path: "/admin/appointment",
+      icon: <Appointment />,
+    },
+    {
+      label: "schedule",
+      path: "/admin/schedule",
+      icon: <Schedule />,
+    },
+    {
+      label: "acquisition",
+      path: "/admin/acquisition",
+      icon: <Acquisition />,
+    },
+    {
+      label: "inventory",
+      path: "/admin/inventory",
+      icon: <Inventory />,
+    },
+    {
+      label: "article",
+      path: "/admin/article",
+      icon: <Article />,
+    },
+  ];
+
+  if (user.roleId == "1") {
+    tabItems.push(
+      {
+        label: "user",
+        path: "/admin/user",
+        icon: <User />,
+      },
+      {
+        label: "configuration",
+        path: "/admin/config",
+        icon: <Config />,
+      },
+      {
+        label: "logs",
+        path: "/admin/logs",
+        icon: <Logs />,
       }
-    >
-      {icon}
-      {isOpen && <span className="transition-none">{label}</span>}
-    </NavLink>
-  );
+    );
+  }
 
   return (
-    <>
+    <div
+      className={`${
+        isSidebarOpen ? "bg-stone-900" : "bg-[#100E09]"
+      } w-full h-full grid grid-cols-1 grid-rows-[4.25rem_1fr_7rem]  `}
+    >
       <div
-        className={`
-        h-full bg-[#1C1B19] flex flex-col items-center justify-between py-7
-      `}
+        className={`w-full h-full flex justify-start items-center pl-3 transition-all duration-300 ease-in-out `}
       >
-        <div className="w-full px-2 py-10 border-b border-gray-700 flex flex-col  gap-y-2">
-          <div className="flex h-20 items-center justify-center gap-x-2">
-            <div className="min-w-15 min-h-15 rounded-full bg-white flex items-center justify-center">
-              <div
-                title={`${user.fname} ${user.lname}`}
-                className="min-w-13.5 min-h-13.5 rounded-full border-1 flex items-center justify-center"
-                style={{ backgroundColor: bg }}
-              >
-                <span
-                  className={`text-3xl font-semibold flex text-center items-center ${text}`}
-                >
-                  {firstInitial}
-                  {lastInitial}
-                </span>
-              </div>
-            </div>
-
-            <div
-              className={`transition-all duration-300 ease-in-out transform ${
-                isOpen
-                  ? "flex opacity-100 translate-y-0"
-                  : "hidden opacity-0 -translate-y-2"
-              } flex-col`}
+        {isSidebarOpen ? (
+          <>
+            <svg
+              onClick={onClose}
+              className="cursor-pointer stroke-gray-500  hover:stroke-gray-400 flex-shrink-0"
+              xmlns="http://www.w3.org/2000/svg"
+              width="32"
+              height="32"
+              viewBox="0 0 24 24"
+              fill="none"
+              strokeWidth="1"
+              strokeLinecap="round"
+              strokeLinejoin="round"
             >
-              <span className="text-white text-start text-2xl font-semibold">
-                {user.fname}
-              </span>
+              <path d="M4 4m0 2a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2z" />
+              <path d="M9 4v16" />
+              <path d="M15 10l-2 2l2 2" />
+            </svg>
 
-              <span className="text-white text-start text-2xl font-semibold">
-                {user.lname}
-              </span>
+            {/* <img
+              src={Logo}
+              alt="Museo Bulawan Logo"
+              className="w-11 h-11 select-none flex-shrink-0"
+            /> */}
+          </>
+        ) : (
+          <div className="relative group w-11 h-11 flex-shrink-0 flex items-center">
+            {/* Default: Logo */}
+            <img
+              src={Logo}
+              alt="Museo Bulawan Logo"
+              className="w-11 h-11 select-none group-hover:hidden"
+            />
 
-              <span className="text-[9px] text-xl text-gray-500">
-                {user.position === "ContentManager"
-                  ? "Content Manager"
-                  : user.position}
+            {/* On Hover: SVG */}
+            <svg
+              onClick={onOpen}
+              className="absolute left-0 right-0 mx-auto cursor-pointer stroke-white hover:stroke-gray-400 hidden group-hover:block"
+              xmlns="http://www.w3.org/2000/svg"
+              width="32"
+              height="32"
+              viewBox="0 0 24 24"
+              fill="none"
+              strokeWidth="1"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M4 4m0 2a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2z" />
+              <path d="M9 4v16" />
+              <path d="M14 10l2 2l-2 2" />
+            </svg>
+          </div>
+        )}
+      </div>
+
+      <div className="w-full h-full flex flex-col">
+        {/* user info container */}
+        <div className="w-full h-47 flex justify-start items-center cursor-pointer border-b border-gray-700">
+          <div
+            className={`flex-shrink-0 transition-all duration-300 ease-in-out flex items-center justify-center ${
+              isSidebarOpen ? "ml-5 w-20 h-20" : "ml-2 w-12 h-12"
+            } bg-white rounded-full`}
+          >
+            <div
+              className={`flex-shrink-0 transition-all duration-300 ease-in-out flex items-center justify-center rounded-full ${
+                isSidebarOpen ? "w-[4.5rem] h-[4.5rem]" : "w-11 h-11"
+              }`}
+              style={{ backgroundColor: bg }}
+            >
+              <span
+                className={`flex items-center justify-center text-center font-semibold transition-all duration-300 ease-in-out ${
+                  isSidebarOpen ? "text-4xl" : "text-xl"
+                } ${text}`}
+              >
+                {firstInitial}
+                {lastInitial}
               </span>
             </div>
           </div>
-          {/* <div
-          className={`flex flex-col  transition-opacity duration-300 ${
-            isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none h-0 overflow-hidden'
-          }`}
-        >
-          <span className="text-[8px] lg:text-xs text-gray-500">{user.position}</span>
-          <span className="text-white text-xs lg:text-xl font-semibold">{user.fname} {user.lname}</span>
-        </div> */}
-        </div>
-        <div className="w-full h-full mt-10">
-          <div className={`flex-1 w-full  flex flex-col items-center ${isOpen === true ? "px-8":"px-4"}  text-xl gap-y-2 font-semibold`}>
-            <NavItem
-              title="Dashboard"
-              to="/admin/dashboard"
-              label="Dashboard"
-              icon={
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="32"
-                  height="32"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="icon"
-                >
-                  <path d="M5 12l-2 0l9 -9l9 9l-2 0" />
-                  <path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-7" />
-                  <path d="M9 21v-6a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v6" />
-                </svg>
-              }
-            />
-            {flags["appointment"] && (
-              <NavItem
-                title="Appointment"
-                to="/admin/appointment"
-                label="Appointment"
-                icon={
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="32"
-                    height="32"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="icon"
-                  >
-                    <path d="M10.5 21h-4.5a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v3" />
-                    <path d="M16 3v4" />
-                    <path d="M8 3v4" />
-                    <path d="M4 11h10" />
-                    <path d="M18 18m-4 0a4 4 0 1 0 8 0a4 4 0 1 0 -8 0" />
-                    <path d="M18 16.5v1.5l.5 .5" />
-                  </svg>
-                }
-              />
-            )}
 
-            {flags["schedule"] && (
-              <NavItem
-                title="Schedeule"
-                to="/admin/schedule"
-                label="Schedule"
-                icon={
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="32"
-                    height="32"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="icon"
-                  >
-                    <path d="M4 7a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-12z" />
-                    <path d="M16 3v4" />
-                    <path d="M8 3v4" />
-                    <path d="M4 11h16" />
-                    <path d="M7 14h.013" />
-                    <path d="M10.01 14h.005" />
-                    <path d="M13.01 14h.005" />
-                    <path d="M16.015 14h.005" />
-                    <path d="M13.015 17h.005" />
-                    <path d="M7.01 17h.005" />
-                    <path d="M10.01 17h.005" />
-                  </svg>
-                }
-              />
-            )}
-
-            {flags["acquisition"] && (
-              <NavItem
-                title="Acquisition"
-                to="/admin/acquisition"
-                label="Acquisition"
-                icon={
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="32"
-                    height="32"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="icon"
-                  >
-                    <path d="M9 5h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2h-2" />
-                    <path d="M9 3m0 2a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v0a2 2 0 0 1 -2 2h-2a2 2 0 0 1 -2 -2z" />
-                    <path d="M10 14h4" />
-                    <path d="M12 12v4" />
-                  </svg>
-                }
-              />
-            )}
-
-            {flags["inventory"] && (
-              <NavItem
-                title="Inventory"
-                to="/admin/inventory"
-                label="Inventory"
-                icon={
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="32"
-                    height="32"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="icon"
-                  >
-                    <path d="M9 5h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2h-2" />
-                    <path d="M9 3m0 2a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v0a2 2 0 0 1 -2 2h-2a2 2 0 0 1 -2 -2z" />
-                    <path d="M9 17v-4" />
-                    <path d="M12 17v-1" />
-                    <path d="M15 17v-2" />
-                    <path d="M12 17v-1" />
-                  </svg>
-                }
-              />
-            )}
-
-            {flags["article"] && (
-              <NavItem
-                title="Article"
-                to="/admin/article"
-                label="Article"
-                icon={
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="32"
-                    height="32"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="icon"
-                  >
-                    <path d="M3 4m0 2a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2z" />
-                    <path d="M7 8h10" />
-                    <path d="M7 12h10" />
-                    <path d="M7 16h10" />
-                  </svg>
-                }
-              />
-            )}
+          <div
+            className={`w-35 ml-5 transition-all duration-300 ease-in-out transform ${
+              isOpen
+                ? "flex opacity-100 translate-y-0"
+                : "hidden opacity-0 -translate-y-2"
+            } flex-col overflow-hidden`}
+          >
+            <span className="text-white text-start text-2xl font-semibold">
+              {user.fname}
+            </span>
+            <span className="text-white text-start text-2xl font-semibold">
+              {user.lname}
+            </span>
+            <span className="text-[9px] text-xl text-gray-500 truncate">
+              {user.position === "ContentManager"
+                ? "Content Manager"
+                : user.position}
+            </span>
           </div>
-
-          {user.roleId == "1" ? (
-            <>
-              <div className={`pt-10 flex-1 w-full mt-4 border-t-1 border-gray-700 flex flex-col items-center ${isOpen === true ? "px-8":"px-4"}  text-xl gap-y-2 font-semibold`}>
-                {flags["user"] && (
-                  <NavItem
-                    title="User"
-                    to="/admin/user"
-                    label="User"
-                    icon={
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="32"
-                        height="32"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="1"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        className="icon"
-                      >
-                        <path d="M9 7m-4 0a4 4 0 1 0 8 0a4 4 0 1 0 -8 0" />
-                        <path d="M3 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2" />
-                        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                        <path d="M21 21v-2a4 4 0 0 0 -3 -3.85" />
-                      </svg>
-                    }
-                  />
-                )}
-
-                <NavItem
-                  title="Configuration"
-                  to="/admin/config"
-                  label="Configuration"
-                  icon={
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="32"
-                      height="32"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className="icon"
-                    >
-                      <path d="M14 6m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" />
-                      <path d="M4 6l8 0" />
-                      <path d="M16 6l4 0" />
-                      <path d="M8 12m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" />
-                      <path d="M4 12l2 0" />
-                      <path d="M10 12l10 0" />
-                      <path d="M17 18m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" />
-                      <path d="M4 18l11 0" />
-                      <path d="M19 18l1 0" />
-                    </svg>
-                  }
-                />
-
-                {flags["logs"] && (
-                  <NavItem
-                    title="Logs"
-                    to="/admin/logs"
-                    label="Logs"
-                    icon={
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="32"
-                        height="32"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="1"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        className="icon"
-                      >
-                        <path d="M4 12h.01" />
-                        <path d="M4 6h.01" />
-                        <path d="M4 18h.01" />
-                        <path d="M8 18h2" />
-                        <path d="M8 12h2" />
-                        <path d="M8 6h2" />
-                        <path d="M14 6h6" />
-                        <path d="M14 12h6" />
-                        <path d="M14 18h6" />
-                      </svg>
-                    }
-                  />
-                )}
-              </div>
-            </>
-          ) : null}
         </div>
-        {/* Footer */}
-        <div className={` mt-4 w-full flex justify-center ${isOpen === true ? "px-7":"px-4"} `}>
-          <LogoutButton isOpen={isOpen} />
+
+        {/* nav link renderer */}
+        <div
+          className={`
+          h-fit flex flex-col pt-10 gap-y-3 items-center
+          transition-all duration-300 ease-in-out 
+          ${isSidebarOpen ? "px-5" : "px-2"}
+        `}
+          style={{
+            width: isSidebarOpen ? "100%" : "4.25rem",
+          }}
+        >
+          {tabItems.map(({ label, icon, path, title }, idx) => {
+            const normalizedLabel = label.trim().toLowerCase();
+            const isAlwaysVisible = alwaysVisible.includes(normalizedLabel);
+            const isFlagEnabled = flags[normalizedLabel] || flags[label];
+
+            if (!isAlwaysVisible && !isFlagEnabled) return null;
+
+            return (
+              <NavLink
+                key={idx}
+                to={path}
+                title={label.toUpperCase()}
+                className={({ isActive }) =>
+                  `w-full h-16 rounded-md flex items-center hover:border ${
+                    isSidebarOpen ? "px-3 gap-2" : "px-[0.3rem]"
+                  } transition-all duration-300 ease-in-out justify-start overflow-hidden ${
+                    isActive
+                      ? "bg-[#FEF7FF] text-black stroke-black"
+                      : "bg-transparent text-white stroke-white"
+                  }`
+                }
+              >
+                <div className="w-10 h-10 flex items-center justify-center shrink-0">
+                  {icon}
+                </div>
+                {isSidebarOpen && (
+                  <span className="text-xl font-semibold capitalize truncate">
+                    {label}
+                  </span>
+                )}
+              </NavLink>
+            );
+          })}
         </div>
       </div>
-    </>
+
+      <div
+        className={`
+          h-full flex flex-col  items-start justify-center 
+          transition-all duration-300 ease-in-out 
+          ${isSidebarOpen ? "px-5 py-2" : "px-2"}
+        `}
+        style={{
+          width: isSidebarOpen ? "100%" : "4.25rem",
+        }}
+      >
+        {/* <div className="w-full h-full flex justify-start items-center cursor-pointer rounded-md hover:border-gray-700 hover:border">
+          <div
+            className={`${
+              isSidebarOpen ? "ml-2 w-20 h-20" : " w-12 h-12"
+            } bg-white  rounded-full transition-all duration-300 ease-in-out flex items-center justify-center`}
+          >
+            <div
+              className={`${
+                isSidebarOpen ? " w-[4.5rem] h-[4.5rem]" : " w-11 h-11"
+              }   rounded-full transition-all duration-300 ease-in-out flex items-center justify-center`}
+              style={{ backgroundColor: bg }}
+            >
+              <span
+                className={`${
+                  isSidebarOpen ? "text-4xl" : "text-xl"
+                }  font-semibold flex text-center items-center transition-all duration-300 ease-in-out ${text}`}
+              >
+                {firstInitial}
+                {lastInitial}
+              </span>
+            </div>
+          </div>
+
+          <div
+            className={`w-35 ml-5 transition-all duration-300 ease-in-out transform ${
+              isOpen
+                ? "flex opacity-100 translate-y-0"
+                : "hidden opacity-0 -translate-y-2"
+            } flex-col overflow-hidden`}
+          >
+            <span className="text-white text-start text-2xl font-semibold">
+              {user.fname}
+            </span>
+
+            <span className="text-white text-start text-2xl font-semibold">
+              {user.lname}
+            </span>
+
+            <span className="text-[9px] text-xl text-gray-500 truncate">
+              {user.position === "ContentManager"
+                ? "Content Manager"
+                : user.position}
+            </span>
+          </div>
+        </div> */}
+
+        <LogoutButton isOpen={isOpen} />
+      </div>
+    </div>
   );
 };
 

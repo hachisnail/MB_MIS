@@ -1,20 +1,24 @@
 import { useState, useRef, useMemo, useCallback, useEffect } from "react";
+import { format } from 'date-fns';
 import ReCAPTCHA from "react-google-recaptcha";
+
 import axiosClient from "@/lib/axiosClient";
+import { useSocketClient } from "../../../../context/authContext";
+import {
+    checkTimeSlotAvailability,
+    checkMonthlyAvailability
+} from "../../../../utils/scheduleValidation";
+import { normalizeStatus } from "../../../admin/appointments/components/statusUtils";
+
 import ConfirmationModal from "@/components/modals/ConfirmationModal";
 import PopupModal from "@/components/modals/PopupModal";
 import Toast from "../../../../features/Toast";
+
 import NoticeStep from "./NoticeStep";
 import PersonalInfoStep from "./PersonalInfoStep";
 import AddressStep from "./AddressStep";
 import VisitDetailsStep from "./VisitDetailsStep";
 import ScheduleStep from "./ScheduleStep";
-import { format } from 'date-fns';
-import {
-    checkTimeSlotAvailability,
-    checkMonthlyAvailability
-} from "../../../../utils/scheduleValidation";
-import { useSocketClient } from "../../../../context/authContext";
 
 const initialFormData = {
     firstName: "",
@@ -55,6 +59,8 @@ const AppointmentForm = ({ user }) => {
     const [confirmedSlots, setConfirmedSlots] = useState({});
     const [disabledDates, setDisabledDates] = useState([]);
     const [isLoadingDateAvailability, setIsLoadingDateAvailability] = useState(false);
+    const [calendarEvents, setCalendarEvents] = useState([]);
+    const [viewedDate, setViewedDate] = useState(new Date());
 
     const [toast, setToast] = useState({
         type: 'info',
@@ -106,6 +112,68 @@ const AppointmentForm = ({ user }) => {
             checkTimeSlotAvailabilityLocal(formData.selectedDate);
         }
     }, [formData.selectedDate]);
+
+    // Helper function to get local date string
+    const getLocalDateString = (date) => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
+    // Fetch calendar events for the viewed month
+    const fetchMonthEvents = useCallback(async () => {
+        try {
+            const year = viewedDate.getFullYear();
+            const month = viewedDate.getMonth();
+
+            const [schedulesResponse, appointmentsResponse] = await Promise.all([
+                axiosClient.get('/auth/schedules'),
+                axiosClient.get('/auth/appointment')
+            ]);
+
+            const monthSchedules = schedulesResponse.data
+                .filter(schedule => {
+                    if (!schedule.date) return false;
+                    const scheduleDate = new Date(schedule.date);
+                    return !isNaN(scheduleDate.getTime()) &&
+                        scheduleDate.getMonth() === month &&
+                        scheduleDate.getFullYear() === year;
+                })
+                .map(schedule => ({
+                    id: `schedule-${schedule.schedule_id}`,
+                    date: schedule.date.split('T')[0],
+                    isActive: schedule.status !== 'COMPLETED',
+                    isSchedule: true
+                }));
+
+            const monthAppointments = appointmentsResponse.data
+                .filter(appointment => {
+                    if (!appointment.preferred_date) return false;
+                    const dateStr = appointment.preferred_date.split('T')[0];
+                    const appointmentDate = new Date(dateStr);
+                    return !isNaN(appointmentDate.getTime()) &&
+                        appointmentDate.getMonth() === month &&
+                        appointmentDate.getFullYear() === year;
+                })
+                .map(appointment => ({
+                    id: `appointment-${appointment.appointment_id}`,
+                    date: appointment.preferred_date.split('T')[0],
+                    isActive: normalizeStatus(appointment.AppointmentStatus?.status) === 'APPROVED',
+                    isAppointment: true
+                }));
+
+            const allEvents = [...monthSchedules, ...monthAppointments];
+            setCalendarEvents(allEvents);
+        } catch (error) {
+            console.error('Error fetching monthly events:', error);
+        }
+    }, [viewedDate]);
+
+    // Fetch events when viewed date changes
+    useEffect(() => {
+        fetchMonthEvents();
+    }, [viewedDate, fetchMonthEvents]);
 
     // Check monthly availability when component mounts
     useEffect(() => {
@@ -298,6 +366,7 @@ const AppointmentForm = ({ user }) => {
             disabledDates={disabledDates}
             isLoadingDateAvailability={isLoadingDateAvailability}
             onAvailabilityRefresh={handleAvailabilityRefresh}
+            calendarEvents={calendarEvents}
         />
     ];
 

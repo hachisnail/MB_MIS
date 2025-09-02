@@ -449,10 +449,10 @@ const WalkInsPage = () => {
                     const appointmentDate = appointment.preferred_date.split('T')[0];
                     const status = (appointment.AppointmentStatus?.status || '').toUpperCase();
 
-                    // Include CONFIRMED appointments AND ALL walk-ins (even pending ones)
-                    // Walk-ins are auto-confirmed so we count them all
+                    // Include APPROVED appointments AND ALL walk-ins (even pending ones)
+                    // Walk-ins are auto-approved so we count them all
                     return appointmentDate === formattedDate &&
-                        (status === 'CONFIRMED' || appointment.is_walk_in === true || appointment.is_walk_in === 1);
+                        (status === 'APPROVED' || appointment.is_walk_in === true || appointment.is_walk_in === 1);
                 })
                 .map(appointment => {
                     // Handle different time formats properly
@@ -726,7 +726,7 @@ const WalkInsPage = () => {
             additional_notes: currentFormData.additionalNotes,
             // Walk-in specific flags
             is_walk_in: true,
-            status: 'confirmed' // Walk-ins are automatically confirmed
+            status: 'APPROVED' // Walk-ins are automatically approved
         };
 
         try {
@@ -857,7 +857,7 @@ const WalkInsPage = () => {
                 .map(appointment => ({
                     id: `appointment-${appointment.appointment_id}`,
                     date: appointment.preferred_date.split('T')[0],
-                    isActive: (appointment.AppointmentStatus?.status || '').toUpperCase() === 'CONFIRMED',
+                    isActive: (appointment.AppointmentStatus?.status || '').toUpperCase() === 'APPROVED',
                     isAppointment: true
                 }));
 

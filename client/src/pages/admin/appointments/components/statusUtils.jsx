@@ -1,20 +1,28 @@
 import { format } from "date-fns";
 
-// Status → color map
+// Normalize status to uppercase backend format
+export const normalizeStatus = (status) => {
+  if (!status) return "PENDING";
+  return status.toString().toUpperCase();
+};
+
+// Status → color map (using uppercase keys to match backend)
 const statusColorMap = {
-  confirmed: "bg-green-500 text-white",
-  rejected: "bg-red-600 text-white",
-  failed: "bg-orange-600 text-white",
-  "to review": "bg-purple-200 text-black",
-  completed: "bg-blue-600 text-white",
+  APPROVED: "bg-green-500 text-white",
+  REJECTED: "bg-red-600 text-white",
+  FAILED: "bg-orange-600 text-white",
+  PENDING: "bg-purple-200 text-black",
+  COMPLETED: "bg-blue-600 text-white",
   default: "bg-gray-200 text-gray-800",
 };
 
-// Standardize status → Title Case
+// Standardize status → Title Case for display
 export const standardizeStatus = (status) => {
-  if (!status) return "To Review";
+  if (!status) return "Pending";
 
-  return status
+  // First normalize to uppercase, then convert to title case for display
+  const normalized = normalizeStatus(status);
+  return normalized
     .toLowerCase()
     .replace(/_/g, " ")
     .split(" ")
@@ -24,9 +32,9 @@ export const standardizeStatus = (status) => {
 
 // Colored badge component
 export const getStatusLabel = (status) => {
+  const normalized = normalizeStatus(status);
   const standardized = standardizeStatus(status);
-  const colorClass =
-    statusColorMap[standardized.toLowerCase()] || statusColorMap.default;
+  const colorClass = statusColorMap[normalized] || statusColorMap.default;
 
   return (
     <span

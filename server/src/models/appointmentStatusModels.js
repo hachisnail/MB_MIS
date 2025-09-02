@@ -13,9 +13,9 @@ const AppointmentStatus = mainDb.define('AppointmentStatus', {
     allowNull: false
   },
   status: {
-    type: DataTypes.ENUM('TO_REVIEW', 'CONFIRMED', 'REJECTED', 'FAILED', 'COMPLETED'),
+    type: DataTypes.ENUM('PENDING', 'APPROVED', 'REJECTED', 'FAILED', 'COMPLETED'),
     allowNull: false,
-    defaultValue: 'TO_REVIEW'
+    defaultValue: 'PENDING'
   },
   present_count: {
     type: DataTypes.INTEGER,

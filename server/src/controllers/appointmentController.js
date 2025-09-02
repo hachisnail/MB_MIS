@@ -84,7 +84,7 @@ export const createAppointment = async (req, res, next) => {
     // Create the corresponding AppointmentStatus record
     await AppointmentStatus.create({
       appointment_id: appointment.appointment_id,
-      status: status || 'TO_REVIEW', // Use status from body or default to TO_REVIEW
+      status: status || 'PENDING', // Use status from body or default to PENDING
     });
 
     res.status(201).json({
@@ -129,7 +129,7 @@ export const updateAppointmentStatus = async (req, res) => {
     if (!appointmentStatus) {
       appointmentStatus = await AppointmentStatus.create({
         appointment_id: id,
-        status: status || 'TO_REVIEW',
+        status: status || 'PENDING',
         present_count,
       });
     } else {
@@ -150,7 +150,7 @@ export const updateAppointmentStatus = async (req, res) => {
     // Create log entry
     const visitorName = `${appointment.Visitor?.first_name || ''} ${appointment.Visitor?.last_name || ''}`.trim();
     const statusText = status ? status.toLowerCase().replace('_', ' ') : 'status';
-    const description = `Appointment #${id} for ${visitorName} ${action === 'create' ? 'created with' : 'updated to'} ${statusText}`;
+    const description = `Appointment from with an ID of #${id} and a name of ${visitorName} was ${action === 'create' ? 'created with' : 'updated to'} ${statusText}`;
     
     let details = `${username} ${action === 'create' ? 'set' : 'changed'} appointment status to ${statusText}`;
     if (present_count !== undefined && status === 'COMPLETED') {
@@ -159,7 +159,7 @@ export const updateAppointmentStatus = async (req, res) => {
 
     await createLog(
       action,
-      'AppointmentStatus',
+      'APPOINTMENT',
       description,
       userId,
       beforeState,
@@ -228,7 +228,7 @@ export const getAppointmentStats = async (req, res) => {
       if (appointment.AppointmentStatus) {
         const status = (appointment.AppointmentStatus.status || '').toUpperCase();
 
-        if (status.includes('CONFIRM')) approvedCount++;
+        if (status.includes('APPROV')) approvedCount++;
         else if (status.includes('REJECT')) rejectedCount++;
         else if (status.includes('COMPLET')) completedCount++;
         else if (status.includes('FAIL')) failedCount++;
@@ -319,8 +319,8 @@ export const getAllAppointments = async (req, res) => {
       const appointmentData = appointment.toJSON();
       appointmentData.preferred_time = formatTimeDisplay(appointmentData.start_time, appointmentData.end_time);
       
-      const status = appointmentData.AppointmentStatus?.status?.toUpperCase() || 'TO_REVIEW';
-      if (status === 'TO_REVIEW') {
+      const status = appointmentData.AppointmentStatus?.status?.toUpperCase() || 'PENDING';
+      if (status === 'PENDING') {
         toReview.push(appointmentData);
       } else {
         others.push(appointmentData);
@@ -388,7 +388,7 @@ export const getAttendanceData = async (req, res) => {
       expectedVisitor: appt.population_count,
       // If present_count is null, it's "ongoing" on the front-end
       present: appt.AppointmentStatus?.present_count ?? 'ongoing',
-      status: appt.AppointmentStatus?.status || 'TO_REVIEW'
+      status: appt.AppointmentStatus?.status || 'PENDING'
     }));
 
     return res.json(transformedData);
@@ -441,7 +441,7 @@ export const getVisitorRecords = async (req, res) => {
         visitorCount: appt.population_count,
         present: appt.AppointmentStatus?.present_count || 0,
         date: appt.preferred_date,
-        status: appt.AppointmentStatus?.status || 'TO_REVIEW'
+        status: appt.AppointmentStatus?.status || 'PENDING'
       }));
 
       return {
@@ -533,7 +533,7 @@ export const getAttendanceDetail = async (req, res) => {
       preferredTime: formatTimeDisplay(appointment.start_time, appointment.end_time),
       notes: appointment.additional_notes,
       creation_date: appointment.creation_date,
-      status: appointment.AppointmentStatus?.status || 'TO_REVIEW',
+      status: appointment.AppointmentStatus?.status || 'PENDING',
       present: appointment.AppointmentStatus?.present_count,
       updatedAt: appointment.AppointmentStatus?.updated_at,
 
@@ -637,7 +637,7 @@ export const getVisitorRecordDetail = async (req, res) => {
       preferredDate: appointment.preferred_date,
       preferredTime: formatTimeDisplay(appointment.start_time, appointment.end_time),
       notes: appointment.additional_notes,
-      status: appointment.AppointmentStatus?.status || 'TO_REVIEW',
+      status: appointment.AppointmentStatus?.status || 'PENDING',
       updatedAt: appointment.AppointmentStatus?.updated_at ? new Date(appointment.AppointmentStatus.updated_at).toLocaleString() : 'N/A'
     };
 
@@ -753,7 +753,7 @@ export const getAppointmentById = async (req, res) => {
       start_time: appointment.start_time,
       end_time: appointment.end_time,
       notes: appointment.additional_notes,
-      status: appointment.AppointmentStatus?.status || 'TO_REVIEW',
+      status: appointment.AppointmentStatus?.status || 'PENDING',
       updatedAt: appointment.AppointmentStatus?.updated_at ? new Date(appointment.AppointmentStatus.updated_at).toLocaleString() : 'N/A'
     };
 
@@ -782,9 +782,9 @@ export const sendEmailNotification = async (req, res) => {
     `;
 
     // Customize message based on status
-    if (status === 'CONFIRMED') {
+    if (status === 'APPROVED') {
       emailHtml += `
-        <p>Your appointment request has been <strong style="color: #4CAF50;">CONFIRMED</strong>.</p>
+        <p>Your appointment request has been <strong style="color: #4CAF50;">APPROVED</strong>.</p>
         <div style="background-color: #f5f5f5; padding: 15px; border-radius: 8px; margin: 15px 0;">
           <p><strong>Appointment Details:</strong></p>
           <p>Date: ${appointmentDetails.preferredDate}</p>

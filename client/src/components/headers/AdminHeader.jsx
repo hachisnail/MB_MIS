@@ -23,9 +23,9 @@ const AdminHeader = ({ onClose, onOpen, isSidebarOpen }) => {
   }, [isSidebarOpen, onClose]);
 
   return (
-    <header className="select-none relative z-50 w-full h-17 bg-[#1C1B19] drop-shadow-sm">
-      <div className="flex w-full h-full items-center px-2   gap-x-2">
-          { (
+    <header className="select-none relative z-50 w-full h-17 bg-[#100E09] drop-shadow-sm">
+      <div className="flex w-full h-full items-center px-2 gap-x-2">
+          {/* { (
 
         <div className="w-18 h-fit flex justify-center">
             {isSidebarOpen ? (
@@ -64,16 +64,21 @@ const AdminHeader = ({ onClose, onOpen, isSidebarOpen }) => {
             </svg>
             )}
         </div>
-            )}
+            )} */}
 
 
-        <div className="w-90 h-10 flex gap-x-3 items-center cursor-pointer"
+        <div className="w-90 h-10 flex gap-x-3 items-center cursor-pointer "
         onClick={() => {navigate(`/`)}}>
-            {/* <img src={Logo} className="h-10 w-auto" alt="Museo Bulawan Logo" /> */}
-            <div className="w-[1px] h-9 rounded-md bg-white">
+          {isSidebarOpen && (
+            <>
+            <img src={Logo} className="h-10 w-auto " alt="Museo Bulawan Logo" /> 
+            <div className="w-[1px] h-9 rounded-md bg-white"></div>
+            </>
+            )}
+            {/* 
             
-            </div>
-                <img src={Logo} alt="Museo Bulawan Logo"  className="w-9 h-auto select-none"/>
+            </div> */}
+                {/* <img src={Logo} alt="Museo Bulawan Logo"  className="w-9 h-auto select-none"/> */}
                 <span className=" text-white text-2xl font-semibold">Museo Bulawan MIS</span>
 
         </div>

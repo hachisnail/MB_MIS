@@ -1,10 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, Fragment } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { handlePreview } from "../../../../components/commons";
 import { ImageCarousel } from "../../../../features/Utilities";
 import ContextMenu from "../../../../components/modals/ContextMenu";
 import { formatDate } from "../../appointments/components/dateUtils";
 import ImageViewerModal from "../../../../features/ImageViewerModal";
+import { InfoModal } from "../../../../features/InfoModal";
+
 import { FileType } from "lucide-react";
 
 const SERVER_URL = import.meta.env.VITE_SERVER_URL;
@@ -191,14 +193,18 @@ export function RenderRelatedDocs({ relatedImages = [], attachedFiles = [] }) {
                       {
                         label: "Preview",
                         onClick: () => {
-                            const fileType = filename.split('.').pop().toLowerCase();
+                          const fileType = filename
+                            .split(".")
+                            .pop()
+                            .toLowerCase();
                           handlePreview(
                             navigate,
-                            `${location.pathname}/view`, 
+                            `${location.pathname}/view`,
                             url,
                             filename,
                             fileType
-                          )}
+                          );
+                        },
                       },
                       {
                         label: "Download",
@@ -289,8 +295,8 @@ export function RenderLendingReason({ lendingReason = [] }) {
   );
 }
 
-export function RenderArtifactInformation({
-  artifactInfo = [],
+export function RenderArtifactImageAndDonatorInfo({
+  donatorInformation = [],
   artifactImg = [],
 }) {
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -315,24 +321,104 @@ export function RenderArtifactInformation({
   );
 
   return (
-    <div className="w-full max-w-[58rem] just h-full flex flex-col gap-y-5 px-15">
-      <span className="text-4xl font-semibold">About The Artifact</span>
+    <div className="w-full max-w-[58rem] just h-full flex flex-col gap-y-5 px-5">
+      <ImageCarousel
+        images={artifactImg}
+        thumbnailSize="w-26 h-26"
+        mainSize="w-[29rem] h-[29rem]"
+      />
 
-      <div className="max-h-[24rem] h-full gap-y-5 flex flex-col overflow-auto border-b border-gray-400  pr-5">
-        {artifactInfo.map(({ label, value }) => (
+      <div className="max-h-[30rem] h-full gap-y-3 flex flex-col overflow-auto border-t border-gray-400 pt-5 pl-10 pr-5">
+        <span className="text-white text-3xl font-hind">
+          Donators Information
+        </span>
+        {donatorInformation.map(({ label, value, icon }, idx) => (
           <div
-            key={label}
+            key={idx}
             className="w-full flex flex-col h-fit text-2xl font-medium"
           >
-            <span id="value" className="font-normal">
-              {label}
+            <span
+              id="value"
+              className="font-normal text-md items-end gap-x-2 flex text-[#666666]"
+            >
+              {icon}
+              {label}:
             </span>
-            <span className="text-blue-500 font-normal">{value}</span>
+            <span className="text-white font-normal ml-20">{value}</span>
           </div>
         ))}
       </div>
-
-      <ImageCarousel images={artifactImg} />
     </div>
   );
 }
+
+
+
+export const InfoSection = ({
+  title,
+  items = [],
+  titleClassName = "",
+  labelClassName = "",
+  valueClassName = "",
+  itemHeight = "",
+  containerClassName = "",
+}) => {
+  const [modalContent, setModalContent] = useState(null);
+  const refs = useRef([]);
+  refs.current = [];
+
+  const handleClick = (label, value, idx) => {
+    const el = refs.current[idx];
+    if (!el) return;
+
+    const style = window.getComputedStyle(el);
+    const lineHeight = parseFloat(style.lineHeight);
+    const lines = Math.round(el.scrollHeight / lineHeight);
+
+    const maxLines = idx === 1 ? 1 : 2; 
+    if (lines > maxLines) {
+      setModalContent({ label, value });
+    }
+  };
+
+  return (
+    <div className={`w-full h-full flex flex-col px-10 gap-y-3 ${containerClassName}`}>
+      {/* Section Title */}
+      <span className={`text-4xl font-bold ${titleClassName}`}>{title}</span>
+
+      {/* Items */}
+      {items.map(({ label, value }, idx) => (
+        <div key={idx} className={`flex flex-col text-xl ${idx === 0 ? "h-fit": (itemHeight)}`}>
+          <span className={labelClassName}>{label}</span>
+          <div
+            className={`w-full ${idx == 0 ? "h-fit": "h-full"} h-full pl-5 overflow-hidden cursor-pointer`}
+            onClick={() => handleClick(label, value, idx)}
+          >
+            <span
+              ref={(el) => (refs.current[idx] = el)}
+              style={{
+                display: "-webkit-box",
+                WebkitLineClamp: idx === 1 ? 1 : 2,
+                WebkitBoxOrient: "vertical",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "normal",
+              }}
+              className={valueClassName}
+            >
+              {value}
+            </span>
+          </div>
+        </div>
+      ))}
+
+      {/* Reusable Modal */}
+      <InfoModal
+        isOpen={!!modalContent}
+        onClose={() => setModalContent(null)}
+        title={modalContent?.label}
+        content={modalContent?.value}
+      />
+    </div>
+  );
+};

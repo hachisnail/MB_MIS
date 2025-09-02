@@ -25,6 +25,7 @@ import {
   transformScheduleData,
   transformAppointmentData
 } from '@/utils/scheduleUtils';
+import { normalizeStatus } from '../appointments/components/statusUtils';
 
 // ---------------- MAIN SCHEDULE PAGE ----------------
 const Schedule = () => {
@@ -130,16 +131,16 @@ const Schedule = () => {
         appointmentsResponse = { data: [] };
       }
 
-      // CONFIRMED APPOINTMENTS ONLY - Filter by status and date
+      // APPROVED APPOINTMENTS ONLY - Filter by status and date
       // EXCLUDE appointments with flexible time from DayScheduler only
-      const confirmedAppointments = appointmentsResponse.data.filter(appointment => {
+      const approvedAppointments = appointmentsResponse.data.filter(appointment => {
         if (!appointment || !appointment.preferred_date) {
           return false;
         }
 
-        // Check if status is CONFIRMED
+        // Check if status is APPROVED using normalizeStatus
         const status = appointment.AppointmentStatus?.status || '';
-        const isConfirmed = status.toUpperCase() === 'CONFIRMED';
+        const isApproved = normalizeStatus(status) === 'APPROVED';
 
         // Check if appointment has flexible time (both start_time and end_time are null)
         const hasFlexibleTime = !appointment.start_time && !appointment.end_time;
@@ -153,20 +154,20 @@ const Schedule = () => {
         // Normalize date format by removing any time portion
         const appointmentDate = appointment.preferred_date.split('T')[0];
 
-        // Match both date and CONFIRMED status
-        const matches = appointmentDate === formattedDate && isConfirmed;
+        // Match both date and APPROVED status
+        const matches = appointmentDate === formattedDate && isApproved;
 
         if (matches) {
-          console.log("Found CONFIRMED appointment with fixed time for selected date:", appointment);
+          console.log("Found APPROVED appointment with fixed time for selected date:", appointment);
         }
 
         return matches;
       });
 
-      console.log("CONFIRMED appointments count:", confirmedAppointments.length);
+      console.log("APPROVED appointments count:", approvedAppointments.length);
 
-      // Process CONFIRMED appointments
-      const appointmentEvents = confirmedAppointments.map(appointment => {
+      // Process APPROVED appointments
+      const appointmentEvents = approvedAppointments.map(appointment => {
         // Handle time formats
         let startTime = "09:00";
         let endTime = "10:00";
@@ -209,7 +210,7 @@ const Schedule = () => {
             'Unknown Visitor',
           numPeople: `${appointment.population_count || 1} visitors`,
           isAppointment: true,
-          status: 'CONFIRMED',
+          status: 'APPROVED',
           availability: 'SHARED',
           isActive: true
         };
@@ -276,8 +277,9 @@ const Schedule = () => {
           return matchesDate;
         })
         .filter(appointment => {
-          const status = (appointment.AppointmentStatus?.status || '').toUpperCase();
-          return status === 'CONFIRMED' || status === 'COMPLETED';
+          const status = appointment.AppointmentStatus?.status || '';
+          const normalizedStatus = normalizeStatus(status);
+          return normalizedStatus === 'APPROVED' || normalizedStatus === 'COMPLETED';
         })
         .map(appointment => {
           // Check if appointment has flexible time
@@ -317,7 +319,7 @@ const Schedule = () => {
             date: appointment.preferred_date.split('T')[0],
             startTime,
             endTime,
-            isDone: (appointment.AppointmentStatus?.status || '').toUpperCase() === 'COMPLETED',
+            isDone: normalizeStatus(appointment.AppointmentStatus?.status || '') === 'COMPLETED',
             isAppointment: true,
             hasFlexibleTime // Add flag to indicate flexible time
           };
@@ -410,7 +412,7 @@ const Schedule = () => {
         .map(appointment => ({
           id: `appointment-${appointment.appointment_id}`,
           date: appointment.preferred_date.split('T')[0],
-          isActive: (appointment.AppointmentStatus?.status || '').toUpperCase() === 'CONFIRMED',
+          isActive: normalizeStatus(appointment.AppointmentStatus?.status || '') === 'APPROVED',
           isAppointment: true
         }));
 
@@ -731,7 +733,7 @@ const Schedule = () => {
               `}</style>
               <div className="w-full xl:min-w-[31rem] xl:max-w-[31rem] flex flex-col h-[29rem] bg-white rounded-xl shadow-md shadow-gray-600 p-5">
                 <span className="text-2xl font-semibold mb-4">Today's Scheduled Tours</span>
-                <div className="w-full border-t border-gray-200 pt-4 space-y-3 h-[calc(100%-10rem)] overflow-y-auto overflow-x-hidden pr-2 custom-scrollbar">
+                <div className="w-full border-t border-gray-200 pt-4 space-y-3 sm:h-[calc(100%-10rem)] lg:h-[calc(100%-4rem)] overflow-y-auto overflow-x-hidden pr-2 custom-scrollbar">
                   {todayTours.length === 0 && (
                     <div className="bg-gray-100 text-gray-700 p-3 rounded-lg">
                       No Scheduled Tours
@@ -985,7 +987,7 @@ const Schedule = () => {
                 </div>
               </div>
 
-              <div className="w-full h-[12rem] overflow-y-auto shadow-md shadow-gray-600 bg-white rounded-xl p-6">
+              <div className="w-full sm:h-[12rem] lg:h-[17rem] overflow-y-auto shadow-md shadow-gray-600 bg-white rounded-xl p-6">
                 <h2 className="text-xl font-bold mb-4">Selected Event</h2>
                 {selectedAppointment ? (
                   <>

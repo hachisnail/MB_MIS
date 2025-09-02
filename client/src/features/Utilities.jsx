@@ -651,12 +651,13 @@ export function ImageCarousel({
         <button
           onClick={handlePrev}
           disabled={images.length <= 1}
-          className="h-full hover:text-gray-600 cursor-pointer disabled:opacity-50"
+          className="hover:text-gray-600 h-full max-w-10 text-white cursor-pointer disabled:opacity-50"
+
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
-            width="32"
-            height="32"
+            width="30"
+            height="30"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -697,7 +698,7 @@ export function ImageCarousel({
 
           {/* Main image */}
           <div
-            className={`${mainSize} border rounded-lg overflow-hidden flex flex-col items-center justify-center cursor-pointer`}
+            className={`${mainSize} border rounded-lg overflow-hidden flex  flex-col items-center justify-center cursor-pointer`}
             onClick={() => images[currentIndex] && setIsModalOpen(true)}
           >
             {images[currentIndex] ? (
@@ -718,12 +719,12 @@ export function ImageCarousel({
         <button
           onClick={handleNext}
           disabled={images.length <= 1}
-          className="hover:text-gray-600 h-full cursor-pointer disabled:opacity-50"
+          className="hover:text-gray-600 h-full max-w-10 text-white cursor-pointer disabled:opacity-50"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
-            width="32"
-            height="32"
+            width="30"
+            height="30"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"

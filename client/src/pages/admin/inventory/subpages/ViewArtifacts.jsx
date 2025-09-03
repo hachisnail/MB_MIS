@@ -317,7 +317,7 @@ const ViewArtifacts = () => {
             </div>
 
             <div className="w-full min-w-[64rem] h-full flex flex-col px-10 pb-5 gap-y-6">
-              <div className="w-full h-[24rem] rounded-xl bg-gradient-to-b from-[#000000] to-[#383123]">
+              <div className="w-full h-[20rem] rounded-xl bg-gradient-to-b from-[#000000] to-[#383123]">
 
               </div>
               <div className="w-full h-auto">

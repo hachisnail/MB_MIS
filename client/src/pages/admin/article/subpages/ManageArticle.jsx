@@ -291,6 +291,8 @@ const ArticleEditorForm = () => {
 
   // Function to generate summary using Node Summarizer (backend API)
   const handleSummarizeCaption = async () => {
+    
+
     const articleContent = editor.getText();
     if (!articleContent.trim()) {
         window.alert('Please write some content in the editor first to summarize.');
@@ -305,6 +307,7 @@ const ArticleEditorForm = () => {
             { withCredentials: true }
         );
         setCaption(response.data.summary || "");
+        console.log("Summary response:", response.data.summary);
     } catch (error) {
         window.alert('Failed to summarize. Please try again.');
         console.error(error);
@@ -1464,7 +1467,9 @@ useEffect(() => {
                 className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
                 {isSummarizing ? 'Summarizing...' : 'Summarize with Node'}
+                
             </button>
+            
         </div>
     </div>
     <textarea

@@ -521,7 +521,7 @@ export function RenderRelatedDocs({
 
         <div className="w-full h-full bg-white rounded-2xl p-4">
           <div
-            className="w-full bg-white rounded-2xl p-4 shadow-[inset_0_8px_12px_rgba(0,0,0,0.25),inset_0_-8px_12px_rgba(0,0,0,0.25)] overflow-y-auto flex flex-col items-center gap-6"
+            className="w-full h-full bg-white rounded-2xl p-4 shadow-[inset_0_8px_12px_rgba(0,0,0,0.25),inset_0_-8px_12px_rgba(0,0,0,0.25)] overflow-y-auto flex flex-col items-center gap-6"
             style={{ height: `calc(${fileBoxHeight} - 7rem)` }}
           >
             {paginatedFiles.length > 0 ? (

@@ -370,16 +370,16 @@ const AcquisitionViewPage = () => {
 
               {/* Right column */}
               <div className="col-span-1 w-full h-full rounded-r-md flex flex-col">
-                <div className="w-full h-full">
+                <div className="w-full h-full pb-5">
                   {/* image + file container */}
 
                   <RenderRelatedDocs
                     relatedImages={relatedImages}
                     attachedFiles={attachedFiles}
                     imageBoxWidth="25rem"
-                    imageBoxHeight="29rem"
+                    imageBoxHeight="h-full"
                     fileBoxWidth="14rem"
-                    fileBoxHeight="29rem"
+                    fileBoxHeight="h-full"
                     imgHeight="h-60"
                   />
                 </div>

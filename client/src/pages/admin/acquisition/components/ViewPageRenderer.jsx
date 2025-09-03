@@ -391,7 +391,7 @@ export const InfoSection = ({
         <div
           key={idx}
           className={`flex flex-col text-xl ${
-            idx === 0 ? "h-fit" : itemHeight
+            idx === 0 ? "h-fit" : (itemHeight)
           }`}
         >
           <span className={labelClassName}>{label}</span>
@@ -405,13 +405,13 @@ export const InfoSection = ({
               ref={(el) => (refs.current[idx] = el)}
               style={{
                 display: "-webkit-box",
-                WebkitLineClamp: idx === 1 ? 1 : 2,
+                WebkitLineClamp: idx === 0 ? 1 : 2,
                 WebkitBoxOrient: "vertical",
                 overflow: "hidden",
                 textOverflow: "ellipsis",
                 whiteSpace: "normal",
               }}
-              className={valueClassName}
+              className={`${valueClassName} ${idx === 0 ? "h-fit" : (itemHeight)}`}
             >
               {value}
             </span>

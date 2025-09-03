@@ -317,9 +317,11 @@ const AcquisitionViewPage = () => {
                 <InfoSection
                   title="About The Artifact"
                   items={artifactInfo}
+                  titleClassName=" 3xl:text-6xl "
+                  containerClassName="pr-20"
                   labelClassName="font-hind font-bold text-2xl text-[#555555]"
-                  valueClassName="block w-full max-w-[36rem] text-[#1D1911] font-bold font-hind break-words"
-                  itemHeight="h-19"
+                  valueClassName="block  3xl:text-3xl w-[calc(100%-2rem)]  text-[#1D1911] font-bold font-hind break-words"
+                  itemHeight="h-19 3xl:h-27"
                 />
 
                 <div
@@ -332,8 +334,8 @@ const AcquisitionViewPage = () => {
                       title="Reason For Lending"
                       items={lendingReason}
                       titleClassName="mb-2 text-white"
-                      labelClassName="font-hind font-medium text-xl text-[#CDC469]"
-                      valueClassName="block w-full max-w-[36rem] text-white text-2xl font-medium font-hind break-words"
+                      labelClassName="font-hind font-medium text-xl 3xl:text-3xl text-[#CDC469]"
+                      valueClassName="block 3xl:text-4xl w-[calc(100%-2rem)] text-white text-2xl font-medium font-hind break-words"
                       itemHeight="h-22"
                       containerClassName="justify-end"
                     />

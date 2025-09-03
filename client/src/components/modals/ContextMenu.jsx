@@ -7,7 +7,7 @@ const MENU_ITEM_HEIGHT = 36;
 // Simple unique ID generator (not cryptographically safe, but enough)
 const generateId = () => Math.random().toString(36).substr(2, 9);
 
-export const ContextMenu = ({ children, menuItems, theme = "light" }) => {
+export const ContextMenu = ({ children, menuItems, theme = "light", className="w-fit h-fit " }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const idRef = useRef(generateId());
@@ -71,7 +71,7 @@ export const ContextMenu = ({ children, menuItems, theme = "light" }) => {
   };
 
   return (
-    <div className="w-fit h-fit" onContextMenu={onContextMenu} style={{ display: "inline-block" }}>
+    <div className={`${className}`} onContextMenu={onContextMenu} style={{ display: "inline-block" }}>
       {children}
 
       <Transition

@@ -26,7 +26,7 @@ const ViewArtifacts = () => {
   const artifactImg = "/src/assets/sample-artifact.jpg";
 
   return (
-    <div className="w-full h-full rounded-md grid grid-cols-[43rem_1fr_1fr]">
+    <div className="w-full h-full rounded-md grid grid-cols-[43rem_34rem_52rem]">
       {/* left column */}
       <div className="col-span-1 w-full h-full bg-black relative overflow-visible flex flex-col">
         <div className="absolute left-0 -top-[12rem] w-full h-[12rem] bg-black flex items-start justify-end pl-10 pb-5 pt-4 overflow-hidden flex-col">
@@ -43,16 +43,16 @@ const ViewArtifacts = () => {
       </div>
 
       {/* middle column */}
-      <div className="col-span-1 w-[62rem] h-full flex flex-col gap-8">
-        <div className="w-[36rem] h-[10rem] bg-[#EDCA86] rounded-r-3xl"></div>
-        <div className="w-[36rem] h-[26rem] bg-[#9A8252] rounded-r-3xl"></div>
-        <div className="w-[36rem] h-[26rem] bg-[#1D1911] rounded-r-3xl"></div>
+      <div className="col-span-1 w-[28rem] h-full flex flex-col gap-8">
+        <div className="w-[30rem] h-[10rem] bg-[#EDCA86] rounded-r-3xl"></div>
+        <div className="w-[30rem] h-[22rem] bg-[#9A8252] rounded-r-3xl"></div>
+        <div className="w-[30rem] h-[22rem] bg-[#1D1911] rounded-r-3xl"></div>
       </div>
 
       {/* right column */}
-<div className="relative col-span-1 w-full h-full flex flex-col ml-12 gap-12 overflow-visible">
+<div className="relative col-span-1 w-full h-[60rem] flex flex-col ml-12 gap-12 overflow-visible">
   {/* top section */}
-  <div className="w-full h-[40rem] bg-[#1D1911] rounded-l-3xl"></div>
+  <div className="w-full h-[24rem] bg-[#1D1911] rounded-l-3xl"></div>
 
   {/* bottom section */}
   <div className="w-full h-full flex relative">
@@ -71,7 +71,7 @@ const ViewArtifacts = () => {
 
   {/* sliding panel (covers entire right column) */}
   <div
-    className={`absolute top-0 right-0 w-full h-[70rem] bg-white border-2 border-[#1D1911] rounded-l-3xl z-20 transform transition-transform duration-500 ${
+    className={`absolute top-0 right-0 w-full h-[60rem] bg-white border-2 border-[#1D1911] rounded-l-3xl z-20 transform transition-transform duration-500 ${
       isPanelOpen ? "translate-x-0" : "translate-x-full"
     }`}
   >
@@ -79,7 +79,7 @@ const ViewArtifacts = () => {
  <button
   onClick={() => setIsPanelOpen((prev) => !prev)}
   className={`absolute -bottom-38 -translate-y-1/2  
-              ${isPanelOpen ? "-left-[5rem] w-[5rem]" : "-left-[12rem] w-[12rem]"} 
+              ${isPanelOpen ? "-left-[5rem] w-[5rem]" : "-left-[8rem] w-[8rem]"} 
               h-[32rem] bg-[#1D1911] rounded-tl-2xl rounded-bl-2xl 
               text-white font-bold shadow-lg z-30 
               flex items-center justify-center 

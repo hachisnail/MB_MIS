@@ -34,3 +34,23 @@ export function formatDate(dateStr) {
     day: "numeric",
   });
 }
+
+export function formatDateTime(dateStr) {
+  if (!dateStr) return { date: "", time: "" };
+
+  const date = new Date(dateStr);
+
+  const formattedDate = date.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+
+  const formattedTime = date.toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+
+  return { date: formattedDate, time: formattedTime };
+}

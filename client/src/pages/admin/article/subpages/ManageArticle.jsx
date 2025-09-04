@@ -289,6 +289,8 @@ const ArticleEditorForm = () => {
 
   // Function to generate summary using Node Summarizer (backend API)
   const handleSummarizeCaption = async () => {
+    
+
     const articleContent = editor.getText();
     if (!articleContent.trim()) {
       window.alert('Please write some content in the editor first to summarize.');
@@ -296,13 +298,13 @@ const ArticleEditorForm = () => {
     }
     setIsSummarizing(true);
     try {
-      // Replace with your actual backend endpoint
-      const response = await axios.post(
-        `${BASE_URL}/auth/summarize`,
-        { text: articleContent },
-        { withCredentials: true }
-      );
-      setCaption(response.data.summary || "");
+        // Replace with your actual backend endpoint
+        const response = await axios.post(
+            `${BASE_URL}/auth/summarize`,
+            { text: articleContent },
+            { withCredentials: true }
+        );
+        setCaption(response.data.summary || "");
     } catch (error) {
       window.alert('Failed to summarize. Please try again.');
       console.error(error);
@@ -1486,7 +1488,9 @@ const ArticleEditorForm = () => {
                 className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
                 {isSummarizing ? 'Summarizing...' : 'Summarize with Node'}
+                
             </button>
+            
         </div>
     </div>
     <textarea

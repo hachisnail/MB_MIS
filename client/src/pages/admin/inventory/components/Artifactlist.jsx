@@ -52,94 +52,77 @@ export function RenderRelatedDocs({ relatedImages = [], attachedFiles = [] }) {
   };
 
   return (
-    <div className="w-full h-full flex flex-col items-center justify-start gap-y-5">
+    <div className="w-full h-full flex  gap-x-5">
       {/* Images Section */}
-      <div className="w-full p-5 rounded-lg border border-gray-400 flex flex-col">
-        <span className="text-2xl font-semibold">
-          Related images / about the artifact
+      <div className="w-[25rem] h-[40rem] pt-5 gap-5 border bg-[#1D1911] rounded-2xl border-gray-200 flex flex-col items-center">
+        <span className="text-3xl font-bold text-white font-hind tracking-wider">
+          Related images
         </span>
 
-        <div className="max-w-[60rem] h-full flex flex-col items-center gap-y-4 mt-4 justify-center">
-          <div className="flex items-center">
-            {/* Prev Button */}
-            <button
-              onClick={handlePreviousPage}
-              disabled={imageCurrentPage === 1}
-              className="h-full hover:text-gray-600 cursor-pointer disabled:opacity-50"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="32"
-                height="32"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M13 20l-3 -8l3 -8" />
-              </svg>
-            </button>
-
-            <div className="flex gap-x-4 h-64 w-full">
-              {paginatedImages.map(({ key, src }) => (
-                <div
-                  key={key}
-                  className="w-65 h-65 flex items-center bg-cover bg-no-repeat bg-center text-white justify-center border bg-gray-600 rounded-lg"
-                  style={{ backgroundImage: `url(${src})` }}
-                />
-              ))}
-            </div>
-
-            {/* Next Button */}
-            <button
-              onClick={handleNextPage}
-              disabled={imageCurrentPage === totalPages}
-              className="h-full hover:text-gray-600 cursor-pointer disabled:opacity-50"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="32"
-                height="32"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M11 4l3 8l-3 8" />
-              </svg>
-            </button>
-          </div>
-
-          {/* Page Indicators */}
-          <div className="flex gap-x-2">
-            {Array.from({ length: totalPages }).map((_, index) => (
-              <div
-                key={index}
-                className={`w-5 h-1 rounded ${
-                  imageCurrentPage === index + 1 ? "bg-gray-900" : "bg-gray-400"
-                }`}
+        <div className="w-full h-full bg-white rounded-2xl p-5 ">
+          {/* ✅ Scrollable div with images */}
+          <div className="w-full h-[32rem] p-3 gap-4 bg-white rounded-2xl shadow-[inset_0_6px_8px_rgba(0,0,0,0.3),inset_0_-6px_8px_rgba(0,0,0,0.3)] overflow-y-auto flex flex-col">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <img
+                key={i}
+                src={`https://picsum.photos/seed/${i}/400/250`}
+                alt={`Placeholder ${i}`}
+                className="rounded-xl object-cover w-full"
               />
             ))}
           </div>
         </div>
       </div>
 
+    
+
       {/* Files Section */}
-      <div className="w-full h-[12rem] flex rounded-lg border-gray-400 border bg-black">
-        <div className="max-w-60 w-full h-full flex items-center justify-center">
+      <div className="w-[16rem] h-[40rem] pt-5 gap-5 border bg-[#1D1911] rounded-2xl border-gray-200 flex flex-col items-center">
+        <span className="text-3xl font-bold text-white font-hind tracking-wider">
+          Attached Files
+        </span>
+
+        <div className="w-full h-full bg-white rounded-2xl p-5">
+          <div className="w-full h-[32rem] p-3 bg-white rounded-2xl shadow-[inset_0_8px_12px_rgba(0,0,0,0.25),inset_0_-8px_12px_rgba(0,0,0,0.25)] overflow-y-auto flex flex-col items-center gap-6">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="flex flex-col items-center">
+                {/* File Icon */}
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={2}
+                  stroke="black"
+                  className="w-12 h-12"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M12 4H6a2 2 0 00-2 2v12a2 
+                 2 0 002 2h12a2 2 0 002-2V10l-6-6z"
+                  />
+                </svg>
+
+                {/* File Name */}
+                <p className="mt-2 text-sm font-medium text-red-600 truncate max-w-[10rem] text-center">
+                  CertificateofAu{i + 1}.pdf
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* <div className="max-w-60 w-full h-full flex items-center justify-center">
           <span className="text-white text-2xl font-semibold">
             Attached Files
           </span>
-        </div>
+        </div> */}
 
-        <div className="rounded-lg w-full h-full bg-white gap-y-2 pt-4 flex items-center flex-col justify-center px-4">
-          <div className="flex items-center w-full gap-x-2">
-            {/* Prev Button */}
-            <button
+      {/* <div className="rounded-lg w-full h-full bg-white gap-y-2 pt-4 flex items-center flex-col justify-center px-4">
+          <div className="flex items-center w-full gap-x-2"> */}
+      {/* Prev Button */}
+      {/* <button
               onClick={handleFilePreviousPage}
               disabled={fileCurrentPage === 1}
               className="hover:text-gray-600 h-full cursor-pointer disabled:opacity-50"
@@ -157,10 +140,10 @@ export function RenderRelatedDocs({ relatedImages = [], attachedFiles = [] }) {
               >
                 <path d="M13 20l-3 -8l3 -8" />
               </svg>
-            </button>
+            </button> */}
 
-            {/* File Cards */}
-            <div className="w-full flex gap-x-2">
+      {/* File Cards */}
+      {/* <div className="w-full flex gap-x-2">
               {paginatedFiles.map(({ key, filename, category }) => (
                 <ContextMenu
                   key={key}
@@ -187,10 +170,10 @@ export function RenderRelatedDocs({ relatedImages = [], attachedFiles = [] }) {
                   </div>
                 </ContextMenu>
               ))}
-            </div>
+            </div> */}
 
-            {/* Next Button */}
-            <button
+      {/* Next Button */}
+      {/* <button
               onClick={handleFileNextPage}
               disabled={fileCurrentPage === fileTotalPages}
               className="hover:text-gray-600 h-full cursor-pointer disabled:opacity-50"
@@ -209,10 +192,10 @@ export function RenderRelatedDocs({ relatedImages = [], attachedFiles = [] }) {
                 <path d="M11 4l3 8l-3 8" />
               </svg>
             </button>
-          </div>
+          </div> */}
 
-          {/* Page Indicators */}
-          <div className="flex gap-x-2 ">
+      {/* Page Indicators */}
+      {/* <div className="flex gap-x-2 ">
             {Array.from({ length: fileTotalPages }).map((_, index) => (
               <div
                 key={index}
@@ -222,8 +205,7 @@ export function RenderRelatedDocs({ relatedImages = [], attachedFiles = [] }) {
               />
             ))}
           </div>
-        </div>
-      </div>
+        </div> */}
     </div>
   );
 }
@@ -252,7 +234,11 @@ export function RenderArtifactInformation({ artifactImg = [] }) {
               Artifact Image
             </span>
           </div>
-          <ImageCarousel mainSize="w-98 h-98" thumbnailSize="w-22 h-22" images={artifactImg} />
+          <ImageCarousel
+            mainSize="w-98 h-98"
+            thumbnailSize="w-22 h-22"
+            images={artifactImg}
+          />
         </div>
       </div>
 

@@ -5,11 +5,12 @@ import {
   RenderRelatedDocs,
   RenderArtifactImageAndDonatorInfo,
   InfoSection,
+  DonatorInfoSection
 } from "../components/ViewPageRenderer";
 import StyledButton from "@/components/buttons/StyledButton";
 import MultiLineInput from "@/features/MultiLineInput";
 import { decodeBase64 } from "@/utils/base64";
-import { formatDateRange, formatDate } from "../components/formatDateRange";
+import { formatDateRange, formatDate, formatDateTime } from "../components/formatDateRange";
 import { useAuth } from "../../../../context/authContext";
 import CurvedButton from "../components/CurvedButton";
 import Breadcrumb from "../../../../components/Breadcrumb";
@@ -265,6 +266,18 @@ const AcquisitionViewPage = () => {
 
   const email = contributionData?.Contributor?.email || "";
 
+  const { date: submittedDate, time: submittedTime } = formatDateTime(
+    contributionData?.submission_date
+  );
+
+  const previewAbout = [
+    {label: "Current Manager", value: user.fname + " " + user.lname },
+    {label: "Status", value: contributionData?.status || "Not Provided" },
+    {label: "Type", value: acquisitionType || "Not Provided" },
+  { label: "Date Submitted", value: submittedDate || "Not Provided" },
+  { label: "Time", value: submittedTime || "Not Provided" },
+  ]
+
   if (loading) {
     return (
       <div className="w-full h-full flex items-center justify-center">
@@ -285,16 +298,56 @@ const AcquisitionViewPage = () => {
         </div>
       ) : (
         <>
+
+
+        {/* preview page */}
           {activeDocument === "Overview" && (
             <div className="w-full h-full   grid grid-cols-[1fr_43rem_47rem]">
-              <div className="col-span-1 w-full h-full bg-[#1C1B19] rounded-l-md "></div>
+              <div className="col-span-1 w-full h-full bg-[#1C1B19] rounded-l-md pt-20 pb-10 px-10 gap-y-5 flex flex-col">
+                <span className="text-white text-3xl">About</span>
 
-              <div className="col-span-1 w-full h-full bg-[#1A0F0F]"></div>
+                <div className="w-full h-fit gap-y-3 flex flex-wrap border-y border-[#9B9B9B] py-5">
+                  {previewAbout.map(({ label, value }, idx) => (
+                    <div
+                      key={idx}
+                      className={`${idx === 0 ? "w-full" : "w-1/2"} h-fit flex flex-col `}
+                    >
+                      <span className="text-[#666666] text-lg ">{label}</span>
+                      <span className="text-white capitalize text-xl font-semibold">{value}</span>
+                    </div>
+                  ))}
 
-              <div className="col-span-1 w-full h-full bg-[#1D1911] rounded-r-md"></div>
+                </div>
+
+                <div className="border-b border-[#9B9B9B] w-full h-full flex flex-col">
+                      <span className="text-[#666666] text-lg ">Description</span>
+                      <span className="text-white capitalize text-xl font-semibold ">"asddf"</span>
+
+                </div>
+
+                <DonatorInfoSection 
+                donatorInformation={donatorInformation} 
+                containerClassName="w-full h-fit flex flex-col gap-y-2"
+                labelClassName="text-lg items-end text-[#666666] font-normal gap-x-2 flex"
+                valueClassName="text-xl font-semibold text-white pl-20 font-normal"
+                itemClassName="w-full flex flex-col"/>
+                
+              </div>
+
+              <div className="col-span-1 w-full h-full bg-[#1A0F0F]">
+
+
+              </div>
+
+              <div className="col-span-1 w-full h-full bg-[#1D1911] rounded-r-md">
+
+
+              </div>
             </div>
           )}
 
+
+          {/* full document */}
           {activeDocument === "Document" && (
             <div className="w-full h-full rounded-md grid grid-cols-[43rem_1fr_40rem]">
               {/* Left column */}
@@ -348,7 +401,9 @@ const AcquisitionViewPage = () => {
 
                         <Timeline currentStep={step} steps={steps} />
 
-                        {/* <div className="flex w-fit h-fit gap-x-5">
+                        {/*
+                        // testing button
+                        <div className="flex w-fit h-fit gap-x-5">
                           <button
                             onClick={() => setStep((s) => Math.max(0, s - 1))}
                             className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600"
@@ -444,9 +499,13 @@ const AcquisitionViewPage = () => {
                     />
                   </div>
                 </div>
+
               </div>
             </div>
           )}
+
+
+          {/* full transaction */}
           {activeDocument === "Transaction" && (
             <div className="w-full h-full rounded-md bg-[#1C1B19]"></div>
           )}

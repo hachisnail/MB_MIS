@@ -4,8 +4,8 @@ import { Transition } from "@headlessui/react";
 export default function Timeline({
   currentStep = 0,
   steps = [],
-  size = 45, // circle diameter in px (instead of rem for pixel precision)
-  lineThickness = 7, // thickness in px
+  size = 45, 
+  lineThickness = 7, 
 }) {
   if (!steps.length) return null;
 
@@ -13,7 +13,6 @@ export default function Timeline({
   const stepRefs = useRef([]);
   const [progressWidth, setProgressWidth] = useState(0);
 
-  // Recalculate progress line whenever currentStep or layout changes
   useEffect(() => {
     if (!containerRef.current || !stepRefs.current[currentStep]) return;
 
@@ -23,7 +22,6 @@ export default function Timeline({
     const containerLeft = containerRect.left;
     const stepCenter = stepRect.left + stepRect.width / 2;
 
-    // progress = distance from container left to current step center
     setProgressWidth(stepCenter - containerLeft);
   }, [currentStep, steps]);
 

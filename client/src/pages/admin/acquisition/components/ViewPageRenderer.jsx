@@ -7,274 +7,7 @@ import { formatDate } from "../../appointments/components/dateUtils";
 import ImageViewerModal from "../../../../features/ImageViewerModal";
 import { InfoModal } from "../../../../features/InfoModal";
 
-import { FileType } from "lucide-react";
-
 const SERVER_URL = import.meta.env.VITE_SERVER_URL;
-
-// export function RenderRelatedDocs({ relatedImages = [], attachedFiles = [] }) {
-//   const [imageCurrentPage, setImageCurrentPage] = useState(1);
-//   const [fileCurrentPage, setFileCurrentPage] = useState(1);
-//   const [isLending, setIsLending] = useState(false);
-//   const [isModalOpen, setIsModalOpen] = useState(false);
-//   const [modalStartIndex, setModalStartIndex] = useState(0);
-
-//   const location = useLocation();
-//   const navigate = useNavigate();
-
-//   useEffect(() => {
-//     setIsLending(location.pathname.includes("lending"));
-//   }, [location.pathname]);
-
-//   /** Images pagination **/
-//   const itemsPerPage = 3;
-//   const totalPages = Math.ceil(relatedImages.length / itemsPerPage);
-//   const paginatedImages = relatedImages.slice(
-//     (imageCurrentPage - 1) * itemsPerPage,
-//     imageCurrentPage * itemsPerPage
-//   );
-
-//   const handleNextPage = () => {
-//     if (imageCurrentPage < totalPages) setImageCurrentPage((prev) => prev + 1);
-//   };
-//   const handlePreviousPage = () => {
-//     if (imageCurrentPage > 1) setImageCurrentPage((prev) => prev - 1);
-//   };
-
-//   /** Files pagination **/
-//   const fileItemsPerPage = 4;
-//   const fileTotalPages = Math.ceil(attachedFiles.length / fileItemsPerPage);
-//   const paginatedFiles = attachedFiles.slice(
-//     (fileCurrentPage - 1) * fileItemsPerPage,
-//     fileCurrentPage * fileItemsPerPage
-//   );
-//   const handleFileNextPage = () => {
-//     if (fileCurrentPage < fileTotalPages)
-//       setFileCurrentPage((prev) => prev + 1);
-//   };
-//   const handleFilePreviousPage = () => {
-//     if (fileCurrentPage > 1) setFileCurrentPage((prev) => prev - 1);
-//   };
-
-//   console.log(attachedFiles);
-
-//   return (
-//     <div
-//       className={`w-[55rem] h-full flex flex-col items-center gap-y-5 ${
-//         isLending ? "justify-center" : "justify-start"
-//       }`}
-//     >
-//       {/* Images Section */}
-//       {relatedImages.length > 0 && (
-//         <div className="w-full p-5 rounded-lg border border-gray-400 flex flex-col">
-//           <span className="text-2xl font-semibold">
-//             Related Images / About the Artifact
-//           </span>
-
-//           <div className="max-w-[60rem] h-full flex flex-col items-center gap-y-4 mt-4 justify-center">
-//             <div className="flex items-center gap-x-2">
-//               <button
-//                 onClick={handlePreviousPage}
-//                 disabled={imageCurrentPage === 1}
-//                 className="h-full border-r hover:text-gray-600 cursor-pointer disabled:opacity-50"
-//               >
-//                 <svg
-//                   xmlns="http://www.w3.org/2000/svg"
-//                   width="18"
-//                   height="18"
-//                   viewBox="0 0 24 24"
-//                   fill="none"
-//                   stroke="currentColor"
-//                   strokeWidth="3"
-//                   strokeLinecap="round"
-//                   strokeLinejoin="round"
-//                 >
-//                   <path d="M13 20l-3 -8l3 -8" />
-//                 </svg>
-//               </button>
-
-//               <div className="w-[47rem] flex gap-x-4">
-//                 {paginatedImages.map(({ key, src, label }, idx) => (
-//                   <div
-//                     key={key}
-//                     className="w-50 h-50 border rounded-lg overflow-hidden flex items-center justify-center bg-gray-100 cursor-pointer"
-//                     onClick={() => {
-//                       setModalStartIndex(
-//                         (imageCurrentPage - 1) * itemsPerPage + idx
-//                       );
-//                       setIsModalOpen(true);
-//                     }}
-//                   >
-//                     <img
-//                       src={
-//                         src.startsWith("http")
-//                           ? src
-//                           : `${SERVER_URL}/uploads/private/pictures/${src}`
-//                       }
-//                       alt={label}
-//                       className="w-full h-full object-cover"
-//                     />
-//                   </div>
-//                 ))}
-//               </div>
-
-//               <button
-//                 onClick={handleNextPage}
-//                 disabled={imageCurrentPage === totalPages}
-//                 className="h-full hover:text-gray-600 border-l cursor-pointer disabled:opacity-50"
-//               >
-//                 <svg
-//                   xmlns="http://www.w3.org/2000/svg"
-//                   width="18"
-//                   height="18"
-//                   viewBox="0 0 24 24"
-//                   fill="none"
-//                   stroke="currentColor"
-//                   strokeWidth="3"
-//                   strokeLinecap="round"
-//                   strokeLinejoin="round"
-//                 >
-//                   <path d="M11 4l3 8l-3 8" />
-//                 </svg>
-//               </button>
-//             </div>
-
-//             <div className="flex gap-x-2 mt-2">
-//               {Array.from({ length: totalPages }).map((_, index) => (
-//                 <div
-//                   key={index}
-//                   className={`w-5 h-1 rounded ${
-//                     imageCurrentPage === index + 1
-//                       ? "bg-gray-900"
-//                       : "bg-gray-400"
-//                   }`}
-//                 />
-//               ))}
-//             </div>
-//           </div>
-//         </div>
-//       )}
-
-//       {/* Files Section */}
-//       {attachedFiles.length > 0 && (
-//         <div className="w-full h-[12rem] flex rounded-lg border-gray-400 border bg-black mt-5">
-//           <div className="max-w-60 w-full h-full flex items-center justify-center">
-//             <span className="text-white text-2xl font-semibold">
-//               Attached Files
-//             </span>
-//           </div>
-
-//           <div className="rounded-lg w-full h-full bg-white gap-y-2 pt-4 flex items-center flex-col justify-center px-4">
-//             <div className="flex items-center w-full gap-x-2">
-//               <button
-//                 onClick={handleFilePreviousPage}
-//                 disabled={fileCurrentPage === 1}
-//                 className="hover:text-gray-600 border-r h-full cursor-pointer disabled:opacity-50"
-//               >
-//                 <svg
-//                   xmlns="http://www.w3.org/2000/svg"
-//                   width="18"
-//                   height="18"
-//                   viewBox="0 0 24 24"
-//                   fill="none"
-//                   stroke="currentColor"
-//                   strokeWidth="3"
-//                   strokeLinecap="round"
-//                   strokeLinejoin="round"
-//                 >
-//                   <path d="M13 20l-3 -8l3 -8" />
-//                 </svg>
-//               </button>
-
-//               <div className="w-full flex gap-x-2">
-//                 {paginatedFiles.map(({ key, filename, category, url }) => (
-//                   <ContextMenu
-//                     key={key}
-//                     menuItems={[
-//                       {
-//                         label: "Preview",
-//                         onClick: () => {
-//                           const fileType = filename
-//                             .split(".")
-//                             .pop()
-//                             .toLowerCase();
-//                           handlePreview(
-//                             navigate,
-//                             `${location.pathname}/view`,
-//                             url,
-//                             filename,
-//                             fileType
-//                           );
-//                         },
-//                       },
-//                       {
-//                         label: "Download",
-//                         onClick: () => window.open(url, "_blank"),
-//                       },
-//                       {
-//                         label: "Delete",
-//                         onClick: () => alert("delete clicked"),
-//                       },
-//                     ]}
-//                   >
-//                     <div className="w-32 h-32 flex flex-col pt-7 items-center justify-center text-black bg-gray-200 rounded-lg">
-//                       <div className="w-5 h-5 border mb-1"></div>
-//                       <span className="text-sm h-5 truncate w-25">
-//                         {filename}
-//                       </span>
-//                       <span className="text-xs">{category}</span>
-//                     </div>
-//                   </ContextMenu>
-//                 ))}
-//               </div>
-
-//               <button
-//                 onClick={handleFileNextPage}
-//                 disabled={fileCurrentPage === fileTotalPages}
-//                 className="hover:text-gray-600 h-full border-l cursor-pointer disabled:opacity-50"
-//               >
-//                 <svg
-//                   xmlns="http://www.w3.org/2000/svg"
-//                   width="18"
-//                   height="18"
-//                   viewBox="0 0 24 24"
-//                   fill="none"
-//                   stroke="currentColor"
-//                   strokeWidth="3"
-//                   strokeLinecap="round"
-//                   strokeLinejoin="round"
-//                 >
-//                   <path d="M11 4l3 8l-3 8" />
-//                 </svg>
-//               </button>
-//             </div>
-
-//             <div className="flex gap-x-2 mt-2">
-//               {Array.from({ length: fileTotalPages }).map((_, index) => (
-//                 <div
-//                   key={index}
-//                   className={`w-5 h-1 rounded ${
-//                     fileCurrentPage === index + 1
-//                       ? "bg-gray-900"
-//                       : "bg-gray-400"
-//                   }`}
-//                 />
-//               ))}
-//             </div>
-//           </div>
-//         </div>
-//       )}
-
-//       {/* Image Viewer Modal */}
-//       {isModalOpen && (
-//         <ImageViewerModal
-//           images={relatedImages}
-//           initialIndex={modalStartIndex}
-//           onClose={() => setIsModalOpen(false)}
-//         />
-//       )}
-//     </div>
-//   );
-// }
 
 export function RenderLendingReason({ lendingReason = [] }) {
   return (
@@ -328,7 +61,7 @@ export function RenderArtifactImageAndDonatorInfo({
         mainSize="w-[29rem] h-[29rem]"
       />
 
-      <div className="max-h-[30rem] h-full gap-y-3 flex flex-col overflow-auto border-t border-gray-400 pt-5 pl-10 pr-5">
+      {/* <div className="max-h-[30rem] h-full gap-y-3 flex flex-col overflow-auto border-t border-gray-400 pt-5 pl-10 pr-5">
         <span className="text-white text-3xl font-hind">
           Donators Information
         </span>
@@ -347,7 +80,33 @@ export function RenderArtifactImageAndDonatorInfo({
             <span className="text-white font-normal ml-20">{value}</span>
           </div>
         ))}
-      </div>
+      </div> */}
+      <DonatorInfoSection donatorInformation={donatorInformation} />
+    </div>
+  );
+}
+
+export function DonatorInfoSection({
+  donatorInformation = [],
+  title = "Donors Information",
+  titleClassName = "text-white text-3xl font-hind",
+  labelClassName = "font-normal text-md items-end gap-x-2 flex text-[#666666]",
+  valueClassName = "text-white font-normal ml-20",
+  containerClassName = "max-h-[30rem] h-full gap-y-3 flex flex-col overflow-auto border-t border-gray-400 pt-5 pl-10 pr-5",
+  itemClassName = "w-full flex flex-col h-fit text-2xl font-medium",
+}) {
+  return (
+    <div className={containerClassName}>
+      <span className={titleClassName}>{title}</span>
+      {donatorInformation.map(({ label, value, icon }, idx) => (
+        <div key={idx} className={itemClassName}>
+          <span id="value" className={labelClassName}>
+            {icon}
+            {label}:
+          </span>
+          <span className={valueClassName}>{value}</span>
+        </div>
+      ))}
     </div>
   );
 }
@@ -362,21 +121,14 @@ export const InfoSection = ({
   containerClassName = "",
 }) => {
   const [modalContent, setModalContent] = useState(null);
-  const refs = useRef([]);
-  refs.current = [];
 
   const handleClick = (label, value, idx) => {
-    const el = refs.current[idx];
-    if (!el) return;
+    if (idx === 0) return;
 
-    const style = window.getComputedStyle(el);
-    const lineHeight = parseFloat(style.lineHeight);
-    const lines = Math.round(el.scrollHeight / lineHeight);
+    const displayValue = value || "Not provided";
+    if (displayValue === "Not provided") return;
 
-    const maxLines = idx === 1 ? 1 : 2;
-    if (lines > maxLines) {
-      setModalContent({ label, value });
-    }
+    setModalContent({ label, value: displayValue });
   };
 
   return (
@@ -387,37 +139,33 @@ export const InfoSection = ({
       <span className={`text-4xl font-bold ${titleClassName}`}>{title}</span>
 
       {/* Items */}
-      {items.map(({ label, value }, idx) => (
-        <div
-          key={idx}
-          className={`flex flex-col text-xl ${
-            idx === 0 ? "h-fit" : (itemHeight)
-          }`}
-        >
-          <span className={labelClassName}>{label}</span>
+      {items.map(({ label, value }, idx) => {
+        const displayValue = value || "Not provided";
+        return (
           <div
-            className={`w-full ${
-              idx == 0 ? "h-fit" : "h-full"
-            } h-full pl-5 overflow-hidden cursor-pointer`}
-            onClick={() => handleClick(label, value, idx)}
+            key={idx}
+            className={`flex flex-col text-xl ${
+              idx === 0 ? "h-fit" : itemHeight
+            }`}
           >
-            <span
-              ref={(el) => (refs.current[idx] = el)}
-              style={{
-                display: "-webkit-box",
-                WebkitLineClamp: idx === 0 ? 1 : 2,
-                WebkitBoxOrient: "vertical",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "normal",
-              }}
-              className={`${valueClassName} ${idx === 0 ? "h-fit" : (itemHeight)}`}
+            <span className={labelClassName}>{label}</span>
+            <div
+              className={`w-full ${
+                idx === 0 ? "h-fit" : "h-full"
+              } pl-5 overflow-hidden cursor-pointer`}
+              onClick={() => handleClick(label, value, idx)}
             >
-              {value}
-            </span>
+              <span
+                className={`${valueClassName} ${
+                  idx === 0 ? "h-fit" : itemHeight
+                }`}
+              >
+                {displayValue}
+              </span>
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
 
       {/* Reusable Modal */}
       <InfoModal
@@ -487,7 +235,7 @@ export function RenderRelatedDocs({
             {paginatedImages.length > 0 ? (
               paginatedImages.map((img, i) => (
                 <div
-                title={img.label}
+                  title={img.label}
                   key={img.key || i}
                   className={`flex-none border border-gray-400 hover:scale-105 transition-transform cursor-pointer rounded-xl w-full ${imgHeight} bg-center bg-cover`}
                   style={{ backgroundImage: `url("${img.src}")` }}
@@ -512,7 +260,6 @@ export function RenderRelatedDocs({
       {/* Files Section */}
       <div
         className="pt-5 gap-5  bg-[#1D1911] rounded-2xl shadow-lg shadow-gray-400 flex flex-col items-center"
-
         style={{ width: fileBoxWidth, height: fileBoxHeight }}
       >
         <span className="text-xl font-bold text-white font-hind tracking-wider">
@@ -527,7 +274,7 @@ export function RenderRelatedDocs({
             {paginatedFiles.length > 0 ? (
               paginatedFiles.map(({ key, filename, category, url }, i) => (
                 <ContextMenu
-                className="w-full h-fit"
+                  className="w-full h-fit"
                   key={key || i}
                   menuItems={[
                     {
@@ -582,7 +329,9 @@ export function RenderRelatedDocs({
                       {filename}
                     </p>
                     {category && (
-                      <p className="text-md capitalize  text-gray-500">{category}</p>
+                      <p className="text-md capitalize  text-gray-500">
+                        {category}
+                      </p>
                     )}
                   </div>
                 </ContextMenu>

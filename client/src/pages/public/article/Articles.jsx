@@ -210,7 +210,7 @@ const Articles = () => {
                   <Link
                     key={article.article_id || index}
                     to={`/article/${encoded(article.article_id, article.title)}`}
-                    className="flex flex-col items-center text-center hover:opacity-90 transition duration-300"
+                    className="flex flex-col items-center text-center hover:opacity-90 transition overflow-hidden"
                   >
                     <div className="w-full aspect-square overflow-hidden bg-gray-700 flex items-center justify-center">
                       {hasValidImage ? (
@@ -223,7 +223,7 @@ const Articles = () => {
                               : ""
                           }
                           alt={`Article ${article.title || 'Untitled'}`}
-                          className="w-full h-full object-cover"
+                          className="w-full h-full object-cover  duration-300 hover:scale-105 transition-transform"
                           onError={(e) => {
                             e.target.style.display = "none";
                             e.target.parentNode.classList.add(

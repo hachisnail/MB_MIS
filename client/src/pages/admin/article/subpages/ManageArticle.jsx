@@ -14,10 +14,11 @@ import {
   ColumnsIcon,
   TypeIcon,
   XIcon,
-  List,
+  List, 
   ListOrdered,
   Highlighter as HighlighterIcon,
   Video as VideoIcon
+ 
 } from "lucide-react";
 
 import axios from "axios";
@@ -25,6 +26,7 @@ import Button from "../../../../components/buttons/artclbtn";
 
 import { useParams } from "react-router-dom";
 import { useEditor } from "@tiptap/react";
+
 
 import StarterKit from "@tiptap/starter-kit";
 import TextAlign from "@tiptap/extension-text-align";
@@ -49,24 +51,26 @@ import FontSize from "../components/FontSize";
 import CustomImage from "../components/CustomImage";
 import StyledButton from "@/components/buttons/StyledButton";
 
+
+
 import { useAuth } from "@/context/authContext";
 import useAutosave, { loadDraft, clearDraft } from "@/features/ContentDrafting.jsx";
-import usePrompt from '@/hooks/usePrompt';
 
 const ArticleEditorForm = () => {
+
+
   const BASE_URL = import.meta.env.VITE_API_BASE_URL;
-  const SERVER_ORIGIN = BASE_URL.replace(/\/api$/, "");
+  const SERVER_ORIGIN = BASE_URL.replace(/\/api$/, ""); // "http://localhost:5000"
   const UPLOAD_PATH = `${SERVER_ORIGIN}/uploads/pictures/`;
   const { user } = useAuth();
-  const userRole = user.roleId;
-  const allowedRoles = [1, 2, 5];
+  const userRole = user.roleId; 
+  const allowedRoles = [1, 2, 5]; // Add article privs
   const isViewer = userRole === 3;
   const isReviewer = userRole === 4;
   const hasRun = useRef(false);
 
   const navigate = useNavigate();
-
-  // Initialize TipTap editor
+    // Initialize TipTap editor
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -97,10 +101,11 @@ const ArticleEditorForm = () => {
       Highlight,
       Youtube,
       Dropcursor.configure({
-        color: 'blue',
-        width: 2,
-      }),
-      CustomImage,
+      color: 'blue',
+      width: 2,
+    }),
+    CustomImage,
+
       // HardBreak.configure({
       //   HTMLAttributes: {
       //     class: 'hard-break',
@@ -110,195 +115,186 @@ const ArticleEditorForm = () => {
     content: "",
     editable: !isReviewer,
     editorProps: {
-      handleKeyDown(view, event) {
-        // custom shortcuts...
-      },
-      handleDrop(view, event, slice, moved) {
-        const hasFiles = event.dataTransfer?.files?.length;
+  handleKeyDown(view, event) {
+    // custom shortcuts...
+  },
+  handleDrop(view, event, slice, moved) {
+    const hasFiles = event.dataTransfer?.files?.length
 
-        // CASE 1: Moving existing node inside editor
-        if (moved) {
-          return false;
+    // CASE 1: Moving existing node inside editor
+    if (moved) {
+      return false // allow default behavior (reposition nodes)
+    }
+
+    // CASE 2: Dropping new files
+    if (hasFiles) {
+      const images = Array.from(event.dataTransfer.files).filter(file =>
+        file.type.startsWith("image/")
+      )
+
+      if (images.length === 0) return false
+
+      images.forEach(file => {
+        const reader = new FileReader()
+        reader.onload = () => {
+          const url = reader.result
+          view.dispatch(
+            view.state.tr.replaceSelectionWith(
+              view.state.schema.nodes.image.create({ src: url })
+            )
+          )
         }
+        reader.readAsDataURL(file)
+      })
 
-        // CASE 2: Dropping new files
-        if (hasFiles) {
-          const images = Array.from(event.dataTransfer.files).filter(file =>
-            file.type.startsWith("image/")
-          );
+      return true
+    }
 
-          if (images.length === 0) return false;
+    return false
+  },
+},
 
-          images.forEach(file => {
-            const reader = new FileReader();
-            reader.onload = () => {
-              const url = reader.result;
-              view.dispatch(
-                view.state.tr.replaceSelectionWith(
-                  view.state.schema.nodes.image.create({ src: url })
-                )
-              );
-            };
-            reader.readAsDataURL(file);
-          });
-
-          return true;
-        }
-
-        return false;
-      },
-    },
     onUpdate: ({ editor }) => {
-      setIsDirty(true);
-    },
+    setIsDirty(true); // <-- Add this line to mark the form as dirty on every editor change
+  },
   });
+    const [isEditing, setIsEditing] = useState(false);
+    // Form state
+      const [title, setTitle] = useState("");
+      const [author, setAuthor] = useState("");
+      const [category, setCategory] = useState("");
+      const [address, setAddress] = useState("");
+      const [selectedDate, setSelectedDate] = useState("");
+      const [thumbnail, setThumbnail] = useState(null);
+      const [previewImage, setPreviewImage] = useState(null);
+      const Categories = ["Article", "Education", "Exhibit", "Contests", "Other"]; // changed from 'Contents'
+      const municipalitiesWithBarangays = {
+      "Basud": ["Mampili", "Matnog", "San Felipe", "San Isidro", "Tuaca"], // example
+      "Capalonga": ["Alayao", "Bayabas", "Del Pilar", "Itok", "Old Camp"],
+      "Daet": ["Alawihao", "Awitan", "Bagasbas", "Borabod", "Camambugan", "Dogongan"],
+      "San Lorenzo Ruiz": ["Daguit", "Langga", "Laniton", "Mampurog", "Matacong"],
+      "Jose Panganiban": ["Bagong Bayan", "Calero", "Larap", "Plaridel", "Osmeña"],
+      "Labo": ["Baay", "Bagacay", "Bagong Silang I", "Bakiad", "Talobatib"],
+      "Mercedes": ["Apuao", "Caucauayan", "Colasi", "Hinipagan", "San Roque"],
+      "Paracale": ["Bagumbayan", "Batobalani", "Calaburnay", "Capacuan", "Tugos"],
+      "San Vicente": ["Asdum", "Cabanbanan", "Calabagas", "Fabrica", "Iraya Sur"],
+      "Santa Elena": ["Basiad", "Bulala", "Maulawin", "Polungguitguit", "Rizal"],
+      "Talisay": ["Binanuahan", "Calintaan", "Del Rosario", "San Isidro", "Tinago"],
+      "Vinzons": ["Calangcawan Norte", "Candelaria", "Manmuntay", "Pinagtigasan", "Sula"],
+    };
+      const [status, setStatus] = useState("pending");
+      const [uploadPeriodStart, setUploadPeriodStart] = useState("");
+      const [uploadPeriodEnd, setUploadPeriodEnd] = useState("");
+      const [reviewerNotes, setReviewerNotes] = useState('');
 
-  const [isEditing, setIsEditing] = useState(false);
-  // Form state
-  const [title, setTitle] = useState("");
-  const [author, setAuthor] = useState("");
-  const [category, setCategory] = useState("");
-  const [address, setAddress] = useState("");
-  const [selectedDate, setSelectedDate] = useState("");
-  const [thumbnail, setThumbnail] = useState(null);
-  const [previewImage, setPreviewImage] = useState(null);
-  const Categories = ["Article", "Education", "Exhibit", "Contests", "Other"];
-  const municipalitiesWithBarangays = {
-    "Basud": ["Mampili", "Matnog", "San Felipe", "San Isidro", "Tuaca"],
-    "Capalonga": ["Alayao", "Bayabas", "Del Pilar", "Itok", "Old Camp"],
-    "Daet": ["Alawihao", "Awitan", "Bagasbas", "Borabod", "Camambugan", "Dogongan"],
-    "San Lorenzo Ruiz": ["Daguit", "Langga", "Laniton", "Mampurog", "Matacong"],
-    "Jose Panganiban": ["Bagong Bayan", "Calero", "Larap", "Plaridel", "Osmeña"],
-    "Labo": ["Baay", "Bagacay", "Bagong Silang I", "Bakiad", "Talobatib"],
-    "Mercedes": ["Apuao", "Caucauayan", "Colasi", "Hinipagan", "San Roque"],
-    "Paracale": ["Bagumbayan", "Batobalani", "Calaburnay", "Capacuan", "Tugos"],
-    "San Vicente": ["Asdum", "Cabanbanan", "Calabagas", "Fabrica", "Iraya Sur"],
-    "Santa Elena": ["Basiad", "Bulala", "Maulawin", "Polungguitguit", "Rizal"],
-    "Talisay": ["Binanuahan", "Calintaan", "Del Rosario", "San Isidro", "Tinago"],
-    "Vinzons": ["Calangcawan Norte", "Candelaria", "Manmuntay", "Pinagtigasan", "Sula"],
-  };
-  const [status, setStatus] = useState("pending");
-  const [uploadPeriodStart, setUploadPeriodStart] = useState("");
-  const [uploadPeriodEnd, setUploadPeriodEnd] = useState("");
-  const [reviewerNotes, setReviewerNotes] = useState('');
-  const [municipality, setMunicipality] = useState("");
-  const [contentImages, setContentImages] = useState([]);
-  const [caption, setCaption] = useState('');
-  const [barangay, setBarangay] = useState("");
-  const imageInputRef = useRef(null);
-  const thumbnailInputRef = useRef(null);
-  const [isDirty, setIsDirty] = useState(false);
-  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
-  const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
-  const [errors, setErrors] = useState({});
-  const [removeThumbnail, setRemoveThumbnail] = useState(false);
-  const [hasThumbnail, setHasThumbnail] = useState(!!thumbnail || !!previewImage);
-  const [articles, setArticles] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [editingArticleId, setEditingArticleId] = useState(null);
-  const { encoded } = useParams();
-  const [isGeneratingCaption, setIsGeneratingCaption] = useState(false);
-  const [isSummarizing, setIsSummarizing] = useState(false);
+      const [municipality, setMunicipality] = useState("");
+      const [contentImages, setContentImages] = useState([]);
+      const [caption, setCaption] = useState('');
+      const [barangay, setBarangay] = useState(""); 
+      const imageInputRef = useRef(null);
+      const thumbnailInputRef = useRef(null);
+      const [isDirty, setIsDirty] = useState(false);
+      const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+      const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
+      const [errors, setErrors] = useState({});
+      const [removeThumbnail, setRemoveThumbnail] = useState(false);
+      const [hasThumbnail, setHasThumbnail] = useState(!!thumbnail || !!previewImage);
+      const [articles, setArticles] = useState([]);
+      const [loading, setLoading] = useState(true);
+      const [error, setError] = useState(null);
+      const [editingArticleId, setEditingArticleId] = useState(null);
+      const { encoded } = useParams();
+      const [isGeneratingCaption, setIsGeneratingCaption] = useState(false); 
+      const [isSummarizing, setIsSummarizing] = useState(false); // Add this state for loading the summarizer
 
-  const [uploadPeriodStartTime, setUploadPeriodStartTime] = useState("");
-  const [uploadPeriodEndTime, setUploadPeriodEndTime] = useState("");
+    const [uploadPeriodStartTime, setUploadPeriodStartTime] = useState("");
+    const [uploadPeriodEndTime, setUploadPeriodEndTime] = useState("");
+      
 
-  // Draft prompt modal state
-  const [showDraftPrompt, setShowDraftPrompt] = useState(false);
-  const [draftToLoad, setDraftToLoad] = useState(null);
+      let articleId = null;
+        try {
+          if (encoded) {
+            const decoded = atob(encoded);       // e.g. "123 Some Title"
+            articleId = decoded.split(" ")[0];   // extract just the ID
+          }
+        } catch (err) {
+          console.error("Invalid base64 ID:", encoded);
+        }
+      const [article, setArticle] = useState(null);
 
-  // Use the prompt hook to warn about unsaved changes
-  const { PromptModal } = usePrompt(
-    "You have unsaved changes. Are you sure you want to leave?",
-    isDirty,
-    "light"
-  );
+      const draftKey = articleId ? `article-draft-${articleId}` : 'new-article-draft';
+      const draftData = useMemo(() => ({
+          title,
+          selectedDate,
+          author,
+          category,
+          municipality,
+          barangay,
+          status,
+          uploadPeriodStart,
+          uploadPeriodEnd,
+          description: editor?.getHTML() || "",
+        }), [title, selectedDate, author, category, municipality, barangay, status, uploadPeriodStart, uploadPeriodEnd ,editor?.getHTML()]);
+        useAutosave(isDirty ? draftData : null, draftKey, 1000);
+        
 
-  let articleId = null;
-  try {
-    if (encoded) {
-      const decoded = atob(encoded);
-      articleId = decoded.split(" ")[0];
-    }
-  } catch (err) {
-    console.error("Invalid base64 ID:", encoded);
-  }
-  const [article, setArticle] = useState(null);
-
-  const draftKey = articleId ? `article-draft-${articleId}` : 'new-article-draft';
-  const draftData = useMemo(() => ({
-    title,
-    selectedDate,
-    author,
-    category,
-    municipality,
-    barangay,
-    status,
-    uploadPeriodStart,
-    uploadPeriodEnd,
-    description: editor?.getHTML() || "",
-  }), [title, selectedDate, author, category, municipality, barangay, status, uploadPeriodStart, uploadPeriodEnd, editor?.getHTML()]);
-  useAutosave(isDirty ? draftData : null, draftKey, 1000);
-
-  // Function to generate caption using AI
-  const handleGenerateCaption = async () => {
-    const articleContent = editor.getText();
-    if (!articleContent.trim()) {
-      window.alert('Please write some content in the editor first to generate a caption.');
-      return;
-    }
-
-    setIsGeneratingCaption(true);
-    let retries = 0;
-    const maxRetries = 5;
-    let success = false;
-
-    // The prompt for the AI model
-    const prompt = `Summarize the following article content into a short, engaging caption, suitable for public display on a homepage. The caption should be no more than 150 characters. The content is: ${articleContent}`;
-
-    while (retries < maxRetries && !success) {
-      try {
-        const chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
-        const payload = { contents: chatHistory };
-        const apiKey = import.meta.env.VITE_GEMINI_API_KEY;;
-        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
-
-        const response = await fetch(apiUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-
-        if (!response.ok) {
-          throw new Error(`API error: ${response.status}`);
+    // Function to generate caption using AI
+    const handleGenerateCaption = async () => {
+        const articleContent = editor.getText();
+        if (!articleContent.trim()) {
+            window.alert('Please write some content in the editor first to generate a caption.');
+            return;
         }
 
-        const result = await response.json();
-        const generatedText = result?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-        setCaption(generatedText);
-        success = true;
-      } catch (error) {
-        retries++;
-        const delay = Math.pow(2, retries) * 1000;
-        console.error(`API call failed. Retrying in ${delay / 1000}s...`, error);
-        await new Promise(resolve => setTimeout(resolve, delay));
-      }
-    }
-    setIsGeneratingCaption(false);
-    if (!success) {
-      window.alert('Failed to generate caption. Please try again.');
-    }
-  };
+        setIsGeneratingCaption(true);
+        let retries = 0;
+        const maxRetries = 5;
+        let success = false;
+        
+        // The prompt for the AI model
+        const prompt = `Summarize the following article content into a short, engaging caption, suitable for public display on a homepage. The caption should be no more than 150 characters. The content is: ${articleContent}`;
+
+        while (retries < maxRetries && !success) {
+            try {
+                const chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
+                const payload = { contents: chatHistory };
+                const apiKey = import.meta.env.VITE_GEMINI_API_KEY;;
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+                
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`API error: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                const generatedText = result?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+                setCaption(generatedText);
+                success = true;
+            } catch (error) {
+                retries++;
+                const delay = Math.pow(2, retries) * 1000;
+                console.error(`API call failed. Retrying in ${delay / 1000}s...`, error);
+                await new Promise(resolve => setTimeout(resolve, delay));
+            }
+        }
+        setIsGeneratingCaption(false);
+        if (!success) {
+            window.alert('Failed to generate caption. Please try again.');
+        }
+    };
+    
 
   // Function to generate summary using Node Summarizer (backend API)
   const handleSummarizeCaption = async () => {
-    
-
     const articleContent = editor.getText();
     if (!articleContent.trim()) {
-      window.alert('Please write some content in the editor first to summarize.');
-      return;
+        window.alert('Please write some content in the editor first to summarize.');
+        return;
     }
     setIsSummarizing(true);
     try {
@@ -310,18 +306,18 @@ const ArticleEditorForm = () => {
         );
         setCaption(response.data.summary || "");
     } catch (error) {
-      window.alert('Failed to summarize. Please try again.');
-      console.error(error);
+        window.alert('Failed to summarize. Please try again.');
+        console.error(error);
     }
     setIsSummarizing(false);
-  };
+};
 
   // Handle new or updated article submission
   const handleSubmit = async (e) => {
     e.preventDefault();
     const formData = new FormData();
 
-    console.log("Current status before submit:", status);
+      console.log("Current status before submit:", status); 
 
     formData.append("title", title);
     formData.append("article_category", category);
@@ -338,26 +334,26 @@ const ArticleEditorForm = () => {
     let startDateTime = "";
     let endDateTime = "";
 
-    if (status === "scheduled") {
-      startDateTime =
-        uploadPeriodStart && uploadPeriodStartTime
-          ? `${uploadPeriodStart}T${uploadPeriodStartTime}:00`
-          : uploadPeriodStart || "";
-      endDateTime =
-        uploadPeriodEnd && uploadPeriodEndTime
-          ? `${uploadPeriodEnd}T${uploadPeriodEndTime}:00`
-          : uploadPeriodEnd || "";
+if (status === "scheduled") {
+  startDateTime =
+    uploadPeriodStart && uploadPeriodStartTime
+      ? `${uploadPeriodStart}T${uploadPeriodStartTime}:00`
+      : uploadPeriodStart || "";
+  endDateTime =
+    uploadPeriodEnd && uploadPeriodEndTime
+      ? `${uploadPeriodEnd}T${uploadPeriodEndTime}:00`
+      : uploadPeriodEnd || "";
 
-      formData.append("uploadPeriodStart", startDateTime);
-      formData.append("uploadPeriodEnd", endDateTime);
-    } else {
-      formData.append("uploadPeriodStart", "");
-      formData.append("uploadPeriodEnd", "");
-    }
+  formData.append("uploadPeriodStart", startDateTime);
+  formData.append("uploadPeriodEnd", endDateTime);
+} else {
+  formData.append("uploadPeriodStart", "");
+  formData.append("uploadPeriodEnd", "");
+}
     if (thumbnail && thumbnail instanceof File) {
-      formData.append("thumbnail", thumbnail);
-    }
-
+        formData.append("thumbnail", thumbnail);
+      }
+    
     console.log("Submitting with thumbnail:", thumbnail);
     console.log("Caption state value:", caption);
     try {
@@ -400,9 +396,9 @@ const ArticleEditorForm = () => {
         err.response?.data || err.message
       );
     }
-
+  
   };
-  // Handle new thumbnail in <input type="file" />
+    // Handle new thumbnail in <input type="file" />
   const handleThumbnailChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -410,7 +406,7 @@ const ArticleEditorForm = () => {
       setPreviewImage(URL.createObjectURL(file));
     }
   };
-
+    
   // Reset form to initial state
   const resetForm = () => {
     setTitle("");
@@ -429,149 +425,142 @@ const ArticleEditorForm = () => {
     setIsEditing(false);
     setEditingArticleId(null);
     setArticle(null);
-
+   
     clearDraft(draftKey)
   };
 
-  // This consolidated useEffect replaces the two previous ones.
-  useEffect(() => {
-    // Reset hasRun when articleId changes (navigating between different articles)
-    hasRun.current = false;
-  }, [articleId]);
-
-  useEffect(() => {
-    if (hasRun.current || !editor) {
-      return;
+// This consolidated useEffect replaces the two previous ones.
+useEffect(() => {
+    if (hasRun.current) {
+        return;
     }
 
     const fetchArticleAndLoadDraft = async () => {
-      // Set hasRun immediately to prevent duplicate execution
-      hasRun.current = true;
-      
-      const draft = loadDraft(draftKey);
-      let shouldLoadDraft = false;
+        const draft = loadDraft(draftKey);
+        let shouldLoadDraft = false;
 
-      // Only check for draft and prompt user if it exists and has meaningful content
-      if (draft && editor && (draft.title || draft.description || draft.author)) {
-        const draftAge = draft._savedAt ? 
-          Math.floor((new Date() - new Date(draft._savedAt)) / (1000 * 60)) : 
-          null;
-        
-        // Store draft data and show modal instead of window.confirm
-        setDraftToLoad({ draft, draftAge });
-        setShowDraftPrompt(true);
-        return; // Exit early, let the modal handle the decision
-      }
-
-      // Handle an existing article (edit mode)
-      if (articleId) {
-        try {
-          const response = await axiosClient.get(`/auth/articles/${articleId}`);
-          const data = response.data;
-          setArticle(data);
-          setIsEditing(true);
-          setEditingArticleId(data.article_id);
-
-          // If the user accepts the draft, load it (but don't clear it yet)
-           if (shouldLoadDraft) {
-              setTitle(draft.title || "");
-              setAuthor(draft.author || "");
-              setCategory(draft.category || "");
-              setMunicipality(draft.municipality || "");
-              setBarangay(draft.barangay || "");
-              setStatus(draft.status || "pending");
-              setSelectedDate(draft.selectedDate || "");
-              setUploadPeriodStart(draft.upload_period_start || "");
-              setUploadPeriodEnd(draft.upload_period_end || "");
-              setReviewerNotes(draft.reviewer_notes || '');
-              setCaption(draft.caption || '');
-              
-              if (editor && draft.description) {
-                   editor.commands.setContent(draft.description);
-              }
-              console.log('Draft loaded from local storage.');
-              // Don't clear the draft here - let it persist until form is submitted or reset
-          } else {
-              // Load the original article data from the server
-              setTitle(data.title || "");
-              setAuthor(data.author || "");
-              setCategory(data.article_category || "");
-              setMunicipality(data.address || "");
-              setBarangay(data.barangay || "");
-              setStatus(data.status || "pending");
-              setUploadPeriodStart(data.upload_period_start || "");
-              setUploadPeriodEnd(data.upload_period_end || "");
-              setReviewerNotes(data.reviewer_notes || "");
-              setCaption(data.caption || "");
-
-              if (editor && data.description) {
-                  editor.commands.setContent(data.description);
-              }
-              
-              if (data.upload_date) {
-                  const formattedDate = new Date(data.upload_date).toISOString().split('T')[0];
-                  setSelectedDate(formattedDate);
-              } else {
-                  setSelectedDate("");
-              }
-              // Don't clear the draft if user cancels - they might want to load it later
-          }
-          
-          // Handle thumbnail
-          if (data.images) {
-            setPreviewImage(`${UPLOAD_PATH}${data.images}`);
-          } else {
-            setPreviewImage(null);
-          }
-          setThumbnail(null);
-          
-          setUploadPeriodStart(data.upload_period_start ? data.upload_period_start.split('T')[0] : "");
-          setUploadPeriodEnd(data.upload_period_end ? data.upload_period_end.split('T')[0] : "");
-
-          setUploadPeriodStartTime(
-            data.upload_period_start
-              ? new Date(data.upload_period_start).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Manila' })
-              : ""
-          );
-          setUploadPeriodEndTime(
-            data.upload_period_end
-              ? new Date(data.upload_period_end).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Manila' })
-              : ""
-          );
-
-        } catch (err) {
-          console.error("Failed to fetch article:", err);
+        if (draft && editor) { // Check if editor is ready before showing prompt
+            shouldLoadDraft = window.confirm(
+                'It looks like you have a saved draft. Do you want to load it?'
+            );
         }
-      } else {
-        // Handle a new article (no articleId)
-        if (shouldLoadDraft) {
-          console.log('Draft loaded from local storage.');
-          setTitle(draft.title || "");
-          setAuthor(draft.author || "");
-          setCategory(draft.category || "");
-          setMunicipality(draft.municipality || "");
-          setBarangay(draft.barangay || "");
-          setStatus(draft.status || "pending");
-          setReviewerNotes(draft.reviewerNotes || "");
-          setCaption(draft.caption || "");
-          if (editor) {
-              editor.commands.setContent(draft.description || "");
-          }
-          if (draft.selectedDate) {
-              setSelectedDate(draft.selectedDate);
-          }
-          console.log('Draft loaded from local storage.');
-          
-          // Don't clear the draft here - let it persist until form is submitted or reset
+
+        // Handle an existing article (edit mode)
+        if (articleId) {
+            try {
+                const response = await axiosClient.get(`/auth/articles/${articleId}`);
+                const data = response.data;
+                setArticle(data);
+                setIsEditing(true);
+                setEditingArticleId(data.article_id);
+
+                // If the user accepts the draft, load it and then delete it.
+                 if (shouldLoadDraft) {
+                    setTitle(draft.title || "");
+                    setAuthor(draft.author || "");
+                    setCategory(draft.category || "");
+                    setMunicipality(draft.municipality || "");
+                    setBarangay(draft.barangay || "");
+                    setStatus(draft.status || "pending");
+                    setSelectedDate(draft.selectedDate || "");
+                    setUploadPeriodStart(draft.upload_period_start || "");
+                    setUploadPeriodEnd(draft.upload_period_end || "");
+                    setReviewerNotes(draft.reviewer_notes || '');
+                    setCaption(draft.caption || '');
+                    
+                    if (editor && draft.description) {
+                         editor.commands.setContent(draft.description);
+                    }
+                    console.log('Draft loaded from local storage.');
+                    // 🎉 Clear the draft AFTER it has been loaded
+                    clearDraft(draftKey); 
+                } else {
+                    // Load the original article data from the server
+                    setTitle(data.title || "");
+                    setAuthor(data.author || "");
+                    setCategory(data.article_category || "");
+                    setMunicipality(data.address || "");
+                    setBarangay(data.barangay || "");
+                    setStatus(data.status || "pending");
+                    setUploadPeriodStart(data.upload_period_start || "");
+                    setUploadPeriodEnd(data.upload_period_end || "");
+                    setReviewerNotes(data.reviewer_notes || "");
+                    setCaption(data.caption || "");
+
+                    if (editor && data.description) {
+                        editor.commands.setContent(data.description);
+                    }
+                    
+                    if (data.upload_date) {
+                        const formattedDate = new Date(data.upload_date).toISOString().split('T')[0];
+                        setSelectedDate(formattedDate);
+                    } else {
+                        setSelectedDate("");
+                    }
+                    // 🎉 If the user cancels the prompt, clear the draft here
+                    if (draft) {
+                        clearDraft(draftKey); 
+                    }
+                }
+                
+                // Handle thumbnail
+                if (data.images) {
+                    setPreviewImage(`${UPLOAD_PATH}${data.images}`);
+                } else {
+                    setPreviewImage(null);
+                }
+                setThumbnail(null);
+                
+                setUploadPeriodStart(data.upload_period_start ? data.upload_period_start.split('T')[0] : "");
+                setUploadPeriodEnd(data.upload_period_end ? data.upload_period_end.split('T')[0] : "");
+
+                setUploadPeriodStartTime(
+                  data.upload_period_start
+                    ? new Date(data.upload_period_start).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Manila' })
+                    : ""
+                );
+                setUploadPeriodEndTime(
+                  data.upload_period_end
+                    ? new Date(data.upload_period_end).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Manila' })
+                    : ""
+                );
+
+            } catch (err) {
+                console.error("Failed to fetch article:", err);
+            }
         } else {
-         
-          resetForm();
+            // Handle a new article (no articleId)
+            if (shouldLoadDraft) {
+                console.log('Draft loaded from local storage.');
+                setTitle(draft.title || "");
+                setAuthor(draft.author || "");
+                setCategory(draft.category || "");
+                setMunicipality(draft.municipality || "");
+                setBarangay(draft.barangay || "");
+                setStatus(draft.status || "pending");
+                setReviewerNotes(draft.reviewerNotes || "");
+                setCaption(draft.caption || "");
+                if (editor) {
+                    editor.commands.setContent(draft.description || "");
+                }
+                if (draft.selectedDate) {
+                    setSelectedDate(draft.selectedDate);
+                }
+                console.log('Draft loaded from local storage.');
+                
+                clearDraft(draftKey);
+              } else {
+               
+                resetForm();
+            }
         }
-      }
     };
 
-    fetchArticleAndLoadDraft();
-  }, [articleId, editor, draftKey]);
+    if (editor) {
+        fetchArticleAndLoadDraft();
+        hasRun.current = true;
+    }
+}, [articleId, editor, draftKey]);
 
 
   useEffect(() => {
@@ -762,140 +751,6 @@ const ArticleEditorForm = () => {
   };
 
 
-  // Draft prompt handlers
-  const handleLoadDraft = async () => {
-    if (!draftToLoad) return;
-    
-    const { draft } = draftToLoad;
-    
-    // Load draft data into form
-    setTitle(draft.title || "");
-    setAuthor(draft.author || "");
-    setCategory(draft.category || "");
-    setMunicipality(draft.municipality || "");
-    setBarangay(draft.barangay || "");
-    setStatus(draft.status || "pending");
-    setSelectedDate(draft.selectedDate || "");
-    setUploadPeriodStart(draft.upload_period_start || "");
-    setUploadPeriodEnd(draft.upload_period_end || "");
-    setReviewerNotes(draft.reviewer_notes || '');
-    setCaption(draft.caption || '');
-    
-    if (editor && draft.description) {
-      editor.commands.setContent(draft.description);
-    }
-    
-    console.log('Draft loaded from local storage.');
-    
-    // Close modal and reset state
-    setShowDraftPrompt(false);
-    setDraftToLoad(null);
-    
-    // Continue with the rest of the article loading logic if needed
-    if (articleId) {
-      try {
-        const response = await axiosClient.get(`/auth/articles/${articleId}`);
-        const data = response.data;
-        setArticle(data);
-        setIsEditing(true);
-        setEditingArticleId(data.article_id);
-        
-        // Handle thumbnail
-        if (data.images) {
-          setPreviewImage(`${UPLOAD_PATH}${data.images}`);
-        } else {
-          setPreviewImage(null);
-        }
-        setThumbnail(null);
-        
-        setUploadPeriodStart(data.upload_period_start ? data.upload_period_start.split('T')[0] : "");
-        setUploadPeriodEnd(data.upload_period_end ? data.upload_period_end.split('T')[0] : "");
-
-        setUploadPeriodStartTime(
-          data.upload_period_start
-            ? new Date(data.upload_period_start).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Manila' })
-            : ""
-        );
-        setUploadPeriodEndTime(
-          data.upload_period_end
-            ? new Date(data.upload_period_end).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Manila' })
-            : ""
-        );
-      } catch (err) {
-        console.error("Failed to fetch article:", err);
-      }
-    }
-  };
-
-  const handleSkipDraft = async () => {
-    if (!draftToLoad) return;
-    
-    // Close modal and reset state
-    setShowDraftPrompt(false);
-    setDraftToLoad(null);
-    
-    // Continue with normal article loading logic
-    if (articleId) {
-      try {
-        const response = await axiosClient.get(`/auth/articles/${articleId}`);
-        const data = response.data;
-        setArticle(data);
-        setIsEditing(true);
-        setEditingArticleId(data.article_id);
-
-        // Load the original article data from the server
-        setTitle(data.title || "");
-        setAuthor(data.author || "");
-        setCategory(data.article_category || "");
-        setMunicipality(data.address || "");
-        setBarangay(data.barangay || "");
-        setStatus(data.status || "pending");
-        setUploadPeriodStart(data.upload_period_start || "");
-        setUploadPeriodEnd(data.upload_period_end || "");
-        setReviewerNotes(data.reviewer_notes || "");
-        setCaption(data.caption || "");
-
-        if (editor && data.description) {
-          editor.commands.setContent(data.description);
-        }
-        
-        if (data.upload_date) {
-          const formattedDate = new Date(data.upload_date).toISOString().split('T')[0];
-          setSelectedDate(formattedDate);
-        } else {
-          setSelectedDate("");
-        }
-        
-        // Handle thumbnail
-        if (data.images) {
-          setPreviewImage(`${UPLOAD_PATH}${data.images}`);
-        } else {
-          setPreviewImage(null);
-        }
-        setThumbnail(null);
-        
-        setUploadPeriodStart(data.upload_period_start ? data.upload_period_start.split('T')[0] : "");
-        setUploadPeriodEnd(data.upload_period_end ? data.upload_period_end.split('T')[0] : "");
-
-        setUploadPeriodStartTime(
-          data.upload_period_start
-            ? new Date(data.upload_period_start).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Manila' })
-            : ""
-        );
-        setUploadPeriodEndTime(
-          data.upload_period_end
-            ? new Date(data.upload_period_end).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Manila' })
-            : ""
-        );
-      } catch (err) {
-        console.error("Failed to fetch article:", err);
-      }
-    } else {
-      // For new articles, just reset the form
-      resetForm();
-    }
-  };
-
   // Add this helper function inside your ArticleModal component
   const setListClass = (className) => {
     setTimeout(() => {
@@ -907,25 +762,8 @@ const ArticleEditorForm = () => {
   };
 
 
-
-  useEffect(() => {
-    const handleBeforeUnload = (e) => {
-      if (isDirty) {
-        e.preventDefault();
-        e.returnValue = ""; // Chrome requires returnValue to show prompt
-      }
-    };
-    window.addEventListener("beforeunload", handleBeforeUnload);
-    return () => {
-      window.removeEventListener("beforeunload", handleBeforeUnload);
-    };
-  }, [isDirty]);
-
-
-
   return (
     <>
-    {PromptModal}
     <div className="flex w-full h-full gap-4 pt-5 border-t-1">
         {/* LEFT SPACER */}
         <div className="hidden 2xl:block 2xl:w-1/5" />
@@ -1626,9 +1464,7 @@ const ArticleEditorForm = () => {
                 className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
                 {isSummarizing ? 'Summarizing...' : 'Summarize with Node'}
-                
             </button>
-            
         </div>
     </div>
     <textarea
@@ -1949,39 +1785,9 @@ const ArticleEditorForm = () => {
         }}
         onCancel={() => setShowSubmitConfirm(false)}
       />
-
-      {/* Draft Prompt Modal */}
-      {showDraftPrompt && draftToLoad && (
-        <div className="fixed inset-0 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl border-2 border-gray-300">
-            <h3 className="text-lg font-semibold mb-4">Draft Found</h3>
-            <p className="text-gray-600 mb-6">
-              It looks like you have a saved draft
-              {draftToLoad.draftAge ? ` (saved ${draftToLoad.draftAge} minutes ago)` : ''}. 
-              Do you want to load it?
-            </p>
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={handleSkipDraft}
-                className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                Skip Draft
-              </button>
-              <button
-                onClick={handleLoadDraft}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                Load Draft
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
       </>
   );
 };
-
-
 
 
 export default ArticleEditorForm;

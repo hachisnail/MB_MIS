@@ -51,8 +51,7 @@ import FontSize from "../components/FontSize";
 import CustomImage from "../components/CustomImage";
 import StyledButton from "@/components/buttons/StyledButton";
 
-
-
+import usePrompt from '@/hooks/usePrompt';
 import { useAuth } from "@/context/authContext";
 import useAutosave, { loadDraft, clearDraft } from "@/features/ContentDrafting.jsx";
 
@@ -761,9 +760,17 @@ useEffect(() => {
     }, 10);
   };
 
+  // Use the prompt hook to warn about unsaved changes
+  const { PromptModal } = usePrompt(
+    "You have unsaved changes. Are you sure you want to leave?",
+    isDirty,
+    "light"
+  );
 
   return (
     <>
+
+    {PromptModal}
     <div className="flex w-full h-full gap-4 pt-5 border-t-1">
         {/* LEFT SPACER */}
         <div className="hidden 2xl:block 2xl:w-1/5" />

@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useMemo, useCallback } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import axiosClient from "@/lib/axiosClient";
 import { EditorContent } from "@tiptap/react";
@@ -203,6 +203,10 @@ const ArticleEditorForm = () => {
 
   const [uploadPeriodStartTime, setUploadPeriodStartTime] = useState("");
   const [uploadPeriodEndTime, setUploadPeriodEndTime] = useState("");
+
+  // Draft prompt modal state
+  const [showDraftPrompt, setShowDraftPrompt] = useState(false);
+  const [draftToLoad, setDraftToLoad] = useState(null);
 
   // Use the prompt hook to warn about unsaved changes
   const { PromptModal } = usePrompt(
@@ -453,10 +457,10 @@ const ArticleEditorForm = () => {
           Math.floor((new Date() - new Date(draft._savedAt)) / (1000 * 60)) : 
           null;
         
-        const ageText = draftAge ? ` (saved ${draftAge} minutes ago)` : '';
-        shouldLoadDraft = window.confirm(
-          `It looks like you have a saved draft${ageText}. Do you want to load it?`
-        );
+        // Store draft data and show modal instead of window.confirm
+        setDraftToLoad({ draft, draftAge });
+        setShowDraftPrompt(true);
+        return; // Exit early, let the modal handle the decision
       }
 
       // Handle an existing article (edit mode)
@@ -757,6 +761,140 @@ const ArticleEditorForm = () => {
     
   };
 
+
+  // Draft prompt handlers
+  const handleLoadDraft = async () => {
+    if (!draftToLoad) return;
+    
+    const { draft } = draftToLoad;
+    
+    // Load draft data into form
+    setTitle(draft.title || "");
+    setAuthor(draft.author || "");
+    setCategory(draft.category || "");
+    setMunicipality(draft.municipality || "");
+    setBarangay(draft.barangay || "");
+    setStatus(draft.status || "pending");
+    setSelectedDate(draft.selectedDate || "");
+    setUploadPeriodStart(draft.upload_period_start || "");
+    setUploadPeriodEnd(draft.upload_period_end || "");
+    setReviewerNotes(draft.reviewer_notes || '');
+    setCaption(draft.caption || '');
+    
+    if (editor && draft.description) {
+      editor.commands.setContent(draft.description);
+    }
+    
+    console.log('Draft loaded from local storage.');
+    
+    // Close modal and reset state
+    setShowDraftPrompt(false);
+    setDraftToLoad(null);
+    
+    // Continue with the rest of the article loading logic if needed
+    if (articleId) {
+      try {
+        const response = await axiosClient.get(`/auth/articles/${articleId}`);
+        const data = response.data;
+        setArticle(data);
+        setIsEditing(true);
+        setEditingArticleId(data.article_id);
+        
+        // Handle thumbnail
+        if (data.images) {
+          setPreviewImage(`${UPLOAD_PATH}${data.images}`);
+        } else {
+          setPreviewImage(null);
+        }
+        setThumbnail(null);
+        
+        setUploadPeriodStart(data.upload_period_start ? data.upload_period_start.split('T')[0] : "");
+        setUploadPeriodEnd(data.upload_period_end ? data.upload_period_end.split('T')[0] : "");
+
+        setUploadPeriodStartTime(
+          data.upload_period_start
+            ? new Date(data.upload_period_start).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Manila' })
+            : ""
+        );
+        setUploadPeriodEndTime(
+          data.upload_period_end
+            ? new Date(data.upload_period_end).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Manila' })
+            : ""
+        );
+      } catch (err) {
+        console.error("Failed to fetch article:", err);
+      }
+    }
+  };
+
+  const handleSkipDraft = async () => {
+    if (!draftToLoad) return;
+    
+    // Close modal and reset state
+    setShowDraftPrompt(false);
+    setDraftToLoad(null);
+    
+    // Continue with normal article loading logic
+    if (articleId) {
+      try {
+        const response = await axiosClient.get(`/auth/articles/${articleId}`);
+        const data = response.data;
+        setArticle(data);
+        setIsEditing(true);
+        setEditingArticleId(data.article_id);
+
+        // Load the original article data from the server
+        setTitle(data.title || "");
+        setAuthor(data.author || "");
+        setCategory(data.article_category || "");
+        setMunicipality(data.address || "");
+        setBarangay(data.barangay || "");
+        setStatus(data.status || "pending");
+        setUploadPeriodStart(data.upload_period_start || "");
+        setUploadPeriodEnd(data.upload_period_end || "");
+        setReviewerNotes(data.reviewer_notes || "");
+        setCaption(data.caption || "");
+
+        if (editor && data.description) {
+          editor.commands.setContent(data.description);
+        }
+        
+        if (data.upload_date) {
+          const formattedDate = new Date(data.upload_date).toISOString().split('T')[0];
+          setSelectedDate(formattedDate);
+        } else {
+          setSelectedDate("");
+        }
+        
+        // Handle thumbnail
+        if (data.images) {
+          setPreviewImage(`${UPLOAD_PATH}${data.images}`);
+        } else {
+          setPreviewImage(null);
+        }
+        setThumbnail(null);
+        
+        setUploadPeriodStart(data.upload_period_start ? data.upload_period_start.split('T')[0] : "");
+        setUploadPeriodEnd(data.upload_period_end ? data.upload_period_end.split('T')[0] : "");
+
+        setUploadPeriodStartTime(
+          data.upload_period_start
+            ? new Date(data.upload_period_start).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Manila' })
+            : ""
+        );
+        setUploadPeriodEndTime(
+          data.upload_period_end
+            ? new Date(data.upload_period_end).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Manila' })
+            : ""
+        );
+      } catch (err) {
+        console.error("Failed to fetch article:", err);
+      }
+    } else {
+      // For new articles, just reset the form
+      resetForm();
+    }
+  };
 
   // Add this helper function inside your ArticleModal component
   const setListClass = (className) => {
@@ -1811,6 +1949,34 @@ const ArticleEditorForm = () => {
         }}
         onCancel={() => setShowSubmitConfirm(false)}
       />
+
+      {/* Draft Prompt Modal */}
+      {showDraftPrompt && draftToLoad && (
+        <div className="fixed inset-0 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl border-2 border-gray-300">
+            <h3 className="text-lg font-semibold mb-4">Draft Found</h3>
+            <p className="text-gray-600 mb-6">
+              It looks like you have a saved draft
+              {draftToLoad.draftAge ? ` (saved ${draftToLoad.draftAge} minutes ago)` : ''}. 
+              Do you want to load it?
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={handleSkipDraft}
+                className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Skip Draft
+              </button>
+              <button
+                onClick={handleLoadDraft}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Load Draft
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       </>
   );
 };

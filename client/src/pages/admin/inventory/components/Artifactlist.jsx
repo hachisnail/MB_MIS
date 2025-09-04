@@ -54,7 +54,7 @@ export function RenderRelatedDocs({ relatedImages = [], attachedFiles = [] }) {
   return (
     <div className="w-full h-full flex  gap-x-5">
       {/* Images Section */}
-      <div className="w-[30rem] h-[40rem] pt-5 gap-5 border bg-[#1D1911] rounded-2xl border-gray-200 flex flex-col items-center">
+      <div className="w-[25rem] h-[40rem] pt-5 gap-5 border bg-[#1D1911] rounded-2xl border-gray-200 flex flex-col items-center">
         <span className="text-3xl font-bold text-white font-hind tracking-wider">
           Related images
         </span>

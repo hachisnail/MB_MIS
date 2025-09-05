@@ -52,7 +52,7 @@ const ViewArtifacts = () => {
       {/* right column */}
 <div className="relative col-span-1 w-full h-[60rem] flex flex-col ml-12 gap-12 overflow-visible">
   {/* top section */}
-  <div className="w-full h-[24rem] bg-[#1D1911] rounded-l-3xl"></div>
+  <div className="w-full h-[29rem] bg-[#1D1911] rounded-l-3xl"></div>
 
   {/* bottom section */}
   <div className="w-full h-full flex relative">
@@ -64,7 +64,7 @@ const ViewArtifacts = () => {
         imageBoxHeight="h-full"
         fileBoxWidth="14rem"
         fileBoxHeight="h-full"
-        imgHeight="h-60"
+        imgHeight="h-12"
       />
     </div>
   </div>

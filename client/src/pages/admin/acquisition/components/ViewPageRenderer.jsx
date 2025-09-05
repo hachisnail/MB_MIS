@@ -6,6 +6,7 @@ import ContextMenu from "../../../../components/modals/ContextMenu";
 import { formatDate } from "../../appointments/components/dateUtils";
 import ImageViewerModal from "../../../../features/ImageViewerModal";
 import { InfoModal } from "../../../../features/InfoModal";
+import NoImagePlaceholder from "../../../../features/Utilities";
 
 const SERVER_URL = import.meta.env.VITE_SERVER_URL;
 
@@ -181,10 +182,9 @@ export const InfoSection = ({
 export function RenderRelatedDocs({
   relatedImages = [],
   attachedFiles = [],
-  imageBoxWidth = "28rem",
-  imageBoxHeight = "36rem",
-  fileBoxWidth = "18rem",
-  fileBoxHeight = "36rem",
+  containerHeight = "h-[36rem]",
+  imageBoxWidth = "w-[28rem]",
+  fileBoxWidth = "w-[18rem]",
   imgHeight = "h-70",
 }) {
   const [imageCurrentPage, setImageCurrentPage] = useState(1);
@@ -197,8 +197,6 @@ export function RenderRelatedDocs({
 
   /** Pagination for images **/
   const itemsPerPage = 3;
-  const totalPages = Math.ceil(relatedImages.length / itemsPerPage);
-
   const paginatedImages = relatedImages.slice(
     (imageCurrentPage - 1) * itemsPerPage,
     imageCurrentPage * itemsPerPage
@@ -206,144 +204,151 @@ export function RenderRelatedDocs({
 
   /** Pagination for files **/
   const fileItemsPerPage = 4;
-  const fileTotalPages = Math.ceil(attachedFiles.length / fileItemsPerPage);
-
   const paginatedFiles = attachedFiles.slice(
     (fileCurrentPage - 1) * fileItemsPerPage,
     fileCurrentPage * fileItemsPerPage
   );
-  // console.log(relatedImages);
 
   return (
-    <div className="w-full h-full flex gap-x-5">
-      {/* Images Section */}
-      {/* Images Section */}
+    <div className={`w-full flex gap-x-5 ${containerHeight}`}>
+      {/* image container */}
       <div
-        className="pt-5 gap-5  bg-[#1D1911] rounded-2xl shadow-lg shadow-gray-400 flex flex-col items-center"
-        style={{ width: imageBoxWidth, height: imageBoxHeight }}
+        className={`h-full flex flex-col items-center rounded-xl pb-4 shadow-sm shadow-gray-400 ${imageBoxWidth}`}
       >
-        <span className="text-xl font-bold text-white font-hind tracking-wider">
-          Related Images
-        </span>
-
-        {/* White container (fixed size, border maintained) */}
-        <div className="w-full h-full bg-white rounded-2xl p-4">
-          <div
-            className="w-full h-full gap-4 bg-white rounded-2xl p-4 shadow-[inset_0_6px_8px_rgba(0,0,0,0.25),inset_0_-6px_8px_rgba(0,0,0,0.25)] overflow-y-auto flex flex-col"
-            style={{ height: `calc(${imageBoxHeight} - 7rem)` }}
-          >
-            {paginatedImages.length > 0 ? (
-              paginatedImages.map((img, i) => (
-                <div
-                  title={img.label}
-                  key={img.key || i}
-                  className={`flex-none border border-gray-400 hover:scale-105 transition-transform cursor-pointer rounded-xl w-full ${imgHeight} bg-center bg-cover`}
-                  style={{ backgroundImage: `url("${img.src}")` }}
-                  onClick={() => {
-                    setModalStartIndex(
-                      (imageCurrentPage - 1) * itemsPerPage + i
-                    );
-                    setIsModalOpen(true);
-                  }}
-                >
-                  {/* Hover overlay */}
-                  <div className="w-full h-full rounded-xl bg-black/0 hover:bg-black/20 transition"></div>
-                </div>
-              ))
-            ) : (
-              <p className="text-gray-500 text-center">No images available</p>
-            )}
-          </div>
+        <div className="h-fit w-full flex flex-col items-center rounded-t-xl justify-center bg-[#1D1911]">
+          <span className="my-3 text-white text-xl font-semibold">
+            Related Images
+          </span>
+          <div className="h-5 w-full bg-white rounded-t-xl"></div>
         </div>
-      </div>
 
-      {/* Files Section */}
-      <div
-        className="pt-5 gap-5  bg-[#1D1911] rounded-2xl shadow-lg shadow-gray-400 flex flex-col items-center"
-        style={{ width: fileBoxWidth, height: fileBoxHeight }}
-      >
-        <span className="text-xl font-bold text-white font-hind tracking-wider">
-          Attached Files
-        </span>
-
-        <div className="w-full h-full bg-white rounded-2xl p-4">
-          <div
-            className="w-full h-full bg-white rounded-2xl p-4 shadow-[inset_0_8px_12px_rgba(0,0,0,0.25),inset_0_-8px_12px_rgba(0,0,0,0.25)] overflow-y-auto flex flex-col items-center gap-6"
-            style={{ height: `calc(${fileBoxHeight} - 7rem)` }}
-          >
-            {paginatedFiles.length > 0 ? (
-              paginatedFiles.map(({ key, filename, category, url }, i) => (
-                <ContextMenu
-                  className="w-full h-fit"
-                  key={key || i}
-                  menuItems={[
-                    {
-                      label: "Preview",
-                      onClick: () => {
-                        const fileType = filename
-                          .split(".")
-                          .pop()
-                          .toLowerCase();
-                        handlePreview(
-                          navigate,
-                          `${location.pathname}/view`,
-                          url,
-                          filename,
-                          fileType
-                        );
-                      },
-                    },
-                    {
-                      label: "Download",
-                      onClick: () => window.open(url, "_blank"),
-                    },
-                    {
-                      label: "Delete",
-                      onClick: () => alert("delete clicked"),
-                    },
-                  ]}
-                >
-                  <div className="flex w-full rounded-2xl py-4 px-2 border border-gray-400 flex-col items-center cursor-pointer hover:scale-105 transition-transform">
-                    {/* File Icon */}
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      strokeWidth={2}
-                      stroke="black"
-                      className="w-12 h-12"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M12 4H6a2 2 0 00-2 2v12a2 
-                        2 0 002 2h12a2 2 0 002-2V10l-6-6z"
-                      />
-                    </svg>
-
-                    {/* File Name */}
-                    <p
-                      title={filename}
-                      className="w-full mt-2 text-sm font-medium text-red-600 truncate max-w-[12rem] text-center"
-                    >
-                      {filename}
-                    </p>
-                    {category && (
-                      <p className="text-md capitalize  text-gray-500">
-                        {category}
-                      </p>
-                    )}
+        <div className="w-[calc(100%-2rem)] p-2 gap-y-1 h-full flex flex-col overflow-y-scroll rounded-lg shadow-[inset_0_8px_12px_rgba(0,0,0,0.25),inset_0_-8px_12px_rgba(0,0,0,0.50)]">
+          {paginatedImages.length > 0 ? (
+            paginatedImages.map((img, i) => (
+              <div
+                key={img.key || i}
+                title={img.label}
+                className={`flex-none border border-gray-400 hover:scale-101 transition-transform cursor-pointer rounded-xl w-full ${imgHeight} bg-black`}
+                onClick={() => {
+                  setModalStartIndex((imageCurrentPage - 1) * itemsPerPage + i);
+                  setIsModalOpen(true);
+                }}
+              >
+                {img?.src ? (
+                  <img
+                    src={img.src}
+                    alt={img.label || "Related image"}
+                    className="w-full h-full object-cover rounded-xl"
+                    onError={(e) => {
+                      e.currentTarget.onerror = null;
+                      e.currentTarget.replaceWith(
+                        (() => {
+                          const wrapper = document.createElement("div");
+                          wrapper.className =
+                            "flex items-center flex-col justify-center w-full h-full bg-gray-100 rounded-xl";
+                          wrapper.innerHTML = `
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="1.5" class="w-12 h-12 text-gray-400" viewBox="0 0 24 24">
+                            <path d="M15 8h.01" />
+                            <path d="M7 3h11a3 3 0 0 1 3 3v11m-.856 3.099a2.991 2.991 0 0 1 -2.144 .901h-12a3 3 0 0 1 -3 -3v-12c0 -.845 .349 -1.608 .91 -2.153" />
+                            <path d="M3 16l5 -5c.928 -.893 2.072 -.893 3 0l5 5" />
+                            <path d="M16.33 12.338c.574 -.054 1.155 .166 1.67 .662l3 3" />
+                            <path d="M3 3l18 18" 
+                            />
+                            </svg>
+                            <span class=" text-gray-400"> Failed to load image! </span>
+                            `;
+                          return wrapper;
+                        })()
+                      );
+                    }}
+                  />
+                ) : (
+                  <div className="flex items-center justify-center w-full h-full bg-gray-200 rounded-xl">
+                    <NoImagePlaceholder />
                   </div>
-                </ContextMenu>
-              ))
-            ) : (
-              <p className="text-gray-500 text-center">No files available</p>
-            )}
-          </div>
+                )}
+              </div>
+            ))
+          ) : (
+            <div className="flex items-center justify-center w-full h-40 bg-gray-200 rounded-xl">
+              <NoImagePlaceholder />
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Image Modal */}
+      {/* file container */}
+      <div
+        className={`h-full flex flex-col items-center rounded-xl pb-4 shadow-sm shadow-gray-600 ${fileBoxWidth}`}
+      >
+        <div className="h-fit w-full flex flex-col items-center rounded-t-xl justify-center bg-[#1D1911]">
+          <span className="my-3 text-white text-xl font-semibold">
+            Attached Files
+          </span>
+          <div className="h-5 w-full bg-white rounded-t-xl"></div>
+        </div>
+        <div className="w-[calc(100%-2rem)] p-2 gap-y-1 h-full flex flex-col overflow-y-scroll rounded-lg shadow-[inset_0_8px_12px_rgba(0,0,0,0.25),inset_0_-8px_12px_rgba(0,0,0,0.50)]">
+          {paginatedFiles.length > 0 ? (
+            paginatedFiles.map(({ key, filename, category, url }, i) => (
+              <ContextMenu
+                className="w-full h-fit"
+                key={key || i}
+                menuItems={[
+                  {
+                    label: "Preview",
+                    onClick: () => {
+                      const fileType = filename.split(".").pop().toLowerCase();
+                      handlePreview(
+                        navigate,
+                        `${location.pathname}/view`,
+                        url,
+                        filename,
+                        fileType
+                      );
+                    },
+                  },
+                  {
+                    label: "Download",
+                    onClick: () => window.open(url, "_blank"),
+                  },
+                ]}
+              >
+                <div className="flex w-full rounded-2xl py-4 px-2 border border-gray-400 flex-col items-center cursor-pointer hover:scale-105 transition-transform">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={1}
+                    stroke="black"
+                    className="w-12 h-12"
+                  >
+                    <path d="M14 3v4a1 1 0 0 0 1 1h4" />
+                    <path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2z" />
+                    <path d="M9 14v.01" />
+                    <path d="M12 14v.01" />
+                    <path d="M15 14v.01" />
+                  </svg>
+                  <p
+                    title={filename}
+                    className="w-full mt-2 text-sm font-medium text-red-600 truncate max-w-[12rem] text-center"
+                  >
+                    {filename}
+                  </p>
+                  {category && (
+                    <p className="text-md capitalize text-gray-500">
+                      {category}
+                    </p>
+                  )}
+                </div>
+              </ContextMenu>
+            ))
+          ) : (
+            <p className="text-gray-500 text-center">No files available</p>
+          )}
+        </div>
+      </div>
+
+      {/* Modal */}
       {isModalOpen && (
         <ImageViewerModal
           images={relatedImages}

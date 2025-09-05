@@ -5,16 +5,24 @@ import {
   RenderRelatedDocs,
   RenderArtifactImageAndDonatorInfo,
   InfoSection,
-  DonatorInfoSection
+  DonatorInfoSection,
 } from "../components/ViewPageRenderer";
+
 import StyledButton from "@/components/buttons/StyledButton";
 import MultiLineInput from "@/features/MultiLineInput";
+
 import { decodeBase64 } from "@/utils/base64";
-import { formatDateRange, formatDate, formatDateTime } from "../components/formatDateRange";
+import {
+  formatDateRange,
+  formatDate,
+  formatDateTime,
+} from "../components/formatDateRange";
 import { useAuth } from "../../../../context/authContext";
 import CurvedButton from "../components/CurvedButton";
 import Breadcrumb from "../../../../components/Breadcrumb";
 import Timeline from "../components/Timeline";
+
+import NoImagePlaceholder from "../../../../features/Utilities";
 
 const documentTabs = ["Overview", "Document", "Transaction"];
 
@@ -48,6 +56,7 @@ import {
   Organization,
   PhoneNumber,
 } from "../components/ViewPageSvg";
+
 const AcquisitionViewPage = () => {
   const location = useLocation();
   const [acquisitionType, setAcquisitionType] = useState("");
@@ -271,12 +280,12 @@ const AcquisitionViewPage = () => {
   );
 
   const previewAbout = [
-    {label: "Current Manager", value: user.fname + " " + user.lname },
-    {label: "Status", value: contributionData?.status || "Not Provided" },
-    {label: "Type", value: acquisitionType || "Not Provided" },
-  { label: "Date Submitted", value: submittedDate || "Not Provided" },
-  { label: "Time", value: submittedTime || "Not Provided" },
-  ]
+    { label: "Current Manager", value: user.fname + " " + user.lname },
+    { label: "Status", value: contributionData?.status || "Not Provided" },
+    { label: "Type", value: acquisitionType || "Not Provided" },
+    { label: "Date Submitted", value: submittedDate || "Not Provided" },
+    { label: "Time", value: submittedTime || "Not Provided" },
+  ];
 
   if (loading) {
     return (
@@ -286,10 +295,6 @@ const AcquisitionViewPage = () => {
     );
   }
 
-  const handleButtonClick = () => {
-    setActiveDocument("Transaction"); // switch to Transaction tab
-  };
-
   return (
     <div className="flex flex-col justify-center gap-y-3 w-full h-full items-center ">
       {!contributionData ? (
@@ -298,54 +303,164 @@ const AcquisitionViewPage = () => {
         </div>
       ) : (
         <>
-
-
-        {/* preview page */}
+          {/* preview page */}
           {activeDocument === "Overview" && (
             <div className="w-full h-full   grid grid-cols-[1fr_43rem_47rem]">
-              <div className="col-span-1 w-full h-full bg-[#1C1B19] rounded-l-md pt-20 pb-10 px-10 gap-y-5 flex flex-col">
-                <span className="text-white text-3xl">About</span>
+              {/* left */}
+              <div className="col-span-1 w-full h-full bg-[#1C1B19] rounded-l-md pt-20 pb-10 px-10 gap-y-10 flex flex-col">
+                <span className="text-white text-4xl font-semibold">About</span>
 
-                <div className="w-full h-fit gap-y-3 flex flex-wrap border-y border-[#9B9B9B] py-5">
+                <div className="w-full h-fit gap-y-4 flex flex-wrap border-y border-[#9B9B9B] py-10">
                   {previewAbout.map(({ label, value }, idx) => (
                     <div
                       key={idx}
-                      className={`${idx === 0 ? "w-full" : "w-1/2"} h-fit flex flex-col `}
+                      className={`${
+                        idx === 0 ? "w-full" : "w-1/2"
+                      } h-fit flex flex-col `}
                     >
-                      <span className="text-[#666666] text-lg ">{label}</span>
-                      <span className="text-white capitalize text-xl font-semibold">{value}</span>
+                      <span className="text-[#666666] text-xl ">{label}</span>
+                      <span className="text-white capitalize text-2xl font-semibold">
+                        {value}
+                      </span>
                     </div>
                   ))}
-
                 </div>
 
-                <div className="border-b border-[#9B9B9B] w-full h-full flex flex-col">
-                      <span className="text-[#666666] text-lg ">Description</span>
-                      <span className="text-white capitalize text-xl font-semibold ">"asddf"</span>
+                {/* <div className="border-b border-[#9B9B9B] w-full h-full flex flex-col">
+                  <span className="text-[#666666] text-lg ">Description</span>
+                  <span className="text-white capitalize text-xl font-semibold ">
+                    "asddf"
+                  </span>
+                </div> */}
 
+                <DonatorInfoSection
+                  donatorInformation={donatorInformation}
+                  titleClassName="text-4xl text-white font-semibold mb-5"
+                  containerClassName="w-full h-fit flex flex-col gap-y-4"
+                  labelClassName="text-xl items-end text-[#666666] font-normal gap-x-2 flex"
+                  valueClassName="text-2xl font-semibold text-white pl-20 font-normal"
+                  itemClassName="w-full flex flex-col"
+                />
+              </div>
+              {/* mid */}
+              <div className="col-span-1 flex flex-col w-full h-full bg-[#1A0F0F] px-10 py-15 gap-y-10">
+                <div className="w-full h-30 flex items-end justify-start overflow-hidden">
+                  <span className="block text-5xl font-semibold text-white break-words">
+                    {contributionData.ContributionArtifact.title}
+                  </span>
                 </div>
 
-                <DonatorInfoSection 
-                donatorInformation={donatorInformation} 
-                containerClassName="w-full h-fit flex flex-col gap-y-2"
-                labelClassName="text-lg items-end text-[#666666] font-normal gap-x-2 flex"
-                valueClassName="text-xl font-semibold text-white pl-20 font-normal"
-                itemClassName="w-full flex flex-col"/>
-                
+                <div className="w-full h-fit flex flex-col gap-y-5">
+                  {/* First image */}
+                  <div className="w-full h-[36rem] bg-white rounded-2xl overflow-hidden flex items-center justify-center">
+                    {artifactImg.length > 0 ? (
+                      <img
+                        src={artifactImg[0].src}
+                        alt={artifactImg[0].label}
+                        className="w-full h-full object-cover rounded-2xl"
+                      />
+                    ) : (
+                      <span className="text-gray-400">No image available</span>
+                    )}
+                  </div>
+
+                  {/* Thumbnails + button */}
+                  <div className="w-full h-[7rem] flex gap-x-2 mt-2">
+                    {[...Array(3)].map((_, i) => {
+                      const img = artifactImg[i + 1]; // start from second image
+                      return (
+                        <div
+                          key={i}
+                          className={`${
+                            !img && "border-black border-3 flex flex-col"
+                          } w-[7rem] h-[7rem] rounded-full bg-white overflow-hidden flex items-center justify-center text-center`}
+                        >
+                          {img ? (
+                            <img
+                              src={img.src}
+                              alt={img.label}
+                              className="w-full h-full object-cover rounded-full"
+                            />
+                          ) : (
+                            <NoImagePlaceholder />
+                          )}
+                        </div>
+                      );
+                    })}
+
+                    {/* If there are more than 4 total images → show +N */}
+                    {artifactImg.length > 4 && (
+                      <div className="w-[7rem] h-[7rem] rounded-full bg-white flex items-center justify-center text-lg font-semibold text-[#1D1911]">
+                        +{artifactImg.length - 4}
+                      </div>
+                    )}
+
+                    {/* Button */}
+                    <button
+                      onClick={() => setActiveDocument("Document")}
+                      className="w-[16rem] shadow-sm shadow-gray-200 h-[7rem] px-10 rounded-l-full rounded-r-full bg-white flex items-center justify-center cursor-pointer hover:bg-gray-100 transition"
+                    >
+                      <span className="font-bold text-2xl text-[#1D1911]">
+                        Click to View Full Document
+                      </span>
+                    </button>
+                  </div>
+                </div>
               </div>
+              {/* right */}
+              <div className="col-span-1 w-full h-full bg-[#1D1911] rounded-r-md flex flex-col items-center pb-10 pt-13 px-10 gap-y-5">
+                <span className="text-5xl text-white font-semibold">
+                  About The Artifact
+                </span>
 
-              <div className="col-span-1 w-full h-full bg-[#1A0F0F]">
+                <div className="w-full h-fit pt-10 pb-15 border-b border-[#9B9B9B] flex flex-wrap gap-2">
+                  {artifactInfo.map(({ label, value }, idx) => {
+                    if (idx === 0) return null;
 
+                    const adjIdx = idx - 1;
+                    const row = Math.floor(adjIdx / 2);
+                    const col = adjIdx % 2;
+                    const isDark = (row + col) % 2 === 0;
 
-              </div>
+                    return (
+                      <div
+                        key={idx}
+                        className={`w-[calc(50%-3px)] h-50 flex flex-col items-center font-hind justify-center p-3 ${
+                          isDark ? "bg-[#1C1B19]" : "bg-[#0D0E0E]"
+                        }`}
+                      >
+                        <span className="text-[#CDC469] max-w-full  max-h-1/2  font-bold text-center break-words">
+                          {label}
+                        </span>
+                        <span className="text-white max-w-full max-h-1/2 text-center font-medium break-words">
+                          {value}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
 
-              <div className="col-span-1 w-full h-full bg-[#1D1911] rounded-r-md">
+                <div className="w-full h-fit flex flex-col gap-y-10">
+                  <div className="flex justify-between w-full h-fit items-center">
+                    <span className="text-4xl font-bold text-white">
+                      Timeline
+                    </span>
 
+                    <button
+                      onClick={() => setActiveDocument("Transaction")}
+                      className="h-[4rem] w-[13rem] rounded-full cursor-pointer bg-white"
+                    >
+                      <span className="text-[#000000] text-xl font-semibold">
+                        Click For Full View
+                      </span>
+                    </button>
+                  </div>
 
+                  <Timeline currentStep={step} steps={steps} />
+                </div>
               </div>
             </div>
           )}
-
 
           {/* full document */}
           {activeDocument === "Document" && (
@@ -427,17 +542,15 @@ const AcquisitionViewPage = () => {
 
               {/* Right column */}
               <div className="col-span-1 w-full h-full rounded-r-md flex flex-col">
-                <div className="w-full h-full pb-5">
+                <div className="w-full h-full ">
                   {/* image + file container */}
-
                   <RenderRelatedDocs
                     relatedImages={relatedImages}
                     attachedFiles={attachedFiles}
-                    imageBoxWidth="25rem"
-                    imageBoxHeight="h-full"
-                    fileBoxWidth="14rem"
-                    fileBoxHeight="h-full"
-                    imgHeight="h-60"
+                    containerHeight="h-[29rem]"
+                    imageBoxWidth="w-[29rem]"
+                    fileBoxWidth="w-[17rem]"
+                    imgHeight="h-52"
                   />
                 </div>
 
@@ -495,15 +608,13 @@ const AcquisitionViewPage = () => {
                         acquisitionType === "lending" ? `#512727` : `#2F0000`
                       }
                       fontSize={19}
-                      onClick={handleButtonClick}
+                      onClick={() => setActiveDocument("Transaction")}
                     />
                   </div>
                 </div>
-
               </div>
             </div>
           )}
-
 
           {/* full transaction */}
           {activeDocument === "Transaction" && (

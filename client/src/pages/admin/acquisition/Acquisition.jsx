@@ -17,6 +17,8 @@ import Toast from "@/features/Toast";
 import axiosClient from "@/lib/axiosClient";
 import useToast from "@/components/commons";
 
+
+
 const Acquisition = () => {
   const [activeTab, setActiveTab] = useState("pendings");
   const [selectedDate, setSelectedDate] = useState(null);
@@ -33,7 +35,7 @@ const Acquisition = () => {
     donationCount: 0,
     lendingCount: 0,
   });
-  // ✅ Add missing state
+  
   const [transferFilter, setTransferFilter] = useState("All");
 
   const navigate = useNavigate();
@@ -186,7 +188,6 @@ const Acquisition = () => {
 
   const fetchSummary = async () => {
     try {
-      // Optionally, pass date filters if needed
       const params = {};
       if (selectedDate) {
         params.fromDate = selectedDate.toISOString().split("T")[0];

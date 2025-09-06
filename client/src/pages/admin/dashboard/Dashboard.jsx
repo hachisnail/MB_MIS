@@ -33,7 +33,7 @@ const Dashboard = () => {
 
   const walkIn = [
     { label: "Appointment", path: "/admin/appointment/walk-ins/" },
-    { label: "Donation", path: "" },
+    { label: "Donation", path: "/admin/dashboard" },
   ];
 
   return (

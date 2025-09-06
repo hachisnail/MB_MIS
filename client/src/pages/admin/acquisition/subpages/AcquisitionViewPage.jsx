@@ -5,16 +5,30 @@ import {
   RenderRelatedDocs,
   RenderArtifactImageAndDonatorInfo,
   InfoSection,
-  DonatorInfoSection
+  DonatorInfoSection,
+  PreviewAbout,
+  ArtifactImageGallery,
+  ArtifactInfoGrid,
+  TransactionDescription,
 } from "../components/ViewPageRenderer";
+
+import ViewPort from "../../../../features/Viewport";
+
 import StyledButton from "@/components/buttons/StyledButton";
 import MultiLineInput from "@/features/MultiLineInput";
+
 import { decodeBase64 } from "@/utils/base64";
-import { formatDateRange, formatDate, formatDateTime } from "../components/formatDateRange";
+import {
+  formatDateRange,
+  formatDate,
+  formatDateTime,
+} from "../components/formatDateRange";
 import { useAuth } from "../../../../context/authContext";
 import CurvedButton from "../components/CurvedButton";
 import Breadcrumb from "../../../../components/Breadcrumb";
 import Timeline from "../components/Timeline";
+
+import NoImagePlaceholder from "../../../../features/Utilities";
 
 const documentTabs = ["Overview", "Document", "Transaction"];
 
@@ -48,6 +62,7 @@ import {
   Organization,
   PhoneNumber,
 } from "../components/ViewPageSvg";
+
 const AcquisitionViewPage = () => {
   const location = useLocation();
   const [acquisitionType, setAcquisitionType] = useState("");
@@ -271,12 +286,16 @@ const AcquisitionViewPage = () => {
   );
 
   const previewAbout = [
-    {label: "Current Manager", value: user.fname + " " + user.lname },
-    {label: "Status", value: contributionData?.status || "Not Provided" },
-    {label: "Type", value: acquisitionType || "Not Provided" },
-  { label: "Date Submitted", value: submittedDate || "Not Provided" },
-  { label: "Time", value: submittedTime || "Not Provided" },
-  ]
+    { label: "Current Manager", value: user.fname + " " + user.lname },
+    { label: "Status", value: contributionData?.status || "Not Provided" },
+    { label: "Type", value: acquisitionType || "Not Provided" },
+    { label: "Date Submitted", value: submittedDate || "Not Provided" },
+    { label: "Time", value: submittedTime || "Not Provided" },
+  ];
+
+  // const handleSetActiveDocument = (doc) => {
+  //   console.log("Open:", doc);
+  // };
 
   if (loading) {
     return (
@@ -286,10 +305,6 @@ const AcquisitionViewPage = () => {
     );
   }
 
-  const handleButtonClick = () => {
-    setActiveDocument("Transaction"); // switch to Transaction tab
-  };
-
   return (
     <div className="flex flex-col justify-center gap-y-3 w-full h-full items-center ">
       {!contributionData ? (
@@ -298,54 +313,72 @@ const AcquisitionViewPage = () => {
         </div>
       ) : (
         <>
-
-
-        {/* preview page */}
+          {/* preview page */}
           {activeDocument === "Overview" && (
             <div className="w-full h-full   grid grid-cols-[1fr_43rem_47rem]">
-              <div className="col-span-1 w-full h-full bg-[#1C1B19] rounded-l-md pt-20 pb-10 px-10 gap-y-5 flex flex-col">
-                <span className="text-white text-3xl">About</span>
+              {/* left */}
+              <div className="col-span-1 w-full h-full bg-[#1C1B19] rounded-l-md pt-20 pb-10 px-10 gap-y-10 flex flex-col">
+                <span className="text-white text-4xl font-semibold">About</span>
 
-                <div className="w-full h-fit gap-y-3 flex flex-wrap border-y border-[#9B9B9B] py-5">
-                  {previewAbout.map(({ label, value }, idx) => (
-                    <div
-                      key={idx}
-                      className={`${idx === 0 ? "w-full" : "w-1/2"} h-fit flex flex-col `}
+                <PreviewAbout previewAbout={previewAbout} />
+
+                {/* <div className="border-b border-[#9B9B9B] w-full h-full flex flex-col">
+                  <span className="text-[#666666] text-lg ">Description</span>
+                  <span className="text-white capitalize text-xl font-semibold ">
+                    "asddf"
+                  </span>
+                </div> */}
+
+                <DonatorInfoSection
+                  donatorInformation={donatorInformation}
+                  titleClassName="text-4xl text-white font-semibold mb-5"
+                  containerClassName="w-full h-fit flex flex-col gap-y-4"
+                  labelClassName="text-xl items-end text-[#666666] font-normal gap-x-2 flex"
+                  valueClassName="text-2xl font-semibold text-white pl-20 font-normal"
+                  itemClassName="w-full flex flex-col"
+                />
+              </div>
+
+              {/* mid */}
+              <div className="col-span-1 flex flex-col w-full h-full bg-[#1A0F0F] px-10 py-15 gap-y-10">
+                <div className="w-full h-30 flex items-end justify-start overflow-hidden">
+                  <span className="block text-5xl font-semibold text-white break-words">
+                    {contributionData.ContributionArtifact.title}
+                  </span>
+                </div>
+
+                <ArtifactImageGallery
+                  artifactImg={artifactImg}
+                  onActiveDocumentChange={setActiveDocument}
+                />
+              </div>
+              {/* right */}
+              <div className="col-span-1 w-full h-full bg-[#1D1911] rounded-r-md flex flex-col items-center pb-10 pt-13 px-10 gap-y-5">
+                <span className="text-5xl text-white font-semibold">
+                  About The Artifact
+                </span>
+
+                <ArtifactInfoGrid artifactInfo={artifactInfo} />
+
+                <div className="w-full h-fit flex flex-col gap-y-10">
+                  <div className="flex justify-between w-full h-fit items-center">
+                    <span className="text-4xl font-bold text-white">
+                      Timeline
+                    </span>
+
+                    <button
+                      onClick={() => setActiveDocument("Transaction")}
+                      className="h-[4rem] w-[13rem] rounded-full cursor-pointer bg-white text-[#000000] text-xl font-semibold"
                     >
-                      <span className="text-[#666666] text-lg ">{label}</span>
-                      <span className="text-white capitalize text-xl font-semibold">{value}</span>
-                    </div>
-                  ))}
+                      Click For Full View
+                    </button>
+                  </div>
 
+                  <Timeline currentStep={step} steps={steps} />
                 </div>
-
-                <div className="border-b border-[#9B9B9B] w-full h-full flex flex-col">
-                      <span className="text-[#666666] text-lg ">Description</span>
-                      <span className="text-white capitalize text-xl font-semibold ">"asddf"</span>
-
-                </div>
-
-                <DonatorInfoSection 
-                donatorInformation={donatorInformation} 
-                containerClassName="w-full h-fit flex flex-col gap-y-2"
-                labelClassName="text-lg items-end text-[#666666] font-normal gap-x-2 flex"
-                valueClassName="text-xl font-semibold text-white pl-20 font-normal"
-                itemClassName="w-full flex flex-col"/>
-                
-              </div>
-
-              <div className="col-span-1 w-full h-full bg-[#1A0F0F]">
-
-
-              </div>
-
-              <div className="col-span-1 w-full h-full bg-[#1D1911] rounded-r-md">
-
-
               </div>
             </div>
           )}
-
 
           {/* full document */}
           {activeDocument === "Document" && (
@@ -401,9 +434,8 @@ const AcquisitionViewPage = () => {
 
                         <Timeline currentStep={step} steps={steps} />
 
-                        {/*
-                        // testing button
-                        <div className="flex w-fit h-fit gap-x-5">
+                        {/* // testing button          */}
+                        {/* <div className="flex w-fit h-fit gap-x-5">
                           <button
                             onClick={() => setStep((s) => Math.max(0, s - 1))}
                             className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600"
@@ -427,17 +459,15 @@ const AcquisitionViewPage = () => {
 
               {/* Right column */}
               <div className="col-span-1 w-full h-full rounded-r-md flex flex-col">
-                <div className="w-full h-full pb-5">
+                <div className="w-full h-full ">
                   {/* image + file container */}
-
                   <RenderRelatedDocs
                     relatedImages={relatedImages}
                     attachedFiles={attachedFiles}
-                    imageBoxWidth="25rem"
-                    imageBoxHeight="h-full"
-                    fileBoxWidth="14rem"
-                    fileBoxHeight="h-full"
-                    imgHeight="h-60"
+                    containerHeight="h-[29rem]"
+                    imageBoxWidth="w-[29rem]"
+                    fileBoxWidth="w-[17rem]"
+                    imgHeight="h-52"
                   />
                 </div>
 
@@ -457,6 +487,7 @@ const AcquisitionViewPage = () => {
                       } rounded-r-4xl`}
                     ></div>
                   )}
+
                   <div
                     className={`w-full h-full px-13 py-10 flex flex-col space-y-5 ${
                       acquisitionType === "lending"
@@ -467,24 +498,12 @@ const AcquisitionViewPage = () => {
                     <span className="text-3xl font-semibold ">
                       Transaction Details
                     </span>
-                    <div className="w-full h-fit border-y py-8 border-[#9B9B9B] flex flex-col">
-                      <div className="flex w-full h-fit pb-8">
-                        {transactionDescription.map(({ label, value }, idx) => (
-                          <div key={idx} className="flex flex-col w-1/2">
-                            <span className="text-xl ">{label}</span>
-                            <span className="text-2xl font-semibold capitalize ">
-                              {value}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                      <div className="w-full flex flex-col">
-                        <span className="text-xl ">Current Manager</span>
-                        <span className="text-2xl font-semibold capitalize ">
-                          {user.fname + " " + user.lname}
-                        </span>
-                      </div>
-                    </div>
+
+                    <TransactionDescription
+                      transactionDescription={transactionDescription}
+                      user={user}
+                    />
+
                     <CurvedButton
                       text="Click To See Transaction"
                       bgColor={
@@ -495,19 +514,38 @@ const AcquisitionViewPage = () => {
                         acquisitionType === "lending" ? `#512727` : `#2F0000`
                       }
                       fontSize={19}
-                      onClick={handleButtonClick}
+                      onClick={() => setActiveDocument("Transaction")}
                     />
                   </div>
                 </div>
-
               </div>
             </div>
           )}
 
-
           {/* full transaction */}
           {activeDocument === "Transaction" && (
-            <div className="w-full h-full rounded-md bg-[#1C1B19]"></div>
+            <div className="w-full h-full rounded-md items-center justify-center gap-x-20 flex">
+                {/* To do: add the document document */}
+                <ViewPort
+                  title="Memorandum Of Agreement"
+                  width={550}
+                  height={545}
+                >
+                  {/* item inside viewport */}
+                  <div className="w-[50rem] h-[70rem] bg-gray-500 flex flex-col items-center justify-center gapy-5">
+                    <span className="text-4xl">future document</span>
+                    <button
+                      onClick={() => alert("clicked")}
+                      className="p-2 text-2xl bg-black text-white"
+                    >
+                      test
+                    </button>
+                  </div>
+
+
+                </ViewPort>
+              <div className="w-full h-full"></div>
+            </div>
           )}
         </>
       )}

@@ -6,7 +6,13 @@ import {
   RenderArtifactImageAndDonatorInfo,
   InfoSection,
   DonatorInfoSection,
+  PreviewAbout,
+  ArtifactImageGallery,
+  ArtifactInfoGrid,
+  TransactionDescription,
 } from "../components/ViewPageRenderer";
+
+import ViewPort from "../../../../features/Viewport";
 
 import StyledButton from "@/components/buttons/StyledButton";
 import MultiLineInput from "@/features/MultiLineInput";
@@ -287,6 +293,10 @@ const AcquisitionViewPage = () => {
     { label: "Time", value: submittedTime || "Not Provided" },
   ];
 
+  // const handleSetActiveDocument = (doc) => {
+  //   console.log("Open:", doc);
+  // };
+
   if (loading) {
     return (
       <div className="w-full h-full flex items-center justify-center">
@@ -310,21 +320,7 @@ const AcquisitionViewPage = () => {
               <div className="col-span-1 w-full h-full bg-[#1C1B19] rounded-l-md pt-20 pb-10 px-10 gap-y-10 flex flex-col">
                 <span className="text-white text-4xl font-semibold">About</span>
 
-                <div className="w-full h-fit gap-y-4 flex flex-wrap border-y border-[#9B9B9B] py-10">
-                  {previewAbout.map(({ label, value }, idx) => (
-                    <div
-                      key={idx}
-                      className={`${
-                        idx === 0 ? "w-full" : "w-1/2"
-                      } h-fit flex flex-col `}
-                    >
-                      <span className="text-[#666666] text-xl ">{label}</span>
-                      <span className="text-white capitalize text-2xl font-semibold">
-                        {value}
-                      </span>
-                    </div>
-                  ))}
-                </div>
+                <PreviewAbout previewAbout={previewAbout} />
 
                 {/* <div className="border-b border-[#9B9B9B] w-full h-full flex flex-col">
                   <span className="text-[#666666] text-lg ">Description</span>
@@ -342,6 +338,7 @@ const AcquisitionViewPage = () => {
                   itemClassName="w-full flex flex-col"
                 />
               </div>
+
               {/* mid */}
               <div className="col-span-1 flex flex-col w-full h-full bg-[#1A0F0F] px-10 py-15 gap-y-10">
                 <div className="w-full h-30 flex items-end justify-start overflow-hidden">
@@ -350,62 +347,10 @@ const AcquisitionViewPage = () => {
                   </span>
                 </div>
 
-                <div className="w-full h-fit flex flex-col gap-y-5">
-                  {/* First image */}
-                  <div className="w-full h-[36rem] bg-white rounded-2xl overflow-hidden flex items-center justify-center">
-                    {artifactImg.length > 0 ? (
-                      <img
-                        src={artifactImg[0].src}
-                        alt={artifactImg[0].label}
-                        className="w-full h-full object-cover rounded-2xl"
-                      />
-                    ) : (
-                      <span className="text-gray-400">No image available</span>
-                    )}
-                  </div>
-
-                  {/* Thumbnails + button */}
-                  <div className="w-full h-[7rem] flex gap-x-2 mt-2">
-                    {[...Array(3)].map((_, i) => {
-                      const img = artifactImg[i + 1]; // start from second image
-                      return (
-                        <div
-                          key={i}
-                          className={`${
-                            !img && "border-black border-3 flex flex-col"
-                          } w-[7rem] h-[7rem] rounded-full bg-white overflow-hidden flex items-center justify-center text-center`}
-                        >
-                          {img ? (
-                            <img
-                              src={img.src}
-                              alt={img.label}
-                              className="w-full h-full object-cover rounded-full"
-                            />
-                          ) : (
-                            <NoImagePlaceholder />
-                          )}
-                        </div>
-                      );
-                    })}
-
-                    {/* If there are more than 4 total images → show +N */}
-                    {artifactImg.length > 4 && (
-                      <div className="w-[7rem] h-[7rem] rounded-full bg-white flex items-center justify-center text-lg font-semibold text-[#1D1911]">
-                        +{artifactImg.length - 4}
-                      </div>
-                    )}
-
-                    {/* Button */}
-                    <button
-                      onClick={() => setActiveDocument("Document")}
-                      className="w-[16rem] shadow-sm shadow-gray-200 h-[7rem] px-10 rounded-l-full rounded-r-full bg-white flex items-center justify-center cursor-pointer hover:bg-gray-100 transition"
-                    >
-                      <span className="font-bold text-2xl text-[#1D1911]">
-                        Click to View Full Document
-                      </span>
-                    </button>
-                  </div>
-                </div>
+                <ArtifactImageGallery
+                  artifactImg={artifactImg}
+                  onActiveDocumentChange={setActiveDocument}
+                />
               </div>
               {/* right */}
               <div className="col-span-1 w-full h-full bg-[#1D1911] rounded-r-md flex flex-col items-center pb-10 pt-13 px-10 gap-y-5">
@@ -413,32 +358,7 @@ const AcquisitionViewPage = () => {
                   About The Artifact
                 </span>
 
-                <div className="w-full h-fit pt-10 pb-15 border-b border-[#9B9B9B] flex flex-wrap gap-2">
-                  {artifactInfo.map(({ label, value }, idx) => {
-                    if (idx === 0) return null;
-
-                    const adjIdx = idx - 1;
-                    const row = Math.floor(adjIdx / 2);
-                    const col = adjIdx % 2;
-                    const isDark = (row + col) % 2 === 0;
-
-                    return (
-                      <div
-                        key={idx}
-                        className={`w-[calc(50%-3px)] h-50 flex flex-col items-center font-hind justify-center p-3 ${
-                          isDark ? "bg-[#1C1B19]" : "bg-[#0D0E0E]"
-                        }`}
-                      >
-                        <span className="text-[#CDC469] max-w-full  max-h-1/2  font-bold text-center break-words">
-                          {label}
-                        </span>
-                        <span className="text-white max-w-full max-h-1/2 text-center font-medium break-words">
-                          {value}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
+                <ArtifactInfoGrid artifactInfo={artifactInfo} />
 
                 <div className="w-full h-fit flex flex-col gap-y-10">
                   <div className="flex justify-between w-full h-fit items-center">
@@ -448,11 +368,9 @@ const AcquisitionViewPage = () => {
 
                     <button
                       onClick={() => setActiveDocument("Transaction")}
-                      className="h-[4rem] w-[13rem] rounded-full cursor-pointer bg-white"
+                      className="h-[4rem] w-[13rem] rounded-full cursor-pointer bg-white text-[#000000] text-xl font-semibold"
                     >
-                      <span className="text-[#000000] text-xl font-semibold">
-                        Click For Full View
-                      </span>
+                      Click For Full View
                     </button>
                   </div>
 
@@ -516,9 +434,8 @@ const AcquisitionViewPage = () => {
 
                         <Timeline currentStep={step} steps={steps} />
 
-                        {/*
-                        // testing button
-                        <div className="flex w-fit h-fit gap-x-5">
+                        {/* // testing button          */}
+                        {/* <div className="flex w-fit h-fit gap-x-5">
                           <button
                             onClick={() => setStep((s) => Math.max(0, s - 1))}
                             className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600"
@@ -570,6 +487,7 @@ const AcquisitionViewPage = () => {
                       } rounded-r-4xl`}
                     ></div>
                   )}
+
                   <div
                     className={`w-full h-full px-13 py-10 flex flex-col space-y-5 ${
                       acquisitionType === "lending"
@@ -580,24 +498,12 @@ const AcquisitionViewPage = () => {
                     <span className="text-3xl font-semibold ">
                       Transaction Details
                     </span>
-                    <div className="w-full h-fit border-y py-8 border-[#9B9B9B] flex flex-col">
-                      <div className="flex w-full h-fit pb-8">
-                        {transactionDescription.map(({ label, value }, idx) => (
-                          <div key={idx} className="flex flex-col w-1/2">
-                            <span className="text-xl ">{label}</span>
-                            <span className="text-2xl font-semibold capitalize ">
-                              {value}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                      <div className="w-full flex flex-col">
-                        <span className="text-xl ">Current Manager</span>
-                        <span className="text-2xl font-semibold capitalize ">
-                          {user.fname + " " + user.lname}
-                        </span>
-                      </div>
-                    </div>
+
+                    <TransactionDescription
+                      transactionDescription={transactionDescription}
+                      user={user}
+                    />
+
                     <CurvedButton
                       text="Click To See Transaction"
                       bgColor={
@@ -618,7 +524,28 @@ const AcquisitionViewPage = () => {
 
           {/* full transaction */}
           {activeDocument === "Transaction" && (
-            <div className="w-full h-full rounded-md bg-[#1C1B19]"></div>
+            <div className="w-full h-full rounded-md items-center justify-center gap-x-20 flex">
+                {/* To do: add the document document */}
+                <ViewPort
+                  title="Memorandum Of Agreement"
+                  width={550}
+                  height={545}
+                >
+                  {/* item inside viewport */}
+                  <div className="w-[50rem] h-[70rem] bg-gray-500 flex flex-col items-center justify-center gapy-5">
+                    <span className="text-4xl">future document</span>
+                    <button
+                      onClick={() => alert("clicked")}
+                      className="p-2 text-2xl bg-black text-white"
+                    >
+                      test
+                    </button>
+                  </div>
+
+
+                </ViewPort>
+              <div className="w-full h-full"></div>
+            </div>
           )}
         </>
       )}

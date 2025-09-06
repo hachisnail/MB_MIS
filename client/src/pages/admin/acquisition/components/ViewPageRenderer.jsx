@@ -61,27 +61,6 @@ export function RenderArtifactImageAndDonatorInfo({
         thumbnailSize="w-26 h-26"
         mainSize="w-[29rem] h-[29rem]"
       />
-
-      {/* <div className="max-h-[30rem] h-full gap-y-3 flex flex-col overflow-auto border-t border-gray-400 pt-5 pl-10 pr-5">
-        <span className="text-white text-3xl font-hind">
-          Donators Information
-        </span>
-        {donatorInformation.map(({ label, value, icon }, idx) => (
-          <div
-            key={idx}
-            className="w-full flex flex-col h-fit text-2xl font-medium"
-          >
-            <span
-              id="value"
-              className="font-normal text-md items-end gap-x-2 flex text-[#666666]"
-            >
-              {icon}
-              {label}:
-            </span>
-            <span className="text-white font-normal ml-20">{value}</span>
-          </div>
-        ))}
-      </div> */}
       <DonatorInfoSection donatorInformation={donatorInformation} />
     </div>
   );
@@ -356,6 +335,160 @@ export function RenderRelatedDocs({
           onClose={() => setIsModalOpen(false)}
         />
       )}
+    </div>
+  );
+}
+
+
+export function PreviewAbout({ previewAbout = [] }) {
+  return (
+    <div className="w-full h-fit gap-y-4 flex flex-wrap border-y border-[#9B9B9B] py-10">
+      {previewAbout.map(({ label, value }, idx) => (
+        <div
+          key={idx}
+          className={`${idx === 0 ? "w-full" : "w-1/2"} h-fit flex flex-col`}
+        >
+          <span className="text-[#666666] text-xl">{label}</span>
+          <span className="text-white capitalize text-2xl font-semibold">
+            {value}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+
+export function ArtifactImageGallery({
+  artifactImg = [],
+  onActiveDocumentChange = () => {},
+}) {
+  const [activeDocument, setActiveDocument] = useState(null);
+
+  const handleSetActiveDocument = (doc) => {
+    setActiveDocument(doc);
+    onActiveDocumentChange(doc);
+  };
+
+  return (
+    <div className="w-full h-fit flex flex-col gap-y-5">
+      {/* First image */}
+      <div className="w-full h-[36rem] bg-white rounded-2xl overflow-hidden flex items-center justify-center">
+        {artifactImg.length > 0 ? (
+          <img
+            src={artifactImg[0].src}
+            alt={artifactImg[0].label}
+            className="w-full h-full object-cover rounded-2xl"
+          />
+        ) : (
+          <span className="text-gray-400">No image available</span>
+        )}
+      </div>
+
+      {/* Thumbnails + button */}
+      <div className="w-full h-[7rem] flex gap-x-2 mt-2">
+        {[...Array(3)].map((_, i) => {
+          const img = artifactImg[i + 1]; // start from 2nd image
+          return (
+            <div
+              key={i}
+              className={`${
+                !img && "border-black border-3 flex flex-col"
+              } w-[7rem] h-[7rem] rounded-full bg-white overflow-hidden flex items-center justify-center text-center`}
+            >
+              {img ? (
+                <img
+                  src={img.src}
+                  alt={img.label}
+                  className="w-full h-full object-cover rounded-full"
+                />
+              ) : (
+                <NoImagePlaceholder />
+              )}
+            </div>
+          );
+        })}
+
+        {/* If there are more than 4 total images → show +N */}
+        {artifactImg.length > 4 && (
+          <div className="w-[7rem] h-[7rem] rounded-full bg-white flex items-center justify-center text-lg font-semibold text-[#1D1911]">
+            +{artifactImg.length - 4}
+          </div>
+        )}
+
+        {/* Button */}
+        <button
+          onClick={() => handleSetActiveDocument("Document")}
+          className="w-[16rem] shadow-sm shadow-gray-200 h-[7rem] px-10 rounded-l-full rounded-r-full bg-white flex items-center justify-center cursor-pointer hover:bg-gray-100 transition"
+        >
+          <span className="font-bold text-2xl text-[#1D1911]">
+            Click to View Full Document
+          </span>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+
+
+export function ArtifactInfoGrid({ artifactInfo = [] }) {
+  return (
+    <div className="w-full h-fit pt-10 pb-15 border-b border-[#9B9B9B] flex flex-wrap gap-2">
+      {artifactInfo.map(({ label, value }, idx) => {
+        if (idx === 0) return null; // skip first item
+
+        const adjIdx = idx - 1;
+        const row = Math.floor(adjIdx / 2);
+        const col = adjIdx % 2;
+        const isDark = (row + col) % 2 === 0;
+
+        return (
+          <div
+            key={idx}
+            className={`w-[calc(50%-3px)] h-50 flex flex-col items-center font-hind justify-center p-3 ${
+              isDark ? "bg-[#1C1B19]" : "bg-[#0D0E0E]"
+            }`}
+          >
+            <span className="text-[#CDC469] max-w-full max-h-1/2 font-bold text-center break-words">
+              {label}
+            </span>
+            <span className="text-white max-w-full max-h-1/2 text-center font-medium break-words">
+              {value}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+
+export function TransactionDescription({
+  transactionDescription = [],
+  user = { fname: "", lname: "" },
+}) {
+  return (
+    <div className="w-full h-fit border-y py-8 border-[#9B9B9B] flex flex-col">
+      {/* Transaction details */}
+      <div className="flex w-full h-fit pb-8">
+        {transactionDescription.map(({ label, value }, idx) => (
+          <div key={idx} className="flex flex-col w-1/2">
+            <span className="text-xl">{label}</span>
+            <span className="text-2xl font-semibold capitalize">
+              {value}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {/* Current manager */}
+      <div className="w-full flex flex-col">
+        <span className="text-xl">Current Manager</span>
+        <span className="text-2xl font-semibold capitalize">
+          {user.fname + " " + user.lname}
+        </span>
+      </div>
     </div>
   );
 }

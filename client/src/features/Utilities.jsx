@@ -652,7 +652,6 @@ export default function NoImagePlaceholder({
 }
 
 
-
 export function ImageCarousel({
   images = [],
   thumbnailSize = "w-29 h-29",

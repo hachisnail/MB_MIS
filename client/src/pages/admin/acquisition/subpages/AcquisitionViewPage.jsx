@@ -532,11 +532,13 @@ const AcquisitionViewPage = () => {
                   height={545}
                 >
                   {/* item inside viewport */}
-                  <div className="w-[50rem] h-[70rem] bg-gray-500 flex flex-col items-center justify-center gapy-5">
-                    <span className="text-4xl">future document</span>
+                  <div className="w-[50rem] h-[70rem] bg-black flex flex-col items-center justify-center gap-y-5">
+                    <span className="text-4xl text-white">{contributionData.ContributionArtifact.title}</span>
+                        <Timeline currentStep={step} steps={steps} />
+
                     <button
                       onClick={() => alert("clicked")}
-                      className="p-2 text-2xl bg-black text-white"
+                      className="p-2 text-2xl bg-white text-black"
                     >
                       test
                     </button>
@@ -544,6 +546,8 @@ const AcquisitionViewPage = () => {
 
 
                 </ViewPort>
+
+
               <div className="w-full h-full">
 
 

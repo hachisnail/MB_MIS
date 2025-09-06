@@ -17,25 +17,34 @@ export default function ViewPort({
   const [scale, setScale] = useState(1);
   const [dragging, setDragging] = useState(false);
   const [startPos, setStartPos] = useState({ x: 0, y: 0 });
+  const [showReset, setShowReset] = useState(false);
 
-  const clampPosition = (x, y, s = scale) => {
-    const container = containerRef.current;
-    const inner = innerRef.current;
-    if (!container || !inner) return { x, y };
+  // Store the initial state to compare deviations
+  const initialPosition = useRef({ x: 0, y: 0 });
+  const initialScale = useRef(1);
 
-    const halfWidth = (inner.offsetWidth * s) / 2;
-    const halfHeight = (inner.offsetHeight * s) / 2;
+const clampPosition = (x, y, s = scale) => {
+  const container = containerRef.current;
+  const inner = innerRef.current;
+  if (!container || !inner) return { x, y };
 
-    const maxX = container.offsetWidth - halfWidth;
-    const minX = -halfWidth;
-    const maxY = container.offsetHeight - halfHeight;
-    const minY = -halfHeight;
+  const innerWidth = inner.offsetWidth * s;
+  const innerHeight = inner.offsetHeight * s;
 
-    return {
-      x: Math.min(maxX, Math.max(minX, x)),
-      y: Math.min(maxY, Math.max(minY, y)),
-    };
+  // Allow most of the document to overflow: only 1/8 visible
+  const visibleFraction = 1 / 8;
+
+  const maxX = container.offsetWidth - innerWidth * visibleFraction;
+  const minX = -(innerWidth - innerWidth * visibleFraction);
+  const maxY = container.offsetHeight - innerHeight * visibleFraction;
+  const minY = -(innerHeight - innerHeight * visibleFraction);
+
+  return {
+    x: Math.min(maxX, Math.max(minX, x)),
+    y: Math.min(maxY, Math.max(minY, y)),
   };
+};
+
 
   const resetPosition = useCallback(() => {
     const container = containerRef.current;
@@ -47,9 +56,24 @@ export default function ViewPort({
 
     setPosition({ x: centerX, y: topY });
     setScale(1);
+    setShowReset(false);
+
+    // Update initial values
+    initialPosition.current = { x: centerX, y: topY };
+    initialScale.current = 1;
   }, [topPadding]);
 
   useEffect(() => resetPosition(), [resetPosition]);
+
+  // Helper to check if deviation is significant
+  const hasSignificantDeviation = (pos, sc) => {
+    const thresholdPos = 2; // pixels
+    const thresholdScale = 0.01; // scale
+    const dx = Math.abs(pos.x - initialPosition.current.x);
+    const dy = Math.abs(pos.y - initialPosition.current.y);
+    const ds = Math.abs(sc - initialScale.current);
+    return dx > thresholdPos || dy > thresholdPos || ds > thresholdScale;
+  };
 
   const handleWheel = useCallback(
     (e) => {
@@ -68,8 +92,14 @@ export default function ViewPort({
       const dx = (mouseX - position.x) * (newScale / oldScale - 1);
       const dy = (mouseY - position.y) * (newScale / oldScale - 1);
 
+      const newPos = clampPosition(position.x - dx, position.y - dy, newScale);
+
       setScale(newScale);
-      setPosition(clampPosition(position.x - dx, position.y - dy, newScale));
+      setPosition(newPos);
+
+      if (hasSignificantDeviation(newPos, newScale)) {
+        setShowReset(true);
+      }
     },
     [scale, position]
   );
@@ -89,7 +119,13 @@ export default function ViewPort({
 
   const handleMouseMove = (e) => {
     if (!dragging) return;
-    setPosition(clampPosition(e.clientX - startPos.x, e.clientY - startPos.y));
+
+    const newPos = clampPosition(e.clientX - startPos.x, e.clientY - startPos.y);
+    setPosition(newPos);
+
+    if (hasSignificantDeviation(newPos, scale)) {
+      setShowReset(true);
+    }
   };
 
   const handleMouseUp = () => setDragging(false);
@@ -105,7 +141,7 @@ export default function ViewPort({
         </div>
       )}
 
-      <div className="px-6 pb-6 pt-5 relative">
+      <div className={` px-6 pb-6 ${title ? "pt-5": "pt-6"}  relative`}>
         <div
           ref={containerRef}
           className={`rounded-md relative overflow-hidden ${containerClassName} shadow-[inset_0_8px_12px_rgba(0,0,0,0.25),inset_0_-8px_12px_rgba(0,0,0,0.50)]`}
@@ -132,12 +168,13 @@ export default function ViewPort({
             {children}
           </div>
 
-          <StyledButton
-            onClick={resetPosition}
-            className="absolute bottom-4 right-4 z-10"
+          <div
+            className={`absolute bottom-4 right-4 z-10 transition-opacity duration-300 ${
+              showReset ? "opacity-100" : "opacity-0 pointer-events-none"
+            }`}
           >
-            Reset
-          </StyledButton>
+            <StyledButton onClick={resetPosition}>Reset</StyledButton>
+          </div>
         </div>
       </div>
     </div>

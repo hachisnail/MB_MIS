@@ -544,7 +544,11 @@ const AcquisitionViewPage = () => {
 
 
                 </ViewPort>
-              <div className="w-full h-full"></div>
+              <div className="w-full h-full">
+
+
+                
+              </div>
             </div>
           )}
         </>

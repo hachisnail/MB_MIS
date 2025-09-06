@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import StyledButton from "../components/buttons/StyledButton";
 
 export default function ViewPort({
@@ -8,7 +8,7 @@ export default function ViewPort({
   height = 400,
   containerClassName = "",
   containerStyle = {},
-  topPadding = 20, // default top padding
+  topPadding = 20,
 }) {
   const containerRef = useRef(null);
   const innerRef = useRef(null);
@@ -18,27 +18,68 @@ export default function ViewPort({
   const [dragging, setDragging] = useState(false);
   const [startPos, setStartPos] = useState({ x: 0, y: 0 });
 
-  // Initial mount: top-aligned + horizontally centered
-  useEffect(() => {
-    resetPosition();
-  }, []);
+  const clampPosition = (x, y, s = scale) => {
+    const container = containerRef.current;
+    const inner = innerRef.current;
+    if (!container || !inner) return { x, y };
 
-  // Wheel listener with passive: false
+    const halfWidth = (inner.offsetWidth * s) / 2;
+    const halfHeight = (inner.offsetHeight * s) / 2;
+
+    const maxX = container.offsetWidth - halfWidth;
+    const minX = -halfWidth;
+    const maxY = container.offsetHeight - halfHeight;
+    const minY = -halfHeight;
+
+    return {
+      x: Math.min(maxX, Math.max(minX, x)),
+      y: Math.min(maxY, Math.max(minY, y)),
+    };
+  };
+
+  const resetPosition = useCallback(() => {
+    const container = containerRef.current;
+    const inner = innerRef.current;
+    if (!container || !inner) return;
+
+    const centerX = (container.offsetWidth - inner.offsetWidth) / 2;
+    const topY = topPadding;
+
+    setPosition({ x: centerX, y: topY });
+    setScale(1);
+  }, [topPadding]);
+
+  useEffect(() => resetPosition(), [resetPosition]);
+
+  const handleWheel = useCallback(
+    (e) => {
+      e.preventDefault();
+      const container = containerRef.current;
+      const inner = innerRef.current;
+      if (!container || !inner) return;
+
+      const rect = container.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+
+      const oldScale = scale;
+      const newScale = Math.min(Math.max(scale - e.deltaY * 0.0015, 0.5), 3);
+
+      const dx = (mouseX - position.x) * (newScale / oldScale - 1);
+      const dy = (mouseY - position.y) * (newScale / oldScale - 1);
+
+      setScale(newScale);
+      setPosition(clampPosition(position.x - dx, position.y - dy, newScale));
+    },
+    [scale, position]
+  );
+
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
-
-    const handleWheelEvent = (e) => {
-      e.preventDefault();
-      handleWheel(e);
-    };
-
-    container.addEventListener("wheel", handleWheelEvent, { passive: false });
-
-    return () => {
-      container.removeEventListener("wheel", handleWheelEvent);
-    };
-  }, [scale, position]);
+    container.addEventListener("wheel", handleWheel, { passive: false });
+    return () => container.removeEventListener("wheel", handleWheel);
+  }, [handleWheel]);
 
   const handleMouseDown = (e) => {
     e.preventDefault();
@@ -48,84 +89,20 @@ export default function ViewPort({
 
   const handleMouseMove = (e) => {
     if (!dragging) return;
-    const container = containerRef.current;
-    const inner = innerRef.current;
-
-    let newX = e.clientX - startPos.x;
-    let newY = e.clientY - startPos.y;
-
-    const halfWidth = (inner.offsetWidth * scale) / 2;
-    const halfHeight = (inner.offsetHeight * scale) / 2;
-
-    const maxX = container.offsetWidth - halfWidth;
-    const minX = -halfWidth;
-    const maxY = container.offsetHeight - halfHeight;
-    const minY = -halfHeight;
-
-    newX = Math.min(maxX, Math.max(minX, newX));
-    newY = Math.min(maxY, Math.max(minY, newY));
-
-    setPosition({ x: newX, y: newY });
+    setPosition(clampPosition(e.clientX - startPos.x, e.clientY - startPos.y));
   };
 
   const handleMouseUp = () => setDragging(false);
 
-  const handleWheel = (e) => {
-    const container = containerRef.current;
-    const inner = innerRef.current;
-    if (!container || !inner) return;
-
-    const rect = container.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
-
-    const oldScale = scale;
-    let newScale = Math.min(Math.max(scale + e.deltaY * -0.0015, 0.5), 3);
-
-    const dx = (mouseX - position.x) * (newScale / oldScale - 1);
-    const dy = (mouseY - position.y) * (newScale / oldScale - 1);
-
-    let newX = position.x - dx;
-    let newY = position.y - dy;
-
-    // Clamp so at least half of the inner stays inside
-    const halfWidth = (inner.offsetWidth * newScale) / 2;
-    const halfHeight = (inner.offsetHeight * newScale) / 2;
-
-    const maxX = container.offsetWidth - halfWidth;
-    const minX = -halfWidth;
-    const maxY = container.offsetHeight - halfHeight;
-    const minY = -halfHeight;
-
-    newX = Math.min(maxX, Math.max(minX, newX));
-    newY = Math.min(maxY, Math.max(minY, newY));
-
-    setScale(newScale);
-    setPosition({ x: newX, y: newY });
-  };
-
-  const resetPosition = () => {
-    const container = containerRef.current;
-    const inner = innerRef.current;
-    if (!container || !inner) return;
-
-    const centerX = (container.offsetWidth - inner.offsetWidth) / 2; // horizontal center
-    const topY = topPadding; // top-aligned
-
-    setPosition({ x: centerX, y: topY });
-    setScale(1);
-  };
-
   return (
     <div className="flex w-fit h-fit flex-col items-center rounded-md shadow-md shadow-gray-600 relative">
-      {/* Title Bar */}
       {title && (
-      <div className="w-full h-20 bg-black flex flex-col rounded-t-md">
-        <div className="h-full w-full flex items-center justify-center">
-          <span className="text-white text-3xl font-bold">{title}</span>
+        <div className="w-full h-20 bg-black flex flex-col rounded-t-md">
+          <div className="h-full w-full flex items-center justify-center">
+            <span className="text-white text-3xl font-bold">{title}</span>
+          </div>
+          <div className="rounded-t-md w-full min-h-1 bg-white"></div>
         </div>
-        <div className="rounded-t-md w-full min-h-1 bg-white"></div>
-      </div>
       )}
 
       <div className="px-6 pb-6 pt-5 relative">
@@ -155,10 +132,9 @@ export default function ViewPort({
             {children}
           </div>
 
-          {/* Floating Reset Button */}
           <StyledButton
             onClick={resetPosition}
-            className="absolute bottom-4 right-4  z-10"
+            className="absolute bottom-4 right-4 z-10"
           >
             Reset
           </StyledButton>

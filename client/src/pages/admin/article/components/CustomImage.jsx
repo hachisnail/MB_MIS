@@ -1,57 +1,87 @@
-import { NodeViewWrapper, NodeViewContent, ReactNodeViewRenderer } from "@tiptap/react";
+// CustomImage.jsx (percent width version)
+import React, { useRef } from "react";
+import { ReactNodeViewRenderer, NodeViewWrapper } from "@tiptap/react";
 import { Image } from "@tiptap/extension-image";
-import React, { useState } from "react";
 
+/** Inline, resizable image node-view that stores width as % of container */
 const ResizableImageComponent = ({ node, updateAttributes, selected }) => {
-  const { src, width, height } = node.attrs;
-  const [isResizing, setIsResizing] = useState(false);
+  const { src, widthPct } = node.attrs;
+  const wrapperRef = useRef(null);
 
-  const handleResize = (event) => {
-    const newWidth = Math.max(50, event.clientX - event.target.getBoundingClientRect().left);
-    updateAttributes({ width: newWidth });
+  const startResize = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const isTouch = e.type === "touchstart";
+    const moveEvt = isTouch ? "touchmove" : "mousemove";
+    const endEvt = isTouch ? "touchend" : "mouseup";
+    const getClientX = (ev) => (isTouch ? ev.touches?.[0]?.clientX ?? 0 : ev.clientX);
+
+    const onMove = (ev) => {
+      const wrapper = wrapperRef.current;
+      if (!wrapper) return;
+      // container is the inline-block wrapper's offsetParent width
+      const container = wrapper.parentElement || wrapper;
+      const containerRect = container.getBoundingClientRect();
+      const wrapperRect = wrapper.getBoundingClientRect();
+      const clientX = getClientX(ev);
+
+      const newPx = Math.max(50, Math.round(clientX - wrapperRect.left));
+      const containerWidth = Math.max(1, containerRect.width);
+      const pct = Math.min(100, Math.max(5, (newPx / containerWidth) * 100)); // clamp 5%..100%
+      updateAttributes({ widthPct: Math.round(pct * 100) / 100 });
+    };
+
+    const onEnd = () => {
+      document.removeEventListener(moveEvt, onMove);
+      document.removeEventListener(endEvt, onEnd);
+    };
+
+    document.addEventListener(moveEvt, onMove);
+    document.addEventListener(endEvt, onEnd);
   };
 
- return (
+  return (
     <NodeViewWrapper
+      ref={wrapperRef}
       className="resizable-image"
-      style={{ display: "inline-block", position: "relative" }}
-      data-drag-handle // This is an important attribute for Tiptap to know what part of the node to grab for dragging
+      style={{
+        display: "inline-block",
+        position: "relative",
+        verticalAlign: "middle",
+        lineHeight: 0,
+      }}
+      data-drag-handle
     >
       <img
         src={src}
+        alt=""
         style={{
-          width: width || "auto",
-          height: height || "auto",
+          width: widthPct ? `${widthPct}%` : "auto",
+          height: "auto",
           maxWidth: "100%",
-          display: "block",
+          display: "inline-block",
           userSelect: "none",
         }}
-        // The image is now draggable, but the resize handle is not
+        data-inline="true"
+        data-resizable="true"
+        draggable={false}
       />
+
       {selected && (
         <div
           contentEditable={false}
+          onMouseDown={startResize}
+          onTouchStart={startResize}
           style={{
             position: "absolute",
-            bottom: 0,
             right: 0,
-            width: "12px",
-            height: "12px",
+            bottom: 0,
+            width: 12,
+            height: 12,
             background: "blue",
+            borderRadius: 2,
             cursor: "se-resize",
-          }}
-          onMouseDown={(e) => {
-            e.preventDefault();
-            e.stopPropagation(); // 👈 prevent the drag event from starting
-            setIsResizing(true);
-            const moveHandler = (ev) => handleResize(ev);
-            const upHandler = () => {
-              setIsResizing(false);
-              document.removeEventListener("mousemove", moveHandler);
-              document.removeEventListener("mouseup", upHandler);
-            };
-            document.addEventListener("mousemove", moveHandler);
-            document.addEventListener("mouseup", upHandler);
           }}
         />
       )}
@@ -60,24 +90,51 @@ const ResizableImageComponent = ({ node, updateAttributes, selected }) => {
 };
 
 const CustomImage = Image.extend({
+  // inline so images don't occupy the whole row
+  inline() {
+    return true;
+  },
+  group() {
+    return "inline";
+  },
+  draggable: true,
+
   addAttributes() {
     return {
       ...this.parent?.(),
-      width: {
+
+      // store width as container-relative percent
+      widthPct: {
         default: null,
-        parseHTML: (element) => element.getAttribute("width"),
-        renderHTML: (attributes) => {
-          if (!attributes.width) return {};
-          return { width: attributes.width };
+        parseHTML: (element) => {
+          // read style="width: NN%" or data-width-pct="NN"
+          const styleW = element.style?.width || "";
+          const dataPct = element.getAttribute("data-width-pct") || "";
+          const raw =
+            styleW.trim().endsWith("%")
+              ? styleW.trim().slice(0, -1)
+              : dataPct;
+          const n = parseFloat(raw);
+          return Number.isFinite(n) ? n : null;
+        },
+        renderHTML: (attrs) => {
+          if (!attrs.widthPct) return {};
+          const n = parseFloat(attrs.widthPct);
+          const safe = Number.isFinite(n) ? Math.min(100, Math.max(5, n)) : null;
+          if (safe == null) return {};
+          return {
+            style: `width: ${safe}%; height: auto;`,
+            "data-width-pct": String(safe),
+            "data-inline": "true",
+          };
         },
       },
+
+      // keep height auto to preserve aspect ratio
       height: {
         default: null,
-        parseHTML: (element) => element.getAttribute("height"),
-        renderHTML: (attributes) => {
-          if (!attributes.height) return {};
-          return { height: attributes.height };
-        },
+        parseHTML: () => null,
+        renderHTML: () => ({}),
       },
     };
   },

@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useMemo } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useLocation  } from "react-router-dom";
 import axiosClient from "@/lib/axiosClient";
 import axios from "axios";
 import Button from "../../../../components/buttons/artclbtn";
@@ -12,6 +12,7 @@ import ViewPort from "../../../../features/Viewport";
 import { handleGenerateCaption, handleSummarizeCaption } from "../components/CaptionGenerator";
 import RichTextEditor from "../components/RichTextEditor";
 import { X as XIcon } from "lucide-react"; // only needed for thumbnail 'X' button
+import { STATUS, STATUS_LABELS } from '../components/articleStatus';
 
 const ArticleEditorForm = () => {
   const BASE_URL = import.meta.env.VITE_API_BASE_URL;
@@ -23,9 +24,11 @@ const ArticleEditorForm = () => {
   const isViewer = userRole === 3;
   const isReviewer = userRole === 4;
   const hasRun = useRef(false);
-
+  const AUTHOR_ALLOWED = new Set(['pending','scheduled','posted','archived']);
   const navigate = useNavigate();
-
+  const forcedFromNav   = location.state?.forceReviewMode === true;  
+  const queryParams = new URLSearchParams(location.search); 
+  const forceEditorMode = queryParams.get("mode") === "edit";
   // editor mirror state (strings) + ref for commands
   const [editorHTML, setEditorHTML] = useState("");
   const [editorText, setEditorText] = useState("");
@@ -106,6 +109,16 @@ const ArticleEditorForm = () => {
   }
 
   const [article, setArticle] = useState(null);
+  const isPrivileged = [1,2,5].includes(user.roleId);
+  const isOwner = article ? String(article.user_id) === String(user.id) : null;
+
+    const shouldShowReviewer =
+      !forceEditorMode && (
+        forcedFromNav ||
+        user.roleId === 4 ||           
+        user.roleId === 3 ||          
+        (isOwner === false && isPrivileged)
+      );
 
   const draftKey = articleId ? `article-draft-${articleId}` : "new-article-draft";
   const draftData = useMemo(
@@ -144,7 +157,7 @@ const ArticleEditorForm = () => {
     formData.append("title", title);
     formData.append("article_category", category);
     formData.append("description", editorHTML || "");
-    formData.append("user_id", userRole);
+    formData.append("user_id", String(user.id));
     formData.append("author", author);
     formData.append("address", municipality);
     formData.append("selectedDate", selectedDate);
@@ -242,20 +255,19 @@ const ArticleEditorForm = () => {
 
   // initial load / draft load
   useEffect(() => {
-    if (hasRun.current || !editorRef.current) return;
+    if (hasRun.current) return; 
 
     const fetchArticleAndLoadDraft = async () => {
       hasRun.current = true;
 
-      const draft = loadDraft(draftKey);
-      let shouldLoadDraft = false; // you can toggle this if you want auto-load
-
-      if (draft && (draft.title || draft.description || draft.author)) {
+      const draft = loadDraft(draftKey); // { data, hash, _savedAt }
+       if (draft?.data && (draft.data.title || draft.data.description || draft.data.author)) {
         const draftAge = draft._savedAt ? Math.floor((new Date() - new Date(draft._savedAt)) / (1000 * 60)) : null;
-        setDraftToLoad({ draft, draftAge });
+        setDraftToLoad({ draft, draftAge }); // keep whole object; we’ll read draft.data later
         setShowDraftPrompt(true);
         return;
       }
+
 
       if (articleId) {
         try {
@@ -265,22 +277,7 @@ const ArticleEditorForm = () => {
           setIsEditing(true);
           setEditingArticleId(data.article_id);
 
-          if (shouldLoadDraft) {
-            setTitle(draft.title || "");
-            setAuthor(draft.author || "");
-            setCategory(draft.category || "");
-            setMunicipality(draft.municipality || "");
-            setBarangay(draft.barangay || "");
-            setStatus(draft.status || "pending");
-            setSelectedDate(draft.selectedDate || "");
-            setUploadPeriodStart(draft.upload_period_start || "");
-            setUploadPeriodEnd(draft.upload_period_end || "");
-            setReviewerNotes(draft.reviewer_notes || "");
-            setCaption(draft.caption || "");
-            editorRef.current?.setContent(draft.description || "");
-            setEditorHTML(draft.description || "");
-            setEditorText(editorRef.current?.getText() || "");
-          } else {
+
             setTitle(data.title || "");
             setAuthor(data.author || "");
             setCategory(data.article_category || "");
@@ -301,7 +298,7 @@ const ArticleEditorForm = () => {
             } else {
               setSelectedDate("");
             }
-          }
+          
 
           if (data.images) {
             setPreviewImage(`${UPLOAD_PATH}${data.images}`);
@@ -337,22 +334,7 @@ const ArticleEditorForm = () => {
           console.error("Failed to fetch article:", err);
         }
       } else {
-        if (shouldLoadDraft) {
-          setTitle(draft.title || "");
-          setAuthor(draft.author || "");
-          setCategory(draft.category || "");
-          setMunicipality(draft.municipality || "");
-          setBarangay(draft.barangay || "");
-          setStatus(draft.status || "pending");
-          setReviewerNotes(draft.reviewerNotes || "");
-          setCaption(draft.caption || "");
-          editorRef.current?.setContent(draft.description || "");
-          setEditorHTML(draft.description || "");
-          setEditorText(editorRef.current?.getText() || "");
-          if (draft.selectedDate) setSelectedDate(draft.selectedDate);
-        } else {
-          resetForm();
-        }
+
       }
     };
 
@@ -417,8 +399,10 @@ const ArticleEditorForm = () => {
   ];
 
   // inline image upload from editor
-  const handleImageUpload = async (e) => {
-    const file = e.target.files?.[0];
+  const handleImageUpload = async (e) => {   // Prevent the browser from opening the dropped file
+    if (e?.preventDefault) e.preventDefault();
+    const fileList = e?.target?.files || e?.dataTransfer?.files;   
+    const file = fileList?.[0];
     if (!file) return;
 
     try {
@@ -503,6 +487,16 @@ const ArticleEditorForm = () => {
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [isDirty]);
 
+console.log("ArticleEditorForm mode check", {
+  locationState: location.state,
+  query: location.search,
+  forceEditorMode,
+  isPrivileged,
+  isOwner,
+  shouldShowReviewer,
+  renderEditorUI: userRole && allowedRoles.includes(userRole) && !shouldShowReviewer
+});
+
   return (
     <>
       {PromptModal}
@@ -511,10 +505,26 @@ const ArticleEditorForm = () => {
         <div className="hidden 2xl:block 2xl:w-1/5" />
 
         {/* LEFT SIDE - Editor + Form */}
-        {userRole && allowedRoles.includes(userRole) && !isReviewer ? (
+        {userRole && allowedRoles.includes(userRole) && !shouldShowReviewer ? (
           <div className="bg-white w-full 2xl:w-2/5 p-6 rounded-lg shadow-xl relative max-h-[85vh] overflow-auto transition-all duration-300">
             <h2 className="text-3xl font-bold mb-6">Header</h2>
-
+                {isPrivileged && (
+                  <div className="flex justify-end mb-4">
+                    <StyledButton
+                      type="button"
+                      buttonColor="bg-gray-500"
+                      hoverColor="hover:bg-gray-600"
+                      textColor="text-white"
+                      onClick={() => {
+                        navigate(`/admin/article/edit-article/${encoded}?mode=review`, {
+                          replace: true,
+                        });
+                      }}
+                    >
+                      Back to Review
+                    </StyledButton>
+                  </div>
+                )}
             <form onSubmit={handleFormSubmit} className="space-y-6">
               {/* Title */}
               <label htmlFor="title" className={`font-bold ${errors.title ? "text-red-600" : ""}`}>
@@ -668,10 +678,11 @@ const ArticleEditorForm = () => {
                     setIsDirty(true);
                   }}
                 >
-                  <option value="pending">Pending</option>
-                  <option value="scheduled">Schedule</option>
-                  <option value="posted">Post</option>
-                  <option value="archived">Archive</option>
+                  {STATUS.filter(s => AUTHOR_ALLOWED.has(s.value)).map(s => (
+                      <option key={s.value} value={s.value}>
+                        {STATUS_LABELS[s.value] ?? s.label}
+                      </option>
+                    ))}
                 </select>
               </div>
 
@@ -756,6 +767,7 @@ const ArticleEditorForm = () => {
                     type="file"
                     name="thumbnail"
                     onChange={handleCustomThumbnailChange}
+                    accept="image/*"
                     style={{ color: "transparent" }}
                   />
                   <div className="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-gray-700 truncate max-w-[75%]">
@@ -856,9 +868,26 @@ const ArticleEditorForm = () => {
           </div>
         ) : (
           // Reviewer view (unchanged except it now uses editorHTML string for preview)
-          <div className="bg-white w-full 2xl:w-2/5 p-6 rounded-lg shadow-xl relative max-h-[85vh] overflow-auto transition-all duration-300">
-            <h2 className="text-3xl font-bold mb-6">Review Article</h2>
+              <div className="bg-white w-full 2xl:w-2/5 p-6 rounded-lg shadow-xl ...">
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-3xl font-bold">Review Article</h2>
 
+                  {isPrivileged && (
+                    <StyledButton
+                      type="button"
+                      buttonColor="bg-indigo-600"
+                      hoverColor="hover:bg-indigo-700"
+                      textColor="text-white"
+                      onClick={() => {
+                        navigate(`/admin/article/edit-article/${encoded}?mode=edit`, {
+                          replace: true,
+                        });
+                      }}
+                    >
+                      Edit this article
+                    </StyledButton>
+                  )}
+                </div>
             <div className="space-y-4">
               <div>
                 <p className="text-lg font-bold">Title:</p>
@@ -898,6 +927,9 @@ const ArticleEditorForm = () => {
               </div>
             </div>
 
+
+
+
             <form onSubmit={handleFormSubmit} className="mt-6 space-y-6">
               <div className="flex items-center gap-4">
                 <label htmlFor="reviewerStatus" className="font-bold whitespace-nowrap">
@@ -910,11 +942,11 @@ const ArticleEditorForm = () => {
                   onChange={(e) => setStatus(e.target.value)}
                   disabled={isViewer}
                 >
-                  <option value="pending">Pending</option>
-                  <option value="posted">Post</option>
-                  <option value="rejected">Reject</option>
-                  <option value="archived">Archive</option>
-                  <option value="scheduled">Scheduled</option>
+                  {STATUS.map(s => (
+                    <option key={s.value} value={s.value}>
+                      {STATUS_LABELS[s.value] ?? s.label}
+                    </option>
+                  ))}
                 </select>
               </div>
 
@@ -998,17 +1030,27 @@ const ArticleEditorForm = () => {
                   </div>
                 </div>
               )}
+                
+            {userRole !== 3 && (
+              <div className="flex justify-end gap-3">
+                <StyledButton
+                  type="button"
+                  onClick={() => navigate("/admin/article")}
+                  buttonColor="bg-gray-500"
+                  hoverColor="hover:bg-gray-600"
+                  textColor="text-white"
+                >
+                  Cancel
+                </StyledButton>
 
-              {userRole !== 3 && (
-                <div className="flex justify-end">
-                  <Button
-                    type="submit"
-                    className="w-full md:w-auto px-6 py-3 bg-[#c78216] text-white font-bold rounded-2xl hover:bg-[#d69641] transition-colors"
-                  >
-                    Save Status
-                  </Button>
-                </div>
-              )}
+                <Button
+                  type="submit"
+                  className="w-full md:w-auto px-6 py-3 bg-[#c78216] text-white font-bold rounded-2xl hover:bg-[#d69641] transition-colors"
+                >
+                  Save Status
+                </Button>
+              </div>
+            )}
             </form>
           </div>
         )}
@@ -1064,13 +1106,18 @@ const ArticleEditorForm = () => {
                 </div>
               ) : null}
 
-              <div className="prose max-w-none min-h-[18rem] max-h-[24rem] sm:min-h-[22rem] sm:max-h-[28rem] md:min-h-[26rem] md:max-h-[32rem] lg:min-h-[30rem] lg:max-h-[30rem] xl:min-h-[32rem] xl:max-h-[32rem] 2xl:min-h-[57rem] 2xl:max-h-[34rem] overflow-y-auto relative break-words font-hina">
+              <div className="editor-content-preview not-prose max-w-none ... overflow-y-auto relative break-words font-hina">
                 {editorHTML ? (
-                  <div className="editor-content-preview" dangerouslySetInnerHTML={{ __html: editorHTML }} />
+                  <div
+                    className="editor-content-preview"
+                    dangerouslySetInnerHTML={{ __html: editorHTML }}
+                  />
                 ) : (
                   <p className="text-gray-400 italic">Article content will appear here...</p>
                 )}
               </div>
+
+
             </div>
           </div>
         </ViewPort>
@@ -1197,20 +1244,20 @@ const ArticleEditorForm = () => {
                 onClick={async () => {
                   // Load
                   const { draft } = draftToLoad;
-                  setTitle(draft.title || "");
-                  setAuthor(draft.author || "");
-                  setCategory(draft.category || "");
-                  setMunicipality(draft.municipality || "");
-                  setBarangay(draft.barangay || "");
-                  setStatus(draft.status || "pending");
-                  setSelectedDate(draft.selectedDate || "");
-                  setUploadPeriodStart(draft.upload_period_start || "");
-                  setUploadPeriodEnd(draft.upload_period_end || "");
-                  setReviewerNotes(draft.reviewer_notes || "");
-                  setCaption(draft.caption || "");
+                  setTitle(draft.data.title || "");
+                  setAuthor(draft.data.author || "");
+                  setCategory(draft.data.category || "");
+                  setMunicipality(draft.data.municipality || "");
+                  setBarangay(draft.data.barangay || "");
+                  setStatus(draft.data.status || "pending");
+                  setSelectedDate(draft.data.selectedDate || "");
+                  setUploadPeriodStart(draft.data.upload_period_start || "");
+                  setUploadPeriodEnd(draft.data.upload_period_end || "");
+                  setReviewerNotes(draft.data.reviewer_notes || "");
+                  setCaption(draft.data.caption || "");
 
-                  editorRef.current?.setContent(draft.description || "");
-                  setEditorHTML(draft.description || "");
+                  editorRef.current?.setContent(draft.data.description || "");
+                  setEditorHTML(draft.data.description || "");
                   setEditorText(editorRef.current?.getText() || "");
 
                   setShowDraftPrompt(false);

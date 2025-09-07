@@ -52,6 +52,9 @@ import StyledButton from "@/components/buttons/StyledButton";
 import { useAuth } from "@/context/authContext";
 import useAutosave, { loadDraft, clearDraft } from "@/features/ContentDrafting.jsx";
 import usePrompt from '@/hooks/usePrompt';
+import ViewPort from "../../../../features/Viewport";
+import { handleGenerateCaption, handleSummarizeCaption } from "../components/CaptionGenerator";
+
 
 const ArticleEditorForm = () => {
   const BASE_URL = import.meta.env.VITE_API_BASE_URL;
@@ -241,80 +244,7 @@ const ArticleEditorForm = () => {
   }), [title, selectedDate, author, category, municipality, barangay, status, uploadPeriodStart, uploadPeriodEnd, editor?.getHTML()]);
   useAutosave(isDirty ? draftData : null, draftKey, 1000);
 
-  // Function to generate caption using AI
-  const handleGenerateCaption = async () => {
-    const articleContent = editor.getText();
-    if (!articleContent.trim()) {
-      window.alert('Please write some content in the editor first to generate a caption.');
-      return;
-    }
 
-    setIsGeneratingCaption(true);
-    let retries = 0;
-    const maxRetries = 5;
-    let success = false;
-
-    // The prompt for the AI model
-    const prompt = `Summarize the following article content into a short, engaging caption, suitable for public display on a homepage. The caption should be no more than 150 characters. The content is: ${articleContent}`;
-
-    while (retries < maxRetries && !success) {
-      try {
-        const chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
-        const payload = { contents: chatHistory };
-        const apiKey = import.meta.env.VITE_GEMINI_API_KEY;;
-        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
-
-        const response = await fetch(apiUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-
-        if (!response.ok) {
-          throw new Error(`API error: ${response.status}`);
-        }
-
-        const result = await response.json();
-        const generatedText = result?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-        setCaption(generatedText);
-        success = true;
-      } catch (error) {
-        retries++;
-        const delay = Math.pow(2, retries) * 1000;
-        console.error(`API call failed. Retrying in ${delay / 1000}s...`, error);
-        await new Promise(resolve => setTimeout(resolve, delay));
-      }
-    }
-    setIsGeneratingCaption(false);
-    if (!success) {
-      window.alert('Failed to generate caption. Please try again.');
-    }
-  };
-
-  // Function to generate summary using Node Summarizer (backend API)
-  const handleSummarizeCaption = async () => {
-    
-
-    const articleContent = editor.getText();
-    if (!articleContent.trim()) {
-      window.alert('Please write some content in the editor first to summarize.');
-      return;
-    }
-    setIsSummarizing(true);
-    try {
-        // Replace with your actual backend endpoint
-        const response = await axios.post(
-            `${BASE_URL}/auth/summarize`,
-            { text: articleContent },
-            { withCredentials: true }
-        );
-        setCaption(response.data.summary || "");
-    } catch (error) {
-      window.alert('Failed to summarize. Please try again.');
-      console.error(error);
-    }
-    setIsSummarizing(false);
-  };
 
   // Handle new or updated article submission
   const handleSubmit = async (e) => {
@@ -1614,16 +1544,16 @@ const ArticleEditorForm = () => {
         <div className="flex gap-2">
             <button
                 type="button"
-                onClick={handleGenerateCaption}
-                disabled={isGeneratingCaption || !editor?.getText()?.trim()}
+                onClick={() => handleGenerateCaption(editor.state.doc.textContent, setCaption, setIsGeneratingCaption)}
+                disabled={isGeneratingCaption || !editor}
                 className="px-4 py-2 bg-purple-600 text-white font-semibold rounded-lg shadow-md hover:bg-purple-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
                 {isGeneratingCaption ? 'Generating...' : 'Generate with AI'}
             </button>
             <button
                 type="button"
-                onClick={handleSummarizeCaption}
-                disabled={isSummarizing || !editor?.getText()?.trim()}
+                onClick={() => handleSummarizeCaption(editor.state.doc.textContent, setCaption, setIsSummarizing, BASE_URL)}
+                disabled={isSummarizing || !editor}
                 className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
                 {isSummarizing ? 'Summarizing...' : 'Summarize with Node'}
@@ -1830,8 +1760,14 @@ const ArticleEditorForm = () => {
       )}
        
 {/* RIGHT SIDE - Article Preview */}
+<ViewPort
+ // title="Memorandum Of Agreement"
+ width={550}
+ height={545}
+                >
+
         <div
-              className="bg-white w-full 2xl:w-2/5 p-6 rounded-lg shadow-xl overflow-y-auto max-h-[85vh] mt-4 2xl:mt-0"
+              className="bg-white w-[50rem] p-6 rounded-lg shadow-2xl overflow-y-auto max-h-[90vh] mt-4 2xl:mt-0"
             >
               <h3 className="text-2xl font-bold mb-4">Preview</h3>
               <div className="border border-gray-200 p-4 mb-4 rounded">
@@ -1918,7 +1854,7 @@ const ArticleEditorForm = () => {
                
                
             </div>
-            
+              </ViewPort>
             {/* RIGHT SPACER */}
             
           <div className="hidden 2xl:block 2xl:w-1/5" />
@@ -1950,6 +1886,7 @@ const ArticleEditorForm = () => {
           handleSubmit({ preventDefault: () => {} }, removeThumbnail);
           setShowSubmitConfirm(false);
           setShowDraftPrompt(false);
+          setIsDirty(false)
           setDraftToLoad(null);
           setErrors({});
         }}

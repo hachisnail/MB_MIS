@@ -6,14 +6,18 @@ const ListRowRenderer = ({
   item,
   columns = [],
   headers = [],
-  details = [], 
-  onRowClick, 
+  details = [],
+  onRowClick,
   rowClassName = "",
   hoverEffect = true,
   rowKey, // pass a unique key for the row
+  theme = "light", // default light theme
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const navigate = useNavigate();
+
+  // Theme-dependent border color
+  const borderColor = theme === "light" ? "border-gray-400" : "border-[#373737]";
 
   // Generate grid template from headers
   const gridCols = headers
@@ -27,14 +31,10 @@ const ListRowRenderer = ({
 
   const handleRowClick = () => {
     if (details.length > 0) {
-      // Toggle expansion if details exist
       setIsExpanded((prev) => !prev);
-    } else if (onRowClick,  {
-      state: { cameFrom }, 
-    }) {
-      // Navigate if a path string is passed
+    } else if (onRowClick) {
       if (typeof onRowClick === "string") {
-        navigate(onRowClick);
+        navigate(onRowClick, { state: { cameFrom } });
       } else if (typeof onRowClick === "function") {
         onRowClick(item);
       }
@@ -43,36 +43,38 @@ const ListRowRenderer = ({
 
   return (
     <>
-    <div key={rowKey || item?.id || Math.random()} className={`flex flex-col border-b border-gray-400`}>
-      {/* Main Row */}
       <div
-        className={`grid text-xl ${
-          hoverEffect ? "cursor-pointer hover:bg-gray-200" : ""
-        } ${rowClassName}`}
-        style={{ gridTemplateColumns: gridCols }}
-        onClick={handleRowClick}
+        key={rowKey || item?.id || Math.random()}
+        className={`flex flex-col border-b ${borderColor}`}
       >
-        {columns.map(({ key, render, className }) => (
-          <div
-            key={key} // ✅ use column key for uniqueness
-            className={`px-4 h-13 items-center flex truncate ${className || ""}`}
-          >
-            {render ? render(item[key], item) : item[key]}
-          </div>
-        ))}
+        {/* Main Row */}
+        <div
+          className={`grid text-xl ${
+            hoverEffect ? "cursor-pointer hover:bg-gray-200" : ""
+          } ${rowClassName}`}
+          style={{ gridTemplateColumns: gridCols }}
+          onClick={handleRowClick}
+        >
+          {columns.map(({ key, render, className }) => (
+            <div
+              key={key}
+              className={`px-4 h-13 items-center flex truncate ${className || ""}`}
+            >
+              {render ? render(item[key], item) : item[key]}
+            </div>
+          ))}
+        </div>
       </div>
 
-
-    </div>
-          {/* Expanded Section */}
+      {/* Expanded Section */}
       {isExpanded && details.length > 0 && (
-        <div className={` flex flex-col items-end`}>
+        <div className="flex flex-col items-end">
           <div className="w-5 h-5 rotate-45 relative right-10 top-3 z-0 bg-gray-400" />
           <div className="mb-4 mr-1 rounded-lg overflow-hidden shadow-sm shadow-black w-full max-w-3xl">
             <div className="max-h-[10rem] overflow-y-auto">
               <table className="w-full border-collapse bg-white">
                 <thead className="sticky top-0 bg-white z-10">
-                  <tr className="border-b border-gray-400">
+                  <tr className={`border-b ${borderColor}`}>
                     {Object.keys(details[0]).map((key) => (
                       <th
                         key={key}
@@ -85,13 +87,10 @@ const ListRowRenderer = ({
                 </thead>
                 <tbody>
                   {details.map((detail) => (
-                    <tr
-                      key={detail.key} // ✅ use unique key from detail object
-                      className="border-b border-gray-200"
-                    >
+                    <tr key={detail.key || Math.random()} className={`border-b ${borderColor}`}>
                       {Object.values(detail).map((val, idx) => (
                         <td
-                          key={idx} // static within row
+                          key={idx}
                           className="py-3 px-4 text-gray-800 text-center"
                         >
                           {val}

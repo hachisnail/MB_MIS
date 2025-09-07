@@ -214,7 +214,7 @@ const Logs = () => {
           {/* Table Header */}
           <TableHeaderContainer headers={logHeaders} theme="dark" />
 
-          <div className="w-full h-[52rem] border-y-1 border-gray-400 flex flex-col overflow-scroll">
+          <div className="w-full h-[52rem] border-t-1 border-[#373737] flex flex-col overflow-scroll">
             <div className="relative w-full h-full">
               <ListRenderer
                 isLoading={isLoading}
@@ -230,6 +230,9 @@ const Logs = () => {
                     theme="dark"
                   />
                 )}
+                theme="dark"
+                 paginate={true}        // optional
+                 itemsPerPage={25} 
               />
             </div>
           </div>

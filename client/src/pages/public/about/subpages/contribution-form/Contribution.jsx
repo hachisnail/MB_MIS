@@ -10,6 +10,8 @@ import DetailsStep from "./components/DetailsStep";
 import AboutStep from "./components/AboutStep";
 import FilesStep from "./components/FilesStep";
 
+import usePrompt from "../../../../../hooks/usePrompt"; // <-- import hook
+
 const initialFormData = {
   firstName: "",
   lastName: "",
@@ -51,7 +53,24 @@ const ContributionForm = ({ user }) => {
 
   const recaptchaRef = useRef(null);
 
-  // Clear Form functions are now managed here
+  // Determine if form has unsaved changes
+  const hasUnsavedChanges = useMemo(() => {
+    const keys = Object.keys(initialFormData);
+    return keys.some((key) => {
+      const initialValue = initialFormData[key];
+      const currentValue = formData[key];
+      return JSON.stringify(initialValue) !== JSON.stringify(currentValue);
+    });
+  }, [formData]);
+
+  // Integrate usePrompt hook
+  const { PromptModal } = usePrompt(
+    "You have unsaved changes. Are you sure you want to leave?",
+    hasUnsavedChanges,
+    "light"
+  );
+
+  // Clear Form functions
   const handleClear = () => setShowClearConfirm(true);
   const cancelClear = () => setShowClearConfirm(false);
   const confirmClear = () => {
@@ -144,7 +163,6 @@ const ContributionForm = ({ user }) => {
         initialData={formData}
         onNext={handleNext}
         setFormData={setFormData}
-        // onClearForm={handleClear}
       />,
       <DonorsStep
         key="donors"
@@ -210,6 +228,9 @@ const ContributionForm = ({ user }) => {
         size="invisible"
         ref={recaptchaRef}
       />
+
+      {/* Unsaved changes modal */}
+      {PromptModal}
 
       <ConfirmationModal
         isOpen={showClearConfirm}

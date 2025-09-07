@@ -396,6 +396,8 @@ const Configuration = () => {
                     <ConfigLogslist key={index} log={log} />
                   )}
                   theme="dark"
+                paginate={true}        // optional
+                 itemsPerPage={25} 
                 />
               </div>
             </div>

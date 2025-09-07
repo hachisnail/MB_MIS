@@ -93,6 +93,7 @@ const LogItem = ({ log, formatCreatedAt, headers }) => {
       item={log}
       columns={columns}
       headers={headers}
+      theme="dark"
       onRowClick={handleRowClick}
       rowClassName="w-full min-w-fit h-18 flex items-center cursor-pointer hover:bg-gray-900"
     />

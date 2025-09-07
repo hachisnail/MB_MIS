@@ -1,13 +1,21 @@
-// socketClient.js
+// /src/lib/socketClient.js
 import { io } from "socket.io-client";
+import { getBrowserId, getTabId } from "@/lib/ids";
 
 class SocketClient {
   constructor(serverUrl, options = {}) {
+    this.browserId = getBrowserId();
+    this.tabId = getTabId();
+
     this.socket = io(serverUrl, {
       withCredentials: true,
       reconnection: true,
       reconnectionAttempts: 10,
       reconnectionDelay: 1000,
+      transports: ["websocket", "polling"],
+      upgrade: true,
+      rememberUpgrade: true,
+      auth: { browserId: this.browserId, tabId: this.tabId },
       ...options,
     });
 
@@ -19,29 +27,55 @@ class SocketClient {
     this.readyCallbacks = new Set();
     this.forceLogoutCallbacks = new Set();
 
-    // Health check state
     this.lastPongTime = Date.now();
     this.healthCheckInterval = null;
-    this.healthTimeout = 10000; // 10s threshold before reconnect
+    this.healthTimeout = 15000;
 
     this._setupSocketListeners();
     this._startHealthCheck();
   }
 
+  // 🔧 NEW: force a new Engine.IO handshake so server re-reads cookies
+  rehandshake() {
+    try {
+      // keep auth payload (browserId/tabId)
+      this.socket.auth = { browserId: this.browserId, tabId: this.tabId };
+      // ensure we leave a clean holder for same-browser lock on the server
+      if (this.socket.connected) {
+        this.socket.disconnect(); // closes transport so next connect is a fresh handshake
+      }
+      // slight delay lets transport settle before reconnect
+      setTimeout(() => {
+        this.socket.connect();
+      }, 30);
+    } catch (e) {
+      console.warn("[Socket] rehandshake error:", e);
+    }
+  }
+
   _setupSocketListeners() {
+    this.socket.on("connect_error", (err) => {
+      console.warn("[Socket] connect_error:", err?.message || err);
+    });
+    this.socket.on("error", (err) => {
+      console.warn("[Socket] error:", err);
+    });
+
     this.socket.on("connect", () => {
       setTimeout(() => {
         if (this.userId && !this.isGuest) {
           this.socket.emit("registerUser", this.userId);
-        } else {
-          this.joinRoom("guestRoom");
-        }
 
-        if (!this.isGuest) {
-          this.joinRoom("realtimeDB");
-          for (const room of this.joinedRooms) {
+          const userRoom = `user:${this.userId}`;
+          if (!this.joinedRooms.has(userRoom)) this.joinedRooms.add(userRoom);
+          this.socket.emit("joinRoom", userRoom);
+
+          if (!this.joinedRooms.has("realtimeDB")) this.joinRoom("realtimeDB");
+
+          for (const room of this.joinedRooms)
             this.socket.emit("joinRoom", room);
-          }
+        } else {
+          if (!this.joinedRooms.has("guestRoom")) this.joinRoom("guestRoom");
         }
 
         this.readyCallbacks.forEach((cb) => cb());
@@ -53,61 +87,57 @@ class SocketClient {
     });
 
     this.socket.on("dbChange", (payload) => this.handleDbChange(payload));
-
     this.socket.on("forceLogout", (data) => {
       this.handleMessage({ type: "forceLogout", ...data });
       this.forceLogoutCallbacks.forEach((cb) => cb(data));
     });
+    this.socket.on("message", (data) => this.handleMessage(data));
 
-    this.socket.on("message", (data) => {
-      this.handleMessage(data);
-    });
+    this.socket.on("socketStats", (p) => this._emitLocal("socketStats", p));
+    this.socket.on("socketCounts", (p) => this._emitLocal("socketCounts", p));
 
-    // Health check pong listener
-    this.socket.on("pongCheck", (serverTime) => {
+    this.socket.on("pongCheck", () => {
       this.lastPongTime = Date.now();
     });
   }
 
   _startHealthCheck() {
     if (this.healthCheckInterval) clearInterval(this.healthCheckInterval);
-
     this.healthCheckInterval = setInterval(() => {
       const now = Date.now();
-
-      if (!this.socket.connected) {
-        console.warn("[Socket] Not connected, attempting reconnect...");
-        this.socket.connect();
-      } else {
-        this.socket.emit("pingCheck");
-      }
-
+      if (this.socket.connected) this.socket.emit("pingCheck");
       if (now - this.lastPongTime > this.healthTimeout) {
-        console.warn("[Socket] Health check failed — forcing reconnect...");
-        this.socket.disconnect();
-        this.socket.connect();
+        console.warn("[Socket] Health check lagging (no pong yet).");
       }
     }, 5000);
   }
 
-  // === Ready callbacks ===
-  onReady(callback) {
-    if (this.socket.connected) {
-      callback();
-    } else {
-      this.readyCallbacks.add(callback);
-    }
+  // local event bus (unchanged)
+  on(event, handler) {
+    if (!this.listeners.has(event)) this.listeners.set(event, new Set());
+    this.listeners.get(event).add(handler);
+  }
+  off(event, handler) {
+    if (!this.listeners.has(event)) return;
+    this.listeners.get(event).delete(handler);
+    if (this.listeners.get(event).size === 0) this.listeners.delete(event);
+  }
+  _emitLocal(event, payload) {
+    if (!this.listeners.has(event)) return;
+    for (const cb of this.listeners.get(event)) cb(payload);
   }
 
+  onReady(callback) {
+    if (this.socket.connected) callback();
+    else this.readyCallbacks.add(callback);
+  }
   offReady(callback) {
     this.readyCallbacks.delete(callback);
   }
 
-  // === Force logout callbacks ===
   onForceLogout(callback) {
     this.forceLogoutCallbacks.add(callback);
   }
-
   offForceLogout(callback) {
     this.forceLogoutCallbacks.delete(callback);
   }
@@ -121,85 +151,58 @@ class SocketClient {
       if (this.socket.connected && !this.joinedRooms.has("guestRoom")) {
         this.joinRoom("guestRoom");
       }
+      // do not emit registerUser(null)
     } else {
       if (this.socket.connected) {
         this.socket.emit("registerUser", userId);
-        this.socket.emit("joinRoom", `user:${userId}`);
-        this.joinedRooms.add(`user:${userId}`);
-
-        if (wasGuest && this.joinedRooms.has("guestRoom")) {
+        const userRoom = `user:${userId}`;
+        if (!this.joinedRooms.has(userRoom)) {
+          this.joinedRooms.add(userRoom);
+          this.socket.emit("joinRoom", userRoom);
+        }
+        if (wasGuest && this.joinedRooms.has("guestRoom"))
           this.leaveRoom("guestRoom");
-        }
-        if (!this.joinedRooms.has("realtimeDB")) {
-          this.joinRoom("realtimeDB");
-        }
+        if (!this.joinedRooms.has("realtimeDB")) this.joinRoom("realtimeDB");
       }
     }
   }
 
   joinRoom(roomName) {
+    if (this.joinedRooms.has(roomName)) return;
     this.joinedRooms.add(roomName);
-    if (this.socket.connected) {
-      this.socket.emit("joinRoom", roomName);
-    }
+    if (this.socket.connected) this.socket.emit("joinRoom", roomName);
   }
-
   leaveRoom(roomName) {
+    if (!this.joinedRooms.has(roomName)) return;
     this.joinedRooms.delete(roomName);
-    if (this.socket.connected) {
-      this.socket.emit("leaveRoom", roomName);
-    }
+    if (this.socket.connected) this.socket.emit("leaveRoom", roomName);
   }
-
   sendMessage(roomName, message) {
     this.socket.emit("message", { room: roomName, message });
   }
 
   onDbChange(model, action, callback) {
     const key = this._getKey(model, action);
-    if (!this.listeners.has(key)) {
-      this.listeners.set(key, new Set());
-    }
+    if (!this.listeners.has(key)) this.listeners.set(key, new Set());
     this.listeners.get(key).add(callback);
   }
-
   offDbChange(model, action, callback) {
     const key = this._getKey(model, action);
-    if (this.listeners.has(key)) {
-      this.listeners.get(key).delete(callback);
-      if (this.listeners.get(key).size === 0) {
-        this.listeners.delete(key);
-      }
-    }
+    if (!this.listeners.has(key)) return;
+    this.listeners.get(key).delete(callback);
+    if (this.listeners.get(key).size === 0) this.listeners.delete(key);
   }
 
   handleDbChange({ model, action, data }) {
     const exactKey = this._getKey(model, action);
     const wildcardKey = this._getKey(model, "*");
-
     const notify = (key) => {
       if (this.listeners.has(key)) {
-        for (const cb of this.listeners.get(key)) {
-          cb(action, data);
-        }
+        for (const cb of this.listeners.get(key)) cb(action, data);
       }
     };
-
     notify(exactKey);
     notify(wildcardKey);
-  }
-
-  onMessage(callback) {
-    if (!this.listeners.has("message")) {
-      this.listeners.set("message", new Set());
-    }
-    this.listeners.get("message").add(callback);
-  }
-
-  offMessage(callback) {
-    if (this.listeners.has("message")) {
-      this.listeners.get("message").delete(callback);
-    }
   }
 
   _getKey(model, action) {
@@ -215,17 +218,13 @@ class SocketClient {
   }
 
   leaveAllRooms() {
-    for (const room of this.joinedRooms) {
-      this.leaveRoom(room);
-    }
+    for (const room of this.joinedRooms) this.leaveRoom(room);
     this.joinedRooms.clear();
   }
 
   handleMessage(data) {
     if (this.listeners.has("message")) {
-      for (const cb of this.listeners.get("message")) {
-        cb(data);
-      }
+      for (const cb of this.listeners.get("message")) cb(data);
     }
   }
 }

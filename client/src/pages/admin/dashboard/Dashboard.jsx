@@ -3,6 +3,7 @@ import StyledButton from "../../../components/buttons/StyledButton";
 import { NavLink } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
 import { SearchBar } from "../../../features/Utilities";
+import LiveSocketBadge from "../../../sandbox/LiveSocketBadge";
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -128,9 +129,9 @@ const Dashboard = () => {
               <span>to be filled</span>
 
             </div>
-            <div className=" flex justify-center items-center w-[28rem] h-[29rem] rounded-[4rem] shadow-gray-600 shadow-md border-t border-gray-300">
-              <span>to be filled</span>
-
+            <div className=" flex flex-col justify-center items-center w-[28rem] h-[29rem] rounded-[4rem] shadow-gray-600 shadow-md border-t border-gray-300">
+              <span>Active Clients</span>
+<LiveSocketBadge />
             </div>
 
 

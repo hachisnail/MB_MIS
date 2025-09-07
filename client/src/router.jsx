@@ -90,6 +90,7 @@ import MaintenanceMode from "@/pages/MaintenanceMode";
 
 // sandbox
 import FileUploadDownload from "@/sandbox/FileUploadDownload";
+import AdminSocketsPanel from "./sandbox/AdminSocketsPanel";
 
 
 
@@ -267,6 +268,7 @@ const Router = () => {
           {/* sandbox for testing */}
           {flags["sandbox"] && (
             <>
+            <Route path="sandbox/scokets-panel" element={<AdminSocketsPanel/>}/>
               <Route path="sandbox" element={<FileUploadDownload />} />
               <Route
                 path="sandbox/preview/:encoded"

@@ -1,4 +1,4 @@
-// AuthProvider.jsx
+// /src/context/authContext.jsx
 import { createContext, useContext, useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import axiosClient from "@/lib/axiosClient";
@@ -8,26 +8,31 @@ const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const navigate = useNavigate();
+
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(false);
   const [forcedLogoutReason, setForcedLogoutReason] = useState(null);
   const [socketReady, setSocketReady] = useState(false);
 
   const socketRef = useRef(null);
-  const userRef = useRef(null);
-  const isMountedRef = useRef(true);
-  const listenersInitialized = useRef(false); // prevent multiple listener registration
+  const mountedRef = useRef(false);
+  const socketInitializedRef = useRef(false);
+  const listenersInitializedRef = useRef(false);
 
   useEffect(() => {
-    isMountedRef.current = true;
+    mountedRef.current = true;
     return () => {
-      isMountedRef.current = false;
+      mountedRef.current = false;
+      try {
+        socketRef.current?.disconnect?.();
+      } catch {}
+      socketInitializedRef.current = false;
+      listenersInitializedRef.current = false;
     };
   }, []);
 
-  const safeSetUser = (newUser) => {
-    userRef.current = newUser;
-    if (isMountedRef.current) setUser(newUser);
+  const safeSetUser = (nextUser) => {
+    if (mountedRef.current) setUser(nextUser);
   };
 
   const fetchCurrentUser = async () => {
@@ -42,55 +47,62 @@ export function AuthProvider({ children }) {
   };
 
   const initializeSocket = (userId = null) => {
-    if (!socketRef.current) {
-      const socketClient = getSocketClient();
-      socketRef.current = socketClient;
-
-      if (!listenersInitialized.current) {
-        // Socket ready listener
-        socketClient.onReady(() => {
-          if (isMountedRef.current) setSocketReady(true);
-        });
-
-        // Forced logout listener
-        socketClient.onForceLogout((data) => {
-          setForcedLogoutReason(data.reason || "You have been logged out.");
-          safeSetUser(null);
-          setSocketReady(false);
-          localStorage.setItem("logout-event", Date.now());
-
-          // Switch to guest user instead of disconnecting
-          socketClient.registerUser(null);
-          navigate("/", { replace: true });
-        });
-
-        listenersInitialized.current = true;
-      }
+    if (socketInitializedRef.current && socketRef.current) {
+      // Update identity + force a re-handshake so server sees new cookie
+      socketRef.current.registerUser(userId ?? null);
+      socketRef.current.rehandshake?.();
+      return;
     }
 
-    // Always register the current user (or guest)
-    socketRef.current.registerUser(userId);
+    const client = getSocketClient();
+    socketRef.current = client;
+    socketInitializedRef.current = true;
+
+    if (!listenersInitializedRef.current) {
+      client.onReady?.(() => {
+        if (mountedRef.current) setSocketReady(true);
+      });
+
+      client.onForceLogout?.((data) => {
+        setForcedLogoutReason(data?.reason || "You have been logged out.");
+        safeSetUser(null);
+        setSocketReady(false);
+        localStorage.setItem("logout-event", Date.now());
+        client.registerUser(null);
+        client.rehandshake?.(); // 🔧 ensure downgrade to guest on server immediately
+        navigate("/login", { replace: true });
+      });
+
+      listenersInitializedRef.current = true;
+    }
+
+    client.registerUser(userId ?? null);
+    client.rehandshake?.(); // 🔧 first mount: align server with current cookie
   };
 
   useEffect(() => {
-    const init = async () => {
+    let cancelled = false;
+    (async () => {
       const currentUser = await fetchCurrentUser();
-      initializeSocket(currentUser?.id || null);
+      if (cancelled) return;
+      initializeSocket(currentUser?.id ?? null);
+    })();
+    return () => {
+      cancelled = true;
     };
-    init();
   }, []);
 
   const login = async (credentials) => {
     setLoading(true);
     try {
-      await axiosClient.post("/auth/login", credentials);
-      const loggedInUser = await fetchCurrentUser();
-
+      await axiosClient.post("/auth/login", credentials); // sets new cookie
+      const loggedInUser = await fetchCurrentUser(); // confirms who we are
       if (loggedInUser?.id) {
-        socketRef.current?.registerUser(loggedInUser.id); // switch socket to logged-in user
+        // update identity + force a NEW socket handshake so middleware reads the new cookie
+        socketRef.current?.registerUser?.(loggedInUser.id);
+        socketRef.current?.rehandshake?.(); // 🔧 key line
         navigate("/admin", { replace: true });
       }
-
       return { success: true, user: loggedInUser };
     } catch (err) {
       const message = err.response?.data?.message || "Login failed";
@@ -102,35 +114,31 @@ export function AuthProvider({ children }) {
 
   const logout = async (skipServer = false) => {
     try {
-      if (!skipServer) await axiosClient.post("/auth/logout");
+      if (!skipServer) await axiosClient.post("/auth/logout"); // clears cookie
     } catch (err) {
-      console.error("Logout failed:", err.message);
+      console.error("Logout failed:", err?.message || err);
     } finally {
       safeSetUser(null);
       localStorage.setItem("logout-event", Date.now());
-
-      // Switch socket to guest user instead of disconnecting
-      socketRef.current?.registerUser(null);
-
+      socketRef.current?.registerUser?.(null); // become guest locally
+      socketRef.current?.rehandshake?.(); // 🔧 force server to see guest immediately
       setSocketReady(false);
-      navigate("/", { replace: true });
+      navigate("/login", { replace: true });
     }
   };
 
   useEffect(() => {
-    const syncLogout = (event) => {
-      if (event.key === "logout-event") {
+    const onStorage = (e) => {
+      if (e.key === "logout-event") {
         safeSetUser(null);
-        // Switch socket to guest on multi-tab logout
-        socketRef.current?.registerUser(null);
-
+        socketRef.current?.registerUser?.(null);
+        socketRef.current?.rehandshake?.(); // 🔧 keep other tabs in sync
         setSocketReady(false);
-        navigate("/", { replace: true });
+        navigate("/login", { replace: true });
       }
     };
-
-    window.addEventListener("storage", syncLogout);
-    return () => window.removeEventListener("storage", syncLogout);
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
   }, [navigate]);
 
   return (
@@ -154,7 +162,6 @@ export function AuthProvider({ children }) {
 export function useAuth() {
   return useContext(AuthContext);
 }
-
 export function useSocketClient() {
   const { socketClient } = useContext(AuthContext);
   return socketClient;

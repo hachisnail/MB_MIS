@@ -50,8 +50,8 @@ export const handleGenerateCaption = async (articleContent, setCaption, setIsGen
 };
 
 export const handleSummarizeCaption = async (articleContent, setCaption, setIsSummarizing, BASE_URL) => {
-  if (!articleContent.trim()) {
-    window.alert('Please write some content in the editor first to summarize.');
+  if (!articleContent?.trim()) {
+    window.alert("Please write some content in the editor first to summarize.");
     return;
   }
 
@@ -62,10 +62,28 @@ export const handleSummarizeCaption = async (articleContent, setCaption, setIsSu
       { text: articleContent },
       { withCredentials: true }
     );
-    setCaption(response.data.summary || "");
+
+    const rawSummary = response?.data?.summary;
+
+    let summaryText = "";
+    if (typeof rawSummary === "string") {
+      summaryText = rawSummary.trim();
+    } else if (rawSummary == null) {
+      summaryText = "";
+    } else {
+      summaryText = String(rawSummary);
+    }
+
+    if (!summaryText || summaryText === "[object Object]") {
+      summaryText = "Unable to summarize a caption!";
+    }
+
+    summaryText = summaryText.replace(/\s+/g, " ").trim();
+    setCaption(summaryText);
   } catch (error) {
-    window.alert('Failed to summarize. Please try again.');
+    window.alert("Failed to summarize. Please try again.");
     console.error(error);
+  } finally {
+    setIsSummarizing(false);
   }
-  setIsSummarizing(false);
 };

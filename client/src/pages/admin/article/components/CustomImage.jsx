@@ -1,12 +1,12 @@
-// CustomImage.jsx (percent width version)
+// src/components/tiptap/CustomImage.jsx
 import React, { useRef } from "react";
 import { ReactNodeViewRenderer, NodeViewWrapper } from "@tiptap/react";
 import { Image } from "@tiptap/extension-image";
 
-/** Inline, resizable image node-view that stores width as % of container */
 const ResizableImageComponent = ({ node, updateAttributes, selected }) => {
-  const { src, widthPct } = node.attrs;
+  const { src, widthPct, alt = "" } = node.attrs;
   const wrapperRef = useRef(null);
+  const imgRef = useRef(null);
 
   const startResize = (e) => {
     e.preventDefault();
@@ -15,12 +15,12 @@ const ResizableImageComponent = ({ node, updateAttributes, selected }) => {
     const isTouch = e.type === "touchstart";
     const moveEvt = isTouch ? "touchmove" : "mousemove";
     const endEvt = isTouch ? "touchend" : "mouseup";
-    const getClientX = (ev) => (isTouch ? ev.touches?.[0]?.clientX ?? 0 : ev.clientX);
+    const getClientX = (ev) =>
+      isTouch ? ev.touches?.[0]?.clientX ?? 0 : ev.clientX;
 
     const onMove = (ev) => {
       const wrapper = wrapperRef.current;
       if (!wrapper) return;
-      // container is the inline-block wrapper's offsetParent width
       const container = wrapper.parentElement || wrapper;
       const containerRect = container.getBoundingClientRect();
       const wrapperRect = wrapper.getBoundingClientRect();
@@ -28,7 +28,10 @@ const ResizableImageComponent = ({ node, updateAttributes, selected }) => {
 
       const newPx = Math.max(50, Math.round(clientX - wrapperRect.left));
       const containerWidth = Math.max(1, containerRect.width);
-      const pct = Math.min(100, Math.max(5, (newPx / containerWidth) * 100)); // clamp 5%..100%
+      const pct = Math.min(
+        100,
+        Math.max(5, (newPx / containerWidth) * 100)
+      );
       updateAttributes({ widthPct: Math.round(pct * 100) / 100 });
     };
 
@@ -53,44 +56,49 @@ const ResizableImageComponent = ({ node, updateAttributes, selected }) => {
       }}
       data-drag-handle
     >
-      <img
-        src={src}
-        alt=""
-        style={{
-          width: widthPct ? `${widthPct}%` : "auto",
-          height: "auto",
-          maxWidth: "100%",
-          display: "inline-block",
-          userSelect: "none",
-        }}
-        data-inline="true"
-        data-resizable="true"
-        draggable={false}
-      />
-
-      {selected && (
-        <div
-          contentEditable={false}
-          onMouseDown={startResize}
-          onTouchStart={startResize}
+      <div style={{ display: "inline-block", position: "relative" }}>
+        <img
+          ref={imgRef}
+          src={src}
+          alt={alt}
           style={{
-            position: "absolute",
-            right: 0,
-            bottom: 0,
-            width: 12,
-            height: 12,
-            background: "blue",
-            borderRadius: 2,
-            cursor: "se-resize",
+            width: widthPct ? `${widthPct}%` : "auto",
+            height: "auto",
+            maxWidth: "100%",
+            display: "block",
+            userSelect: "none",
           }}
+          data-inline="true"
+          data-resizable="true"
+          draggable={false}
         />
-      )}
+
+        {selected && (
+          <div
+            contentEditable={false}
+            onMouseDown={startResize}
+            onTouchStart={startResize}
+            style={{
+              position: "absolute",
+              right: 0,
+              bottom: 0,
+              width: 12,
+              height: 12,
+              background: "blue",
+              borderRadius: 2,
+              cursor: "se-resize",
+              transform: "translate(50%, 50%)", // <-- exactly on image’s bottom-right
+              boxShadow: "0 0 0 1px #fff",
+            }}
+            title="Drag to resize"
+          />
+        )}
+      </div>
     </NodeViewWrapper>
   );
 };
 
 const CustomImage = Image.extend({
-  // inline so images don't occupy the whole row
   inline() {
     return true;
   },
@@ -102,25 +110,23 @@ const CustomImage = Image.extend({
   addAttributes() {
     return {
       ...this.parent?.(),
-
-      // store width as container-relative percent
       widthPct: {
         default: null,
         parseHTML: (element) => {
-          // read style="width: NN%" or data-width-pct="NN"
           const styleW = element.style?.width || "";
           const dataPct = element.getAttribute("data-width-pct") || "";
-          const raw =
-            styleW.trim().endsWith("%")
-              ? styleW.trim().slice(0, -1)
-              : dataPct;
+          const raw = styleW.trim().endsWith("%")
+            ? styleW.trim().slice(0, -1)
+            : dataPct;
           const n = parseFloat(raw);
           return Number.isFinite(n) ? n : null;
         },
         renderHTML: (attrs) => {
           if (!attrs.widthPct) return {};
           const n = parseFloat(attrs.widthPct);
-          const safe = Number.isFinite(n) ? Math.min(100, Math.max(5, n)) : null;
+          const safe = Number.isFinite(n)
+            ? Math.min(100, Math.max(5, n))
+            : null;
           if (safe == null) return {};
           return {
             style: `width: ${safe}%; height: auto;`,
@@ -129,13 +135,7 @@ const CustomImage = Image.extend({
           };
         },
       },
-
-      // keep height auto to preserve aspect ratio
-      height: {
-        default: null,
-        parseHTML: () => null,
-        renderHTML: () => ({}),
-      },
+      alt: { default: "" },
     };
   },
 

@@ -1,4 +1,4 @@
-// ImageCropModal.jsx
+// src/components/modals/ImageCropModal.jsx
 import React, { useRef } from "react";
 import { Cropper } from "react-cropper";
 import "cropperjs/dist/cropper.css";
@@ -11,7 +11,8 @@ const ImageCropModal = ({ open, src, onClose, onApply }) => {
     const cropper = cropperRef.current?.cropper;
     if (!cropper) return;
     const canvas = cropper.getCroppedCanvas({ imageSmoothingQuality: "high" });
-    const dataUrl = canvas.toDataURL("image/jpeg", 0.92); // or 'image/png'
+    if (!canvas) return;
+    const dataUrl = canvas.toDataURL("image/jpeg", 0.92); // or image/png
     onApply(dataUrl);
   };
 
@@ -33,7 +34,7 @@ const ImageCropModal = ({ open, src, onClose, onApply }) => {
           <Cropper
             src={src}
             style={{ height: "100%", width: "100%" }}
-            initialAspectRatio={NaN} // free crop
+            initialAspectRatio={NaN}  // free crop
             guides={true}
             movable={true}
             zoomable={true}
@@ -45,7 +46,10 @@ const ImageCropModal = ({ open, src, onClose, onApply }) => {
         </div>
         <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 8 }}>
           <button onClick={onClose}>Cancel</button>
-          <button onClick={apply} style={{ background: "#2563eb", color: "#fff", padding: "6px 10px", borderRadius: 6 }}>
+          <button
+            onClick={apply}
+            style={{ background: "#2563eb", color: "#fff", padding: "6px 10px", borderRadius: 6 }}
+          >
             Apply
           </button>
         </div>

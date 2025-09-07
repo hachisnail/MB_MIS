@@ -10,13 +10,13 @@ import { useNavigate } from "react-router-dom";
 
 import { socialLinks } from "../../../components/commons";
 
-import { useState, useEffect} from 'react';
-import axios from 'axios';
-import CalendarComponent from '../../../features/CalendarComponent';
+import { useState, useEffect } from "react";
+import axios from "axios";
+import CalendarComponent from "../../../features/CalendarComponent";
 
-  const BASE_URL = import.meta.env.VITE_API_BASE_URL;
-  const SERVER_ORIGIN = BASE_URL.replace(/\/api$/, ""); 
-  const UPLOAD_PATH = `${SERVER_ORIGIN}/uploads/pictures/`;
+const BASE_URL = import.meta.env.VITE_API_BASE_URL;
+const SERVER_ORIGIN = BASE_URL.replace(/\/api$/, "");
+const UPLOAD_PATH = `${SERVER_ORIGIN}/uploads/pictures/`;
 
 const Home = () => {
   const navigate = useNavigate();
@@ -48,58 +48,62 @@ const Home = () => {
       </div>
     </a>
   );
-   const [articles, setArticles] = useState([]);
+  const [articles, setArticles] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const todayStr = new Date().toISOString().split('T')[0];
-  const todaysArticles = articles.filter(a => a.upload_date && a.upload_date.split('T')[0] === todayStr);
-
+  const [error, setError] = useState("");
+  const todayStr = new Date().toISOString().split("T")[0];
+  const todaysArticles = articles.filter(
+    (a) => a.upload_date && a.upload_date.split("T")[0] === todayStr
+  );
 
   // const learnMore = { current: null };
 
-
-  
-useEffect(() => {
+  useEffect(() => {
     fetchArticles();
   }, []);
 
   const fetchArticles = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`${SERVER_ORIGIN}/api/auth/public-articles`);
+      const response = await axios.get(
+        `${SERVER_ORIGIN}/api/auth/public-articles`
+      );
       setArticles(response.data);
       setLoading(false);
     } catch (err) {
-      setError('Failed to load events.');
+      setError("Failed to load events.");
       setLoading(false);
     }
   };
-  
-const encoded = (id, name) => {
-  const encodedString = `${id}::${name}`;
-  return btoa(encodedString);
-};
 
+  const encoded = (id, name) => {
+    const encodedString = `${id}::${name}`;
+    return btoa(encodedString);
+  };
 
-let displayArticles = todaysArticles;
-if (displayArticles.length === 0) {
-  // Find the soonest future date
-  const futureArticles = articles
-    .filter(a => a.upload_date && a.upload_date.split('T')[0] > todayStr)
-    .sort((a, b) => a.upload_date.localeCompare(b.upload_date));
-  if (futureArticles.length > 0) {
-    const nextDate = futureArticles[0].upload_date.split('T')[0];
-    displayArticles = futureArticles.filter(a => a.upload_date.split('T')[0] === nextDate);
+  let displayArticles = todaysArticles;
+  if (displayArticles.length === 0) {
+    // Find the soonest future date
+    const futureArticles = articles
+      .filter((a) => a.upload_date && a.upload_date.split("T")[0] > todayStr)
+      .sort((a, b) => a.upload_date.localeCompare(b.upload_date));
+    if (futureArticles.length > 0) {
+      const nextDate = futureArticles[0].upload_date.split("T")[0];
+      displayArticles = futureArticles.filter(
+        (a) => a.upload_date.split("T")[0] === nextDate
+      );
+    }
   }
-}
 
-displayArticles = displayArticles.slice(0, 2);
+  displayArticles = displayArticles.slice(0, 2);
 
   return (
-    <>
+    <div className="overflow-y-scroll snap-y snap-mandatory h-fit w-full">
       <div
-        className="bg-cover bg-center bg-no-repeat w-screen rounded-sm h-screen pt-40 flex flex-col items-center"
-        style={{ backgroundImage: `url(${bgImage1})` }}s
+        id="home"
+        className="snap-start bg-cover bg-center bg-no-repeat w-screen rounded-sm h-screen pt-40 flex flex-col items-center"
+        style={{ backgroundImage: `url(${bgImage1})` }}
+        s
       >
         <div className="w-[97vw] h-full min-w-fit flex justify-center">
           {/* Left Column */}
@@ -190,15 +194,13 @@ displayArticles = displayArticles.slice(0, 2);
 
       <section
         id="learn_more"
-        className="pt-15 w-full bg-white min-h-screen h-auto px-30 flex flex-col justify-center items-center"
+        className="snap-start pt-15 w-full bg-white min-h-screen h-auto px-30 flex flex-col justify-center items-center"
       >
-
         <ScrollButton
           pt="50"
           title="Home"
           targetId="main-navbar-top"
           direction="left"
-
         />
         <div className="w-full xl:justify-between min-h-[85vh] gap-y-20 xl:gap-y-0 h-auto flex xl:flex-row flex-col items-center overflow-hidden">
           <div className="w-fit flex flex-col justify-center pl-20 min-w-fit h-full">
@@ -250,13 +252,12 @@ displayArticles = displayArticles.slice(0, 2);
           title="Whats On?"
           targetId="whats_on"
           direction="right"
-
         />
       </section>
 
       <section
         id="whats_on"
-        className="pt-15 w-full bg-white min-h-screen h-auto px-30 flex flex-col justify-center items-center"
+        className="snap-start pt-15 w-full bg-white min-h-screen h-auto px-30 flex flex-col justify-center items-center"
       >
         <ScrollButton
           pt="0"
@@ -271,9 +272,9 @@ displayArticles = displayArticles.slice(0, 2);
             <img src={block2} alt="" className="h-[70rem] w-[85rem]" />
             <div className="absolute min-w-fit flex flex-col items-end justify-between top-20 h-[55rem] pr-20 w-[75rem] right-0 z-50">
               <div className="w-full h-fit">
-                 <CalendarComponent/>
+                <CalendarComponent />
               </div>
-             
+
               {/* <div className="w-full h-[45rem] bg-black rounded-md p-5 flex items-center justify-center">
 
                 <span className="text-white">Calendar componenet</span>
@@ -292,36 +293,48 @@ displayArticles = displayArticles.slice(0, 2);
               <span className="text-8xl font-hina">Whats On?</span>
             </div>
 
-            <div className='w-[55rem] h-full flex flex-col justify-start gap-y-5'>
-            {displayArticles.length > 0 ? (
-              displayArticles.map((article, idx) => (
-                <NavLink
-                  key={article.article_id}
-                  to={`/article/${encoded(article.article_id, article.title)}`}
-                  className='w-[33rem] mx-auto h-[20rem] md:w-[55rem] md:h-[30rem] bg-cover bg-center bg-no-repeat rounded-lg shadow-lg hover:opacity-90 transition'
-                  style={{ backgroundImage: `url('${article.images}')` }}
-                  title={article.title}
-                >
-                  <div className="w-full h-full flex flex-col justify-end bg-opacity-30 p-4">
-                    <span className="text-white text-2xl font-bold drop-shadow">{article.title}</span>
-                    <span className="text-white text-lg">{article.upload_date ? new Date(article.upload_date).toLocaleDateString() : ''}</span>
+            <div className="w-[55rem] h-full flex flex-col justify-start gap-y-5">
+              {displayArticles.length > 0 ? (
+                displayArticles.map((article, idx) => (
+                  <NavLink
+                    key={article.article_id}
+                    to={`/article/${encoded(
+                      article.article_id,
+                      article.title
+                    )}`}
+                    className="w-[33rem] mx-auto h-[20rem] md:w-[55rem] md:h-[30rem] bg-cover bg-center bg-no-repeat rounded-lg shadow-lg hover:opacity-90 transition"
+                    style={{ backgroundImage: `url('${article.images}')` }}
+                    title={article.title}
+                  >
+                    <div className="w-full h-full flex flex-col justify-end bg-opacity-30 p-4">
+                      <span className="text-white text-2xl font-bold drop-shadow">
+                        {article.title}
+                      </span>
+                      <span className="text-white text-lg">
+                        {article.upload_date
+                          ? new Date(article.upload_date).toLocaleDateString()
+                          : ""}
+                      </span>
+                    </div>
+                  </NavLink>
+                ))
+              ) : (
+                <>
+                  <div
+                    className="w-[33rem] mx-auto h-[20rem] md:w-[55rem] md:h-[30rem] bg-cover bg-center bg-no-repeat flex items-center justify-center text-gray-400"
+                    style={{ backgroundImage: `url(${bgImage1})` }}
+                  >
+                    <span>No events today or upcoming.</span>
                   </div>
-                </NavLink>
-              ))
-            ) : (
-              <>
-                <div className='w-[33rem] mx-auto h-[20rem] md:w-[55rem] md:h-[30rem] bg-cover bg-center bg-no-repeat flex items-center justify-center text-gray-400' style={{ backgroundImage: `url(${bgImage1})` }}>
-                  <span>No events today or upcoming.</span>
-                </div>
-                <div className='w-[33rem] h-[20rem] mx-auto md:w-[55rem] md:h-[30rem] bg-cover bg-center bg-no-repeat' style={{ backgroundImage: `url(${bgImage1})` }} />
-              </>
-            )}
-          </div>
-
-
+                  <div
+                    className="w-[33rem] h-[20rem] mx-auto md:w-[55rem] md:h-[30rem] bg-cover bg-center bg-no-repeat"
+                    style={{ backgroundImage: `url(${bgImage1})` }}
+                  />
+                </>
+              )}
+            </div>
           </div>
         </div>
-        
 
         <ScrollButton
           pt="0"
@@ -329,130 +342,145 @@ displayArticles = displayArticles.slice(0, 2);
           targetId="news_events"
           direction="right"
         />
-
       </section>
 
-<section
-  id="news_events"
-  className="pt-15 w-full min-h-screen px-30 flex flex-col justify-center items-center"
->
-  <ScrollButton
-    pt="0"
-    title="Whats On?"
-    targetId="whats_on"
-    direction="left"
-    textColor="text-gray-300"
-    hoverTextColor="hover:text-gray-600"
-  />
-
-  <div className="w-full flex-col py-10 px-20 gap-y-20 xl:gap-y-0 flex overflow-hidden">
-    <div className="flex items-center justify-start w-full text-gray-500">
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        width="32"
-        height="32"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1"
-        strokeLinecap="round"
-        strokeLinejoin="round"
+      <section
+        id="news_events"
+        className="snap-start pt-15 w-full min-h-screen px-30 flex flex-col justify-center items-center"
       >
-        <line x1="5" y1="12" x2="19" y2="12" />
-      </svg>
-      <span className="text-xl font-hind font-extralight pt-1">DONT MISS</span>
-    </div>
-    <span className="text-white text-7xl font-hina">News & Events</span>
+        <ScrollButton
+          pt="0"
+          title="Whats On?"
+          targetId="whats_on"
+          direction="left"
+          textColor="text-gray-300"
+          hoverTextColor="hover:text-gray-600"
+        />
 
-            <div className="w-full h-full px-8 py-3 grid xl:grid-cols-2 xl:grid-rows-2 grid-rows-4 grid-cols-1 gap-4 xl:gap-8">
-              {loading && (
-                <div className="col-span-2 text-white text-2xl text-center py-10">Loading events...</div>
-              )}
-              {error && (
-                <div className="col-span-2 text-red-500 text-2xl text-center py-10">{error}</div>
-              )}
-              {!loading && !error &&
-                articles.slice(0, 4).map((article, index) => {
-                  const displayDate = article.upload_date
-                    ? new Date(article.upload_date).toLocaleDateString()
-                    : "No Date";
+        <div className="w-full flex-col py-10 px-20 gap-y-20 xl:gap-y-0 flex overflow-hidden">
+          <div className="flex items-center justify-start w-full text-gray-500">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="32"
+              height="32"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            <span className="text-xl font-hind font-extralight pt-1">
+              DONT MISS
+            </span>
+          </div>
+          <span className="text-white text-7xl font-hina">News & Events</span>
 
-                      return (
-                        <NavLink
-                          key={index}
-                          to={`/article/${encoded(article.article_id, article.title)}`}
-                          className="w-full h-full transition duration-300">
-                      <div className="w-full h-full flex flex-col xl:flex-row gap-4 bg-black/50 p-3 rounded-lg">
-                        <div className="w-full xl:w-2/5 h-[30rem] xl:h-full rounded-lg overflow-hidden">
-                          <div
-                            className="w-full h-full bg-cover bg-no-repeat bg-center"
-                            style={{ backgroundImage: `url('${article.images}')` }}
-                          />
+          <div className="w-full h-full px-8 py-3 grid xl:grid-cols-2 xl:grid-rows-2 grid-rows-4 grid-cols-1 gap-4 xl:gap-8">
+            {loading && (
+              <div className="col-span-2 text-white text-2xl text-center py-10">
+                Loading events...
+              </div>
+            )}
+            {error && (
+              <div className="col-span-2 text-red-500 text-2xl text-center py-10">
+                {error}
+              </div>
+            )}
+            {!loading &&
+              !error &&
+              articles.slice(0, 4).map((article, index) => {
+                const displayDate = article.upload_date
+                  ? new Date(article.upload_date).toLocaleDateString()
+                  : "No Date";
+
+                return (
+                  <NavLink
+                    key={index}
+                    to={`/article/${encoded(
+                      article.article_id,
+                      article.title
+                    )}`}
+                    className="w-full h-full transition duration-300"
+                  >
+                    <div className="w-full h-full flex flex-col xl:flex-row gap-4 bg-black/50 p-3 rounded-lg">
+                      <div className="w-full xl:w-2/5 h-[30rem] xl:h-full rounded-lg overflow-hidden">
+                        <div
+                          className="w-full h-full bg-cover bg-no-repeat bg-center"
+                          style={{
+                            backgroundImage: `url('${article.images}')`,
+                          }}
+                        />
+                      </div>
+                      <div className="w-full xl:w-3/5 flex flex-col justify-between gap-y-5">
+                        <div className="w-full h-25">
+                          <h3 className="text-2xl xl:text-5xl font-bold text-white overflow-hidden">
+                            {article.title || "Untitled"}
+                          </h3>
                         </div>
-                        <div className="w-full xl:w-3/5 flex flex-col justify-between gap-y-5">
-                          <div className='w-full h-25'>
-                            <h3 className="text-2xl xl:text-5xl font-bold text-white overflow-hidden">
-                              {article.title || "Untitled"}
-                            </h3>
-                          </div>
-                          <div className='w-full h-fit flex gap-x-5'>
-                            <p className="w-50 text-xl text-[#787878]">{displayDate}</p>
-                            <p className="text-xl  text-yellow-600">
-                              {article.article_category || ""}
-                            </p>
-                          </div>
-                          <div className='w-full h-50 flex break-words'>
-                            <span className=' overflow-hidden text-white text-xl'>
-                              {article.caption|| '' }
-                            </span>
-                          </div>
+                        <div className="w-full h-fit flex gap-x-5">
+                          <p className="w-50 text-xl text-[#787878]">
+                            {displayDate}
+                          </p>
+                          <p className="text-xl  text-yellow-600">
+                            {article.article_category || ""}
+                          </p>
+                        </div>
+                        <div className="w-full h-50 flex break-words">
+                          <span className=" overflow-hidden text-white text-xl">
+                            {article.caption || ""}
+                          </span>
                         </div>
                       </div>
-                    </NavLink>
-                  );
-                })}
-            </div>
+                    </div>
+                  </NavLink>
+                );
+              })}
+          </div>
 
-    <div className="flex justify-end w-full text-gray-300 hover:text-gray-500">
-      <button
-        className="flex items-center cursor-pointer"
-        onClick={() => {
-          navigate("articles");
-        }}
-      >
-        <span className="text-xl font-hind font-extralight pt-1">See All Events</span>
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="72"
-          height="32"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <line x1="-10" y1="12" x2="19" y2="12" />
-          <polyline points="12 8 19 12 12 16" />
-        </svg>
-      </button>
-    </div>
-  </div>
+          <div className="flex justify-end w-full text-gray-300 hover:text-gray-500">
+            <button
+              className="flex items-center cursor-pointer"
+              onClick={() => {
+                navigate("articles");
+              }}
+            >
+              <span className="text-xl font-hind font-extralight pt-1">
+                See All Events
+              </span>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="72"
+                height="32"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <line x1="-10" y1="12" x2="19" y2="12" />
+                <polyline points="12 8 19 12 12 16" />
+              </svg>
+            </button>
+          </div>
+        </div>
 
-  <ScrollButton
-    pt="0"
-    title="Support Us"
-    targetId="support"
-    direction="right"
-    textColor="text-gray-300"
-    hoverTextColor="hover:text-gray-600"
-  />
-</section>
+        <ScrollButton
+          pt="0"
+          title="Support Us"
+          targetId="support"
+          direction="right"
+          textColor="text-gray-300"
+          hoverTextColor="hover:text-gray-600"
+        />
+      </section>
 
       <section
         id="support"
-        className="pt-15 bg-white w-full min-h-screen h-auto px-30 flex flex-col justify-center items-center"
-
+        className="snap-start pt-15 bg-white w-full min-h-screen h-auto px-30 flex flex-col justify-center items-center"
       >
         <ScrollButton
           pt="0"
@@ -461,79 +489,81 @@ displayArticles = displayArticles.slice(0, 2);
           direction="left"
         />
 
-
-
-
-         <div className="w-full xl:justify-center min-h-[85vh] gap-y-20 xl:gap-y-0 h-auto flex xl:flex-row flex-col items-center overflow-hidden">
+        <div className="w-full xl:justify-center min-h-[85vh] gap-y-20 xl:gap-y-0 h-auto flex xl:flex-row flex-col items-center overflow-hidden">
           <div className="max-w-[90rem] h-[70rem] w-full flex flex-col px-12">
-              <div className="w-full h-[35rem] flex items-center justify-center">
-                  <div className="w-[40rem] h-full flex justify-start">
-                    <div
-                      className="w-[40rem] h-[35rem] bg-no-repeat bg-cover bg-center p-10"
-                      style={{ backgroundImage: `url(${na1})` }}
-                    >
-                      <div className="w-full h-full  outline-2 outline-white flex items-center justify-center"></div>  
-                    </div>
-                  </div>
-
-                <div className="w-[40rem] h-full flex flex-col gap-2 justify-center items-end pl-5">
-                  <div className="h-[10rem] w-full flex items-end text-left">
-                    <span className="text-6xl font-bold font-hind">VISIT US!</span>
-                  </div>
-
-                  <div className="h-[11rem] flex">
-                    <span className="text-3xl font-hind font-medium tracking-wide leading-11 text-left">
-                     Explore the treasures of Museo Bulawan! Plan your visit today by booking a tour or schedule an appointment for research, interviews, and more.
-                    </span>
-                  </div>
-
-                  <div className="h-[10rem] w-full flex t">
-                    <NavLink to="/appointment">
-                      <button className="w-auto h-auto border-black border-2 rounded-lg px-5 py-2 cursor-pointer hover:bg-gray-200">
-                        <span className="text-3xl font-hind">BOOK AN APPOINTMENT</span>
-                      </button>
-                    </NavLink>
-                  </div>
+            <div className="w-full h-[35rem] flex items-center justify-center">
+              <div className="w-[40rem] h-full flex justify-start">
+                <div
+                  className="w-[40rem] h-[35rem] bg-no-repeat bg-cover bg-center p-10"
+                  style={{ backgroundImage: `url(${na1})` }}
+                >
+                  <div className="w-full h-full  outline-2 outline-white flex items-center justify-center"></div>
                 </div>
-
               </div>
 
-              <div className="w-full h-[35rem] flex items-center justify-center">
-                <div className="w-[40rem] h-full flex flex-col gap-2 justify-center items-end pr-5">
-                  <div className="h-[10rem] flex items-end text-right">
-                    <span className="text-6xl font-bold font-hind">YOUR SUPPORT MATTERS!</span>
-                  </div>
-
-                  <div className="h-[11rem] flex">
-                    <span className="text-3xl font-hind font-medium tracking-wide leading-11 text-right">
-                     Help us preserve and celebrate our heritage! Contribute to Museo Bulawan by donating or lending artifacts to enrich our collection and share history with future generations
-                    </span>
-                  </div>
-
-                  <div className="h-[10rem] w-full justify-end flex">
-                    <NavLink to="/about/support">
-                      <button className="w-auto h-auto border-black border-2 rounded-lg px-5 py-2 cursor-pointer hover:bg-gray-200">
-                        <span className="text-3xl font-hind">SUPPORT</span>
-                      </button>
-                    </NavLink>
-                  </div>
+              <div className="w-[40rem] h-full flex flex-col gap-2 justify-center items-end pl-5">
+                <div className="h-[10rem] w-full flex items-end text-left">
+                  <span className="text-6xl font-bold font-hind">
+                    VISIT US!
+                  </span>
                 </div>
 
+                <div className="h-[11rem] flex">
+                  <span className="text-3xl font-hind font-medium tracking-wide leading-11 text-left">
+                    Explore the treasures of Museo Bulawan! Plan your visit
+                    today by booking a tour or schedule an appointment for
+                    research, interviews, and more.
+                  </span>
+                </div>
 
-                  <div className="w-[40rem] h-full flex justify-start">
-                    <div
-                      className="w-[40rem] h-[35rem] bg-no-repeat bg-cover bg-center p-10"
-                      style={{ backgroundImage: `url(${na2})` }}
-                    >
-                      <div className="w-full h-full  outline-2 outline-white flex items-center justify-center"></div>  
-                    </div>
-                  </div>
+                <div className="h-[10rem] w-full flex t">
+                  <NavLink to="/appointment">
+                    <button className="w-auto h-auto border-black border-2 rounded-lg px-5 py-2 cursor-pointer hover:bg-gray-200">
+                      <span className="text-3xl font-hind">
+                        BOOK AN APPOINTMENT
+                      </span>
+                    </button>
+                  </NavLink>
+                </div>
               </div>
+            </div>
+
+            <div className="w-full h-[35rem] flex items-center justify-center">
+              <div className="w-[40rem] h-full flex flex-col gap-2 justify-center items-end pr-5">
+                <div className="h-[10rem] flex items-end text-right">
+                  <span className="text-6xl font-bold font-hind">
+                    YOUR SUPPORT MATTERS!
+                  </span>
+                </div>
+
+                <div className="h-[11rem] flex">
+                  <span className="text-3xl font-hind font-medium tracking-wide leading-11 text-right">
+                    Help us preserve and celebrate our heritage! Contribute to
+                    Museo Bulawan by donating or lending artifacts to enrich our
+                    collection and share history with future generations
+                  </span>
+                </div>
+
+                <div className="h-[10rem] w-full justify-end flex">
+                  <NavLink to="/about/support">
+                    <button className="w-auto h-auto border-black border-2 rounded-lg px-5 py-2 cursor-pointer hover:bg-gray-200">
+                      <span className="text-3xl font-hind">SUPPORT</span>
+                    </button>
+                  </NavLink>
+                </div>
+              </div>
+
+              <div className="w-[40rem] h-full flex justify-start">
+                <div
+                  className="w-[40rem] h-[35rem] bg-no-repeat bg-cover bg-center p-10"
+                  style={{ backgroundImage: `url(${na2})` }}
+                >
+                  <div className="w-full h-full  outline-2 outline-white flex items-center justify-center"></div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-
-
-
 
         <ScrollButton
           pt="-500"
@@ -541,10 +571,8 @@ displayArticles = displayArticles.slice(0, 2);
           targetId="support"
           direction="right"
         />
-
-
       </section>
-    </>
+    </div>
   );
 };
 

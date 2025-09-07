@@ -428,9 +428,9 @@ const AcquisitionViewPage = () => {
                   ) : (
                     <div className=" w-full h-full flex flex-col items-center justify-center ">
                       <div className="w-fit h-fit flex flex-col items-center justify-center space-y-8">
-                        <h2 className="text-4xl font-bold text-white">
+                        <span className="text-4xl font-bold text-white">
                           Timeline
-                        </h2>
+                        </span>
 
                         <Timeline currentStep={step} steps={steps} />
 
@@ -524,8 +524,19 @@ const AcquisitionViewPage = () => {
 
           {/* full transaction */}
           {activeDocument === "Transaction" && (
-            <div className="w-full h-full rounded-md items-center justify-center gap-x-20 flex">
-                {/* To do: add the document document */}
+            <div className="min-w-fit w-full h-full rounded-md items-center justify-center gap-x-20 flex  ">
+              {/* To do: add the document document */}
+              {!contributionData.status === "pending" ? (
+                <div className="min-w-[58em] h-full shadow-sm flex items-start">
+                <div className="w-full h-20 bg-black flex flex-col rounded-t-md">
+                  <div className="h-full w-full flex items-center justify-center">
+                    <span className="text-white text-3xl font-bold">Memorandum of Agreement</span>
+                  </div>
+                  <div className="rounded-t-md w-full min-h-1 bg-white" />
+                </div>
+
+                </div>
+              ) : (
                 <ViewPort
                   title="Memorandum Of Agreement"
                   width={550}
@@ -533,8 +544,10 @@ const AcquisitionViewPage = () => {
                 >
                   {/* item inside viewport */}
                   <div className="w-[50rem] h-[70rem] bg-black flex flex-col items-center justify-center gap-y-5">
-                    <span className="text-4xl text-white">{contributionData.ContributionArtifact.title}</span>
-                        <Timeline currentStep={step} steps={steps} />
+                    <span className="text-4xl text-white">
+                      {contributionData.ContributionArtifact.title}
+                    </span>
+                    {/* <Timeline currentStep={step} steps={steps} /> */}
 
                     <button
                       onClick={() => alert("clicked")}
@@ -543,15 +556,62 @@ const AcquisitionViewPage = () => {
                       test
                     </button>
                   </div>
-
-
                 </ViewPort>
+              )}
 
+              <div className="w-full h-full flex flex-col gap-y-5">
+                <div className="w-full min-h-[21rem] rounded-md gap-y-8  bg-[#1D1911] flex flex-col justify-center items-center">
+                  <span className="text-4xl font-bold text-white">
+                    Timeline
+                  </span>
+                  <Timeline currentStep={step} steps={steps} />
+                </div>
 
-              <div className="w-full h-full">
+                <form className="w-full h-full rounded-lg bg-gray-200 flex flex-col px-10 pt-15 pb-5">
+                  <span className="text-4xl font-semibold">Respond</span>
+                  <div className="p-5 flex flex-col gap-5">
+                    <span className="text-2xl font-semibold w-40">
+                      Approve?
+                    </span>
+                    <div id="accept-btn" className="gap-x-5 flex">
+                      <StyledButton
+                        className="w-50 "
+                        buttonColor="bg-[#6F3FFF]"
+                        hoverColor="bg-blue-600"
+                      >
+                        Yes
+                      </StyledButton>
 
-
-                
+                      <StyledButton className="w-50">No</StyledButton>
+                    </div>
+                  </div>
+                  <MultiLineInput
+                    id="message"
+                    label="Leave a message"
+                    value={messageReply}
+                    onChange={(v) => setMessageReply(v)}
+                    placeholder="Write something..."
+                    rows={13}
+                    maxLength={1300}
+                    autosize
+                    showCount
+                    error=""
+                    theme="light"
+                    label_size="2xl"
+                  />
+                  <div className=" w-full h-fit flex justify-between pl-5">
+                    <span className="text-gray-500">
+                      Reply will be sent to{" "}
+                      <span className="text-[#370BFF]">{email}</span>
+                    </span>
+                    <StyledButton
+                      className="w-50 mt-5"
+                      buttonColor="bg-[#6F3FFF]"
+                    >
+                      Done
+                    </StyledButton>
+                  </div>
+                </form>
               </div>
             </div>
           )}

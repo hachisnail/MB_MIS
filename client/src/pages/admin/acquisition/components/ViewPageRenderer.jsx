@@ -7,6 +7,7 @@ import { formatDate } from "../../appointments/components/dateUtils";
 import ImageViewerModal from "../../../../features/ImageViewerModal";
 import { InfoModal } from "../../../../features/InfoModal";
 import NoImagePlaceholder from "../../../../features/Utilities";
+import { handleImageError } from "../../../../features/Utilities";
 
 const SERVER_URL = import.meta.env.VITE_SERVER_URL;
 
@@ -158,6 +159,8 @@ export const InfoSection = ({
   );
 };
 
+
+
 export function RenderRelatedDocs({
   relatedImages = [],
   attachedFiles = [],
@@ -218,28 +221,7 @@ export function RenderRelatedDocs({
                     src={img.src}
                     alt={img.label || "Related image"}
                     className="w-full h-full object-cover rounded-xl"
-                    onError={(e) => {
-                      e.currentTarget.onerror = null;
-                      e.currentTarget.replaceWith(
-                        (() => {
-                          const wrapper = document.createElement("div");
-                          wrapper.className =
-                            "flex items-center flex-col justify-center w-full h-full bg-gray-100 rounded-xl";
-                          wrapper.innerHTML = `
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="1.5" class="w-12 h-12 text-gray-400" viewBox="0 0 24 24">
-                            <path d="M15 8h.01" />
-                            <path d="M7 3h11a3 3 0 0 1 3 3v11m-.856 3.099a2.991 2.991 0 0 1 -2.144 .901h-12a3 3 0 0 1 -3 -3v-12c0 -.845 .349 -1.608 .91 -2.153" />
-                            <path d="M3 16l5 -5c.928 -.893 2.072 -.893 3 0l5 5" />
-                            <path d="M16.33 12.338c.574 -.054 1.155 .166 1.67 .662l3 3" />
-                            <path d="M3 3l18 18" 
-                            />
-                            </svg>
-                            <span class=" text-gray-400"> Failed to load image! </span>
-                            `;
-                          return wrapper;
-                        })()
-                      );
-                    }}
+                    onError={(handleImageError())}
                   />
                 ) : (
                   <div className="flex items-center justify-center w-full h-full bg-gray-200 rounded-xl">
@@ -339,7 +321,6 @@ export function RenderRelatedDocs({
   );
 }
 
-
 export function PreviewAbout({ previewAbout = [] }) {
   return (
     <div className="w-full h-fit gap-y-4 flex flex-wrap border-y border-[#9B9B9B] py-10">
@@ -357,7 +338,6 @@ export function PreviewAbout({ previewAbout = [] }) {
     </div>
   );
 }
-
 
 export function ArtifactImageGallery({
   artifactImg = [],
@@ -379,6 +359,7 @@ export function ArtifactImageGallery({
             src={artifactImg[0].src}
             alt={artifactImg[0].label}
             className="w-full h-full object-cover rounded-2xl"
+            onError={handleImageError()}
           />
         ) : (
           <span className="text-gray-400">No image available</span>
@@ -401,6 +382,7 @@ export function ArtifactImageGallery({
                   src={img.src}
                   alt={img.label}
                   className="w-full h-full object-cover rounded-full"
+                  onError={handleImageError()}
                 />
               ) : (
                 <NoImagePlaceholder />
@@ -429,8 +411,6 @@ export function ArtifactImageGallery({
     </div>
   );
 }
-
-
 
 export function ArtifactInfoGrid({ artifactInfo = [] }) {
   return (
@@ -463,7 +443,6 @@ export function ArtifactInfoGrid({ artifactInfo = [] }) {
   );
 }
 
-
 export function TransactionDescription({
   transactionDescription = [],
   user = { fname: "", lname: "" },
@@ -475,9 +454,7 @@ export function TransactionDescription({
         {transactionDescription.map(({ label, value }, idx) => (
           <div key={idx} className="flex flex-col w-1/2">
             <span className="text-xl">{label}</span>
-            <span className="text-2xl font-semibold capitalize">
-              {value}
-            </span>
+            <span className="text-2xl font-semibold capitalize">{value}</span>
           </div>
         ))}
       </div>

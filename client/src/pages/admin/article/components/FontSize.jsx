@@ -3,17 +3,16 @@ import { Mark } from '@tiptap/core';
 const FontSize = Mark.create({
   name: 'fontSize',
 
-  addOptions() {
-    return {
-      types: ['textStyle'],
-    };
-  },
-
   addAttributes() {
     return {
       fontSize: {
         default: null,
-        parseHTML: element => element.style.fontSize.replace(/['"]+/g, ''),
+        parseHTML: element => {
+          // guard against missing style
+          const size = element?.style?.fontSize || '';
+          const cleaned = size.replace(/['"]+/g, '').trim();
+          return cleaned || null;
+        },
         renderHTML: attributes => {
           if (!attributes.fontSize) {
             return {};
@@ -42,14 +41,12 @@ const FontSize = Mark.create({
     return {
       setFontSize:
         fontSize =>
-        ({ chain }) => {
-          return chain().setMark('fontSize', { fontSize }).run();
-        },
+        ({ chain }) =>
+          chain().setMark('fontSize', { fontSize }).run(),
       unsetFontSize:
         () =>
-        ({ chain }) => {
-          return chain().unsetMark('fontSize').run();
-        },
+        ({ chain }) =>
+          chain().unsetMark('fontSize').run(),
     };
   },
 });

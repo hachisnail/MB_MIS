@@ -285,6 +285,7 @@ const ArticleForm = () => {
                       headers={articleHeaders}
                       handleStatusChange={handleStatusChange}
                       userRole={userRole}
+                      currentUserId={user.id}
                       getStatusBadge={getStatusBadge}
                     />
                   )}
@@ -303,6 +304,7 @@ const ArticleForm = () => {
                       headers={pendingHeaders}
                       handleStatusChange={handleStatusChange}
                       userRole={userRole}
+                      currentUserId={user.id}
                       getStatusBadge={getStatusBadge}
                     />
                   )}
@@ -321,6 +323,7 @@ const ArticleForm = () => {
                       headers={postedHeaders}
                       handleStatusChange={handleStatusChange}
                       userRole={userRole}
+                      currentUserId={user.id}
                       getStatusBadge={getStatusBadge}
                     />
                   )}

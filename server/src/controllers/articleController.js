@@ -1,5 +1,8 @@
 import Article from '../models/Article.js';
 
+
+
+
 // Controller to handle uploading multiple article images (not the main thumbnail)
 export const uploadContentImages = async (req, res) => {
   try {
@@ -32,7 +35,7 @@ export const createArticle = async (req, res) => {
       uploadPeriodStart,
       uploadPeriodEnd,
       barangay,
-      reviewerNotes
+      reviewer_notes
     } = req.body;
 
     const articleData = {
@@ -48,12 +51,12 @@ export const createArticle = async (req, res) => {
       editImages: editImages,
       caption,
       status,
-      reviewer_notes: reviewerNotes
+      reviewer_notes
     };
 
 
     // Conditionally set the scheduling dates based on status
-    if (status === 'schedule' || status === 'scheduled') {
+    if (status === 'scheduled') {
       articleData.upload_period_start = uploadPeriodStart ? new Date(uploadPeriodStart) : null;
       articleData.upload_period_end = uploadPeriodEnd ? new Date(uploadPeriodEnd) : null;
     } else if (status === 'posted') {
@@ -189,7 +192,7 @@ export const updateArticle = async (req, res) => {
     };
 
     // Set scheduling dates based on status
-    if (status === 'schedule' || status === 'scheduled') {
+    if (status === 'scheduled') {
       updateData.upload_period_start = uploadPeriodStart ? new Date(uploadPeriodStart) : null;
       updateData.upload_period_end = uploadPeriodEnd ? new Date(uploadPeriodEnd) : null;
     } else {

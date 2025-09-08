@@ -1,8 +1,16 @@
 import ListRowRenderer from "../../../../components/tables/ListRowRenderer";
 import { useNavigate } from "react-router-dom";
+import { STATUS, STATUS_LABELS } from '../components/articleStatus';
 
-const ArticlesListRow = ({ article, handleStatusChange, userRole, getStatusBadge, headers }) => {
+const Articleslist = ({ article, handleStatusChange, userRole, currentUserId, getStatusBadge, headers }) => {
   const navigate = useNavigate();
+  const STATUS_CLASSES = {
+    posted:    'bg-green-100 text-green-700',
+    pending:   'bg-yellow-100 text-yellow-700',
+    rejected:  'bg-red-100 text-red-700',
+    archived:  'bg-gray-100 text-gray-700',
+    scheduled: 'bg-blue-100 text-blue-700',
+  };
 
   const columns = [
     {
@@ -12,18 +20,9 @@ const ArticlesListRow = ({ article, handleStatusChange, userRole, getStatusBadge
           ? new Date(article.upload_date).toLocaleDateString()
           : new Date(article.created_at).toLocaleDateString(),
     },
-    {
-      key: "title",
-      render: () => article.title,
-    },
-    {
-      key: "author",
-      render: () => article.author || "Unknown",
-    },
-    {
-      key: "category",
-      render: () => article.article_category,
-    },
+    { key: "title", render: () => article.title },
+    { key: "author", render: () => article.author || "Unknown" },
+    { key: "category", render: () => article.article_category },
     {
       key: "status",
       render: () =>
@@ -31,22 +30,15 @@ const ArticlesListRow = ({ article, handleStatusChange, userRole, getStatusBadge
           <select
             value={article.status}
             onChange={(e) => handleStatusChange(article.article_id, e.target.value)}
-            onClick={(e) => e.stopPropagation()} // Prevent row click
-            className={`
-              border rounded px-2 py-1 font-semibold
-              ${article.status === "posted" ? "bg-green-100 text-green-700" : ""}
-              ${article.status === "pending" ? "bg-yellow-100 text-yellow-700" : ""}
-              ${article.status === "rejected" ? "bg-red-100 text-red-700" : ""}
-              ${article.status === "archived" ? "bg-gray-100 text-gray-700" : ""}
-              ${article.status === "scheduled" ? "bg-gray-100 text-blue-700" : ""}
-            `}
+            onClick={(e) => e.stopPropagation()}
+            className={`border rounded px-2 py-1 font-semibold ${STATUS_CLASSES[article.status] || ''}`}
             style={{ minWidth: "7rem", transition: "background 0.2s, color 0.2s" }}
           >
-            <option value="pending">Pending</option>
-            <option value="posted">Posted</option>
-            <option value="rejected">Rejected</option>
-            <option value="archived">Archived</option>
-            <option value="scheduled">Scheduled</option>
+            {STATUS.map(s => (
+              <option key={s.value} value={s.value}>
+                {STATUS_LABELS[s.value] ?? s.label}
+              </option>
+            ))}
           </select>
         ) : (
           getStatusBadge(article.status)
@@ -56,9 +48,14 @@ const ArticlesListRow = ({ article, handleStatusChange, userRole, getStatusBadge
 
   const handleRowClick = () => {
     const encodedId = btoa(article.article_id + " " + article.title);
-    navigate(`/admin/article/edit-article/${encodedId}`);
-  };
+    const allowedRoles = [1, 2, 5];
+    const isPrivileged = allowedRoles.includes(userRole);
+    const isOwner = String(article.user_id) === String(currentUserId);
 
+    navigate(`/admin/article/edit-article/${encodedId}`, {
+      state: { forceReviewMode: isPrivileged && !isOwner }
+    });
+  };
 
   return (
     <ListRowRenderer
@@ -71,4 +68,4 @@ const ArticlesListRow = ({ article, handleStatusChange, userRole, getStatusBadge
   );
 };
 
-export default ArticlesListRow;
+export default Articleslist;

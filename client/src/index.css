@@ -283,28 +283,35 @@ input:-webkit-autofill {
   padding: 0;
 }
 
-/* Add these rules to your stylesheet */
-
-.editor-content-preview [style*="font-size: 0.75em"] {
-  font-size: 0.75em;
+/* PUBLIC article body: clearly larger than editor */
+.article-public,
+.article-public .editor-content-preview {
+  font-size: clamp(1.8rem, 1.2rem + 1.2vw, 2.6rem) !important; /* visibly bigger */
+  line-height: 1.75;
 }
 
-.editor-content-preview [style*="font-size: 1em"] {
-  font-size: 1em;
+/* Ensure descendants inherit the bigger base (paragraphs, spans, etc.) */
+.article-public .editor-content-preview * {
+  font-size: inherit;
+  line-height: inherit;
 }
 
-.editor-content-preview [style*="font-size: 1.25em"] {
-  font-size: 1.25em;
+/* Ensure the content uses the desired font and wraps well */
+.editor-content-preview {
+  font-family: "Hina Mincho", serif;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
-.editor-content-preview [style*="font-size: 1.5em"] {
-  font-size: 1.5em;
+/* align inline images with text/other inline elements */
+.editor-content-preview img[data-inline="true"],
+.ProseMirror .resizable-image {
+  vertical-align: middle;
 }
 
-.editor-content-preview [style*="font-size: 1.75em"] {
-  font-size: 1.75em;
-}
-
-.editor-content-preview [style*="font-size: 2em"] {
-  font-size: 2em;
+/* keep correct aspect ratio */
+.editor-content-preview img,
+.ProseMirror img {
+  height: auto;
 }

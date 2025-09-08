@@ -34,6 +34,15 @@ function createProxiedSocketClient(serverUrl) {
     _forceLogoutCallbacks: new Set(),
     _generic: new Map(),
 
+    // ---- Presence mirrors for followers ----
+    _presence: { page: null, title: null, meta: null },
+
+    // presence auto/keepalive (run in proxy so followers work too)
+    presenceThrottleMs: 4000,
+    _presenceTimer: null,
+    _presenceGetter: null,
+    _lastPresenceSentAt: 0,
+
     // ---- Room derivation & syncing (proxy-level consistency) ----
     _desiredRooms() {
       const desired = new Set();
@@ -168,6 +177,73 @@ function createProxiedSocketClient(serverUrl) {
       }
     },
 
+    // ===== Presence API passthroughs (followers call → leader emits) =====
+    updatePresence({ page, title = null, meta = null } = {}) {
+      if (!page) return;
+      this._presence = { page, title, meta };
+      emitViaLeader("presence:update", {
+        page,
+        title,
+        meta: meta || null,
+        tabId,
+        at: Date.now(),
+      });
+    },
+    clearPresence({ silent = false } = {}) {
+      const last = this._presence?.page;
+      this._presence = { page: null, title: null, meta: null };
+      if (!silent) {
+        emitViaLeader("presence:leave", { page: last || null, tabId });
+      }
+    },
+
+    // NEW: auto keepalive with change detection + throttle
+    startPresenceAuto(getPresence, { interval = 5000 } = {}) {
+      this._presenceGetter = getPresence;
+      if (this._presenceTimer) clearInterval(this._presenceTimer);
+
+      const tick = () => {
+        try {
+          const p =
+            typeof this._presenceGetter === "function"
+              ? this._presenceGetter()
+              : null;
+          if (!p?.page) return;
+          const changed =
+            p.page !== this._presence.page ||
+            JSON.stringify(p.meta || null) !==
+              JSON.stringify(this._presence.meta || null) ||
+            (p.title || null) !== (this._presence.title || null);
+          const now = Date.now();
+          if (changed) {
+            this.updatePresence(p);
+            this._lastPresenceSentAt = now;
+          } else if (now - this._lastPresenceSentAt >= this.presenceThrottleMs) {
+            // keepalive ping so server doesn’t mark us stale
+            emitViaLeader("presence:update", {
+              page: this._presence.page,
+              title: this._presence.title,
+              meta: this._presence.meta || null,
+              tabId,
+              at: now,
+            });
+            this._lastPresenceSentAt = now;
+          }
+        } catch (e) {
+          console.warn("[Presence] auto getter error (proxy):", e);
+        }
+      };
+
+      // fire immediately, then on interval
+      tick();
+      this._presenceTimer = setInterval(tick, interval);
+    },
+    stopPresenceAuto() {
+      if (this._presenceTimer) clearInterval(this._presenceTimer);
+      this._presenceTimer = null;
+      this._presenceGetter = null;
+    },
+
     disconnect() {
       if (isLeader && this.socket) this.socket.disconnect();
       if (heartbeatTimer) clearInterval(heartbeatTimer);
@@ -246,6 +322,9 @@ function createProxiedSocketClient(serverUrl) {
         "forceLogout",
         "socketStats",
         "socketCounts",
+        // presence streams
+        "presenceCounts",
+        "presenceSnapshot",
       ];
       forward.forEach((ev) => {
         real.socket.on(ev, (data) => {
@@ -269,6 +348,17 @@ function createProxiedSocketClient(serverUrl) {
               }
             }
             for (const room of desired) real.socket.emit("joinRoom", room);
+
+            // replay last presence from any follower
+            if (proxy._presence?.page) {
+              real.socket.emit("presence:update", {
+                page: proxy._presence.page,
+                title: proxy._presence.title,
+                meta: proxy._presence.meta || null,
+                tabId,
+                at: Date.now(),
+              });
+            }
 
             dispatchReady();
             dispatchGeneric("connect");
@@ -331,6 +421,11 @@ function createProxiedSocketClient(serverUrl) {
   bus.postMessage({ t: "who-is-leader" });
   setTimeout(() => becomeLeader(), 300);
   window.addEventListener("beforeunload", () => {
+    // send presence:leave for this tab before resigning
+    try {
+      proxy.stopPresenceAuto?.();
+      proxy.clearPresence?.({ silent: false });
+    } catch {}
     resignLeadership();
   });
 

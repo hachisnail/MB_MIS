@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import { SearchBar, CardDropdownPicker } from "../../../features/Utilities";
 import axiosClient from "../../../lib/axiosClient";
@@ -8,6 +8,7 @@ import LogItem from "./components/Logslist";
 import ListRenderer from "../../../components/tables/ListRenderer";
 import { rolePermissions, actionLabels } from "../../../components/commons";
 import { TableHeaderContainer } from "../../../features/Utilities";
+import { debounce } from "../../../lib/debounce";
 
 const Logs = () => {
   const location = useLocation();
@@ -27,7 +28,7 @@ const Logs = () => {
 
   const socket = useSocketClient();
 
-  // Accept filter params from navigation
+  // Accept filter params from navigation (supports both start/end and startDate/endDate)
   useEffect(() => {
     if (location.state) {
       if (location.state.role) setSelectedRole(location.state.role);
@@ -36,26 +37,44 @@ const Logs = () => {
       if (location.state.search)
         setSearchQuery(location.state.search.toLowerCase());
 
-      // Accept date range params
-      if (location.state.startDate) setStartDate(new Date(location.state.startDate));
-      if (location.state.endDate) setEndDate(new Date(location.state.endDate));
+      // Accept date range params: prefer explicit start/end, fallback to startDate/endDate
+      const s = location.state.start || location.state.startDate;
+      const e = location.state.end || location.state.endDate;
+      if (s) setStartDate(new Date(s));
+      if (e) setEndDate(new Date(e));
     }
   }, [location.state]);
 
-  const matchesFilter = (value, filter) => {
-    return (
-      filter === "*" ||
-      filter === "" ||
-      value === filter ||
-      value === parseInt(filter)
-    );
+  const buildQueryParams = () => {
+    const params = {};
+    // search
+    if (searchQuery && searchQuery.trim().length > 0) {
+      params.q = searchQuery.trim();
+    }
+    // role filter
+    if (selectedRole && selectedRole !== "*" && selectedRole !== "") {
+      params.role = selectedRole;
+    }
+    // action filter
+    if (selectedAction && selectedAction !== "*" && selectedAction !== "") {
+      params.action = selectedAction;
+    }
+    // date vs range
+    if (startDate && endDate) {
+      params.start = startDate.toISOString();
+      params.end = endDate.toISOString();
+    } else if (selectedDate) {
+      params.date = new Date(selectedDate).toISOString();
+    }
+    return params;
   };
 
-  const fetchLogs = async () => {
+  const fetchLogs = async (params = {}) => {
     try {
       setErrorLogs(null);
       setIsLoading(true);
       const response = await axiosClient.get(`/auth/logs`, {
+        params,
         withCredentials: true,
       });
       setLogs(response.data);
@@ -65,6 +84,14 @@ const Logs = () => {
       setIsLoading(false);
     }
   };
+
+  // Debounced fetcher to minimize client work
+  const debouncedFetchRef = useRef(null);
+  if (!debouncedFetchRef.current) {
+    debouncedFetchRef.current = debounce((params) => {
+      fetchLogs(params);
+    }, 350);
+  }
 
   // Role dropdown options
   const uniqueRoles = Array.from(
@@ -92,8 +119,10 @@ const Logs = () => {
     })),
   ];
 
+  // Initial load
   useEffect(() => {
-    fetchLogs();
+    const params = buildQueryParams();
+    fetchLogs(params);
   }, []);
 
   // Re-fetch logs on socket events
@@ -101,7 +130,8 @@ const Logs = () => {
     if (!socket) return;
 
     const handleLogChange = () => {
-      fetchLogs();
+      const params = buildQueryParams();
+      fetchLogs(params);
     };
 
     socket.onDbChange("Log", "*", handleLogChange);
@@ -135,35 +165,11 @@ const Logs = () => {
     setEndDate(null);
   };
 
-  // Filter logs
-  const filtered = logs.filter((log) => {
-    const searchableString = [
-      log.user?.fname || "",
-      log.user?.lname || "",
-      log.model || "",
-      log.action || "",
-      log.description || "",
-      formatCreatedAt(log.createdAt),
-    ]
-      .join(" ")
-      .toLowerCase();
-
-    const matchesSearch = searchableString.includes(searchQuery);
-    const matchesRole = matchesFilter(log.user?.roleId, selectedRole);
-    const matchesAction = matchesFilter(log.action, selectedAction);
-
-    let matchesDate = true;
-    const logDate = new Date(log.createdAt);
-
-    if (startDate && endDate) {
-      matchesDate = logDate >= startDate && logDate <= endDate;
-    } else if (selectedDate) {
-      matchesDate =
-        logDate.toDateString() === new Date(selectedDate).toDateString();
-    }
-
-    return matchesSearch && matchesRole && matchesAction && matchesDate;
-  });
+  // Trigger debounced server-side fetch on filter changes
+  useEffect(() => {
+    const params = buildQueryParams();
+    debouncedFetchRef.current(params);
+  }, [searchQuery, selectedRole, selectedAction, selectedDate, startDate, endDate]);
 
   const logHeaders = [
     { label: "Actor", width: 15 },
@@ -219,7 +225,7 @@ const Logs = () => {
               <ListRenderer
                 isLoading={isLoading}
                 error={errorLogs}
-                items={filtered}
+                items={logs}
                 emptyMessage="Empty logs"
                 renderItem={(log) => (
                   <LogItem
@@ -231,7 +237,7 @@ const Logs = () => {
                   />
                 )}
                 theme="dark"
-                 paginate={true}        // optional
+                 paginate={true}   
                  itemsPerPage={25} 
               />
             </div>

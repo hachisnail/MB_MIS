@@ -117,6 +117,143 @@ export function initializeSocket(server, corsOrigin) {
   const broadcastCounts = () =>
     io.emit("socketCounts", collectSocketCounts());
 
+  // ===== Presence store (per-socket, per-tab, aggregated by page) =====
+  // 1) socket.presenceTabs: Map<tabId, { page, title, meta, at }>
+  // 2) presenceIndex: Map<page, { count, viewers: Map<viewerKey, ViewerInfo>, sampleTitles:Set<string> }>
+  //
+  // viewerKey = `${uid}|${bid}|${tid}`
+  // ViewerInfo = {
+  //   userId: string|null, isGuest: boolean, browserId: string|null, tabId: string|null,
+  //   at: number, title?: string|null, meta?: any
+  // }
+
+  const presenceIndex = new Map();
+
+  function indexKeyForViewer(socket, tabId) {
+    const uid = socket.userId && socket.userId !== "guest" ? String(socket.userId) : "guest";
+    const bid = socket.browserId || "noBrowser";
+    const tid = tabId || socket.tabId || "noTab";
+    return `${uid}|${bid}|${tid}`;
+  }
+
+  function viewerInfo(socket, tabId, { at, title, meta } = {}) {
+    const isGuest = socket.userId === "guest" || !socket.user?.id;
+    return {
+      userId: isGuest ? null : (socket.user?.id ?? socket.userId ?? null),
+      isGuest,
+      browserId: socket.browserId ?? null,
+      tabId: tabId || socket.tabId || null,
+      at: at || Date.now(),
+      title: title ?? null,
+      meta: meta ?? null,
+    };
+  }
+
+  function addPresence(socket, { page, title = null, meta = null, tabId = null, at = Date.now() }) {
+    if (!page) return;
+    if (!socket.presenceTabs) socket.presenceTabs = new Map();
+    const tid = tabId || socket.tabId || "noTab";
+
+    // remove previous page index for this tab
+    const prev = socket.presenceTabs.get(tid);
+    if (prev?.page && presenceIndex.has(prev.page)) {
+      const entry = presenceIndex.get(prev.page);
+      const key = indexKeyForViewer(socket, tid);
+      entry.viewers.delete(key);
+      entry.count = entry.viewers.size;
+      if (entry.viewers.size === 0) presenceIndex.delete(prev.page);
+    }
+
+    // add/update current page
+    socket.presenceTabs.set(tid, { page, title, meta, at });
+
+    let entry = presenceIndex.get(page);
+    if (!entry) {
+      entry = { count: 0, viewers: new Map(), sampleTitles: new Set() };
+      presenceIndex.set(page, entry);
+    }
+    const key = indexKeyForViewer(socket, tid);
+    entry.viewers.set(key, viewerInfo(socket, tid, { at, title, meta }));
+    entry.count = entry.viewers.size;
+    if (title) {
+      if (entry.sampleTitles.size < 5) entry.sampleTitles.add(title);
+    }
+  }
+
+  function removePresence(socket, { page = null, tabId = null } = {}) {
+    if (!socket.presenceTabs) return;
+    const tid = tabId || socket.tabId || "noTab";
+    const prev = socket.presenceTabs.get(tid);
+    if (!prev) return;
+
+    const prevPage = page || prev.page;
+    if (prevPage && presenceIndex.has(prevPage)) {
+      const entry = presenceIndex.get(prevPage);
+      const key = indexKeyForViewer(socket, tid);
+      entry.viewers.delete(key);
+      entry.count = entry.viewers.size;
+      if (entry.viewers.size === 0) presenceIndex.delete(prevPage);
+    }
+    socket.presenceTabs.delete(tid);
+  }
+
+  function removeAllPresenceForSocket(socket) {
+    if (!socket.presenceTabs) return;
+    for (const [tid, info] of socket.presenceTabs) {
+      if (info?.page && presenceIndex.has(info.page)) {
+        const entry = presenceIndex.get(info.page);
+        const key = indexKeyForViewer(socket, tid);
+        entry.viewers.delete(key);
+        entry.count = entry.viewers.size;
+        if (entry.viewers.size === 0) presenceIndex.delete(info.page);
+      }
+    }
+    socket.presenceTabs.clear();
+  }
+
+  // High-level counts (for everyone)
+  function aggregatedPresenceCounts() {
+    const rows = [];
+    for (const [page, entry] of presenceIndex) {
+      rows.push({
+        page,
+        count: entry.count,
+        titles: Array.from(entry.sampleTitles),
+      });
+    }
+    rows.sort((a, b) => b.count - a.count);
+    return { at: Date.now(), rows };
+  }
+
+  const broadcastPresenceCounts = () => {
+    io.emit("presenceCounts", aggregatedPresenceCounts());
+    // OPTIONAL: stream identities to admins live (uncomment if you want)
+    // io.to("adminRoom").emit("presenceSnapshot", presenceSnapshotForAdmins());
+  };
+
+  // Detailed snapshot (admins only): include viewer identities
+  function presenceSnapshotForAdmins() {
+    const rows = [];
+    for (const [page, entry] of presenceIndex) {
+      rows.push({
+        page,
+        count: entry.count,
+        titles: Array.from(entry.sampleTitles),
+        viewers: Array.from(entry.viewers.values()).map(v => ({
+          userId: v.userId,
+          isGuest: v.isGuest,
+          browserId: v.browserId,
+          tabId: v.tabId,
+          at: v.at,
+          title: v.title ?? null,
+          meta: v.meta ?? null,
+        })),
+      });
+    }
+    rows.sort((a, b) => b.count - a.count);
+    return { at: Date.now(), rows };
+  }
+
   // ===== Browser lock =====
   const browserLocks = new Map(); // browserId -> { socketId, lastSeen }
   const STALE_MS = 30_000;
@@ -175,6 +312,9 @@ export function initializeSocket(server, corsOrigin) {
       s.userId = "guest";
       s.user = null;
       s.session = null;
+
+      // clear presence for this socket
+      removeAllPresenceForSocket(s);
       if (!silent) s.emit("forceLogout", { reason });
     } catch {}
   }
@@ -186,12 +326,12 @@ export function initializeSocket(server, corsOrigin) {
       const isSameUser = s.userId && s.userId !== "guest" && String(s.userId) === String(userId);
       const isExcepted = exceptBrowserId && s.browserId === exceptBrowserId;
       if (isSameUser && !isExcepted) {
-        // downgrade to guest and notify
         markAsGuest(s, { reason });
       }
     }
     emitSocketStatsToAdmins();
     broadcastCounts();
+    broadcastPresenceCounts();
   }
 
   // expose for HTTP routes
@@ -261,6 +401,38 @@ export function initializeSocket(server, corsOrigin) {
       socket.emit("pongCheck", Date.now());
     });
 
+    // ===== Presence events =====
+    socket.on("presence:update", (payload) => {
+      try {
+        markSeen(socket);
+        const { page, title, meta, tabId, at } = payload || {};
+        if (typeof page !== "string" || !page.trim()) return;
+        addPresence(socket, { page: page.trim(), title: title || null, meta: meta || null, tabId, at: at || Date.now() });
+        broadcastPresenceCounts();
+      } catch (e) {
+        console.warn("[presence:update] error", e);
+      }
+    });
+
+    socket.on("presence:leave", (payload = {}) => {
+      try {
+        const { page, tabId } = payload;
+        removePresence(socket, { page: page || null, tabId: tabId || null });
+        broadcastPresenceCounts();
+      } catch (e) {
+        console.warn("[presence:leave] error", e);
+      }
+    });
+
+    // Admin-only detailed snapshot
+    socket.on("requestPresenceSnapshot", () => {
+      if (!isAdmin) {
+        console.warn(`[PresenceSnapshot] Unauthorized request by ${socket.id}`);
+        return;
+      }
+      socket.emit("presenceSnapshot", presenceSnapshotForAdmins());
+    });
+
     // Admin-only detailed stats
     socket.on("requestSocketStats", () => {
       if (!isAdmin) {
@@ -270,26 +442,30 @@ export function initializeSocket(server, corsOrigin) {
       socket.emit("socketStats", collectSocketStats());
     });
 
-    // Public counts (anyone can request)
+    // Public counts
     socket.on("requestSocketCounts", () => {
       socket.emit("socketCounts", collectSocketCounts());
     });
 
     socket.on("disconnect", () => {
+      removeAllPresenceForSocket(socket);
       releaseBrowserLock(socket);
       emitSocketStatsToAdmins();
       broadcastCounts();
+      broadcastPresenceCounts();
     });
 
     // push on connect
     emitSocketStatsToAdmins();
     broadcastCounts();
+    broadcastPresenceCounts();
   });
 
   // periodic pushes
   setInterval(() => {
     emitSocketStatsToAdmins();
     broadcastCounts();
+    broadcastPresenceCounts();
   }, 15000);
 
   return io;

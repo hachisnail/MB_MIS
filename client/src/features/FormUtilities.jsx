@@ -133,7 +133,7 @@ export const FormInput = ({
         })}
         type={type}
         disabled={disabled}
-        className={`border text-xl p-2 rounded-2xl w-full ${
+        className={`border text-xl px-2 py-3 rounded-2xl w-full ${
           error !== "" ? "border-red-600" : "border-black"
         } focus:outline-none ${
           disabled ? "border-gray-400 cursor-not-allowed" : ""
@@ -285,7 +285,7 @@ export const ContactNumberInput = ({
             const numeric = e.target.value.replace(/\D/g, "");
             field.onChange(numeric);
         }}
-        className={`border rounded-2xl p-2 text-xl shadow-inner outline-none ${className} ${
+        className={`border rounded-2xl px-2 py-3 text-xl shadow-inner outline-none ${className} ${
             error !== "" ? "border-red-600" : "border-black"
         }`}
         style={{ boxShadow: "inset 0 1px 1px rgba(1, 1, 1, 0.50)" }}
@@ -310,7 +310,7 @@ export const EmailInput = ({ control, name, error = "", className = "" }) => {
             value={field.value ?? ""} // ✅ Always controlled
             type="email"
             placeholder="Enter email"
-            className={`border rounded-2xl p-2 text-lg w-full shadow-inner outline-none ${className} ${
+            className={`border rounded-2xl px-2 py-3 text-lg w-full shadow-inner outline-none ${className} ${
               error !== "" ? "border-red-600" : "border-black"
             }`}
                       style={{

@@ -13,8 +13,7 @@ import { handleGenerateCaption, handleSummarizeCaption } from "../components/Cap
 import RichTextEditor from "../components/RichTextEditor";
 import { X as XIcon } from "lucide-react"; // only needed for thumbnail 'X' button
 import { STATUS, STATUS_LABELS } from "../components/articleStatus";
-
-
+import texture from "../../../../assets/Texture.png"
 
 const ArticleEditorForm = () => {
   const BASE_URL = import.meta.env.VITE_API_BASE_URL;
@@ -1064,25 +1063,13 @@ const ArticleEditorForm = () => {
     </div>
   )}
 
-  {/* RIGHT SIDE - Article Preview */}
-  <ViewPort 
-  // width={550} height={545}
-  sizes={{
-                    // breakpoints
-                    // base:  { width: 320,  height: 240 },
-                    // sm:    { width: 480,  height: 320 },
-                    // md:    { width: 640,  height: 400 },
-                    // lg:    { width: 800,  height: 500 },
-                    // xl: { width: 100, height: 600 },
-                    "2xl": { width: 650, height: 545 },
-                    "3xl": { width: 750, height: 845 },
-                  }}
-  >
-    <div className="bg-white w-full max-w-[50rem] p-6 rounded-lg shadow-2xl mt-4 2xl:mt-0">
-      <h3 className="text-2xl font-bold mb-4">Preview</h3>
-      <div className="border border-gray-200 p-4 mb-4 rounded">
-        <h1 className="text-center text-3xl font-bold">{title || "Title of the News or Event"}</h1>
-      </div>
+        {/* RIGHT SIDE - Article Preview */}
+        <ViewPort width={550} height={545}>
+          <div className="bg-white w-[50rem] p-6 rounded-lg shadow-2xl mt-4 2xl:mt-0">
+            <h3 className="text-2xl font-bold mb-4">Preview</h3>
+            <div className="border border-gray-200 p-4 mb-4 rounded">
+              <h1 className="text-center text-3xl font-bold">{title || "Title of the News or Event"}</h1>
+            </div>
 
       <div className="flex w-full justify-center mb-6 font-hina">
         <div className="flex w-full items-center justify-center text-center text-base">

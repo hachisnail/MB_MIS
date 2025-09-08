@@ -15,7 +15,8 @@ import {
   getVisitorRecords,
   getAttendanceDetail,
   getVisitorRecordDetail,
-  sendEmailNotification
+  sendEmailNotification,
+  uploadAppointmentFiles
 } from '../controllers/appointmentController.js';
 import {
   createSchedule,
@@ -90,6 +91,7 @@ router.get("/logs/:logId", requireAuth, requireRole([1]), fetchLog);
 
 // Appointment routes
 router.post('/appointment', createAppointment);
+router.post('/appointment/files', upload.array('files', 10), multerErrorHandler, uploadAppointmentFiles); // File upload endpoint
 router.get('/appointment', getAllAppointments);
 router.get('/appointment/stats', requireAuth, getAppointmentStats);  // Move this BEFORE :id route
 router.get('/appointment/:id', requireAuth, getAppointmentById);

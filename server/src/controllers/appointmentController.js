@@ -24,6 +24,7 @@ export const createAppointment = async (req, res, next) => {
       start_time,
       end_time,
       additional_notes,
+      request_letter_files,
       status // Destructure status
     } = req.body;
 
@@ -78,7 +79,8 @@ export const createAppointment = async (req, res, next) => {
       preferred_date,
       start_time: start_time || null,
       end_time: end_time || null,
-      additional_notes
+      additional_notes,
+      request_letter_files: JSON.stringify(request_letter_files || [])
     });
 
     // Create the corresponding AppointmentStatus record
@@ -842,6 +844,27 @@ export const sendEmailNotification = async (req, res) => {
     return res.status(500).json({
       message: 'Server error sending email notification',
       error: error.message
+    });
+  }
+};
+
+export const uploadAppointmentFiles = async (req, res) => {
+  try {
+    // Files are already saved to the correct directory by multer middleware
+    // Just return the uploaded file information
+    const uploadedFiles = req.files.map(file => file.filename);
+    
+    console.log(`Successfully uploaded ${uploadedFiles.length} files to request-letter directory:`, uploadedFiles);
+    
+    return res.status(200).json({ 
+      message: "Files uploaded successfully", 
+      files: uploadedFiles 
+    });
+  } catch (err) {
+    console.error('Upload error:', err);
+    return res.status(500).json({ 
+      message: "Server error uploading files", 
+      error: err.message 
     });
   }
 };

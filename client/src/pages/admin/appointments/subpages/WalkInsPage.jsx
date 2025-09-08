@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm, Controller, useController } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import axiosClient from '@/lib/axiosClient';
@@ -30,6 +30,157 @@ import {
 import { getLocalDateString, timeStringToMinutes } from '@/utils/scheduleUtils';
 import ConfirmationModal from '@/components/modals/ConfirmationModal';
 
+// Custom FileInput component without URL option - matches contribution form size
+const RequestLetterFileInput = ({ control, name, className = "" }) => {
+    const {
+        field: { value = [], onChange },
+        fieldState: { error = "" },
+    } = useController({ name, control });
+
+    const fileInputRef = useRef(null);
+    const [dragging, setDragging] = useState(false);
+    const [fileList, setFileList] = useState(value || []);
+
+    // Sync local state with form value
+    useEffect(() => {
+        setFileList(value || []);
+        if (!value || value.length === 0) {
+            // Reset file input when form is cleared
+            if (fileInputRef.current) {
+                fileInputRef.current.value = '';
+            }
+        }
+    }, [value]);
+
+    const updateValue = (files) => {
+        setFileList(files);
+        onChange(files);
+    };
+
+    const handleFiles = useCallback(
+        (files) => {
+            if (files && files.length > 0) {
+                const newFiles = Array.from(files);
+                const updatedFiles = [...fileList, ...newFiles];
+                updateValue(updatedFiles);
+            }
+        },
+        [fileList]
+    );
+
+    const handleDrop = (e) => {
+        e.preventDefault();
+        setDragging(false);
+        handleFiles(e.dataTransfer.files);
+    };
+
+    const handleDragOver = (e) => {
+        e.preventDefault();
+        setDragging(true);
+    };
+
+    const handleDragLeave = () => setDragging(false);
+
+    const handleFileInputChange = (e) => {
+        handleFiles(e.target.files);
+    };
+
+    const removeFile = (index) => {
+        const newFiles = [...fileList];
+        newFiles.splice(index, 1);
+        updateValue(newFiles);
+    };
+
+    return (
+        <div className={`${className} flex flex-col`}>
+            <div className="flex gap-x-5">
+                <div
+                    className={`min-w-[10rem] h-[6rem] border rounded-3xl flex flex-col items-center justify-center cursor-pointer p-4 ${dragging ? "border-blue-500 bg-blue-50" : "border-black"
+                        }`}
+                    onDrop={handleDrop}
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onClick={() => fileInputRef.current?.click()}
+                >
+                    <p className="text-xs">
+                        Drag or <span className="text-[#6A60FF]">Choose Files</span>
+                    </p>
+                    <input
+                        type="file"
+                        ref={fileInputRef}
+                        className="hidden"
+                        onChange={handleFileInputChange}
+                        multiple
+                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                    />
+                </div>
+
+                {fileList.length > 0 && (
+                    <div className="w-[15rem] h-[6rem] border border-gray-200 rounded-lg">
+                        <div
+                            className="h-full overflow-y-scroll p-1"
+                            style={{
+                                scrollbarWidth: 'thin',
+                                scrollbarColor: '#6b7280 #f3f4f6'
+                            }}
+                        >
+                            <ul className="space-y-1 pr-2">
+                                {fileList.map((f, i) => (
+                                    <li key={i} className="flex items-center gap-1 p-1 rounded-sm hover:bg-gray-100">
+                                        <span className="text-xs truncate max-w-[6rem]" title={f.name}>
+                                            {f.name.length > 12 ? `${f.name.substring(0, 12)}...` : f.name}
+                                        </span>
+                                        <button
+                                            type="button"
+                                            className="text-red-500 hover:text-red-700 flex-shrink-0 p-1"
+                                            onClick={() => removeFile(i)}
+                                            title="Remove file"
+                                        >
+                                            <svg
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                width="12"
+                                                height="12"
+                                                viewBox="0 0 24 24"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                strokeWidth="2"
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                            >
+                                                <path d="M4 7l16 0" />
+                                                <path d="M10 11l0 6" />
+                                                <path d="M14 11l0 6" />
+                                                <path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12" />
+                                                <path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3" />
+                                            </svg>
+                                        </button>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {error && (
+                <span className="text-red-600 text-md h-6 pl-2">{error.message}</span>
+            )}
+        </div>
+    );
+};
+
+// File validation schema for request letter upload
+const fileSchema = yup
+    .array()
+    .of(yup.mixed())
+    .test(
+        "required-files",
+        "Please upload at least one request letter file",
+        (value) => {
+            return value && value.length > 0;
+        }
+    );
+
 // Validation schemas for each page
 const page1Schema = yup.object({
     firstName: yup.string().required('First name is required'),
@@ -46,7 +197,13 @@ const page1Schema = yup.object({
         .typeError('Please enter a valid number')
         .positive('Population count must be greater than 0')
         .integer('Population count must be a whole number')
+        .max(30, 'Population count cannot exceed 30 visitors')
         .required('Population count is required'),
+    requestLetterUpload: yup.mixed().when("purpose", {
+        is: (purpose) => purpose === "Research Paper" || purpose === "School Field Trip",
+        then: () => fileSchema.required("Request letter is required for this type of visit"),
+        otherwise: () => yup.mixed().notRequired(),
+    }),
 });
 
 const page2Schema = yup.object({
@@ -114,6 +271,7 @@ const WalkInsPage = () => {
         // About Visit
         purpose: '',
         populationCount: '',
+        requestLetterUpload: [], // File upload for request letter
 
         // Date and Time
         visitDate: format(new Date(), 'yyyy-MM-dd'),
@@ -657,126 +815,149 @@ const WalkInsPage = () => {
 
         const currentFormData = getCurrentFormData();
 
-        // Time conversion logic (same as Appointment.jsx)
-        let startTimeValue = null;
-        let endTimeValue = null;
-
-        if (currentFormData.purpose === 'School Field Trip' && currentFormData.selectedTime) {
-            const [startTime, endTime] = currentFormData.selectedTime.split('-');
-            const convertTo24Hour = (timeStr) => {
-                const [hourStr, minuteStr] = timeStr.split(':');
-                let hour = parseInt(hourStr, 10);
-                if (hour >= 1 && hour <= 5) {
-                    hour += 12;
-                }
-                return `${hour.toString().padStart(2, '0')}:${minuteStr}:00`;
-            };
-
-            startTimeValue = convertTo24Hour(startTime);
-            endTimeValue = convertTo24Hour(endTime);
-        } else if (currentFormData.purpose !== 'School Field Trip' && currentFormData.timePreference === 'specific' && currentFormData.manualStartTime && currentFormData.manualEndTime) {
-            // For manual time input, convert from 12-hour to 24-hour format with seconds
-            const convertTo24Hour = (timeStr) => {
-                if (!timeStr) return null;
-
-                const hasAMPM = timeStr.toLowerCase().includes('am') || timeStr.toLowerCase().includes('pm');
-
-                if (hasAMPM) {
-                    const isPM = timeStr.toLowerCase().includes('pm');
-                    const cleanTime = timeStr.toLowerCase().replace(/am|pm/g, '').trim();
-                    const [hourStr, minuteStr] = cleanTime.split(':');
-                    let hour = parseInt(hourStr, 10);
-                    const minute = parseInt(minuteStr || '0', 10);
-
-                    if (isPM && hour < 12) hour += 12;
-                    if (!isPM && hour === 12) hour = 0;
-
-                    return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00`;
-                } else {
-                    // Already in 24-hour format
-                    return `${timeStr}:00`;
-                }
-            };
-
-            startTimeValue = convertTo24Hour(currentFormData.manualStartTime);
-            endTimeValue = convertTo24Hour(currentFormData.manualEndTime);
-        }
-
-        // Payload structure matching Appointment.jsx exactly
-        const payload = {
-            first_name: currentFormData.firstName,
-            last_name: currentFormData.lastName,
-            email: currentFormData.email,
-            phone: currentFormData.phone,
-            organization: currentFormData.organization,
-            province: selectedProvince?.name || '',
-            barangay: selectedBarangay?.name || '',
-            city_municipality: selectedCity?.name || '',
-            street: currentFormData.street,
-            purpose_of_visit: currentFormData.purpose,
-            population_count: currentFormData.populationCount,
-            preferred_date: currentFormData.visitDate,
-            preferred_time: currentFormData.purpose === 'School Field Trip'
-                ? currentFormData.selectedTime
-                : (currentFormData.manualStartTime && currentFormData.manualEndTime)
-                    ? `${currentFormData.manualStartTime}-${currentFormData.manualEndTime}`
-                    : null,
-            start_time: startTimeValue,
-            end_time: endTimeValue,
-            additional_notes: currentFormData.additionalNotes,
-            // Walk-in specific flags
-            is_walk_in: true,
-            status: 'APPROVED' // Walk-ins are automatically approved
-        };
-
         try {
-            const response = await axiosClient.post('/auth/appointment', payload);
+            // Upload request letter files if any (same as Appointment.jsx)
+            let uploadedRequestLetterFiles = [];
+            const hasRequestLetterFiles = currentFormData.requestLetterUpload && currentFormData.requestLetterUpload.length > 0;
 
-            if (response.status === 201) {
-                showToast('Walk-in visitor registered successfully!', 'success');
+            if (hasRequestLetterFiles) {
+                const form = new FormData();
+                form.append("category", "private");
+                currentFormData.requestLetterUpload.forEach((f) => form.append("files", f));
 
-                // Reset forms
-                page1Form.reset(initialFormData);
-                page2Form.reset(initialFormData);
-                setCurrentPage(1);
+                const uploadRes = await axiosClient.post("/auth/appointment/files", form, {
+                    headers: { "Content-Type": "multipart/form-data" },
+                });
 
-                // Reset address selections
-                setSelectedProvince(null);
-                setSelectedCity(null);
-                setSelectedBarangay(null);
+                uploadedRequestLetterFiles = uploadRes.data.files;
+            }
 
-                // Reset selected date to current date
-                setSelectedDate(new Date());
+            // Time conversion logic (same as Appointment.jsx)
+            let startTimeValue = null;
+            let endTimeValue = null;
 
-                // Trigger form reset event
-                window.dispatchEvent(new Event('formSubmitted'));
+            if (currentFormData.purpose === 'School Field Trip' && currentFormData.selectedTime) {
+                const [startTime, endTime] = currentFormData.selectedTime.split('-');
+                const convertTo24Hour = (timeStr) => {
+                    const [hourStr, minuteStr] = timeStr.split(':');
+                    let hour = parseInt(hourStr, 10);
+                    if (hour >= 1 && hour <= 5) {
+                        hour += 12;
+                    }
+                    return `${hour.toString().padStart(2, '0')}:${minuteStr}:00`;
+                };
 
-                // Stay on the same page (page 1) for next walk-in entry
-                // No navigation - just reset to page 1 for continuous walk-in processing
+                startTimeValue = convertTo24Hour(startTime);
+                endTimeValue = convertTo24Hour(endTime);
+            } else if (currentFormData.purpose !== 'School Field Trip' && currentFormData.timePreference === 'specific' && currentFormData.manualStartTime && currentFormData.manualEndTime) {
+                // For manual time input, convert from 12-hour to 24-hour format with seconds
+                const convertTo24Hour = (timeStr) => {
+                    if (!timeStr) return null;
+
+                    const hasAMPM = timeStr.toLowerCase().includes('am') || timeStr.toLowerCase().includes('pm');
+
+                    if (hasAMPM) {
+                        const isPM = timeStr.toLowerCase().includes('pm');
+                        const cleanTime = timeStr.toLowerCase().replace(/am|pm/g, '').trim();
+                        const [hourStr, minuteStr] = cleanTime.split(':');
+                        let hour = parseInt(hourStr, 10);
+                        const minute = parseInt(minuteStr || '0', 10);
+
+                        if (isPM && hour < 12) hour += 12;
+                        if (!isPM && hour === 12) hour = 0;
+
+                        return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00`;
+                    } else {
+                        // Already in 24-hour format
+                        return `${timeStr}:00`;
+                    }
+                };
+
+                startTimeValue = convertTo24Hour(currentFormData.manualStartTime);
+                endTimeValue = convertTo24Hour(currentFormData.manualEndTime);
+            }
+
+            // Payload structure matching Appointment.jsx exactly
+            const payload = {
+                first_name: currentFormData.firstName,
+                last_name: currentFormData.lastName,
+                email: currentFormData.email,
+                phone: currentFormData.phone,
+                organization: currentFormData.organization,
+                province: selectedProvince?.name || '',
+                barangay: selectedBarangay?.name || '',
+                city_municipality: selectedCity?.name || '',
+                street: currentFormData.street,
+                purpose_of_visit: currentFormData.purpose,
+                population_count: currentFormData.populationCount,
+                preferred_date: currentFormData.visitDate,
+                preferred_time: currentFormData.purpose === 'School Field Trip'
+                    ? currentFormData.selectedTime
+                    : (currentFormData.manualStartTime && currentFormData.manualEndTime)
+                        ? `${currentFormData.manualStartTime}-${currentFormData.manualEndTime}`
+                        : null,
+                start_time: startTimeValue,
+                end_time: endTimeValue,
+                additional_notes: currentFormData.additionalNotes,
+                request_letter_files: uploadedRequestLetterFiles, // Add the uploaded files to payload
+                // Walk-in specific flags
+                is_walk_in: true,
+                status: 'APPROVED' // Walk-ins are automatically approved
+            };
+
+            try {
+                const response = await axiosClient.post('/auth/appointment', payload);
+
+                if (response.status === 201) {
+                    showToast('Walk-in visitor registered successfully!', 'success');
+
+                    // Reset forms
+                    page1Form.reset(initialFormData);
+                    page2Form.reset(initialFormData);
+                    setCurrentPage(1);
+
+                    // Reset address selections
+                    setSelectedProvince(null);
+                    setSelectedCity(null);
+                    setSelectedBarangay(null);
+
+                    // Reset selected date to current date
+                    setSelectedDate(new Date());
+
+                    // Trigger form reset event
+                    window.dispatchEvent(new Event('formSubmitted'));
+
+                    // Stay on the same page (page 1) for next walk-in entry
+                    // No navigation - just reset to page 1 for continuous walk-in processing
+                }
+            } catch (error) {
+                console.error('Request failed:', error);
+
+                // Error handling
+                if (error.response) {
+                    const status = error.response.status;
+                    const message = error.response.data?.message || 'Unknown error occurred';
+
+                    if (status === 400) {
+                        showToast(`Validation error: ${message}`, 'error');
+                    } else if (status === 409) {
+                        showToast('Time slot conflict detected', 'error');
+                    } else if (status === 500) {
+                        showToast('Server error occurred', 'error');
+                    } else {
+                        showToast(`Error: ${message}`, 'error');
+                    }
+                } else if (error.request) {
+                    showToast('Network connection error', 'error');
+                } else {
+                    showToast('Registration failed. Please try again.', 'error');
+                }
+            } finally {
+                setIsSubmitting(false);
             }
         } catch (error) {
-            console.error('Request failed:', error);
-
-            // Error handling
-            if (error.response) {
-                const status = error.response.status;
-                const message = error.response.data?.message || 'Unknown error occurred';
-
-                if (status === 400) {
-                    showToast(`Validation error: ${message}`, 'error');
-                } else if (status === 409) {
-                    showToast('Time slot conflict detected', 'error');
-                } else if (status === 500) {
-                    showToast('Server error occurred', 'error');
-                } else {
-                    showToast(`Error: ${message}`, 'error');
-                }
-            } else if (error.request) {
-                showToast('Network connection error', 'error');
-            } else {
-                showToast('Registration failed. Please try again.', 'error');
-            }
-        } finally {
+            console.error('File upload error:', error);
+            showToast('Failed to upload files. Please try again.', 'error');
             setIsSubmitting(false);
         }
     };
@@ -1001,30 +1182,17 @@ const WalkInsPage = () => {
 
     // Page 1 Component
     const renderPage1 = () => (
-        <div className="w-full max-w-[1200px] mx-auto p-8">
-            {/* About the Visitor Section */}
-            <div className="mb-12">
-                <div className="grid grid-cols-12 gap-8 mb-6">
-                    {/* Left side - Title */}
-                    <div className="col-span-3">
-                        <h2 className="text-3xl font-semibold text-gray-900">About the Visitor</h2>
-                    </div>
+        <div className="w-[85rem] mx-auto p-6">
+            {/* Two Column Layout */}
+            <div className="grid grid-cols-3 gap-6">
+                {/* Left Column - About the Visitor */}
+                <div className="col-span-2">
+                    <div className="mb-6">
+                        <h2 className="text-3xl font-semibold text-gray-900 mb-4">About the Visitor</h2>
+                        <hr className="border-gray-300 mb-6" />
 
-                    {/* Right side - Empty for alignment */}
-                    <div className="col-span-9"></div>
-                </div>
-
-                {/* Full width horizontal line */}
-                <hr className="border-gray-300 mb-8" />
-
-                <div className="grid grid-cols-12 gap-8">
-                    {/* Left side - Empty for alignment */}
-                    <div className="col-span-3"></div>
-
-                    {/* Right side - Form Fields */}
-                    <div className="col-span-9">
                         <form onSubmit={page1Form.handleSubmit(() => { })}>
-                            <div className="grid grid-cols-2 gap-6 mb-6">
+                            <div className="grid grid-cols-2 gap-4 mb-4">
                                 <div>
                                     <label className="block text-base font-medium text-gray-700 mb-2">
                                         First Name <span className="text-red-500">*</span>
@@ -1172,30 +1340,14 @@ const WalkInsPage = () => {
                         </form>
                     </div>
                 </div>
-            </div>
 
-            {/* About Visit Section */}
-            <div className="mb-8">
-                <div className="grid grid-cols-12 gap-8">
-                    {/* Left side - Title */}
-                    <div className="col-span-3">
-                        <h2 className="text-3xl font-semibold text-gray-900 mb-2">About Visit</h2>
-                    </div>
+                {/* Right Column - About Visit */}
+                <div className="col-span-1">
+                    <div className="mb-6">
+                        <h2 className="text-3xl font-semibold text-gray-900 mb-4">About Visit</h2>
+                        <hr className="border-gray-300 mb-6" />
 
-                    {/* Right side - Empty for alignment */}
-                    <div className="col-span-9"></div>
-                </div>
-
-                {/* Full width horizontal line */}
-                <hr className="border-gray-300 mb-6" />
-
-                <div className="grid grid-cols-12 gap-8">
-                    {/* Left side - Empty for alignment */}
-                    <div className="col-span-3"></div>
-
-                    {/* Right side - Form Fields */}
-                    <div className="col-span-9">
-                        <div className="mb-6">
+                        <div className="mb-4">
                             <label className="block text-base font-medium text-gray-700 mb-2">
                                 Purpose Visits <span className="text-red-500">*</span>
                             </label>
@@ -1230,6 +1382,20 @@ const WalkInsPage = () => {
                                 className="w-full h-12 text-base"
                             />
                         </div>
+
+                        {/* Request Letter Upload - Conditional */}
+                        {(page1Form.watch("purpose") === "Research Paper" || page1Form.watch("purpose") === "School Field Trip") && (
+                            <div className="mb-6">
+                                <label className="block text-base font-medium text-gray-700 mb-2">
+                                    Request Letter <span className="text-red-500">*</span>
+                                </label>
+                                <RequestLetterFileInput
+                                    control={page1Form.control}
+                                    name="requestLetterUpload"
+                                    className="w-full"
+                                />
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
@@ -1241,35 +1407,26 @@ const WalkInsPage = () => {
         const formData = getCurrentFormData();
 
         return (
-            <div className="w-full max-w-[1200px] mx-auto p-8">
+            <div className="w-[85rem] mx-auto p-6">
                 {/* Date and Time of the Visit Section */}
-                <div className="mb-12">
-                    <div className="grid grid-cols-12 gap-8">
-                        {/* Left side - Title */}
-                        <div className="col-span-3">
-                            <h2 className="text-3xl font-semibold text-gray-900 mb-2">Date and Time of the Visit</h2>
-                        </div>
-
-                        {/* Right side - Empty for alignment */}
-                        <div className="col-span-9"></div>
+                <div className="mb-8">
+                    <div className="mb-4">
+                        <h2 className="text-3xl font-semibold text-gray-900 mb-2">Date and Time of the Visit</h2>
                     </div>
 
                     {/* Full width horizontal line */}
-                    <hr className="border-gray-300 mb-8" />
+                    <hr className="border-gray-300 mb-6" />
 
-                    <div className="grid grid-cols-12 gap-8">
-                        {/* Left side - Empty for alignment */}
-                        <div className="col-span-3"></div>
-
-                        {/* Right side - Calendar and Time Selection */}
-                        <div className="col-span-9">
-                            <div className="grid grid-cols-2 gap-8 mb-8">
+                    <div className="w-full">
+                        {/* Calendar and Time Selection */}
+                        <div className="w-full">
+                            <div className="grid grid-cols-2 gap-8">
                                 {/* Left side - Calendar */}
-                                <div className="max-w-sm">
+                                <div className="flex flex-col">
                                     <label className="block text-base font-medium text-gray-700 mb-4">
                                         Select preferred date <span className="text-red-500">*</span>
                                     </label>
-                                    <div className="rounded-xl bg-black p-3 shadow-xl inline-block">
+                                    <div className="rounded-xl bg-black p-3 shadow-xl inline-block w-fit">
                                         <Calendar
                                             onChange={handleDateSelect}
                                             value={selectedDate}
@@ -1308,7 +1465,7 @@ const WalkInsPage = () => {
                                         />
                                     </div>
                                     {selectedDate && (
-                                        <div className="mt-2 text-sm text-gray-600">
+                                        <div className="mt-3 text-sm text-gray-600">
                                             Selected: <span className="font-semibold">{format(selectedDate, 'MMMM d, yyyy')}</span>
                                         </div>
                                     )}
@@ -1317,214 +1474,192 @@ const WalkInsPage = () => {
                                     )}
                                 </div>
 
-                                {/* Right side - Time slots for School Field Trip */}
-                                {formData.purpose === 'School Field Trip' && (
-                                    <div>
-                                        <label className="block text-lg font-medium text-gray-700 mb-6">
-                                            Select preferred time <span className="text-red-500">*</span>
-                                        </label>
-                                        <div className="grid grid-cols-1 gap-4">
-                                            {['09:00-10:29', '10:30-11:59', '01:00-02:29', '02:30-04:00'].map((time) => {
-                                                const isExclusive = timeSlotExclusive[time];
-                                                const hasConfirmedAppointment = confirmedSlots[time];
-                                                const slotOverlapCount = timeSlotCounts[time] || 0;
-                                                const isOverLimit = slotOverlapCount >= 5;
-                                                const isUnavailable = isExclusive || hasConfirmedAppointment || isOverLimit;
-                                                const isSelected = formData.selectedTime === time;
+                                {/* Right side - Time Selection and Notes */}
+                                <div className="flex flex-col space-y-8 min-h-0">
+                                    {/* Time slots for School Field Trip */}
+                                    {formData.purpose === 'School Field Trip' && (
+                                        <div>
+                                            <label className="block text-lg font-medium text-gray-700 mb-6">
+                                                Select preferred time <span className="text-red-500">*</span>
+                                            </label>
+                                            <div className="grid grid-cols-1 gap-4">
+                                                {['09:00-10:29', '10:30-11:59', '01:00-02:29', '02:30-04:00'].map((time) => {
+                                                    const isExclusive = timeSlotExclusive[time];
+                                                    const hasConfirmedAppointment = confirmedSlots[time];
+                                                    const slotOverlapCount = timeSlotCounts[time] || 0;
+                                                    const isOverLimit = slotOverlapCount >= 5;
+                                                    const isUnavailable = isExclusive || hasConfirmedAppointment || isOverLimit;
+                                                    const isSelected = formData.selectedTime === time;
 
-                                                return (
-                                                    <div key={time} className="relative group">
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => !isUnavailable && handleTimeSelect(time)}
-                                                            disabled={isUnavailable}
-                                                            className={`w-full px-6 py-4 border-2 rounded-lg text-left transition-colors relative text-lg
-                                                            ${isSelected
-                                                                    ? 'bg-blue-50 border-blue-500 text-blue-700'
-                                                                    : isUnavailable
-                                                                        ? 'bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed'
-                                                                        : 'bg-white border-gray-300 hover:bg-gray-50 hover:border-gray-400'
-                                                                }
-                                                        `}
-                                                        >
-                                                            <span className={`font-medium ${isUnavailable ? 'line-through' : ''}`}>
-                                                                {time}
-                                                            </span>
-                                                            {slotOverlapCount > 0 && !isUnavailable && (
-                                                                <span className="text-sm text-gray-500 block">
-                                                                    {slotOverlapCount}/5 slots used
+                                                    return (
+                                                        <div key={time} className="relative group">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => !isUnavailable && handleTimeSelect(time)}
+                                                                disabled={isUnavailable}
+                                                                className={`w-full px-6 py-4 border-2 rounded-lg text-left transition-colors relative text-lg
+                                                                ${isSelected
+                                                                        ? 'bg-blue-50 border-blue-500 text-blue-700'
+                                                                        : isUnavailable
+                                                                            ? 'bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed'
+                                                                            : 'bg-white border-gray-300 hover:bg-gray-50 hover:border-gray-400'
+                                                                    }
+                                                            `}
+                                                            >
+                                                                <span className={`font-medium ${isUnavailable ? 'line-through' : ''}`}>
+                                                                    {time}
                                                                 </span>
-                                                            )}
+                                                                {slotOverlapCount > 0 && !isUnavailable && (
+                                                                    <span className="text-sm text-gray-500 block">
+                                                                        {slotOverlapCount}/5 slots used
+                                                                    </span>
+                                                                )}
+                                                                {isUnavailable && (
+                                                                    <span className="absolute inset-0 flex items-center justify-center text-red-600">
+                                                                        <i className="fa-solid fa-times text-2xl"></i>
+                                                                    </span>
+                                                                )}
+                                                            </button>
+
                                                             {isUnavailable && (
-                                                                <span className="absolute inset-0 flex items-center justify-center text-red-600">
-                                                                    <i className="fa-solid fa-times text-2xl"></i>
-                                                                </span>
+                                                                <div className="absolute z-10 bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-56 p-3 bg-gray-800 text-white text-sm rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
+                                                                    {isExclusive ? 'This time slot has an exclusive schedule' :
+                                                                        hasConfirmedAppointment ? 'This time slot already has a confirmed appointment' :
+                                                                            isOverLimit ? 'This time slot has reached the maximum limit of 5 overlapping events' :
+                                                                                'This time slot is unavailable'}
+                                                                </div>
                                                             )}
-                                                        </button>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                            {page2Form.formState.errors.selectedTime && (
+                                                <p className="mt-3 text-lg text-red-600">Please select a time slot</p>
+                                            )}
+                                            {isLoadingTimeSlots && (
+                                                <p className="mt-3 text-lg text-gray-500">Checking time slot availability...</p>
+                                            )}
+                                        </div>
+                                    )}
 
-                                                        {isUnavailable && (
-                                                            <div className="absolute z-10 bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-56 p-3 bg-gray-800 text-white text-sm rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
-                                                                {isExclusive ? 'This time slot has an exclusive schedule' :
-                                                                    hasConfirmedAppointment ? 'This time slot already has a confirmed appointment' :
-                                                                        isOverLimit ? 'This time slot has reached the maximum limit of 5 overlapping events' :
-                                                                            'This time slot is unavailable'}
-                                                            </div>
+                                    {/* Manual time selection for other purposes */}
+                                    {formData.purpose && formData.purpose !== 'School Field Trip' && (
+                                        <div>
+                                            <label className="block text-lg font-medium text-gray-700 mb-4">
+                                                Select visit time <span className="text-gray-500">(Optional)</span>
+                                            </label>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div className="flex flex-col">
+                                                    <label htmlFor="manual-start-time" className="text-lg text-gray-600 mb-2">
+                                                        Start Time <span className="text-gray-500">(Optional)</span>
+                                                    </label>
+                                                    <Controller
+                                                        name="manualStartTime"
+                                                        control={page2Form.control}
+                                                        render={({ field }) => (
+                                                            <TimePicker
+                                                                id="manual-start-time"
+                                                                onChange={(time) => {
+                                                                    field.onChange(time);
+                                                                    handleManualStartTimeChange(time);
+                                                                }}
+                                                                value={field.value}
+                                                                format="hh:mm a"
+                                                                disableClock
+                                                                className="w-full p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#A6A3F6] text-lg"
+                                                            />
                                                         )}
-                                                    </div>
-                                                );
-                                            })}
+                                                    />
+                                                    {page2Form.formState.errors.manualStartTime && (
+                                                        <p className="mt-2 text-lg text-red-600">
+                                                            {page2Form.formState.errors.manualStartTime.message}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                                <div className="flex flex-col">
+                                                    <label htmlFor="manual-end-time" className="text-lg text-gray-600 mb-2">
+                                                        End Time <span className="text-gray-500">(Optional)</span>
+                                                    </label>
+                                                    <Controller
+                                                        name="manualEndTime"
+                                                        control={page2Form.control}
+                                                        render={({ field }) => (
+                                                            <TimePicker
+                                                                id="manual-end-time"
+                                                                onChange={(time) => {
+                                                                    field.onChange(time);
+                                                                    handleManualEndTimeChange(time);
+                                                                }}
+                                                                value={field.value}
+                                                                format="hh:mm a"
+                                                                disableClock
+                                                                className="w-full p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#A6A3F6] text-lg"
+                                                            />
+                                                        )}
+                                                    />
+                                                    {page2Form.formState.errors.manualEndTime && (
+                                                        <p className="mt-2 text-lg text-red-600">
+                                                            {page2Form.formState.errors.manualEndTime.message}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+                                                <div className="flex items-start">
+                                                    <svg
+                                                        className="w-6 h-6 text-blue-500 mr-3 mt-0.5 flex-shrink-0"
+                                                        xmlns="http://www.w3.org/2000/svg"
+                                                        viewBox="0 0 24 24"
+                                                        fill="none"
+                                                        stroke="currentColor"
+                                                        strokeWidth="2"
+                                                        strokeLinecap="round"
+                                                        strokeLinejoin="round"
+                                                    >
+                                                        <circle cx="12" cy="12" r="10" />
+                                                        <path d="M12 16v-4" />
+                                                        <path d="M12 8h.01" />
+                                                    </svg>
+                                                    <p className="text-lg text-blue-700">
+                                                        <span className="font-medium">Note:</span> Time selection is optional for walk-in visitors.
+                                                        If no specific time is provided, the visit will be recorded without time constraints.
+                                                    </p>
+                                                </div>
+                                            </div>
                                         </div>
-                                        {page2Form.formState.errors.selectedTime && (
-                                            <p className="mt-3 text-lg text-red-600">Please select a time slot</p>
-                                        )}
-                                        {isLoadingTimeSlots && (
-                                            <p className="mt-3 text-lg text-gray-500">Checking time slot availability...</p>
-                                        )}
-                                    </div>
-                                )}
+                                    )}
 
-                                {/* Right side - Manual time selection for other purposes */}
-                                {formData.purpose && formData.purpose !== 'School Field Trip' && (
+                                    {/* Notes Section - Now integrated into the right column */}
                                     <div>
-                                        <label className="block text-lg font-medium text-gray-700 mb-6">
-                                            Select visit time <span className="text-gray-500">(Optional)</span>
+                                        <label className="block text-base font-medium text-gray-700 mb-2">
+                                            Note
                                         </label>
-                                        <div className="grid grid-cols-2 gap-6">
-                                            <div className="flex flex-col">
-                                                <label htmlFor="manual-start-time" className="text-lg text-gray-600 mb-2">
-                                                    Start Time <span className="text-gray-500">(Optional)</span>
-                                                </label>
-                                                <Controller
-                                                    name="manualStartTime"
-                                                    control={page2Form.control}
-                                                    render={({ field }) => (
-                                                        <TimePicker
-                                                            id="manual-start-time"
-                                                            onChange={(time) => {
-                                                                field.onChange(time);
-                                                                handleManualStartTimeChange(time);
-                                                            }}
-                                                            value={field.value}
-                                                            format="hh:mm a"
-                                                            disableClock
-                                                            className="w-full p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#A6A3F6] text-lg"
-                                                        />
-                                                    )}
-                                                />
-                                                {page2Form.formState.errors.manualStartTime && (
-                                                    <p className="mt-2 text-lg text-red-600">
-                                                        {page2Form.formState.errors.manualStartTime.message}
-                                                    </p>
-                                                )}
+                                        <div className="relative">
+                                            <textarea
+                                                {...page2Form.register('additionalNotes')}
+                                                rows="6"
+                                                maxLength="500"
+                                                placeholder="Additional notes (optional)"
+                                                className={`w-full px-3 py-2 border text-base rounded-lg focus:outline-none resize-none ${page2Form.formState.errors.additionalNotes
+                                                    ? "border-red-600"
+                                                    : "border-black"
+                                                    }`}
+                                                style={{
+                                                    boxShadow: "inset 0 1px 1px rgba(1, 1, 1, 0.50)",
+                                                }}
+                                            />
+                                            <div className="flex justify-between items-center mt-1">
+                                                <span className="text-red-600 text-sm h-5 pl-1">
+                                                    {page2Form.formState.errors.additionalNotes?.message || ""}
+                                                </span>
+                                                <span className="text-sm text-gray-500 pr-1">
+                                                    {page2Form.watch('additionalNotes')?.length || 0}/500
+                                                </span>
                                             </div>
-                                            <div className="flex flex-col">
-                                                <label htmlFor="manual-end-time" className="text-lg text-gray-600 mb-2">
-                                                    End Time <span className="text-gray-500">(Optional)</span>
-                                                </label>
-                                                <Controller
-                                                    name="manualEndTime"
-                                                    control={page2Form.control}
-                                                    render={({ field }) => (
-                                                        <TimePicker
-                                                            id="manual-end-time"
-                                                            onChange={(time) => {
-                                                                field.onChange(time);
-                                                                handleManualEndTimeChange(time);
-                                                            }}
-                                                            value={field.value}
-                                                            format="hh:mm a"
-                                                            disableClock
-                                                            className="w-full p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#A6A3F6] text-lg"
-                                                        />
-                                                    )}
-                                                />
-                                                {page2Form.formState.errors.manualEndTime && (
-                                                    <p className="mt-2 text-lg text-red-600">
-                                                        {page2Form.formState.errors.manualEndTime.message}
-                                                    </p>
-                                                )}
-                                            </div>
-                                        </div>
-                                        <div className="mt-4 p-4 bg-blue-50 rounded-lg">
-                                            <div className="flex items-start">
-                                                <svg
-                                                    className="w-6 h-6 text-blue-500 mr-3 mt-0.5 flex-shrink-0"
-                                                    xmlns="http://www.w3.org/2000/svg"
-                                                    viewBox="0 0 24 24"
-                                                    fill="none"
-                                                    stroke="currentColor"
-                                                    strokeWidth="2"
-                                                    strokeLinecap="round"
-                                                    strokeLinejoin="round"
-                                                >
-                                                    <circle cx="12" cy="12" r="10" />
-                                                    <path d="M12 16v-4" />
-                                                    <path d="M12 8h.01" />
-                                                </svg>
-                                                <p className="text-lg text-blue-700">
-                                                    <span className="font-medium">Note:</span> Time selection is optional for walk-in visitors.
-                                                    If no specific time is provided, the visit will be recorded without time constraints.
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* About Visit Section */}
-                <div className="mb-8">
-                    <div className="grid grid-cols-12 gap-8">
-                        {/* Left side - Title */}
-                        <div className="col-span-3">
-                            <h2 className="text-3xl font-semibold text-gray-900 mb-2">About Visit</h2>
-                        </div>
-
-                        {/* Right side - Empty for alignment */}
-                        <div className="col-span-9"></div>
-                    </div>
-
-                    {/* Full width horizontal line */}
-                    <hr className="border-gray-300 mb-6" />
-
-                    <div className="grid grid-cols-12 gap-8">
-                        {/* Left side - Empty for alignment */}
-                        <div className="col-span-3"></div>
-
-                        {/* Right side - Form Fields */}
-                        <div className="col-span-9">
-                            <form onSubmit={page2Form.handleSubmit(() => { })}>
-                                <div className="mb-6">
-                                    <label className="block text-base font-medium text-gray-700 mb-2">
-                                        Note
-                                    </label>
-                                    <div className="relative">
-                                        <textarea
-                                            {...page2Form.register('additionalNotes')}
-                                            rows="6"
-                                            maxLength="500"
-                                            placeholder="Additional notes (optional)"
-                                            className={`w-full px-3 py-2 border text-base rounded-lg focus:outline-none resize-none ${page2Form.formState.errors.additionalNotes
-                                                ? "border-red-600"
-                                                : "border-black"
-                                                }`}
-                                            style={{
-                                                boxShadow: "inset 0 1px 1px rgba(1, 1, 1, 0.50)",
-                                            }}
-                                        />
-                                        <div className="flex justify-between items-center mt-1">
-                                            <span className="text-red-600 text-sm h-5 pl-1">
-                                                {page2Form.formState.errors.additionalNotes?.message || ""}
-                                            </span>
-                                            <span className="text-sm text-gray-500 pr-1">
-                                                {page2Form.watch('additionalNotes')?.length || 0}/500
-                                            </span>
                                         </div>
                                     </div>
                                 </div>
-                            </form>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1543,8 +1678,8 @@ const WalkInsPage = () => {
                 </div>
 
                 {/* Footer with buttons */}
-                <div className="border-t border-gray-200 p-8">
-                    <div className="flex justify-between items-center max-w-[1400px] mx-auto">
+                <div className="border-t border-gray-200 p-6">
+                    <div className="flex justify-between items-center w-[85rem] mx-auto">
                         <div>
                             {currentPage === 1 ? (
                                 <button
@@ -1602,6 +1737,9 @@ const WalkInsPage = () => {
                         <div className="bg-gray-50 p-3 rounded-md text-sm">
                             <div><strong>Name:</strong> {getCurrentFormData().firstName} {getCurrentFormData().lastName}</div>
                             <div><strong>Email:</strong> {getCurrentFormData().email}</div>
+                            <div><strong>Phone:</strong> {getCurrentFormData().phone || 'Not provided'}</div>
+                            <div><strong>Organization:</strong> {getCurrentFormData().organization || 'Not provided'}</div>
+                            <div><strong>Address:</strong> {getCurrentFormData().street ? `${getCurrentFormData().street}, ` : ''}{selectedBarangay?.name || getCurrentFormData().barangay}, {selectedCity?.name || getCurrentFormData().city}, {selectedProvince?.name || getCurrentFormData().province}</div>
                             <div><strong>Purpose:</strong> {getCurrentFormData().purpose}</div>
                             <div><strong>Date:</strong> {selectedDate ? format(selectedDate, 'MMMM d, yyyy') : 'Not selected'}</div>
                             <div><strong>Time:</strong> {
@@ -1612,6 +1750,19 @@ const WalkInsPage = () => {
                                         : 'No specific time (flexible)'
                             }</div>
                             <div><strong>Population:</strong> {getCurrentFormData().populationCount} visitor(s)</div>
+                            {getCurrentFormData().requestLetterUpload && getCurrentFormData().requestLetterUpload.length > 0 && (
+                                <div>
+                                    <strong>Request Letter Files:</strong>
+                                    <ul className="ml-4 mt-1">
+                                        {getCurrentFormData().requestLetterUpload.map((file, index) => (
+                                            <li key={index} className="text-xs">• {file.name}</li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )}
+                            {getCurrentFormData().additionalNotes && (
+                                <div><strong>Additional Notes:</strong> {getCurrentFormData().additionalNotes}</div>
+                            )}
                         </div>
                         <p className="text-sm text-gray-600">This visitor will be automatically confirmed and registered.</p>
                     </div>

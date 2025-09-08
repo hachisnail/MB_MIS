@@ -43,7 +43,13 @@ const storage = multer.diskStorage({
             return cb(new Error("Captcha verification failed"), null);
           }
         }
-        subDir = getFileCategory(file.mimetype); // separate folder by file type
+        
+        // Check if this is an appointment request letter upload - prioritize this over file type
+        if (req.path.includes('/appointment/files') || req.originalUrl.includes('/appointment/files')) {
+          subDir = "request-letter";
+        } else {
+          subDir = getFileCategory(file.mimetype); // separate folder by file type
+        }
       }
 
       const dir = path.join(UPLOAD_BASE_DIR, category, subDir);

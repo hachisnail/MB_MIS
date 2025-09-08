@@ -316,7 +316,7 @@ const Appointments = () => {
 
   return (
     <>
-      <div className="w-full h-full flex gap-x-15 overflow-scroll lg:flex-row flex-col">
+      <div className="w-full h-full flex gap-x-15 overflow-hidden lg:flex-row flex-col">
         {isPreview === false && (
           <SummaryPanel
             tabs={tabs}

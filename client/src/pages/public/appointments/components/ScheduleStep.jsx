@@ -52,6 +52,7 @@ const ScheduleStep = ({
     isLoadingDateAvailability,
     onAvailabilityRefresh,
     calendarEvents = [],
+    markAsInteracted,
 }) => {
     const [isDirty, setIsDirty] = useState(false);
     const [selectedDate, setSelectedDate] = useState(initialData?.selectedDate || new Date());
@@ -86,6 +87,7 @@ const ScheduleStep = ({
                             updated[key] = values[key];
                             changed = true;
                             setIsDirty(true);
+                            if (markAsInteracted) markAsInteracted();
                         }
                     }
                     return changed ? updated : prev;
@@ -93,11 +95,12 @@ const ScheduleStep = ({
             });
         });
         return () => subscription.unsubscribe();
-    }, [watch, setFormData]);
+    }, [watch, setFormData, markAsInteracted]);
 
     const handleDateSelect = (date) => {
         setSelectedDate(date);
         setValue('selectedDate', date, { shouldValidate: true });
+        if (markAsInteracted) markAsInteracted();
         // Trigger form change event
         window.dispatchEvent(new Event('formChanged'));
     };
@@ -193,7 +196,12 @@ const ScheduleStep = ({
                                                         <div key={time} className="relative group">
                                                             <button
                                                                 type="button"
-                                                                onClick={() => !isUnavailable && field.onChange(time)}
+                                                                onClick={() => {
+                                                                    if (!isUnavailable) {
+                                                                        field.onChange(time);
+                                                                        if (markAsInteracted) markAsInteracted();
+                                                                    }
+                                                                }}
                                                                 disabled={isUnavailable}
                                                                 className={`w-full px-5 py-3 border-2 rounded-lg text-left transition-colors relative text-lg
                                                                 ${isSelected

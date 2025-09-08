@@ -43,6 +43,11 @@ const Appointment = mainDb.define('Appointment', {
   additional_notes: {
     type: DataTypes.TEXT,
     allowNull: true
+  },
+  request_letter_files: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    comment: "JSON array of request letter filenames"
   }
 }, {
   tableName: 'appointment',

@@ -6,11 +6,10 @@ export const STATUS = [
   { label: 'Archived',  value: 'archived'  },
 ];
 
-// If you want different words in different UIs:
 export const STATUS_LABELS = {
   pending:   'Pending',
-  scheduled: 'Schedule', // or 'Scheduled' if you prefer
-  posted:    'Post',     // or 'Posted'
+  scheduled: 'Schedule', 
+  posted:    'Post',     
   rejected:  'Reject',
   archived:  'Archive',
 };

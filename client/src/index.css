@@ -292,7 +292,6 @@ input:-webkit-autofill {
 
 /* Ensure descendants inherit the bigger base (paragraphs, spans, etc.) */
 .article-public .editor-content-preview * {
-  font-size: inherit;
   line-height: inherit;
 }
 
@@ -314,4 +313,9 @@ input:-webkit-autofill {
 .editor-content-preview img,
 .ProseMirror img {
   height: auto;
+}
+
+.ProseMirror [style*="font-size"],
+.editor-content-preview [style*="font-size"] {
+  line-height: 1.6;
 }

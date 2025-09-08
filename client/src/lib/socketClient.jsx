@@ -35,19 +35,48 @@ class SocketClient {
     this._startHealthCheck();
   }
 
-  // 🔧 NEW: force a new Engine.IO handshake so server re-reads cookies
+  // ---- Room derivation & syncing (atomic) ----
+  _desiredRooms() {
+    const desired = new Set();
+    if (this.isGuest) {
+      desired.add("guestRoom");
+    } else if (this.userId) {
+      desired.add(`user:${this.userId}`);
+      desired.add("realtimeDB");
+    }
+    return desired;
+  }
+
+  _applyRoomsToServer(desired) {
+    // Leave anything not desired
+    for (const room of Array.from(this.joinedRooms)) {
+      if (!desired.has(room)) {
+        this.joinedRooms.delete(room);
+        if (this.socket.connected) this.socket.emit("leaveRoom", room);
+      }
+    }
+    // Join anything missing
+    for (const room of desired) {
+      if (!this.joinedRooms.has(room)) {
+        this.joinedRooms.add(room);
+        if (this.socket.connected) this.socket.emit("joinRoom", room);
+      }
+    }
+  }
+
+  _syncRooms() {
+    const desired = this._desiredRooms();
+    this._applyRoomsToServer(desired);
+  }
+
+  // 🔧 force a new Engine.IO handshake so server re-reads cookies
   rehandshake() {
     try {
-      // keep auth payload (browserId/tabId)
       this.socket.auth = { browserId: this.browserId, tabId: this.tabId };
-      // ensure we leave a clean holder for same-browser lock on the server
       if (this.socket.connected) {
-        this.socket.disconnect(); // closes transport so next connect is a fresh handshake
+        this.socket.disconnect();
       }
-      // slight delay lets transport settle before reconnect
-      setTimeout(() => {
-        this.socket.connect();
-      }, 30);
+      setTimeout(() => this.socket.connect(), 30);
     } catch (e) {
       console.warn("[Socket] rehandshake error:", e);
     }
@@ -63,23 +92,16 @@ class SocketClient {
 
     this.socket.on("connect", () => {
       setTimeout(() => {
+        // Register first (if user), then sync rooms in one atomic diff
         if (this.userId && !this.isGuest) {
           this.socket.emit("registerUser", this.userId);
-
-          const userRoom = `user:${this.userId}`;
-          if (!this.joinedRooms.has(userRoom)) this.joinedRooms.add(userRoom);
-          this.socket.emit("joinRoom", userRoom);
-
-          if (!this.joinedRooms.has("realtimeDB")) this.joinRoom("realtimeDB");
-
-          for (const room of this.joinedRooms)
-            this.socket.emit("joinRoom", room);
         } else {
-          if (!this.joinedRooms.has("guestRoom")) this.joinRoom("guestRoom");
+          // Explicitly clear any server-side user context
+          this.socket.emit("registerUser", null);
         }
-
+        this._syncRooms();
         this.readyCallbacks.forEach((cb) => cb());
-      }, 50);
+      }, 20);
     });
 
     this.socket.on("disconnect", (reason) => {
@@ -87,10 +109,19 @@ class SocketClient {
     });
 
     this.socket.on("dbChange", (payload) => this.handleDbChange(payload));
+
     this.socket.on("forceLogout", (data) => {
+      // Flip to guest immediately and atomically sync rooms
+      this.userId = null;
+      this.isGuest = true;
+
+      if (this.socket.connected) this.socket.emit("registerUser", null);
+      this._syncRooms();
+
       this.handleMessage({ type: "forceLogout", ...data });
       this.forceLogoutCallbacks.forEach((cb) => cb(data));
     });
+
     this.socket.on("message", (data) => this.handleMessage(data));
 
     this.socket.on("socketStats", (p) => this._emitLocal("socketStats", p));
@@ -143,40 +174,42 @@ class SocketClient {
   }
 
   registerUser(userId) {
-    const wasGuest = this.isGuest;
-    this.userId = userId;
+    this.userId = userId || null;
     this.isGuest = !userId;
 
-    if (this.isGuest) {
-      if (this.socket.connected && !this.joinedRooms.has("guestRoom")) {
-        this.joinRoom("guestRoom");
-      }
-      // do not emit registerUser(null)
-    } else {
-      if (this.socket.connected) {
-        this.socket.emit("registerUser", userId);
-        const userRoom = `user:${userId}`;
-        if (!this.joinedRooms.has(userRoom)) {
-          this.joinedRooms.add(userRoom);
-          this.socket.emit("joinRoom", userRoom);
-        }
-        if (wasGuest && this.joinedRooms.has("guestRoom"))
-          this.leaveRoom("guestRoom");
-        if (!this.joinedRooms.has("realtimeDB")) this.joinRoom("realtimeDB");
-      }
+    if (this.socket.connected) {
+      this.socket.emit("registerUser", this.userId || null);
+      this._syncRooms();
     }
+    // Not connected: rooms will sync on connect.
   }
 
   joinRoom(roomName) {
+    // Guards against illegal/system rooms from external callers
+    if (roomName === "guestRoom" && !this.isGuest) {
+      // ensure we’re not in it (defensive)
+      if (this.joinedRooms.has("guestRoom")) {
+        this.joinedRooms.delete("guestRoom");
+        if (this.socket.connected) this.socket.emit("leaveRoom", "guestRoom");
+      }
+      return;
+    }
+    if (roomName.startsWith("user:")) {
+      if (this.isGuest) return;
+      if (!this.userId || roomName !== `user:${this.userId}`) return;
+    }
+
     if (this.joinedRooms.has(roomName)) return;
     this.joinedRooms.add(roomName);
     if (this.socket.connected) this.socket.emit("joinRoom", roomName);
   }
+
   leaveRoom(roomName) {
     if (!this.joinedRooms.has(roomName)) return;
     this.joinedRooms.delete(roomName);
     if (this.socket.connected) this.socket.emit("leaveRoom", roomName);
   }
+
   sendMessage(roomName, message) {
     this.socket.emit("message", { room: roomName, message });
   }

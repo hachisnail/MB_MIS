@@ -268,19 +268,19 @@ const Router = () => {
           {/* sandbox for testing */}
           {flags["sandbox"] && (
             <>
-            <Route path="sandbox/scokets-panel" element={<AdminSocketsPanel/>}/>
-              <Route path="sandbox" element={<FileUploadDownload />} />
+            <Route path="dashboard/sandbox/scokets-panel" element={<AdminSocketsPanel/>}/>
+              <Route path="dashboard/sandbox" element={<FileUploadDownload />} />
               <Route
-                path="sandbox/preview/:encoded"
+                path="dashboard/sandbox/preview/:encoded"
                 element={<FilePreviewer />}
               />
-              <Route path="sandbox/modal" element={<ModalsTest />} />
-              <Route path="sandbox/router-flag" element={<RouteFlagToggle />} />
+              <Route path="dashboard/sandbox/modal" element={<ModalsTest />} />
+              <Route path="dashboard/sandbox/router-flag" element={<RouteFlagToggle />} />
               <Route
-                path="sandbox/socket-monitor"
+                path="dashboard/sandbox/socket-monitor"
                 element={<SocketMonitor />}
               />
-              <Route path="sandbox/table-forms" element={<TableAndForms />} />
+              <Route path="dashboard/sandbox/table-forms" element={<TableAndForms />} />
             </>
           )}
 

@@ -34,6 +34,40 @@ function createProxiedSocketClient(serverUrl) {
     _forceLogoutCallbacks: new Set(),
     _generic: new Map(),
 
+    // ---- Room derivation & syncing (proxy-level consistency) ----
+    _desiredRooms() {
+      const desired = new Set();
+      if (this.isGuest) {
+        desired.add("guestRoom");
+      } else if (this.userId) {
+        desired.add(`user:${this.userId}`);
+        desired.add("realtimeDB");
+      }
+      return desired;
+    },
+
+    _applyRoomsToLeader(desired) {
+      // Leave anything not desired
+      for (const room of Array.from(this.joinedRooms)) {
+        if (!desired.has(room)) {
+          this.joinedRooms.delete(room);
+          emitViaLeader("leaveRoom", room);
+        }
+      }
+      // Join anything missing
+      for (const room of desired) {
+        if (!this.joinedRooms.has(room)) {
+          this.joinedRooms.add(room);
+          emitViaLeader("joinRoom", room);
+        }
+      }
+    },
+
+    _syncRooms() {
+      const desired = this._desiredRooms();
+      this._applyRoomsToLeader(desired);
+    },
+
     on(event, cb) {
       if (!this._generic.has(event)) this._generic.set(event, new Set());
       this._generic.get(event).add(cb);
@@ -62,21 +96,31 @@ function createProxiedSocketClient(serverUrl) {
     },
 
     registerUser(userId) {
-      const wasGuest = this.isGuest;
-      this.userId = userId;
+      this.userId = userId || null;
       this.isGuest = !userId;
+
+      // Tell leader our current identity first
       if (userId) emitViaLeader("registerUser", userId);
-      if (this.isGuest) {
-        if (!this.joinedRooms.has("guestRoom")) this.joinRoom("guestRoom");
-      } else {
-        this.joinRoom(`user:${userId}`);
-        if (wasGuest && this.joinedRooms.has("guestRoom"))
-          this.leaveRoom("guestRoom");
-        if (!this.joinedRooms.has("realtimeDB")) this.joinRoom("realtimeDB");
-      }
+      else emitViaLeader("registerUser", null);
+
+      // Then atomically sync desired rooms
+      this._syncRooms();
     },
 
     joinRoom(room) {
+      // Guards so followers can’t reintroduce guestRoom or wrong user rooms
+      if (room === "guestRoom" && !this.isGuest) {
+        if (this.joinedRooms.has("guestRoom")) {
+          this.joinedRooms.delete("guestRoom");
+          emitViaLeader("leaveRoom", "guestRoom");
+        }
+        return;
+      }
+      if (room.startsWith("user:")) {
+        if (this.isGuest) return;
+        if (!this.userId || room !== `user:${this.userId}`) return;
+      }
+
       if (this.joinedRooms.has(room)) return;
       this.joinedRooms.add(room);
       emitViaLeader("joinRoom", room);
@@ -115,7 +159,7 @@ function createProxiedSocketClient(serverUrl) {
       }
     },
 
-    // 🔧 NEW: expose rehandshake via leader
+    // expose rehandshake via leader
     rehandshake() {
       if (isLeader && leaderClient) {
         leaderClient.rehandshake();
@@ -163,6 +207,11 @@ function createProxiedSocketClient(serverUrl) {
     for (const cb of proxy._readyCallbacks) cb();
   }
   function dispatchForceLogout(data) {
+    // Flip to guest locally and atomically sync rooms
+    proxy.userId = null;
+    proxy.isGuest = true;
+    proxy._syncRooms();
+
     for (const cb of proxy._forceLogoutCallbacks) cb(data);
     dispatchMessage({ type: "forceLogout", ...data });
     dispatchGeneric("forceLogout", data);
@@ -201,8 +250,26 @@ function createProxiedSocketClient(serverUrl) {
       forward.forEach((ev) => {
         real.socket.on(ev, (data) => {
           if (ev === "connect") {
-            for (const room of proxy.joinedRooms)
-              real.socket.emit("joinRoom", room);
+            // On leader connect, ensure identity then rooms are applied atomically
+            if (proxy.userId && !proxy.isGuest) {
+              real.socket.emit("registerUser", proxy.userId);
+            } else {
+              real.socket.emit("registerUser", null);
+            }
+            // Sync desired rooms to the server
+            const desired = proxy._desiredRooms();
+            // Leave any unknowns (defensive)
+            if (!proxy.isGuest) {
+              real.socket.emit("leaveRoom", "guestRoom");
+            } else {
+              // guest should not be in user:* or realtimeDB
+              for (const r of Array.from(proxy.joinedRooms)) {
+                if (r.startsWith("user:") || r === "realtimeDB")
+                  real.socket.emit("leaveRoom", r);
+              }
+            }
+            for (const room of desired) real.socket.emit("joinRoom", room);
+
             dispatchReady();
             dispatchGeneric("connect");
           }
@@ -252,7 +319,7 @@ function createProxiedSocketClient(serverUrl) {
       else if (msg.ev === "connect") dispatchReady();
       dispatchGeneric(msg.ev, msg.data);
     } else if (msg.t === "reh") {
-      // 🔧 non-leader asked us to rehandshake
+      // non-leader asked us to rehandshake
       if (isLeader && leaderClient) leaderClient.rehandshake();
     }
   };

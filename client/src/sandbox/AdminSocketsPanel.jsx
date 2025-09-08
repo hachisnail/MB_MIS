@@ -80,7 +80,7 @@ export default function AdminSocketsPanel() {
   }
 
   return (
-    <div className="p-4 space-y-4">
+    <div className="p-4 h-full space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-gray-900">Connected Clients</h2>
         <div className="flex items-center gap-2">
@@ -114,13 +114,13 @@ export default function AdminSocketsPanel() {
           placeholder="Search socketId / userId / browserId / tabId / room"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          className="w-full rounded-md border border-gray-400 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
         />
       </div>
 
-      <div className="overflow-hidden rounded-lg border border-gray-200">
+      <div className="h-[calc(100%-10rem)] overflow-hidden rounded-lg border border-gray-400">
         <table className="min-w-full border-collapse">
-          <thead className="bg-gray-50">
+          <thead className="bg-gray-200">
             <tr>
               <Th>Socket ID</Th>
               <Th>User ID</Th>
@@ -157,7 +157,7 @@ export default function AdminSocketsPanel() {
         </table>
       </div>
 
-      <div className="text-xs text-gray-500">
+      <div className="text-xs text-gray-600">
         Total: {stats.length} • Showing: {filtered.length}
       </div>
     </div>
@@ -173,18 +173,18 @@ function Th({ children }) {
   );
 }
 function Td({ children }) {
-  return <td className="px-3 py-2 align-top text-[13px] text-gray-800">{children}</td>;
+  return <td title={children}  className="px-3 py-2 align-top text-[13px] text-gray-800 truncate">{children}</td>;
 }
 function TdMono({ children }) {
   return (
-    <td className="px-3 py-2 align-top text-[12px] text-gray-800 font-mono break-all">
+    <td title={children}  className="px-3 py-2 align-top text-[12px] text-gray-800 font-mono break-all truncate">
       {children}
     </td>
   );
 }
 function TdWrap({ children }) {
   return (
-    <td className="px-3 py-2 align-top text-[13px] text-gray-800 break-words">
+    <td title={children} className="px-3 py-2 align-top text-[13px] text-gray-800 break-words truncate">
       {children}
     </td>
   );

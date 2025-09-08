@@ -235,11 +235,14 @@
 
 // export default FileUploadDownload;
 import React from 'react'
+import { NavLink } from 'react-router-dom'
 
-const FileUploadDownload = () => {
+ function FileUploadDownload  ()  {
+
   return (
-    <div>
-      
+    <div className='w-full h-full border flex flex-col'>
+      <span>Sandbox Links</span>
+      <NavLink to="/admin/dashboard" className="px-2 py-1 bg-gray-500 w-fit rounded-md text-white">back </NavLink>
     </div>
   )
 }

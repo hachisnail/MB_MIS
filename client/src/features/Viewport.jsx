@@ -15,17 +15,47 @@ const WHEEL_PAN_SPEED_Y = 1;
 // How fast zoom changes when ctrl+wheel (smaller = slower)
 const WHEEL_ZOOM_SENSITIVITY = 0.0015;
 
+// Tailwind-like defaults (in px)
+const BREAKPOINTS = { sm: 640, md: 768, lg: 1024, xl: 1280, "2xl": 1536 };
+
 export default function ViewPort({
   children,
   title = "",
   width = 600,
   height = 400,
+  /** NEW: responsive sizes per breakpoint. Example:
+   *  sizes={{ base:{width:320,height:240}, sm:{width:480,height:320}, md:{width:640,height:400} }}
+   */
+  sizes, // optional
   containerClassName = "",
   containerStyle = {},
   topPadding = 20,
 }) {
   const containerRef = useRef(null);
   const innerRef = useRef(null);
+
+  // Track active breakpoint
+  const [bp, setBp] = useState("base");
+
+  // compute active size from sizes or fallback to width/height
+  const activeSize = useMemo(() => {
+    if (!sizes) return { width, height };
+    // determine the best match from current bp
+    const order = ["base", "sm", "md", "lg", "xl", "2xl"];
+    const bpIndex = order.indexOf(bp);
+    // inherit from the closest defined breakpoint <= current
+    for (let i = bpIndex; i >= 0; i--) {
+      const k = order[i];
+      if (sizes[k]) return { width: sizes[k].width ?? width, height: sizes[k].height ?? height };
+    }
+    // fallback to base props
+    return { width, height };
+  }, [sizes, bp, width, height]);
+
+  const toCssSize = (v) => (typeof v === "number" ? `${v}px` : v);
+
+  const pxWidth = useMemo(() => toCssSize(activeSize.width), [activeSize.width]);
+  const pxHeight = useMemo(() => toCssSize(activeSize.height), [activeSize.height]);
 
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [scale, setScale] = useState(1);
@@ -44,14 +74,33 @@ export default function ViewPort({
   const isCaptured = useRef(false);
   const lastPointerType = useRef("mouse"); // "mouse" | "pen" | "touch"
 
-  const pxWidth = useMemo(
-    () => (typeof width === "number" ? `${width}px` : width),
-    [width]
-  );
-  const pxHeight = useMemo(
-    () => (typeof height === "number" ? `${height}px` : height),
-    [height]
-  );
+  // ----- Breakpoint detection -----
+  useEffect(() => {
+    const computeBp = () => {
+      const w = window.innerWidth || 0;
+      if (w >= BREAKPOINTS["3xl"]) return "3xl";
+      if (w >= BREAKPOINTS["2xl"]) return "2xl";
+      if (w >= BREAKPOINTS.xl) return "xl";
+      if (w >= BREAKPOINTS.lg) return "lg";
+      if (w >= BREAKPOINTS.md) return "md";
+      if (w >= BREAKPOINTS.sm) return "sm";
+      return "base";
+    };
+    const apply = () => setBp(computeBp());
+    apply();
+    let raf = 0;
+    const onResize = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(apply);
+    };
+    window.addEventListener("resize", onResize);
+    window.addEventListener("orientationchange", onResize);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("resize", onResize);
+      window.removeEventListener("orientationchange", onResize);
+    };
+  }, []);
 
   /** ---------------- Helpers ---------------- */
   const clampPosition = useCallback((x, y, s) => {
@@ -104,7 +153,7 @@ export default function ViewPort({
     initialScale.current = 1;
   }, [topPadding]);
 
-  // Initialize / re-center when size inputs change
+  // Initialize / re-center when size inputs change (includes breakpoint swap)
   useLayoutEffect(() => {
     resetPosition();
   }, [resetPosition, pxWidth, pxHeight]);
@@ -162,8 +211,7 @@ export default function ViewPort({
     return !!el.closest(interactiveSelector);
   };
 
-  const pointerDistance = (x1, y1, x2, y2) =>
-    Math.hypot(x2 - x1, y2 - y1);
+  const pointerDistance = (x1, y1, x2, y2) => Math.hypot(x2 - x1, y2 - y1);
 
   /** ---------------- Pan (pointer) on container ---------------- */
   const onPointerDown = useCallback((e) => {

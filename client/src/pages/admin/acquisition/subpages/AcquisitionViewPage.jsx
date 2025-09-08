@@ -528,19 +528,30 @@ const AcquisitionViewPage = () => {
               {/* To do: add the document document */}
               {!contributionData.status === "pending" ? (
                 <div className="min-w-[58em] h-full shadow-sm flex items-start">
-                <div className="w-full h-20 bg-black flex flex-col rounded-t-md">
-                  <div className="h-full w-full flex items-center justify-center">
-                    <span className="text-white text-3xl font-bold">Memorandum of Agreement</span>
+                  <div className="w-full h-20 bg-black flex flex-col rounded-t-md">
+                    <div className="h-full w-full flex items-center justify-center">
+                      <span className="text-white text-3xl font-bold">
+                        Memorandum of Agreement
+                      </span>
+                    </div>
+                    <div className="rounded-t-md w-full min-h-1 bg-white" />
                   </div>
-                  <div className="rounded-t-md w-full min-h-1 bg-white" />
-                </div>
-
                 </div>
               ) : (
                 <ViewPort
                   title="Memorandum Of Agreement"
-                  width={550}
-                  height={545}
+                  // width={550}
+                  // height={545}
+                  sizes={{
+                    // breakpoints
+                    // base:  { width: 320,  height: 240 },
+                    // sm:    { width: 480,  height: 320 },
+                    // md:    { width: 640,  height: 400 },
+                    // lg:    { width: 800,  height: 500 },
+                    xl: { width: 100, height: 600 },
+                    "2xl": { width: 550, height: 545 },
+                    "3xl": { width: 550, height: 545 },
+                  }}
                 >
                   {/* item inside viewport */}
                   <div className="w-[50rem] h-[70rem] bg-black flex flex-col items-center justify-center gap-y-5">

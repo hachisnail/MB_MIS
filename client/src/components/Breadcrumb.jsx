@@ -7,7 +7,7 @@ const routeMeta = [
   { path: "/admin/acquisition/add-artifact", title: "Manually add a new Artifact" },
   { path: "/admin/acquisition/lending/:encoded", title: "Lending Form" },
   { path: "/admin/acquisition/donation/:encoded", title: "Donation Form" },
-    { path: "/admin/acquisition/lending/:encoded/view", title: "File Viewer" },
+  { path: "/admin/acquisition/lending/:encoded/view", title: "File Viewer" },
   { path: "/admin/acquisition/donation/:encoded/view", title: "File Viewer" },
   { path: "/admin/logs", title: "Activities", theme: "text-gray-400" },
   { path: "/admin/logs/:encoded", title: "Activity", theme: "text-gray-400" },
@@ -19,6 +19,7 @@ const routeMeta = [
   { path: "/admin/sandbox/preview/:encoded", title: "File Preview" },
   { path: "/admin/appointment", title: "Appointments Management" },
   { path: "/admin/appointment/:encoded", title: "View Appointment", theme: "text-gray-800" },
+  { path: "/admin/appointment/:encoded/view", title: "File Viewer", theme: "text-gray-800" },
   { path: "/admin/appointment/walk-ins", title: "New Appointment", theme: "text-gray-800" },
   { path: "/admin/schedule", title: "Schedules Management" },
   { path: "/admin/schedule/:encoded", title: "View Appointment from Schedule", theme: "text-gray-800" },
@@ -47,7 +48,7 @@ function decodeLabelWithoutId(encoded) {
   return decoded.replace(/^\d+\s+/, "");
 }
 
-const Breadcrumb = ({hideTitle = false, overrideTheme=""}) => {
+const Breadcrumb = ({ hideTitle = false, overrideTheme = "" }) => {
   const location = useLocation();
   const pathSegments = location.pathname.split("/").filter(Boolean);
 
@@ -65,7 +66,7 @@ const Breadcrumb = ({hideTitle = false, overrideTheme=""}) => {
       currentLink += `/${segment}`;
 
       // Skip segments in breadcrumb display
-      if (["admin", "preview", "files", "pictures", "edit-article", "lending", "donation" ].includes(segment)) return null;
+      if (["admin", "preview", "files", "pictures", "edit-article", "lending", "donation"].includes(segment)) return null;
 
       // Decode if valid Base64
       let label = decodeLabelWithoutId(segment);

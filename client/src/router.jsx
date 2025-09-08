@@ -251,6 +251,10 @@ const Router = () => {
                 element={<AppointmentViewPage />}
               />
               <Route
+                path="appointment/:encoded/view"
+                element={<FilePreviewer />}
+              />
+              <Route
                 path="appointment/walk-ins/"
                 element={<WalkInsPage />}
               />
@@ -268,7 +272,7 @@ const Router = () => {
           {/* sandbox for testing */}
           {flags["sandbox"] && (
             <>
-            <Route path="dashboard/sandbox/scokets-panel" element={<AdminSocketsPanel/>}/>
+              <Route path="dashboard/sandbox/scokets-panel" element={<AdminSocketsPanel />} />
               <Route path="dashboard/sandbox" element={<FileUploadDownload />} />
               <Route
                 path="dashboard/sandbox/preview/:encoded"

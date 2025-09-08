@@ -10,6 +10,7 @@ import StyledButton from '@/components/buttons/StyledButton';
 import Toast from '@/features/Toast';
 import { validateAppointmentSchedule } from '@/utils/scheduleValidation';
 import { normalizeStatus } from '../components/statusUtils';
+import AppointmentFileViewer from '../components/AppointmentFileViewer';
 
 export const AppointmentViewPage = ({
   showModal,
@@ -616,6 +617,14 @@ export const AppointmentViewPage = ({
               <div className="text-2xl text-blue-600 font-medium">{modalData.notes}</div>
             </div>
           )}
+
+          {/* Request Letter Files Section */}
+          <div className="mb-14">
+            <AppointmentFileViewer
+              requestLetterFiles={modalData.request_letter_files || modalData.requestLetterFiles || []}
+              containerHeight="h-[30rem]"
+            />
+          </div>
 
           {shouldShowRespondSection() && (
             <div>

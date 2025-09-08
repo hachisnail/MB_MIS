@@ -691,7 +691,8 @@ export const getAppointmentById = async (req, res) => {
         'start_time',
         'end_time',
         'additional_notes',
-        'creation_date'
+        'creation_date',
+        'request_letter_files'
       ],
       include: [
         {
@@ -735,6 +736,17 @@ export const getAppointmentById = async (req, res) => {
       return formattedStart && formattedEnd ? `${formattedStart} - ${formattedEnd}` : "Flexible";
     };
 
+    // Parse request_letter_files from JSON string
+    let requestLetterFiles = [];
+    try {
+      if (appointment.request_letter_files) {
+        requestLetterFiles = JSON.parse(appointment.request_letter_files);
+      }
+    } catch (error) {
+      console.error('Error parsing request_letter_files:', error);
+      requestLetterFiles = [];
+    }
+
     // Format the data for the frontend (matching AppointmentViewPage expected format)
     const formattedAppointment = {
       appointmentId: appointment.appointment_id,
@@ -756,7 +768,8 @@ export const getAppointmentById = async (req, res) => {
       end_time: appointment.end_time,
       notes: appointment.additional_notes,
       status: appointment.AppointmentStatus?.status || 'PENDING',
-      updatedAt: appointment.AppointmentStatus?.updated_at ? new Date(appointment.AppointmentStatus.updated_at).toLocaleString() : 'N/A'
+      updatedAt: appointment.AppointmentStatus?.updated_at ? new Date(appointment.AppointmentStatus.updated_at).toLocaleString() : 'N/A',
+      requestLetterFiles: requestLetterFiles
     };
 
     return res.json(formattedAppointment);

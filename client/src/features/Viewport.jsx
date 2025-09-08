@@ -295,7 +295,7 @@ export default function ViewPort({
       <div className={`px-6 pb-6 ${title ? "pt-5" : "pt-6"} relative`}>
         <div
           ref={containerRef}
-          className={`rounded-md relative overflow-hidden ${containerClassName} shadow-[inset_0_8px_12px_rgba(0,0,0,0.25),inset_0_-8px_12px_rgba(0,0,0,0.50)] ${dragging ? "cursor-grabbing" : "cursor-grab"}`}
+          className={`rounded-md relative border border-gray-400 overflow-hidden ${containerClassName} shadow-[inset_0_8px_12px_rgba(0,0,0,0.25),inset_0_-8px_12px_rgba(0,0,0,0.50)] ${dragging ? "cursor-grabbing" : "cursor-grab"}`}
           style={{ touchAction: "none", width: pxWidth, height: pxHeight, ...containerStyle }}
           onContextMenu={(e) => e.preventDefault()}
           onPointerDown={onPointerDown}

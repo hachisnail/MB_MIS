@@ -404,7 +404,7 @@ const RichTextEditor = forwardRef(
                      md:min-h-[36.5rem] md:max-h-[36.5rem]
                      lg:min-h-[36.5rem] lg:max-h-[36.5rem]
                      xl:min-h-[36.6rem] xl:max-h-[36.6rem]
-                     2xl:min-h-[37rem] 2xl:max-h-[37rem]
+                     2xl:min-h-[30rem] 2xl:max-h-[37rem]
                      overflow-auto prose focus:outline-none
                      [&_.youtube-video]:!w-full [&_.youtube-video]:!max-w-[400px] [&_.youtube-video]:!mx-auto font-hina"
           tabIndex={0}

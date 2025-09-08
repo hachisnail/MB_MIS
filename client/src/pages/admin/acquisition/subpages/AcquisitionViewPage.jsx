@@ -383,7 +383,7 @@ const AcquisitionViewPage = () => {
           {/* full document */}
           {activeDocument === "Document" && (
             <div className="w-full h-full rounded-md grid grid-cols-[43rem_1fr_40rem]">
-              {/* Left column */}
+              {/* Left column */} 
               <div className="col-span-1 w-full h-full bg-black relative overflow-visible flex flex-col">
                 <div className="absolute left-0 -top-[12rem] w-full h-[12rem] bg-black flex items-start justify-end pl-10 pb-5 pt-4 overflow-hidden flex-col">
                   <span className="text-white text-3xl font-bold text-left break-words line-clamp-3 max-w-[38rem]">

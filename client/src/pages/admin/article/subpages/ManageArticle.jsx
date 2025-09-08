@@ -1073,8 +1073,8 @@ const ArticleEditorForm = () => {
                     // md:    { width: 640,  height: 400 },
                     // lg:    { width: 800,  height: 500 },
                     // xl: { width: 100, height: 600 },
-                    "2xl": { width: 650, height: 545 },
-                    "3xl": { width: 750, height: 845 },
+                    "2xl": { width: 550, height: 545 },
+                    "3xl": { width: 750, height: 700 },
                   }}
   >
     <div className="bg-white w-full max-w-[50rem] p-6 rounded-lg shadow-2xl mt-4 2xl:mt-0">

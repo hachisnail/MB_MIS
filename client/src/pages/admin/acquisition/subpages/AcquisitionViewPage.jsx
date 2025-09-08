@@ -550,7 +550,7 @@ const AcquisitionViewPage = () => {
                     // lg:    { width: 800,  height: 500 },
                     // xl: { width: 100, height: 600 },
                     "2xl": { width: 550, height: 545 },
-                    "3xl": { width: 550, height: 1945 },
+                    "3xl": { width: 550, height: 945 },
                   }}
                 >
                   {/* item inside viewport */}

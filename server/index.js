@@ -1,4 +1,4 @@
-import express from "express";
+import express, { Router } from "express";
 import session from "express-session";
 import dotenv from "dotenv";
 import cors from "cors";
@@ -7,14 +7,14 @@ import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs";
 
-import { mainDb } from "./src/models/authModels.js";
+import { mainDb, logsDb } from "./src/models/authModels.js";
 import sessionStore from "./src/configs/sessionStore.js";
 import authRoutes from "./src/routes/auth.js";
 import uploadRoutes from "./src/routes/uploadRoutes.js";
 import { initializeSocket } from "./src/configs/socketServer.js";
 import { requireAuth,requireRole } from "./src/middlewares/authMiddlewares.js";
 import { startArticleScheduler } from './src/services/scheduler.js';
-
+import { postEvents, getArticleStats, getNextSuggestions } from "./src/controllers/EngagementController.js";
 
 dotenv.config();
 
@@ -24,6 +24,12 @@ const __dirname = path.dirname(__filename);
 
 const PUBLIC_UPLOADS = ["pictures", "files"];
 const UPLOAD_BASE_DIR = process.env.UPLOAD_BASE_DIR || path.join(process.cwd(), "..", "uploads");
+
+
+const engagementRoutes = Router();
+engagementRoutes.post("/events", postEvents);
+engagementRoutes.get("/article/:id", getArticleStats);
+engagementRoutes.get("/suggest/next", getNextSuggestions);
 
 // const UPLOAD_BASE_DIR = "/uploads";
 
@@ -88,6 +94,7 @@ app.get(/^\/uploads\/private\/(.+)$/, requireAuth, requireRole([1, 2]), (req, re
 
 app.use("/api", uploadRoutes);
 app.use("/api/auth", authRoutes);
+app.use("/api/engagement", engagementRoutes);
 
 app.use((req, res, next) => {
   console.log("req.secure:", req.secure);
@@ -153,8 +160,11 @@ if (process.env.NODE_ENV === 'production') {
 (async () => {
   try {
     await mainDb.authenticate();
+    await logsDb.authenticate();
     await sessionStore.sync();
     await mainDb.sync();
+    await logsDb.sync();
+    
 
 
 // Start the article scheduler here

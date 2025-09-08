@@ -1,6 +1,7 @@
 import { DataTypes } from "sequelize";
 import { mainDb, logsDb } from "../configs/databases.js";
 import { addDbChangeHooks } from "../hooks/emitDbChangeHooks.js";
+import EngagementEventModel from "./EngagementEvent.js"
 
 // Role Model
 const Role = mainDb.define("Role", {
@@ -110,6 +111,10 @@ const UserSession = logsDb.define("UserSession", {
   timestamps: false,
 });
 
+// EngagementEvent model (store in logs DB)
+const EngagementEvent = EngagementEventModel(logsDb, DataTypes);
+
+
 // Associations
 Role.hasMany(User, { foreignKey: "roleId" });
 User.belongsTo(Role, { foreignKey: "roleId" });
@@ -122,4 +127,4 @@ addDbChangeHooks(Role, "Role");
 addDbChangeHooks(User, "User");
 addDbChangeHooks(UserSession, "UserSession");
 
-export { mainDb, Role, User, UserSession };
+export { mainDb, logsDb, Role, User, UserSession, EngagementEvent };

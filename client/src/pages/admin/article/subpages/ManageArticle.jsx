@@ -170,25 +170,44 @@ const ArticleEditorForm = () => {
     formData.append("reviewer_notes", reviewerNotes || "");
     formData.append("status", status);
 
-    let startDateTime = "";
-    let endDateTime = "";
+    // inside handleSubmit
+    let startDateTime = '';
+    let endDateTime = '';
 
-    if (status === "scheduled") {
-      startDateTime =
-        uploadPeriodStart && uploadPeriodStartTime
-          ? `${uploadPeriodStart}T${uploadPeriodStartTime}:00`
-          : uploadPeriodStart || "";
-      endDateTime =
-        uploadPeriodEnd && uploadPeriodEndTime
-          ? `${uploadPeriodEnd}T${uploadPeriodEndTime}:00`
-          : uploadPeriodEnd || "";
+    const toISOZFromManila = (datePart, timePart, fallbackHHmm = '00:00') => {
+      if (!datePart) return '';
+      const hhmm = (timePart && timePart.length ? timePart : fallbackHHmm).slice(0, 5);
+      // Build an explicit Manila offset, then normalize to UTC Z
+      const isoWithOffset = `${datePart}T${hhmm}:00+08:00`;
+      return new Date(isoWithOffset).toISOString();
+    };
 
-      formData.append("uploadPeriodStart", startDateTime);
-      formData.append("uploadPeriodEnd", endDateTime);
+    if (status === 'scheduled') {
+      // if user didn’t pick a time, default start 08:00 and end 23:59 (optional, tweak as you like)
+      startDateTime = toISOZFromManila(uploadPeriodStart, uploadPeriodStartTime, '08:00');
+      endDateTime   = toISOZFromManila(uploadPeriodEnd,   uploadPeriodEndTime,   '23:59');
+
+      // Validate: end must be strictly after start
+      if (!startDateTime) {
+        setErrors((e) => ({ ...e, uploadPeriodStart: 'Start is required for scheduled.' }));
+        return;
+      }
+      if (!endDateTime) {
+        setErrors((e) => ({ ...e, uploadPeriodEnd: 'End is required for scheduled.' }));
+        return;
+      }
+      if (new Date(endDateTime) <= new Date(startDateTime)) {
+        setErrors((e) => ({ ...e, uploadPeriodEnd: 'End must be after Start.' }));
+        return;
+      }
+
+      formData.append('uploadPeriodStart', startDateTime);
+      formData.append('uploadPeriodEnd', endDateTime);
     } else {
-      formData.append("uploadPeriodStart", "");
-      formData.append("uploadPeriodEnd", "");
+      formData.append('uploadPeriodStart', '');
+      formData.append('uploadPeriodEnd', '');
     }
+
 
     if (thumbnail && thumbnail instanceof File) {
       formData.append("thumbnail", thumbnail);
@@ -1052,7 +1071,7 @@ const ArticleEditorForm = () => {
                     className="w-full md:w-auto px-6 py-3 bg-[#c78216] text-white font-bold rounded-2xl hover:bg-[#d69641] transition-colors"
                   >
                     Save Status
-                  </Button>
+                  </Button> 
                 </div>
               )}
             </form>

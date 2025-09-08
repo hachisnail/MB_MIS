@@ -13,8 +13,8 @@ const MAX_SCALE = 3;
 const POS_THRESHOLD_PX = 2;
 const SCALE_THRESHOLD = 0.01;
 
-const DRAG_THRESHOLD_MOUSE = 5; // px
-const DRAG_THRESHOLD_TOUCH = 10; // px
+const DRAG_THRESHOLD_MOUSE = 5; 
+const DRAG_THRESHOLD_TOUCH = 10;
 
 // How fast wheel pans vertically (pixels per wheel delta pixel)
 const WHEEL_PAN_SPEED_Y = 1;

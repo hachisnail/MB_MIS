@@ -534,7 +534,7 @@ const AcquisitionViewPage = () => {
                         Memorandum of Agreement
                       </span>
                     </div>
-                    <div className="rounded-t-md w-full min-h-1 bg-white" />
+                    <div className="rounded-t-md w-full  min-h-1 bg-white" />
                   </div>
                 </div>
               ) : (
@@ -548,9 +548,9 @@ const AcquisitionViewPage = () => {
                     // sm:    { width: 480,  height: 320 },
                     // md:    { width: 640,  height: 400 },
                     // lg:    { width: 800,  height: 500 },
-                    xl: { width: 100, height: 600 },
+                    // xl: { width: 100, height: 600 },
                     "2xl": { width: 550, height: 545 },
-                    "3xl": { width: 550, height: 545 },
+                    "3xl": { width: 550, height: 1945 },
                   }}
                 >
                   {/* item inside viewport */}

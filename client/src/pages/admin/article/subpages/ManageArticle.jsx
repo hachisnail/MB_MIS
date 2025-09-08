@@ -13,6 +13,7 @@ import { handleGenerateCaption, handleSummarizeCaption } from "../components/Cap
 import RichTextEditor from "../components/RichTextEditor";
 import { X as XIcon } from "lucide-react"; // only needed for thumbnail 'X' button
 import { STATUS, STATUS_LABELS } from "../components/articleStatus";
+import texture from "../../../../assets/Texture.png"
 
 const ArticleEditorForm = () => {
   const BASE_URL = import.meta.env.VITE_API_BASE_URL;
@@ -1067,7 +1068,9 @@ const ArticleEditorForm = () => {
 
         {/* RIGHT SIDE - Article Preview */}
         <ViewPort width={550} height={545}>
-          <div className="bg-white w-[50rem] p-6 rounded-lg shadow-2xl mt-4 2xl:mt-0">
+          <div       
+            style={{ backgroundImage: `url(${texture})` }}
+            className="bg-white w-[50rem] p-6 rounded-lg shadow-sm shadow-gray-400 mt-4 2xl:mt-0">
             <h3 className="text-2xl font-bold mb-4">Preview</h3>
             <div className="border border-gray-200 p-4 mb-4 rounded">
               <h1 className="text-center text-3xl font-bold">{title || "Title of the News or Event"}</h1>

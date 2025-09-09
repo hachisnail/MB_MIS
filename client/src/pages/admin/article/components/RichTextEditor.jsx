@@ -1,5 +1,5 @@
 import React, { useRef, forwardRef, useImperativeHandle } from "react";
-import { EditorContent, useEditor } from "@tiptap/react";
+import { EditorContent, useEditor, BubbleMenu } from "@tiptap/react";
 
 // TipTap extensions
 import StarterKit from "@tiptap/starter-kit";
@@ -26,7 +26,7 @@ import CustomImage from "../components/CustomImage";
 import {
   Bold,
   Italic,
-  UnderlineIcon,
+  Underline as UnderlineIcon,
   AlignLeft,
   AlignCenter,
   AlignRight,
@@ -410,6 +410,91 @@ const RichTextEditor = forwardRef(
           tabIndex={0}
           onClick={() => editor?.commands.focus()}
         >
+          {/* Bubble Menu (shows on text selection) */}
+          {editor && (
+            <BubbleMenu
+              editor={editor}
+              tippyOptions={{ duration: 150, placement: "top" }}
+              shouldShow={({ editor, state, from, to }) => {
+                // show only when there is a text selection and not on images/table controls
+                if (!editor?.isEditable) return false;
+                if (from === to) return false;
+                if (editor.isActive("image")) return false;
+                return true;
+              }}
+              className="z-50"
+            >
+              
+              <div className="flex items-center gap-1 rounded-md border border-neutral-300 bg-white/95 backdrop-blur px-1.5 py-1 shadow-lg">
+                {/* Font Size + Highlight */}
+          <div className="flex items-center gap-1">
+            <TypeIcon size={16} className="text-gray-600" />
+            <select
+              onChange={(e) => {
+                editor?.chain().focus().setFontSize(e.target.value).run();
+                setIsDirty?.(true);
+              }}
+              className="px-1 py-1 border rounded text-sm"
+              defaultValue="1em"
+            >
+              {fontSizes.map((s) => (
+                <option key={s.value} value={s.value}>
+                  {s.label}
+                </option>
+              ))}
+            </select>
+
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                editor?.chain().focus().toggleHighlight().run();
+                setIsDirty?.(true);
+              }}
+              className={`p-1 border rounded ${editor?.isActive("highlight") ? "bg-white" : ""}`}
+              title="Highlight"
+            >
+              <HighlighterIcon size={11} />
+            </button>
+          </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    editor.chain().focus().toggleBold().run();
+                    setIsDirty?.(true);
+                  }}
+                  className={`p-1 rounded border ${editor.isActive("bold") ? "bg-neutral-100" : "bg-white"}`}
+                  title="Bold"
+                >
+                  <Bold size={14} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    editor.chain().focus().toggleItalic().run();
+                    setIsDirty?.(true);
+                  }}
+                  className={`p-1 rounded border ${editor.isActive("italic") ? "bg-neutral-100" : "bg-white"}`}
+                  title="Italic"
+                >
+                  <Italic size={14} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    editor.chain().focus().toggleUnderline().run();
+                    setIsDirty?.(true);
+                  }}
+                  className={`p-1 rounded border ${editor.isActive("underline") ? "bg-neutral-100" : "bg-white"}`}
+                  title="Underline"
+                >
+                  <UnderlineIcon size={14} />
+                </button>
+              </div>
+            </BubbleMenu>
+          )}
+
           <EditorContent editor={editor} />
         </div>
       </div>

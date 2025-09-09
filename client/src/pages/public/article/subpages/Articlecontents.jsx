@@ -254,75 +254,113 @@ useEffect(() => {
       className="flex flex-col gap-y-4 h-auto w-screen pt-7"
       style={{ backgroundImage: `url(${texture})` }}
     >
-      {/* Header band */}
-      <div className="flex w-screen h-auto justify-center mb-[5rem] pt-40 font-hina">
-        <div className="flex w-[140rem] h-auto items-stretch text-center text-[2rem] border-t-3 border-b-3 border-black">
-          {/* Left Column */}
-          <div className="flex flex-col items-end justify-start p-6 gap-4 basis-[22.5%]">
-            <div className="flex gap-2 mb-2 mr-4">
-              <img src={MSBLogo} alt="MSB Logo" className="w-10 h-10 inline-block" />
-              <img src={seal} alt="Seal" className="w-10 h-10 inline-block" />
-            </div>
-            <div className="flex flex-col items-end text-[1.1rem] leading-tight">
-              <span className="font-bold">
-                The Provincial Government of <br />
-                Camarines Norte
-              </span>
-              <span>
-                Museum, Archives and Shrine <br />
-                Curation Division
-              </span>
-            </div>
-          </div>
-          {/* Middle Column */}
-          <div className="flex flex-col items-center justify-center p-6 border-l-3 border-r-3 border-black basis-[55%]">
-            <span className="text-[3rem] font-bold">
-              Museo {" "}
-              <span className="text-[3rem] font-bold" style={{ color: "#F8BB1F", textShadow: "0 0 2px #bfa100" }}>B</span>
-              ulawan News
-            </span>
-            <span className="text-[5rem] font-bold underline ">{articleName || article.title}</span>
-            <span className="text-[2rem]">{article.author || "N/A"}</span>
-          </div>
-          {/* Right Column */}
-          <div className="flex flex-col items-start justify-center p-6 gap-2 basis-[22.5%]">
-            <span className="text-[1.3rem] font-semibold">
-              {article.upload_date
-                ? new Date(article.upload_date).toLocaleDateString("en-US", { weekday: "long" })
-                : "N/A"}
-            </span>
-            <span className="text-[1.1rem]">
-              {article.upload_date
-                ? new Date(article.upload_date).toLocaleDateString("en-US", { day: "numeric", month: "long", year: "numeric" })
-                : "N/A"}
-            </span>
-            <span className="font-semibold">
-              {article?.volume ? `Vol.${article.volume}` : "Vol.—"},{" "}
-              {article?.sequence_number
-                ? ((article?.content_type || "").toLowerCase() === "article"
-                    ? `No.${article.sequence_number}`
-                    : `Event #${article.sequence_number}`)
-                : ((article?.content_type || "").toLowerCase() === "article" ? "No.—" : "Event #—")}
-            </span>
+{/* Header band (bumped font sizes) */}
+<div className="flex w-full justify-center pt-36 mb-16 font-hina">
+  <div className="w-[120rem] min-w-[30rem] max-w-[120rem]">
+    {/* Outer top border */}
+    <div className="border-t-[3px] border-black" />
 
-          </div>
+    {/* 3-column band */}
+    <div className="grid grid-cols-[22.5%_55%_22.5%] items-stretch text-center">
+
+      {/* Left column */}
+      <div className="flex flex-col items-end justify-center px-4 py-3 gap-3">
+        <div className="flex gap-2 mr-2">
+          <img src={MSBLogo} alt="MSB Logo" className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 lg:w-14 lg:h-14" />
+          <img src={seal} alt="Seal" className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 lg:w-14 lg:h-14" />
+        </div>
+        <div className="text-[11px] sm:text-sm md:text-base lg:text-lg leading-snug tracking-wide items-end text-right">
+          <div className="font-semibold">The Provincial Government of</div>
+          <div className="font-semibold">Camarines Norte</div>
+          <div>Museum, Archives and Shrine</div>
+          <div>Curation Division</div>
         </div>
       </div>
+
+      {/* Middle column */}
+      <div className="px-4 sm:px-6 py-4 border-x-[3px] border-black">
+        {/* line above the main title */}
+        <div className="border-t-[2px] border-black mb-3" />
+
+        {/* masthead */}
+        <div className="font-semibold text-lg sm:text-2xl md:text-3xl lg:text-4xl leading-tight">
+          Museo{" "}
+          <span
+            className="font-bold"
+            style={{ color: "#F8BB1F", textShadow: "0 0 1px #bfa100" }}
+          >
+            B
+          </span>
+          ulawan News
+        </div>
+
+        {/* main title */}
+        <div className="mt-2 font-bold leading-none tracking-tight
+                        text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl">
+          <span className="break-words">{articleName || article.title}</span>
+        </div>
+
+        {/* author */}
+        <div className="mt-3 text-base sm:text-lg md:text-xl lg:text-2xl">
+          {article.author || "N/A"}
+        </div>
+
+        {/* line below the main title */}
+        <div className="border-b-[2px] border-black mt-3" />
+      </div>
+
+      {/* Right column */}
+      <div className="flex flex-col items-start justify-center px-4 py-3 gap-1 text-left">
+        <div className="font-semibold italic text-lg sm:text-xl md:text-2xl lg:text-3xl">
+          {article.upload_date
+            ? new Date(article.upload_date).toLocaleDateString("en-US", { weekday: "long" })
+            : "—"}
+        </div>
+        <div className="text-sm sm:text-base md:text-lg lg:text-xl">
+          {article.upload_date
+            ? new Date(article.upload_date).toLocaleDateString("en-US", {
+                day: "2-digit", month: "long", year: "numeric",
+              })
+            : "—"}
+        </div>
+        <div className="underline text-sm sm:text-base md:text-lg lg:text-xl">
+          {`Vol.${article?.volume ?? "—"}, ${
+            (article?.content_type || "").toLowerCase() === "article"
+              ? `No.${article?.sequence_number ?? "—"}`
+              : `No.${article?.sequence_number ?? "—"}`
+          }`}
+        </div>
+      </div>
+    </div>
+
+    {/* Outer bottom border */}
+    <div className="border-b-[3px] border-black" />
+  </div>
+</div>
+
+
+
 
 
 
       {/* Body */}
       <div className="w-screen h-auto min-h-[79rem] mx-auto font-hina">
-        <div className="max-w-[140rem] 3xl:max-w-[180rem] mx-auto text-[3rem]">
-          {article.images && (
-            <div className="flex justify-center p-[2rem]">
-              <img
-                src={article.images.startsWith("http") ? article.images : `${UPLOAD_PATH}${article.images}`}
-                alt="Article Thumbnail"
-                className="mx-[2.5rem] object-contain"
-              />
-            </div>
-          )}
+        <div className="max-w-[140rem] 3xl:max-w-[120rem] mx-auto text-[3rem]">
+{article.images ? (
+  <div className="flex justify-center p-[2rem]">
+    <div className="w-[48rem] max-w-[90vw] h-[28rem] border border-gray-200 rounded overflow-hidden  flex items-center justify-center">
+      <img
+        src={article.images.startsWith("http") ? article.images : `${UPLOAD_PATH}${article.images}`}
+        alt="Article Thumbnail"
+        className="w-full h-full object-contain"
+        width={768}
+        height={448}
+        loading="eager"
+      />
+    </div>
+  </div>
+) : null}
+
           <div className="p-10 prose max-w-none relative break-words">
             {article.description ? (
               <div className="editor-content-preview" dangerouslySetInnerHTML={{ __html: article.description }} />

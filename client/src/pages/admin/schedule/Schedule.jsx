@@ -567,7 +567,6 @@ const Schedule = () => {
                 <div className="flex justify-between items-center">
                   <span className="text-2xl font-semibold">{monthLabel}</span>
                 </div>
-                <div className="rounded-xl bg-black p-3 shadow-md shadow-gray-600">
                   <Calendar
                     onChange={setSelectedDate}
                     value={selectedDate}
@@ -601,7 +600,6 @@ const Schedule = () => {
                     className="p-2 rounded-lg mx-auto text-lg"
                   />
                 </div>
-              </div>
 
               <style>{`
                 .custom-scrollbar {

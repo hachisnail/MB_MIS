@@ -3,6 +3,7 @@ import { useAuth } from "@/context/authContext";
 import Unauthorized from "@/pages/Unauthorized";
 import ServerDown from "@/pages/ServerDown";
 import { useRouterFlags } from "@/context/routerFlagProvider";
+import PresenceReporter from "./components/PresenceReporter";
 
 // public pages
 
@@ -126,7 +127,10 @@ const Router = () => {
       </div>
     );
   return (
+    <>
+    <PresenceReporter />
     <Routes>
+      
       {/* Public routes */}
       <Route element={<PublicLayout />}>
         {flags["login"] && (
@@ -316,6 +320,7 @@ const Router = () => {
       {flags["maintenance"] && <Route path="*" element={<MaintenanceMode />} />}
       {flags["nomatch"] && <Route path="*" element={<NoMatch />} />}
     </Routes>
+    </>
   );
 };
 

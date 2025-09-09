@@ -173,7 +173,7 @@ export const DropdownInput = ({
             <div className="relative w-full">
               <ListboxButton
                 disabled={disabled}
-                className={`text-xl relative w-full cursor-pointer rounded-2xl border bg-white py-2 pl-3 pr-10 text-left ${
+                className={`text-xl relative w-full cursor-pointer rounded-2xl border bg-white py-3 pl-3 pr-10 text-left ${
                   error !== "" ? "border-red-600" : "border-black"
                 } focus:outline-none ${
                   disabled ? "opacity-50 cursor-not-allowed" : ""

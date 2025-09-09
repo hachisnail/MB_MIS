@@ -31,6 +31,17 @@ class SocketClient {
     this.healthCheckInterval = null;
     this.healthTimeout = 15000;
 
+    // ---- Presence state (client-side) ----
+    this.presence = {
+      page: null,
+      title: null,
+      meta: null,
+      updatedAt: 0,
+    };
+    this.presenceTimer = null;
+    this.presenceAutoGetter = null;
+    this.presenceThrottleMs = 4000; // avoid chatty updates
+
     this._setupSocketListeners();
     this._startHealthCheck();
   }
@@ -48,14 +59,12 @@ class SocketClient {
   }
 
   _applyRoomsToServer(desired) {
-    // Leave anything not desired
     for (const room of Array.from(this.joinedRooms)) {
       if (!desired.has(room)) {
         this.joinedRooms.delete(room);
         if (this.socket.connected) this.socket.emit("leaveRoom", room);
       }
     }
-    // Join anything missing
     for (const room of desired) {
       if (!this.joinedRooms.has(room)) {
         this.joinedRooms.add(room);
@@ -92,14 +101,16 @@ class SocketClient {
 
     this.socket.on("connect", () => {
       setTimeout(() => {
-        // Register first (if user), then sync rooms in one atomic diff
         if (this.userId && !this.isGuest) {
           this.socket.emit("registerUser", this.userId);
         } else {
-          // Explicitly clear any server-side user context
           this.socket.emit("registerUser", null);
         }
         this._syncRooms();
+        // resend last known presence after reconnect
+        if (this.presence?.page) {
+          this._emitPresence(this.presence);
+        }
         this.readyCallbacks.forEach((cb) => cb());
       }, 20);
     });
@@ -111,18 +122,24 @@ class SocketClient {
     this.socket.on("dbChange", (payload) => this.handleDbChange(payload));
 
     this.socket.on("forceLogout", (data) => {
-      // Flip to guest immediately and atomically sync rooms
       this.userId = null;
       this.isGuest = true;
 
       if (this.socket.connected) this.socket.emit("registerUser", null);
       this._syncRooms();
 
+      // also clear presence to avoid stale aggregates on server
+      this.clearPresence({ silent: true });
+
       this.handleMessage({ type: "forceLogout", ...data });
       this.forceLogoutCallbacks.forEach((cb) => cb(data));
     });
 
     this.socket.on("message", (data) => this.handleMessage(data));
+
+    // ---- NEW: presence analytics pushed from server ----
+    this.socket.on("presenceCounts", (payload) => this._emitLocal("presenceCounts", payload));
+    this.socket.on("presenceSnapshot", (payload) => this._emitLocal("presenceSnapshot", payload));
 
     this.socket.on("socketStats", (p) => this._emitLocal("socketStats", p));
     this.socket.on("socketCounts", (p) => this._emitLocal("socketCounts", p));
@@ -181,13 +198,10 @@ class SocketClient {
       this.socket.emit("registerUser", this.userId || null);
       this._syncRooms();
     }
-    // Not connected: rooms will sync on connect.
   }
 
   joinRoom(roomName) {
-    // Guards against illegal/system rooms from external callers
     if (roomName === "guestRoom" && !this.isGuest) {
-      // ensure we’re not in it (defensive)
       if (this.joinedRooms.has("guestRoom")) {
         this.joinedRooms.delete("guestRoom");
         if (this.socket.connected) this.socket.emit("leaveRoom", "guestRoom");
@@ -243,6 +257,7 @@ class SocketClient {
   }
 
   disconnect() {
+    this.stopPresenceAuto();
     this.socket.disconnect();
     if (this.healthCheckInterval) {
       clearInterval(this.healthCheckInterval);
@@ -259,6 +274,91 @@ class SocketClient {
     if (this.listeners.has("message")) {
       for (const cb of this.listeners.get("message")) cb(data);
     }
+  }
+
+  // ======== NEW: Presence client API ========
+
+  _emitPresence({ page, title, meta }) {
+    // throttle to avoid floods
+    const now = Date.now();
+    if (now - this.presence.updatedAt < this.presenceThrottleMs) return;
+
+    this.presence.updatedAt = now;
+    if (this.socket.connected) {
+      this.socket.emit("presence:update", {
+        page,
+        title,
+        meta: meta || null,
+        tabId: this.tabId,
+        at: now,
+      });
+    }
+  }
+
+  updatePresence({ page, title = document?.title || null, meta = null } = {}) {
+    if (!page) return;
+    this.presence.page = page;
+    this.presence.title = title || null;
+    this.presence.meta = meta || null;
+    this._emitPresence(this.presence);
+  }
+
+  clearPresence({ silent = false } = {}) {
+    const payload = {
+      page: this.presence.page,
+      tabId: this.tabId,
+    };
+    this.presence.page = null;
+    this.presence.title = null;
+    this.presence.meta = null;
+    this.presence.updatedAt = 0;
+    if (!silent && this.socket.connected) {
+      this.socket.emit("presence:leave", payload);
+    }
+  }
+
+  /**
+   * Automatically report presence on an interval using a getter.
+   * Example:
+   *   socketClient.startPresenceAuto(() => ({
+   *     page: window.location.pathname + window.location.search,
+   *     title: document.title,
+   *     meta: { section: currentSectionId }
+   *   }), { interval: 5000 })
+   */
+  startPresenceAuto(getPresence, { interval = 5000 } = {}) {
+    this.presenceAutoGetter = getPresence;
+    if (this.presenceTimer) clearInterval(this.presenceTimer);
+
+    // send immediately
+    try {
+      const first = (typeof getPresence === "function") ? getPresence() : null;
+      if (first?.page) this.updatePresence(first);
+    } catch (e) {
+      console.warn("[Presence] auto getter error (initial):", e);
+    }
+
+    this.presenceTimer = setInterval(() => {
+      try {
+        const p = (typeof getPresence === "function") ? getPresence() : null;
+        if (!p?.page) return;
+        // only emit when page or significant meta changes
+        const changed =
+          p.page !== this.presence.page ||
+          JSON.stringify(p.meta || null) !== JSON.stringify(this.presence.meta || null) ||
+          (p.title || null) !== (this.presence.title || null);
+        if (changed) this.updatePresence(p);
+        else this._emitPresence(this.presence); // heartbeat / keepalive
+      } catch (e) {
+        console.warn("[Presence] auto getter error:", e);
+      }
+    }, interval);
+  }
+
+  stopPresenceAuto() {
+    if (this.presenceTimer) clearInterval(this.presenceTimer);
+    this.presenceTimer = null;
+    this.presenceAutoGetter = null;
   }
 }
 

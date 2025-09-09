@@ -13,6 +13,7 @@ import {
 } from "../components/ViewPageRenderer";
 
 import ViewPort from "../../../../features/Viewport";
+import MoaBuilder from "../components/MoaBuilder";
 
 import StyledButton from "@/components/buttons/StyledButton";
 import MultiLineInput from "@/features/MultiLineInput";
@@ -383,7 +384,7 @@ const AcquisitionViewPage = () => {
           {/* full document */}
           {activeDocument === "Document" && (
             <div className="w-full h-full rounded-md grid grid-cols-[43rem_1fr_40rem]">
-              {/* Left column */}
+              {/* Left column */} 
               <div className="col-span-1 w-full h-full bg-black relative overflow-visible flex flex-col">
                 <div className="absolute left-0 -top-[12rem] w-full h-[12rem] bg-black flex items-start justify-end pl-10 pb-5 pt-4 overflow-hidden flex-col">
                   <span className="text-white text-3xl font-bold text-left break-words line-clamp-3 max-w-[38rem]">
@@ -524,7 +525,7 @@ const AcquisitionViewPage = () => {
 
           {/* full transaction */}
           {activeDocument === "Transaction" && (
-            <div className="min-w-fit w-full h-full rounded-md items-center justify-center gap-x-20 flex  ">
+            <div className="min-w-fit w-full h-full rounded-md items-start justify-center gap-x-20 flex  ">
               {/* To do: add the document document */}
               {!contributionData.status === "pending" ? (
                 <div className="min-w-[58em] h-full shadow-sm flex items-start">
@@ -538,36 +539,43 @@ const AcquisitionViewPage = () => {
                   </div>
                 </div>
               ) : (
-                <ViewPort
-                  title="Memorandum Of Agreement"
-                  // width={550}
-                  // height={545}
-                  sizes={{
-                    // breakpoints
-                    // base:  { width: 320,  height: 240 },
-                    // sm:    { width: 480,  height: 320 },
-                    // md:    { width: 640,  height: 400 },
-                    // lg:    { width: 800,  height: 500 },
-                    // xl: { width: 100, height: 600 },
-                    "2xl": { width: 550, height: 545 },
-                    "3xl": { width: 550, height: 1945 },
-                  }}
-                >
-                  {/* item inside viewport */}
-                  <div className="w-[50rem] h-[70rem] bg-black flex flex-col items-center justify-center gap-y-5">
-                    <span className="text-4xl text-white">
-                      {contributionData.ContributionArtifact.title}
-                    </span>
-                    {/* <Timeline currentStep={step} steps={steps} /> */}
+                // <ViewPort
+                //   title="Memorandum Of Agreement"
+                //   // width={550}
+                //   // height={545}
+                //   sizes={{
+                //     // breakpoints
+                //     // base:  { width: 320,  height: 240 },
+                //     // sm:    { width: 480,  height: 320 },
+                //     // md:    { width: 640,  height: 400 },
+                //     // lg:    { width: 800,  height: 500 },
+                //     // xl: { width: 100, height: 600 },
+                //     "2xl": { width: 550, height: 545 },
+                //     "3xl": { width: 550, height: 945 },
+                //   }}
+                // >
+                //   {/* item inside viewport */}
+                //   <div className="w-[50rem] h-[70rem] bg-black flex flex-col items-center justify-center gap-y-5">
+                //     <span className="text-4xl text-white">
+                //       {contributionData.ContributionArtifact.title}
+                //     </span>
+                //     {/* <Timeline currentStep={step} steps={steps} /> */}
 
-                    <button
-                      onClick={() => alert("clicked")}
-                      className="p-2 text-2xl bg-white text-black"
-                    >
-                      test
-                    </button>
-                  </div>
-                </ViewPort>
+                //     <button
+                //       onClick={() => alert("clicked")}
+                //       className="p-2 text-2xl bg-white text-black"
+                //     >
+                //       test
+                //     </button>
+                //   </div>
+                // </ViewPort>
+
+                <MoaBuilder
+  payload={contributionData}
+  
+
+/>
+
               )}
 
               <div className="w-full h-full flex flex-col gap-y-5">

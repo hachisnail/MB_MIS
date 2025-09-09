@@ -1,0 +1,43 @@
+/* Local wrapper for your preview area */
+.root {
+  position: relative;
+  overflow: auto;
+  background: #f3f4f6;
+  /* padding: 24px; */
+}
+
+/* The rest must be global because docx-preview injects .docx/.page into the DOM */
+:global(.docx .page) {
+  margin: 12px auto;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,.08);
+}
+
+:global(.docx img) {
+  max-width: 100% !important;
+  height: auto !important;
+  image-rendering: -webkit-optimize-contrast;
+}
+
+:global(.docx table) {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+:global(.docx td),
+:global(.docx th) {
+  border: 1px solid #ddd;
+  vertical-align: top;
+  word-break: break-word;
+  padding: 4px 6px;
+}
+
+:global(.docx p) { margin: 0 0 .5rem 0; line-height: 1.28; }
+:global(.docx ul),
+:global(.docx ol) { margin: 0 0 .6rem 1.25rem; }
+
+/* Optional zoom helper */
+:global(.docx[data-zoom="90"]) {
+  transform: scale(.9);
+  transform-origin: top center;
+}

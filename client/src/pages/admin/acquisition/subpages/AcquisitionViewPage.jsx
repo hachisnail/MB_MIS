@@ -204,12 +204,12 @@ const AcquisitionViewPage = () => {
         "Your request has been approved and is moving to the next phase.",
     },
     {
-      label: "MOA Sent",
+      label: "MOA Settled",
       description:
         "A Memorandum of Agreement (MOA) has been sent for your confirmation.",
     },
     {
-      label: "Delivered",
+      label: "On Delivery",
       description: "The requested items/services have been delivered.",
     },
     {
@@ -571,10 +571,10 @@ const AcquisitionViewPage = () => {
                 // </ViewPort>
 
                 <MoaBuilder
-  payload={contributionData}
-  
+                payload={contributionData}
 
-/>
+
+              />
 
               )}
 

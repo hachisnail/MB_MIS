@@ -39,6 +39,7 @@
     "docxtemplater": "^3.66.2",
     "libphonenumber-js": "^1.12.9",
     "lucide-react": "^0.525.0",
+    "mammoth": "^1.10.0",
     "modern-normalize": "^3.0.1",
     "node-cron": "^4.2.1",
     "pizzip": "^3.2.0",

@@ -52,16 +52,16 @@ export function RenderRelatedDocs({ relatedImages = [], attachedFiles = [] }) {
   };
 
   return (
-    <div className="w-full h-full flex  gap-x-5">
+    <div className="w-full h-auto flex  gap-x-5">
       {/* Images Section */}
-      <div className="w-[25rem] h-[40rem] pt-5 gap-5 border bg-[#1D1911] rounded-2xl border-gray-200 flex flex-col items-center">
+      <div className="w-[25rem] h-[32rem] pt-5 gap-5 border bg-[#1D1911] rounded-2xl border-gray-200 flex flex-col items-center">
         <span className="text-3xl font-bold text-white font-hind tracking-wider">
           Related images
         </span>
 
         <div className="w-full h-full bg-white rounded-2xl p-5 ">
           {/* ✅ Scrollable div with images */}
-          <div className="w-full h-[32rem] p-3 gap-4 bg-white rounded-2xl shadow-[inset_0_6px_8px_rgba(0,0,0,0.3),inset_0_-6px_8px_rgba(0,0,0,0.3)] overflow-y-auto flex flex-col">
+          <div className="w-full h-[28rem] p-3 gap-4 bg-white rounded-2xl shadow-[inset_0_6px_8px_rgba(0,0,0,0.3),inset_0_-6px_8px_rgba(0,0,0,0.3)] overflow-y-auto flex flex-col">
             {Array.from({ length: 8 }).map((_, i) => (
               <img
                 key={i}
@@ -77,13 +77,13 @@ export function RenderRelatedDocs({ relatedImages = [], attachedFiles = [] }) {
     
 
       {/* Files Section */}
-      <div className="w-[16rem] h-[40rem] pt-5 gap-5 border bg-[#1D1911] rounded-2xl border-gray-200 flex flex-col items-center">
+      <div className="w-[16rem] h-[32rem] pt-5 gap-5 border bg-[#1D1911] rounded-2xl border-gray-200 flex flex-col items-center">
         <span className="text-3xl font-bold text-white font-hind tracking-wider">
           Attached Files
         </span>
 
         <div className="w-full h-full bg-white rounded-2xl p-5">
-          <div className="w-full h-[32rem] p-3 bg-white rounded-2xl shadow-[inset_0_8px_12px_rgba(0,0,0,0.25),inset_0_-8px_12px_rgba(0,0,0,0.25)] overflow-y-auto flex flex-col items-center gap-6">
+          <div className="w-full h-[28rem] p-3 bg-white rounded-2xl shadow-[inset_0_8px_12px_rgba(0,0,0,0.25),inset_0_-8px_12px_rgba(0,0,0,0.25)] overflow-y-auto flex flex-col items-center gap-6">
             {Array.from({ length: 6 }).map((_, i) => (
               <div key={i} className="flex flex-col items-center">
                 {/* File Icon */}

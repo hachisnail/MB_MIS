@@ -3,6 +3,8 @@ import PizZip from "pizzip";
 import Docxtemplater from "docxtemplater";
 import { renderAsync } from "docx-preview";
 import ViewPort from "../../../../features/Viewport";
+import styles from "./DocxPreview.module.css";
+
 
 const DEFAULT_TEMPLATES = {
   donation: "http://localhost:5000/uploads/private/templates/DONATION-FORM.docx",
@@ -17,7 +19,6 @@ const ALWAYS_EDITABLE_KEYS = [
   "province",
   "city",
   "artifact",
-
 ];
 
 const isValidDate = (d) => d instanceof Date && !isNaN(d.getTime());
@@ -62,30 +63,30 @@ const pickTemplate = (root) => {
 };
 
 // ---- filename helpers ----
-const padNum = (n, w = 4) => {
-  const s = String(n ?? "");
-  return /^\d+$/.test(s) ? s.padStart(w, "0") : s || "0000";
-};
+// const padNum = (n, w = 4) => {
+//   const s = String(n ?? "");
+//   return /^\d+$/.test(s) ? s.padStart(w, "0") : s || "0000";
+// };
 
-const slugify = (s, max = 40) => {
-  if (!s) return "na";
-  return (
-    s
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "")
-      .slice(0, max) || "na"
-  );
-};
+// const slugify = (s, max = 40) => {
+//   if (!s) return "na";
+//   return (
+//     s
+//       .toLowerCase()
+//       .normalize("NFD")
+//       .replace(/[\u0300-\u036f]/g, "")
+//       .replace(/[^a-z0-9]+/g, "-")
+//       .replace(/^-+|-+$/g, "")
+//       .slice(0, max) || "na"
+//   );
+// };
 
-const safeName = (s, max = 180) =>
-  (s || "")
-    .replace(/[<>:"/\\|?*]+/g, "-")
-    .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, max);
+// const safeName = (s, max = 180) =>
+//   (s || "")
+//     .replace(/[<>:"/\\|?*]+/g, "-")
+//     .replace(/\s+/g, " ")
+//     .trim()
+//     .slice(0, max);
 
 const buildFileName = ({ templateKey, payload, data }) => {
   const now = new Date();
@@ -242,6 +243,7 @@ const extractFieldsFromTemplate = (ab) => {
 
 // ------------------------- Component --------------------------
 const MoaBuilder = ({
+  triggered,
   payload,
   templateUrls = DEFAULT_TEMPLATES,
   templateBuffers,
@@ -260,6 +262,9 @@ const MoaBuilder = ({
   const [showModal, setShowModal] = useState(false);
   const [docFields, setDocFields] = useState([]); // normalized lowercase
   const [formValues, setFormValues] = useState({});
+
+  
+
 
   // Load template (by key)
   const ensureTemplateLoaded = async (key) => {
@@ -308,24 +313,81 @@ const MoaBuilder = ({
     }
   }, [templateAB, data, onReadyBlob]);
 
-  // Render preview whenever blob changes
-  useEffect(() => {
-    const doPreview = async () => {
-      if (!previewRef.current) return;
-      previewRef.current.innerHTML = "";
-      if (!blob) return;
-      try {
-        setIsRendering(true);
-        await renderAsync(blob, previewRef.current, null, { className: "docx", inWrapper: true });
-      } catch (e) {
+// Render preview whenever blob changes (more accurate + cancelable)
+useEffect(() => {
+  let cancelled = false;
+  let root; // container we attach
+
+  const waitForFonts = async () => {
+    if (document.fonts && document.fonts.ready) {
+      try { await document.fonts.ready; } catch {}
+    }
+  };
+
+  const clampWideContent = (hostEl) => {
+    const pages = hostEl.querySelectorAll(".page");
+    pages.forEach((page) => {
+      const pad = 24; // a little breathing room
+      const w = page.clientWidth ? page.clientWidth - pad : undefined;
+      if (!w) return;
+      page.querySelectorAll("img, table").forEach((el) => {
+        el.style.maxWidth = `${w}px`;
+      });
+    });
+  };
+
+  const doPreview = async () => {
+    if (!previewRef.current) return;
+    previewRef.current.innerHTML = "";
+    if (!blob) return;
+
+    try {
+      setIsRendering(true);
+      setError(null);
+
+      await waitForFonts();
+      if (cancelled) return;
+
+        root = document.createElement("div");
+        root.className = styles.root;              
+        const host = document.createElement("div");
+        host.className = "docx";                   
+        // host.setAttribute("data-zoom", "90");   // optional: enable zoom
+        root.appendChild(host);
+        previewRef.current.appendChild(root);
+
+
+      // 3) render with docx-preview
+      await renderAsync(blob, host, null, {
+        className: "docx",
+        inWrapper: false,      
+        ignoreWidth: false,
+        ignoreHeight: false,
+        // If your images are external rels, uncomment to inline:
+        // useBase64URL: true,
+      });
+      if (cancelled) return;
+
+      clampWideContent(host);
+    } catch (e) {
+      if (!cancelled) {
         console.error(e);
         setError("Preview failed. The document may still download correctly.");
-      } finally {
-        setIsRendering(false);
       }
-    };
-    doPreview();
-  }, [blob]);
+    } finally {
+      if (!cancelled) setIsRendering(false);
+    }
+  };
+
+  doPreview();
+
+  // cleanup to avoid ghost renders on fast changes/unmount
+  return () => {
+    cancelled = true;
+    if (root && root.parentNode) root.parentNode.removeChild(root);
+  };
+}, [blob]);
+
 
   // When payload changes: pick template, compute data, and ensure template is loaded
   useEffect(() => {
@@ -335,6 +397,8 @@ const MoaBuilder = ({
     setData(toDocxData(payload));
     ensureTemplateLoaded(key);
   }, [payload]);
+
+  
 
   const editableKeys = useMemo(() => {
     const set = new Set(docFields);
@@ -423,6 +487,7 @@ const MoaBuilder = ({
 
 const logActivePayload = () => {
   const activePayload = {
+    status: payload?.status,
     ids: {
       contribution_id: payload?.contribution_id,
       contributor_id: payload?.contributor_id,
@@ -432,7 +497,6 @@ const logActivePayload = () => {
   };
   console.log(JSON.stringify(activePayload, null, 2));
 };
-
 
   return (
     <div>
@@ -444,7 +508,7 @@ const logActivePayload = () => {
             "3xl": { width: 550, height: 945 },
           }}
         >
-          <div className="rounded-xl h-[140rem] w-[85rem] border bg-white shadow-inner overflow-auto">
+          <div className="rounded-xl h-[134.5rem] w-[81.7rem] border bg-white shadow-inner overflow-auto">
             {(error || (errors && errors.length > 0)) && (
               <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-red-700 text-sm">
                 {error}

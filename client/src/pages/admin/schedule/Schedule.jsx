@@ -1,15 +1,13 @@
 // src/pages/Schedule.jsx
 
-import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Calendar from 'react-calendar';
-import TimePicker from 'react-time-picker';
 import 'react-calendar/dist/Calendar.css';
-import 'react-time-picker/dist/TimePicker.css';
 import LiveClock from '@/features/LiveClock';
 import Toast from '@/features/Toast';
 import DayScheduler from '@/features/DayScheduler';
-import { LoadingSpinner, EmptyMessage } from '@/components/commons';
+import { LoadingSpinner } from '@/components/commons';
 import ScheduleItem from './components/ScheduleItem';
 import axiosClient from '@/lib/axiosClient';
 import AppointmentViewPage from '../appointments/subpages/AppointmentViewPage';
@@ -20,10 +18,7 @@ import {
   getLocalDateString,
   timeStringToMinutes,
   formatTimeTo12H,
-  countOverlappingEvents,
-  convertTo24Hour,
-  transformScheduleData,
-  transformAppointmentData
+  convertTo24Hour
 } from '@/utils/scheduleUtils';
 import { normalizeStatus } from '../appointments/components/statusUtils';
 
@@ -33,15 +28,8 @@ const Schedule = () => {
 
   // Calendar state
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const [newAvailability, setNewAvailability] = useState('SHARED'); // Default to 'SHARED'
   // Track the currently selected appointment from the DayScheduler
   const [selectedAppointment, setSelectedAppointment] = useState(null);
-
-  // State to manage new schedule form
-  const [newTitle, setNewTitle] = useState('');
-  const [newDesc, setNewDesc] = useState('');
-  const [newStartTime, setNewStartTime] = useState('09:00');
-  const [newEndTime, setNewEndTime] = useState('10:00');
 
   // Build a local date string for the selected date (no UTC offset).
   const dateString = getLocalDateString(selectedDate);
@@ -532,101 +520,6 @@ const Schedule = () => {
     }
   };
 
-  // Function to check multiple dates and update disabled dates
-  const checkMonthlyAvailability = async (year, month) => {
-    return validateMonthlyAvailability(year, month, axiosClient, setMonthlySchedules, setDisabledDates, setIsLoadingDateAvailability);
-  };
-
-  const handleAddEvent = async () => {
-    try {
-      if (!newTitle) {
-        showToast('Please enter an event title', 'error');
-        return;
-      }
-
-      const startMinutes = timeStringToMinutes(newStartTime);
-      const endMinutes = timeStringToMinutes(newEndTime);
-      const sixAM = timeStringToMinutes('06:00');
-      const sixPM = timeStringToMinutes('18:00');
-
-      if (startMinutes < sixAM || endMinutes > sixPM) {
-        showToast('Schedule must be between 6:00 AM and 6:00 PM', 'error');
-        return;
-      }
-
-      if (startMinutes >= endMinutes) {
-        showToast('Start time must be earlier than end time', 'error');
-        return;
-      }
-
-      const duration = endMinutes - startMinutes;
-      if (duration < 15) {
-        showToast('Schedule duration must be at least 15 minutes', 'error');
-        return;
-      }
-
-      const existingExclusiveEvent = backendEvents.find(event => {
-        if (!event.isSchedule) return false;
-        if (event.availability === 'EXCLUSIVE' && event.date === dateString) {
-          const eventStart = timeStringToMinutes(event.startTime);
-          const eventEnd = timeStringToMinutes(event.endTime);
-          return (startMinutes < eventEnd && eventStart < endMinutes);
-        }
-        return false;
-      });
-
-      if (existingExclusiveEvent) {
-        showToast('Cannot schedule during an exclusive event time slot', 'error');
-        return;
-      }
-
-      if (newAvailability === 'EXCLUSIVE') {
-        const existingEvents = backendEvents.filter(event => {
-          if (event.date !== dateString) return false;
-          const eventStart = timeStringToMinutes(event.startTime);
-          const eventEnd = timeStringToMinutes(event.endTime);
-          return (startMinutes < eventEnd && eventStart < endTime);
-        });
-
-        if (existingEvents.length > 0) {
-          showToast('Cannot set as exclusive - time slot already has events scheduled', 'error');
-          return;
-        }
-      }
-
-      if (newAvailability === 'SHARED') {
-        const overlappingCount = countOverlappingEvents(backendEvents, newStartTime, newEndTime);
-        if (overlappingCount >= 5) {
-          showToast('Maximum limit reached: Cannot add more than 5 overlapping events', 'error');
-          return;
-        }
-      }
-
-      const scheduleData = {
-        title: newTitle,
-        description: newDesc,
-        date: dateString,
-        start_time: newStartTime,
-        end_time: newEndTime,
-        availability: newAvailability
-      };
-
-      await axiosClient.post('/auth/schedules', scheduleData);
-
-      showToast('Schedule added successfully', 'success');
-
-      setNewTitle('');
-      setNewDesc('');
-      setNewStartTime('09:00');
-      setNewEndTime('10:00');
-      setNewAvailability('SHARED');
-
-      fetchAllData();
-    } catch (error) {
-      console.error('Error creating schedule:', error);
-      showToast(error.response?.data?.message || error.message || 'Failed to create schedule', 'error');
-    }
-  };
 
   const [toastConfig, setToastConfig] = useState({
     message: '',
@@ -674,7 +567,6 @@ const Schedule = () => {
                 <div className="flex justify-between items-center">
                   <span className="text-2xl font-semibold">{monthLabel}</span>
                 </div>
-                <div className="rounded-xl bg-black p-3 shadow-md shadow-gray-600">
                   <Calendar
                     onChange={setSelectedDate}
                     value={selectedDate}
@@ -708,7 +600,6 @@ const Schedule = () => {
                     className="p-2 rounded-lg mx-auto text-lg"
                   />
                 </div>
-              </div>
 
               <style>{`
                 .custom-scrollbar {
@@ -809,7 +700,7 @@ const Schedule = () => {
               </div>
             </div>
 
-            <div className="w-full xl:w-[31rem] h-full flex flex-col gap-y-5">
+            <div className="w-full xl:w-[31rem] h-fit flex flex-col gap-y-5">
               <div className="w-full rounded-xl bg-white shadow-md shadow-gray-600 p-3 flex items-center justify-center gap-x-8 ">
                 <div className="bg-gray-100 p-3 rounded-full">
                   <svg
@@ -831,163 +722,37 @@ const Schedule = () => {
                 </div>
               </div>
 
-              <div className="w-full max-w-lg mx-auto rounded-2xl bg-white shadow-md shadow-gray-600 p-5 space-y-5">
-                <div>
-                  <span className="text-2xl font-bold block mb-2 text-gray-800">
-                    Add a Schedule for
-                  </span>
-                  <span className="text-lg font-semibold text-[#A6A3F6]">
-                    {weekdayName} {dayNum}
-                  </span>
-                </div>
-
-                <div className="space-y-3">
-                  <div className="flex flex-col">
-                    <label htmlFor="event-title" className="text-sm text-gray-600 mb-1">
-                      Event Title
-                    </label>
-                    <input
-                      type="text"
-                      id="event-title"
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#A6A3F6] text-sm"
-                      placeholder="Enter event title"
-                      value={newTitle}
-                      onChange={(e) => setNewTitle(e.target.value)}
-                    />
-                  </div>
-
-                  <div className="flex flex-col">
-                    <label htmlFor="event-desc" className="text-sm text-gray-600 mb-1">
-                      Description
-                    </label>
-                    <textarea
-                      id="event-desc"
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#A6A3F6] text-sm resize-none"
-                      rows="3"
-                      placeholder="Enter event description"
-                      value={newDesc}
-                      onChange={(e) => setNewDesc(e.target.value)}
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="flex flex-col">
-                      <label htmlFor="start-time" className="text-sm text-gray-600 mb-1">
-                        Start Time
-                      </label>
-                      <TimePicker
-                        id="start-time"
-                        className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#A6A3F6] text-sm"
-                        onChange={setNewStartTime}
-                        value={newStartTime}
-                        format="hh:mm a"
-                        disableClock
-                      />
-                    </div>
-                    <div className="flex flex-col">
-                      <label htmlFor="end-time" className="text-sm text-gray-600 mb-1">
-                        End Time
-                      </label>
-                      <TimePicker
-                        id="end-time"
-                        className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#A6A3F6] text-sm"
-                        onChange={setNewEndTime}
-                        value={newEndTime}
-                        format="hh:mm a"
-                        disableClock
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col">
-                    <label className="text-sm text-gray-600 mb-2">
-                      Availability
-                    </label>
-                    <div className="flex gap-4">
-                      <label className="bg-white border border-gray-300 rounded-lg p-3 flex items-center gap-2 cursor-pointer hover:bg-gray-50 transition-colors w-full">
-                        <input
-                          type="radio"
-                          name="availability"
-                          value="SHARED"
-                          checked={newAvailability === 'SHARED'}
-                          onChange={() => setNewAvailability('SHARED')}
-                          className="w-4 h-4 text-[#A6A3F6] focus:ring-[#A6A3F6]"
-                        />
-                        <div className="flex flex-col">
-                          <span className="font-medium">Shared</span>
-                          <span className="text-xs text-gray-500">Can be booked with other events</span>
-                        </div>
-                      </label>
-                      <label className="bg-white border border-gray-300 rounded-lg p-3 flex items-center gap-2 cursor-pointer hover:bg-gray-50 transition-colors w-full">
-                        <input
-                          type="radio"
-                          name="availability"
-                          value="EXCLUSIVE"
-                          checked={newAvailability === 'EXCLUSIVE'}
-                          onChange={() => setNewAvailability('EXCLUSIVE')}
-                          className="w-4 h-4 text-[#A6A3F6] focus:ring-[#A6A3F6]"
-                        />
-                        <div className="flex flex-col">
-                          <span className="font-medium">Exclusive</span>
-                          <span className="text-xs text-gray-500">Reserved for this event only</span>
-                        </div>
-                      </label>
-                    </div>
-                  </div>
-
-                  <div className="mt-2">
-                    <div className="flex items-start">
-                      <svg
-                        className="w-5 h-5 text-blue-500 mr-2 mt-1"
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <circle cx="12" cy="12" r="10" />
-                        <path d="M12 16v-4" />
-                        <path d="M12 8h.01" />
-                      </svg>
-                      <p className="text-xs text-gray-600">
-                        <span className="font-medium">Note:</span> You cannot schedule during times that have exclusive events.
-                        {newAvailability === 'EXCLUSIVE' && (
-                          <span className="block mt-1 text-amber-600">
-                            This event will be marked as exclusive and will block other events during this time slot.
-                          </span>
-                        )}
-                      </p>
-                    </div>
-                  </div>
-
-                  <StyledButton
-                    onClick={handleAddEvent}
-                    buttonColor="bg-[#A6A3F6]"
-                    hoverColor="hover:bg-[#8e8aec]"
-                    textColor="text-white"
-                    className="w-full py-3 font-semibold transition-all flex items-center justify-center gap-2"
+              {/* Add Schedule Button */}
+              <div className="w-full rounded-xl bg-white shadow-md shadow-gray-600 p-6">
+                <h3 className="text-xl font-semibold mb-3">Schedule Management</h3>
+                <p className="text-gray-600 text-sm mb-4">
+                  Add new schedules or manage date availability
+                </p>
+                <StyledButton
+                  onClick={() => navigate('/admin/schedule/add')}
+                  buttonColor="bg-[#A6A3F6]"
+                  hoverColor="hover:bg-[#8e8aec]"
+                  textColor="text-white"
+                  className="w-full py-3 font-semibold transition-all flex items-center justify-center gap-2"
+                >
+                  <svg
+                    className="w-5 h-5"
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
                   >
-                    <svg
-                      className="w-5 h-5"
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <path d="M12 5v14" />
-                      <path d="M5 12h14" />
-                    </svg>
-                    Add Event
-                  </StyledButton>
-                </div>
+                    <path d="M12 5v14" />
+                    <path d="M5 12h14" />
+                  </svg>
+                  Add Schedule / Manage Dates
+                </StyledButton>
               </div>
 
-              <div className="w-full sm:h-[12rem] lg:h-[17rem] overflow-y-auto shadow-md shadow-gray-600 bg-white rounded-xl p-6">
+              <div className="w-full sm:h-[10rem] lg:h-[17rem] overflow-y-auto shadow-md shadow-gray-600 bg-white rounded-xl p-6">
                 <h2 className="text-xl font-bold mb-4">Selected Event</h2>
                 {selectedAppointment ? (
                   <>

@@ -9,9 +9,8 @@ import Toast from '@/features/Toast';
 import usePrompt from '@/hooks/usePrompt';
 import { format } from 'date-fns';
 import Calendar from 'react-calendar';
-import TimePicker from 'react-time-picker';
 import 'react-calendar/dist/Calendar.css';
-import 'react-time-picker/dist/TimePicker.css';
+import TimePicker from '@/features/TimePicker';
 import {
     FormInput,
     DropdownInput,
@@ -1559,14 +1558,15 @@ const WalkInsPage = () => {
                                                         render={({ field }) => (
                                                             <TimePicker
                                                                 id="manual-start-time"
+                                                                value={field.value}
                                                                 onChange={(time) => {
                                                                     field.onChange(time);
                                                                     handleManualStartTimeChange(time);
                                                                 }}
-                                                                value={field.value}
-                                                                format="hh:mm a"
-                                                                disableClock
-                                                                className="w-full p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#A6A3F6] text-lg"
+                                                                placeholder="Select start time"
+                                                                error={page2Form.formState.errors.manualStartTime?.message || ""}
+                                                                showError={false}
+                                                                className="w-full"
                                                             />
                                                         )}
                                                     />
@@ -1586,14 +1586,15 @@ const WalkInsPage = () => {
                                                         render={({ field }) => (
                                                             <TimePicker
                                                                 id="manual-end-time"
+                                                                value={field.value}
                                                                 onChange={(time) => {
                                                                     field.onChange(time);
                                                                     handleManualEndTimeChange(time);
                                                                 }}
-                                                                value={field.value}
-                                                                format="hh:mm a"
-                                                                disableClock
-                                                                className="w-full p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#A6A3F6] text-lg"
+                                                                placeholder="Select end time"
+                                                                error={page2Form.formState.errors.manualEndTime?.message || ""}
+                                                                showError={false}
+                                                                className="w-full"
                                                             />
                                                         )}
                                                     />

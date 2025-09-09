@@ -54,8 +54,8 @@ export const createSchedule = async (req, res) => {
     const sevenAM = timeStringToMinutes('07:00');
     const fivePM = timeStringToMinutes('17:00');
 
-    // Validate time range
-    if (startMinutes < sevenAM || endMinutes > fivePM) {
+    // Validate time range - bypass validation for DATE_DISABLED entries
+    if (title !== 'DATE_DISABLED' && (startMinutes < sevenAM || endMinutes > fivePM)) {
       return res.status(400).json({ message: 'Schedule must be between 7:00 AM and 5:00 PM' });
     }
 
@@ -63,8 +63,9 @@ export const createSchedule = async (req, res) => {
       return res.status(400).json({ message: 'Start time must be earlier than end time' });
     }
 
+    // Bypass duration validation for DATE_DISABLED entries
     const duration = endMinutes - startMinutes;
-    if (duration < 15) {
+    if (title !== 'DATE_DISABLED' && duration < 15) {
       return res.status(400).json({ message: 'Schedule duration must be at least 15 minutes' });
     }
 

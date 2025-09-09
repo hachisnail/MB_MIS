@@ -93,14 +93,14 @@ export const AppointmentPreview = ({ appointment, cameFrom = "forms" }) => {
   ];
 
   return (
-    <div className="w-full h-full flex flex-col gap-y-7">
+    <div className="w-full h-full flex flex-col">
       <div className="border-b-1 border-gray-400 flex items-center justify-between">
         <span className="mb-3 text-3xl font-semibold">{visitorName}</span>
         <span className="text-lg">{formatDate(appointment.creation_date)}</span>
       </div>
 
       {/* Contact Info */}
-      <div className="w-full h-fit flex flex-col gap-y-3 border-b-1 border-gray-400 pb-5">
+      <div className="w-full h-fit flex flex-col gap-y-3 border-b-1 border-gray-400 pb-5 mt-7">
         {appointmentInfo.map(({ Label, Value }) => (
           <div key={Label} className="flex gap-x-2 w-full h-fit">
             <div className="w-full h-fit flex flex-col">
@@ -111,8 +111,8 @@ export const AppointmentPreview = ({ appointment, cameFrom = "forms" }) => {
         ))}
       </div>
 
-      {/* Extra Info */}
-      <div className="w-full h-fit gap-y-3 flex flex-col">
+      {/* Extra Info - Flex grow to take available space */}
+      <div className="w-full flex-1 gap-y-3 flex flex-col mt-7 min-h-0">
         <div className="flex flex-col">
           <span className="text-xl font-semibold">Purpose of visit:</span>
           <span className="h-5 text-lg text-[#4E84D4]">
@@ -140,16 +140,16 @@ export const AppointmentPreview = ({ appointment, cameFrom = "forms" }) => {
           </div>
         </div>
 
-        <div className="w-full mt-7 h-fit rounded-md bg-gray-200 p-5 flex flex-col">
-          <span className="text-xl">Notes:</span>
-          <span className="h-37 overflow-y-auto text-lg text-[#4E84D4]">
+        <div className="w-full mt-7 flex-1 rounded-md bg-gray-200 p-5 flex flex-col min-h-0">
+          <span className="text-xl mb-2">Notes:</span>
+          <span className="flex-1 min-h-20 max-h-32 lg:max-h-40 xl:max-h-48 overflow-y-auto text-lg text-[#4E84D4]">
             {appointment.additional_notes}
           </span>
         </div>
       </div>
 
-      {/* Open Button */}
-      <div className="w-full h-10 flex justify-end">
+      {/* Open Button - Always at bottom */}
+      <div className="w-full h-10 flex justify-end mt-4 flex-shrink-0">
         <button
           className="flex items-center justify-center gap-x-2 px-4 rounded-sm bg-[#4E84D4] hover:bg-blue-900"
           onClick={() => navigate(encodedId, { state: { cameFrom } })}

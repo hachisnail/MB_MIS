@@ -255,21 +255,44 @@ export default function ViewPort({
 
   const showReset = hasSignificantDeviation(position, scale);
 
-  const resetPosition = useCallback(() => {
-    const container = containerRef.current;
-    const inner = innerRef.current;
-    if (!container || !inner) return;
+const resetPosition = useCallback(() => {
+  const container = containerRef.current;
+  const inner = innerRef.current;
+  if (!container || !inner) return;
 
-    const centerX = (container.offsetWidth - inner.offsetWidth) / 2;
-    const topY = topPadding;
+  const rem = getRootFontSizePx(); // 1rem in px
+  const padX = rem;
+  const padY = topPadding + rem;
 
-    const nextPos = { x: centerX, y: topY };
-    setPosition(nextPos);
-    setScale(1);
+  const availWidth = container.offsetWidth - padX * 2;
+  const availHeight = container.offsetHeight - padY * 2;
 
-    initialPosition.current = nextPos;
-    initialScale.current = 1;
-  }, [topPadding]);
+  const rawW = inner.offsetWidth;
+  const rawH = inner.offsetHeight;
+
+  // Fit-to-container scale (respect MIN/MAX_SCALE)
+  let newScale = Math.min(
+    Math.max(Math.min(availWidth / rawW, availHeight / rawH), MIN_SCALE),
+    MAX_SCALE
+  );
+
+  // Position: center horizontally, pad vertically
+  const scaledW = rawW * newScale;
+  const scaledH = rawH * newScale;
+
+  const offsetX = (container.offsetWidth - scaledW) / 2;
+  const offsetY = padY; // top padding fixed
+
+  const nextPos = { x: offsetX, y: offsetY };
+
+  setScale(newScale);
+  setPosition(nextPos);
+
+  initialScale.current = newScale;
+  initialPosition.current = nextPos;
+}, [topPadding]);
+
+
 
   // Initialize / re-center when size inputs change (includes breakpoint swap)
   useLayoutEffect(() => {
@@ -436,7 +459,7 @@ export default function ViewPort({
       <div className={`px-6 pb-6 ${title ? "pt-5" : "pt-6"} relative`}>
         <div
           ref={containerRef}
-          className={`rounded-md relative overflow-hidden ${containerClassName} shadow-[inset_0_8px_12px_rgba(0,0,0,0.25),inset_0_-8px_12px_rgba(0,0,0,0.50)] ${
+          className={`rounded-md relative border border-gray-500 overflow-hidden ${containerClassName} shadow-[inset_0_8px_12px_rgba(0,0,0,0.25),inset_0_-8px_12px_rgba(0,0,0,0.50)] ${
             dragging ? "cursor-grabbing" : "cursor-grab"
           }`}
           style={{

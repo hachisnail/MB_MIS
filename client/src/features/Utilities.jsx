@@ -28,7 +28,7 @@ export function SearchBar({ placeholder = "Search History", onChange, theme }) {
 
   return (
     <div className="w-full max-w-sm ">
-      <div className={`flex items-center ${outer} border rounded-md px-3 py-2`}>
+      <div className={`flex items-center ${outer} border rounded-md px-3 h-[3.1rem] gap-x-3`}>
         <svg
           xmlns="http://www.w3.org/2000/svg"
           className="h-5 w-5"
@@ -47,7 +47,7 @@ export function SearchBar({ placeholder = "Search History", onChange, theme }) {
           type="text"
           placeholder={placeholder}
           onChange={onChange}
-          className={`ml-3 w-full bg-transparent outline-none text-2xl ${inner}`}
+          className={`w-full bg-transparent outline-none text-2xl ${inner}`}
         />
       </div>
     </div>
@@ -87,7 +87,7 @@ export function CardDropdownPicker({
       <Listbox value={value} onChange={onChange}>
         <div className="relative">
           <ListboxButton
-            className={`w-full cursor-pointer text-left px-3 py-2 border rounded-md ${outer} ${inner} flex items-center justify-between text-2xl`}
+            className={`w-full cursor-pointer text-left px-3 h-[3.1rem] border rounded-md ${outer} ${inner} flex items-center justify-between text-2xl`}
           >
             <span>{selected?.label || placeholder}</span>
             <svg
@@ -550,14 +550,16 @@ export function SummaryPanel({
           {tabs.map(({ key, label }) => (
             <button
               key={key}
-              className={`w-fit cursor-pointer h-full px-[1rem] rounded-lg border text-2xl font-semibold ${
+              className={`w-fit cursor-pointer h-full px-[1rem] rounded-lg border-2 text-2xl font-semibold ${
                 activeTab === key
                   ? "bg-black text-white border-black"
                   : "border-gray-500"
               }`}
               onClick={() => onTabChange(key)}
             >
+              <span className="text-2xl">
               {label}
+              </span>
             </button>
           ))}
         </div>

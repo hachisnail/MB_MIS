@@ -36,6 +36,9 @@ import {
   getArticleById
 } from '../controllers/articleController.js';
 
+import { postEvents, getArticleStats, getNextSuggestions } from "../controllers/EngagementController.js";
+
+
 import {
   createContribution,
   getAllContributions,
@@ -131,6 +134,10 @@ router.post("/summarize", async (req, res) => {
     res.status(500).json({ error: "Summarization failed" });
   }
 });
+//Article Engagement
+router.post("/events", postEvents);
+router.get("/article/:id", getArticleStats);
+router.get("/suggest/next", getNextSuggestions);
 
 // Contributions
 router.post('/contribution', createContribution); 

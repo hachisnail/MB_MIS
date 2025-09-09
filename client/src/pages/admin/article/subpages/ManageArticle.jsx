@@ -11,9 +11,11 @@ import usePrompt from "@/hooks/usePrompt";
 import ViewPort from "../../../../features/Viewport";
 import { handleGenerateCaption, handleSummarizeCaption } from "../components/CaptionGenerator";
 import RichTextEditor from "../components/RichTextEditor";
-import { X as XIcon } from "lucide-react"; // only needed for thumbnail 'X' button
+import { X as XIcon } from "lucide-react";
 import { STATUS, STATUS_LABELS } from "../components/articleStatus";
-import texture from "../../../../assets/Texture.png"
+import texture from "../../../../assets/Texture.png";
+// ⬇️ NEW: import the separated Preview component
+import ArticlePreview from "../components/ArticlePreview";
 
 const ArticleEditorForm = () => {
   const BASE_URL = import.meta.env.VITE_API_BASE_URL;
@@ -168,25 +170,44 @@ const ArticleEditorForm = () => {
     formData.append("reviewer_notes", reviewerNotes || "");
     formData.append("status", status);
 
-    let startDateTime = "";
-    let endDateTime = "";
+    // inside handleSubmit
+    let startDateTime = '';
+    let endDateTime = '';
 
-    if (status === "scheduled") {
-      startDateTime =
-        uploadPeriodStart && uploadPeriodStartTime
-          ? `${uploadPeriodStart}T${uploadPeriodStartTime}:00`
-          : uploadPeriodStart || "";
-      endDateTime =
-        uploadPeriodEnd && uploadPeriodEndTime
-          ? `${uploadPeriodEnd}T${uploadPeriodEndTime}:00`
-          : uploadPeriodEnd || "";
+    const toISOZFromManila = (datePart, timePart, fallbackHHmm = '00:00') => {
+      if (!datePart) return '';
+      const hhmm = (timePart && timePart.length ? timePart : fallbackHHmm).slice(0, 5);
+      // Build an explicit Manila offset, then normalize to UTC Z
+      const isoWithOffset = `${datePart}T${hhmm}:00+08:00`;
+      return new Date(isoWithOffset).toISOString();
+    };
 
-      formData.append("uploadPeriodStart", startDateTime);
-      formData.append("uploadPeriodEnd", endDateTime);
+    if (status === 'scheduled') {
+      // if user didn’t pick a time, default start 08:00 and end 23:59 (optional, tweak as you like)
+      startDateTime = toISOZFromManila(uploadPeriodStart, uploadPeriodStartTime, '08:00');
+      endDateTime   = toISOZFromManila(uploadPeriodEnd,   uploadPeriodEndTime,   '23:59');
+
+      // Validate: end must be strictly after start
+      if (!startDateTime) {
+        setErrors((e) => ({ ...e, uploadPeriodStart: 'Start is required for scheduled.' }));
+        return;
+      }
+      if (!endDateTime) {
+        setErrors((e) => ({ ...e, uploadPeriodEnd: 'End is required for scheduled.' }));
+        return;
+      }
+      if (new Date(endDateTime) <= new Date(startDateTime)) {
+        setErrors((e) => ({ ...e, uploadPeriodEnd: 'End must be after Start.' }));
+        return;
+      }
+
+      formData.append('uploadPeriodStart', startDateTime);
+      formData.append('uploadPeriodEnd', endDateTime);
     } else {
-      formData.append("uploadPeriodStart", "");
-      formData.append("uploadPeriodEnd", "");
+      formData.append('uploadPeriodStart', '');
+      formData.append('uploadPeriodEnd', '');
     }
+
 
     if (thumbnail && thumbnail instanceof File) {
       formData.append("thumbnail", thumbnail);
@@ -264,7 +285,7 @@ const ArticleEditorForm = () => {
       const draft = loadDraft(draftKey); // { data, hash, _savedAt }
       if (draft?.data && (draft.data.title || draft.data.description || draft.data.author)) {
         const draftAge = draft._savedAt ? Math.floor((new Date() - new Date(draft._savedAt)) / (1000 * 60)) : null;
-        setDraftToLoad({ draft, draftAge }); // keep whole object; we’ll read draft.data later
+        setDraftToLoad({ draft, draftAge });
         setShowDraftPrompt(true);
         return;
       }
@@ -331,15 +352,13 @@ const ArticleEditorForm = () => {
         } catch (err) {
           console.error("Failed to fetch article:", err);
         }
-      } else {
-        // New article: nothing to load
       }
     };
 
     fetchArticleAndLoadDraft();
   }, [articleId, draftKey]);
 
-  // HYDRATE the editor when switching from Review -> Edit (in-place) and editor is empty.
+  // HYDRATE editor when switching from Review -> Edit (in-place)
   useEffect(() => {
     if (forceEditorMode && article?.description && editorRef.current) {
       const current = editorRef.current.getHTML?.() || "";
@@ -410,7 +429,6 @@ const ArticleEditorForm = () => {
 
   // inline image upload from editor
   const handleImageUpload = async (e) => {
-    // Prevent the browser from opening the dropped file
     if (e?.preventDefault) e.preventDefault();
     const fileList = e?.target?.files || e?.dataTransfer?.files;
     const file = fileList?.[0];
@@ -429,8 +447,9 @@ const ArticleEditorForm = () => {
         const uploadedFilename = response.data.images[0];
         const fullImageUrl = `${SERVER_ORIGIN}/uploads/pictures/${uploadedFilename}`;
 
-        // use ref to insert the image
-        editorRef.current?.runChain((chain) => chain.focus().setImage({ src: fullImageUrl, alt: file.name }).run());
+        editorRef.current?.runChain((chain) =>
+          chain.focus().setImage({ src: fullImageUrl, alt: file.name }).run()
+        );
 
         setContentImages((prev) => [...prev, uploadedFilename]);
         setIsDirty(true);
@@ -496,644 +515,591 @@ const ArticleEditorForm = () => {
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [isDirty]);
 
-  console.log("ArticleEditorForm mode check", {
-    locationState: routerLocation.state,
-    query: routerLocation.search,
-    forceEditorMode,
-    isPrivileged,
-    isOwner,
-    shouldShowReviewer,
-    renderEditorUI: userRole && allowedRoles.includes(userRole) && !shouldShowReviewer,
-  });
-
   // Guard for Back to Review button
   const showBackToReview = isPrivileged && forcedFromNav && !!articleId && forceEditorMode;
 
   return (
     <>
       {PromptModal}
-<div className="flex w-full h-full gap-4 gap-x-15 pt-5 border-t-1 flex">
-  {/* LEFT SIDE - Editor + Form */}
-  {userRole && allowedRoles.includes(userRole) && !shouldShowReviewer ? (
-    <div className="bg-white w-full 2xl:w-full p-6 2xl:mx-[20rem] p-6 xl:mx-[0rem] p-6 2xl:mx-[20rem] p-6 2xl:mx-[20rem]rounded-lg shadow-xl relative max-h-[85vh] overflow-auto transition-all duration-300">
-      <h2 className="text-3xl font-bold mb-6">Header</h2>
+      <div
+        className="w-full h-full gap-4 gap-x-15 pt-5 border-t-1
+        grid grid-rows-[1fr_40rem] md:grid-rows-[1fr_40rem]
+        lg:flex lg:flex-row
+        2xl:flex 2xl:flex-row
+        3xl:flex 3xl:flex-row overflow-auto"
+      >
+        {/* LEFT SIDE - Editor + Form */}
+        {userRole && allowedRoles.includes(userRole) && !shouldShowReviewer ? (
+          <div className="bg-white w-full p-6 xl:mx-[10rem] 2xl:mx-[20rem] rounded-lg shadow-xl relative max-h-full transition-all duration-300 md:max-w-[63rem]">
+            <h2 className="text-3xl font-bold mb-6">Header</h2>
 
-      {showBackToReview && (
-        <div className="flex justify-end mb-4">
-          <StyledButton
-            type="button"
-            buttonColor="bg-gray-500"
-            hoverColor="hover:bg-gray-600"
-            textColor="text-white"
-            onClick={() => {
-              navigate(`/admin/article/edit-article/${encoded}?mode=review`, {
-                replace: true,
-              });
-            }}
-          >
-            Back to Review
-          </StyledButton>
-        </div>
-      )}
-
-      <form onSubmit={handleFormSubmit} className="space-y-6">
-        {/* Title */}
-        <label htmlFor="title" className={`font-bold ${errors.title ? "text-red-600" : ""}`}>
-          Title {errors.title && "*"}
-        </label>
-        <input
-          id="title"
-          className={`w-full px-4 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 placeholder-gray-500 ${
-            errors.title ? "border-red-600" : "border-black"
-          }`}
-          type="text"
-          value={title}
-          onChange={(e) => {
-            setTitle(e.target.value);
-            setIsDirty(true);
-            clearFieldError("title");
-          }}
-          onClick={() => clearFieldError("title")}
-          placeholder={`Title${errors.title ? " *" : ""}`}
-        />
-
-        {/* Date, Author, Category */}
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="flex-1">
-            <label htmlFor="selectedDate" className={`font-bold ${errors.selectedDate ? "text-red-600" : ""}`}>
-              Date {errors.selectedDate && "*"}
-            </label>
-            <input
-              id="selectedDate"
-              className={`w-full px-4 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 ${
-                errors.selectedDate ? "border-red-600" : "border-black"
-              }`}
-              type="date"
-              value={selectedDate}
-              onChange={(e) => {
-                setSelectedDate(e.target.value);
-                setIsDirty(true);
-                clearFieldError("selectedDate");
-              }}
-            />
-          </div>
-          <div className="flex-1">
-            <label htmlFor="author" className={`font-bold ${errors.author ? "text-red-600" : ""}`}>
-              Author {errors.author && "*"}
-            </label>
-            <input
-              id="author"
-              className={`w-full px-4 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 placeholder-gray-500 ${
-                errors.author ? "border-red-600" : "border-black"
-              }`}
-              type="text"
-              value={author}
-              onChange={(e) => {
-                setAuthor(e.target.value);
-                setIsDirty(true);
-                clearFieldError("author");
-              }}
-              placeholder={`Author${errors.author ? " *" : ""}`}
-            />
-          </div>
-          <div className="flex-1">
-            <label htmlFor="category" className={`font-bold ${errors.category ? "text-red-600" : ""}`}>
-              Category {errors.category && "*"}
-            </label>
-            <select
-              id="category"
-              className={`w-full px-4 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 ${
-                errors.category ? "border-red-600" : "border-black"
-              }`}
-              value={category}
-              onChange={(e) => {
-                setCategory(e.target.value);
-                setIsDirty(true);
-                clearFieldError("category");
-              }}
-            >
-              <option value="" disabled={category !== ""}>
-                {`Category${errors.category ? " *" : ""}`}
-              </option>
-              {Categories.map((cat) => (
-                <option key={cat} value={cat}>
-                  {cat}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        {/* Barangay, Municipality */}
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="flex-1">
-            <label htmlFor="municipality" className={`font-bold ${errors.municipality ? "text-red-600" : ""}`}>
-              Municipality {errors.municipality && "*"}
-            </label>
-            <select
-              id="municipality"
-              className={`w-full px-4 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 ${
-                errors.municipality ? "border-red-600" : "border-black"
-              }`}
-              value={municipality}
-              onChange={(e) => {
-                setMunicipality(e.target.value);
-                setBarangay("");
-                setIsDirty(true);
-                clearFieldError("municipality");
-              }}
-            >
-              <option value="" disabled={municipality !== ""}>
-                {`Municipality${errors.municipality ? " *" : ""}`}
-              </option>
-              {Object.keys(municipalitiesWithBarangays).map((mun) => (
-                <option key={mun} value={mun}>
-                  {mun}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="flex-1">
-            <label htmlFor="barangay" className="font-bold">
-              Barangay
-            </label>
-            <input
-              id="barangay"
-              list="barangayList"
-              className="w-full px-4 py-3 border-2 border-black rounded-2xl text-base md:text-lg outline-none placeholder-gray-500"
-              type="text"
-              value={barangay}
-              onChange={(e) => setBarangay(e.target.value)}
-              placeholder="Barangay (You can type or select)"
-            />
-            <datalist id="barangayList">
-              {(municipalitiesWithBarangays[municipality] || []).map((bgy) => (
-                <option key={bgy} value={bgy} />
-              ))}
-            </datalist>
-          </div>
-        </div>
-
-        {/* Status */}
-        <div className="flex-1">
-          <label htmlFor="status" className="font-bold">
-            Status
-          </label>
-          <select
-            id="status"
-            className="w-full px-4 py-3 border-2 border-black rounded-2xl text-base md:text-lg outline-none"
-            name="status"
-            value={status}
-            onChange={(e) => {
-              setStatus(e.target.value);
-              setIsDirty(true);
-            }}
-          >
-            {STATUS.filter((s) => AUTHOR_ALLOWED.has(s.value)).map((s) => (
-              <option key={s.value} value={s.value}>
-                {STATUS_LABELS[s.value] ?? s.label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Scheduled fields */}
-        {status === "scheduled" && (
-          <>
-            <div className="flex-1">
-              <label htmlFor="uploadPeriodStart" className="font-bold">
-                Start Date
-              </label>
-              <div className="flex gap-2">
-                <input
-                  id="uploadPeriodStart"
-                  type="date"
-                  className={`w-full px-4 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 ${
-                    errors.uploadPeriodStart ? "border-red-600" : "border-black"
-                  }`}
-                  value={uploadPeriodStart}
-                  onChange={(e) => {
-                    setUploadPeriodStart(e.target.value);
-                    setIsDirty(true);
-                    clearFieldError("uploadPeriodStart");
+            {showBackToReview && (
+              <div className="flex justify-end mb-4">
+                <StyledButton
+                  type="button"
+                  buttonColor="bg-gray-500"
+                  hoverColor="hover:bg-gray-600"
+                  textColor="text-white"
+                  onClick={() => {
+                    navigate(`/admin/article/edit-article/${encoded}?mode=review`, {
+                      replace: true,
+                    });
                   }}
-                />
-                <input
-                  id="uploadPeriodStartTime"
-                  type="time"
-                  className="w-32 px-2 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 border-black"
-                  value={uploadPeriodStartTime}
-                  onChange={(e) => {
-                    setUploadPeriodStartTime(e.target.value);
-                    setIsDirty(true);
-                  }}
-                />
+                >
+                  Back to Review
+                </StyledButton>
               </div>
-            </div>
-
-            <div className="flex-1">
-              <label htmlFor="uploadPeriodEnd" className="font-bold">
-                End Date
-              </label>
-              <div className="flex gap-2">
-                <input
-                  id="uploadPeriodEnd"
-                  type="date"
-                  className={`w-full px-4 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 ${
-                    errors.uploadPeriodEnd ? "border-red-600" : "border-black"
-                  }`}
-                  value={uploadPeriodEnd}
-                  onChange={(e) => {
-                    setUploadPeriodEnd(e.target.value);
-                    setIsDirty(true);
-                    clearFieldError("uploadPeriodEnd");
-                  }}
-                  min={uploadPeriodStart}
-                />
-                <input
-                  id="uploadPeriodEndTime"
-                  type="time"
-                  className="w-32 px-2 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 border-black"
-                  value={uploadPeriodEndTime}
-                  onChange={(e) => {
-                    setUploadPeriodEndTime(e.target.value);
-                    setIsDirty(true);
-                  }}
-                />
-              </div>
-            </div>
-          </>
-        )}
-
-        {/* Thumbnail */}
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="relative flex-1">
-            <label htmlFor="thumbnail" className="font-bold">
-              Thumbnail
-            </label>
-            <input
-              id="thumbnail"
-              ref={thumbnailInputRef}
-              className="w-full px-4 py-3 border-2 border-black rounded-2xl text-base md:text-lg outline-none file:hidden"
-              type="file"
-              name="thumbnail"
-              onChange={handleCustomThumbnailChange}
-              accept="image/*"
-              style={{ color: "transparent" }}
-            />
-            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-gray-700 truncate max-w-[75%]">
-              {removeThumbnail || (!thumbnail && !previewImage)
-                ? "No Image selected"
-                : previewImage && typeof previewImage === "string"
-                ? previewImage.split("/").pop()
-                : thumbnail && thumbnail.name}
-            </div>
-            {previewImage && !removeThumbnail && (
-              <button
-                type="button"
-                onClick={handleRemoveThumbnail}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-red-600 hover:text-red-800"
-              >
-                <XIcon size={15} strokeWidth={3} />
-              </button>
             )}
-          </div>
-        </div>
 
-        {/* Rich Text Editor */}
-        <RichTextEditor
-          ref={editorRef}
-          errors={errors}
-          setIsDirty={setIsDirty}
-          fontSizes={fontSizes}
-          onImageUpload={handleImageUpload}
-          editable={!isReviewer}
-          placeholder="Start writing your article..."
-          initialHTML={editorHTML || article?.description || ""}
-          onUpdate={({ html, text }) => {
-            setEditorHTML(html);
-            setEditorText(text);
-            setIsDirty(true);
+            <form onSubmit={handleFormSubmit} className="space-y-6">
+              {/* Title */}
+              <label htmlFor="title" className={`font-bold ${errors.title ? "text-red-600" : ""}`}>
+                Title {errors.title && "*"}
+              </label>
+              <input
+                id="title"
+                className={`w-full px-4 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 placeholder-gray-500 ${
+                  errors.title ? "border-red-600" : "border-black"
+                }`}
+                type="text"
+                value={title}
+                onChange={(e) => {
+                  setTitle(e.target.value);
+                  setIsDirty(true);
+                  clearFieldError("title");
+                }}
+                onClick={() => clearFieldError("title")}
+                placeholder={`Title${errors.title ? " *" : ""}`}
+              />
+
+              {/* Date, Author, Category */}
+              <div className="flex flex-col md:flex-row gap-4">
+                <div className="flex-1">
+                  <label htmlFor="selectedDate" className={`font-bold ${errors.selectedDate ? "text-red-600" : ""}`}>
+                    Date {errors.selectedDate && "*"}
+                  </label>
+                  <input
+                    id="selectedDate"
+                    className={`w-full px-4 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 ${
+                      errors.selectedDate ? "border-red-600" : "border-black"
+                    }`}
+                    type="date"
+                    value={selectedDate}
+                    onChange={(e) => {
+                      setSelectedDate(e.target.value);
+                      setIsDirty(true);
+                      clearFieldError("selectedDate");
+                    }}
+                  />
+                </div>
+                <div className="flex-1">
+                  <label htmlFor="author" className={`font-bold ${errors.author ? "text-red-600" : ""}`}>
+                    Author {errors.author && "*"}
+                  </label>
+                  <input
+                    id="author"
+                    className={`w-full px-4 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 placeholder-gray-500 ${
+                      errors.author ? "border-red-600" : "border-black"
+                    }`}
+                    type="text"
+                    value={author}
+                    onChange={(e) => {
+                      setAuthor(e.target.value);
+                      setIsDirty(true);
+                      clearFieldError("author");
+                    }}
+                    placeholder={`Author${errors.author ? " *" : ""}`}
+                  />
+                </div>
+                <div className="flex-1">
+                  <label htmlFor="category" className={`font-bold ${errors.category ? "text-red-600" : ""}`}>
+                    Category {errors.category && "*"}
+                  </label>
+                  <select
+                    id="category"
+                    className={`w-full px-4 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 ${
+                      errors.category ? "border-red-600" : "border-black"
+                    }`}
+                    value={category}
+                    onChange={(e) => {
+                      setCategory(e.target.value);
+                      setIsDirty(true);
+                      clearFieldError("category");
+                    }}
+                  >
+                    <option value="" disabled={category !== ""}>
+                      {`Category${errors.category ? " *" : ""}`}
+                    </option>
+                    {Categories.map((cat) => (
+                      <option key={cat} value={cat}>
+                        {cat}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Barangay, Municipality */}
+              <div className="flex flex-col md:flex-row gap-4">
+                <div className="flex-1">
+                  <label htmlFor="municipality" className={`font-bold ${errors.municipality ? "text-red-600" : ""}`}>
+                    Municipality {errors.municipality && "*"}
+                  </label>
+                  <select
+                    id="municipality"
+                    className={`w-full px-4 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 ${
+                      errors.municipality ? "border-red-600" : "border-black"
+                    }`}
+                    value={municipality}
+                    onChange={(e) => {
+                      setMunicipality(e.target.value);
+                      setBarangay("");
+                      setIsDirty(true);
+                      clearFieldError("municipality");
+                    }}
+                  >
+                    <option value="" disabled={municipality !== ""}>
+                      {`Municipality${errors.municipality ? " *" : ""}`}
+                    </option>
+                    {Object.keys(municipalitiesWithBarangays).map((mun) => (
+                      <option key={mun} value={mun}>
+                        {mun}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex-1">
+                  <label htmlFor="barangay" className="font-bold">
+                    Barangay
+                  </label>
+                  <input
+                    id="barangay"
+                    list="barangayList"
+                    className="w-full px-4 py-3 border-2 border-black rounded-2xl text-base md:text-lg outline-none placeholder-gray-500"
+                    type="text"
+                    value={barangay}
+                    onChange={(e) => setBarangay(e.target.value)}
+                    placeholder="Barangay (You can type or select)"
+                  />
+                  <datalist id="barangayList">
+                    {(municipalitiesWithBarangays[municipality] || []).map((bgy) => (
+                      <option key={bgy} value={bgy} />
+                    ))}
+                  </datalist>
+                </div>
+              </div>
+
+              {/* Status */}
+              <div className="flex-1">
+                <label htmlFor="status" className="font-bold">
+                  Status
+                </label>
+                <select
+                  id="status"
+                  className="w-full px-4 py-3 border-2 border-black rounded-2xl text-base md:text-lg outline-none"
+                  name="status"
+                  value={status}
+                  onChange={(e) => {
+                    setStatus(e.target.value);
+                    setIsDirty(true);
+                  }}
+                >
+                  {STATUS.filter((s) => AUTHOR_ALLOWED.has(s.value)).map((s) => (
+                    <option key={s.value} value={s.value}>
+                      {STATUS_LABELS[s.value] ?? s.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Scheduled fields */}
+              {status === "scheduled" && (
+                <>
+                  <div className="flex-1">
+                    <label htmlFor="uploadPeriodStart" className="font-bold">
+                      Start Date
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        id="uploadPeriodStart"
+                        type="date"
+                        className={`w-full px-4 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 ${
+                          errors.uploadPeriodStart ? "border-red-600" : "border-black"
+                        }`}
+                        value={uploadPeriodStart}
+                        onChange={(e) => {
+                          setUploadPeriodStart(e.target.value);
+                          setIsDirty(true);
+                          clearFieldError("uploadPeriodStart");
+                        }}
+                      />
+                      <input
+                        id="uploadPeriodStartTime"
+                        type="time"
+                        className="w-32 px-2 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 border-black"
+                        value={uploadPeriodStartTime}
+                        onChange={(e) => {
+                          setUploadPeriodStartTime(e.target.value);
+                          setIsDirty(true);
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex-1">
+                    <label htmlFor="uploadPeriodEnd" className="font-bold">
+                      End Date
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        id="uploadPeriodEnd"
+                        type="date"
+                        className={`w-full px-4 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 ${
+                          errors.uploadPeriodEnd ? "border-red-600" : "border-black"
+                        }`}
+                        value={uploadPeriodEnd}
+                        onChange={(e) => {
+                          setUploadPeriodEnd(e.target.value);
+                          setIsDirty(true);
+                          clearFieldError("uploadPeriodEnd");
+                        }}
+                        min={uploadPeriodStart}
+                      />
+                      <input
+                        id="uploadPeriodEndTime"
+                        type="time"
+                        className="w-32 px-2 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 border-black"
+                        value={uploadPeriodEndTime}
+                        onChange={(e) => {
+                          setUploadPeriodEndTime(e.target.value);
+                          setIsDirty(true);
+                        }}
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Thumbnail */}
+              <div className="flex flex-col md:flex-row gap-4">
+                <div className="relative flex-1">
+                  <label htmlFor="thumbnail" className="font-bold">
+                    Thumbnail
+                  </label>
+                  <input
+                    id="thumbnail"
+                    ref={thumbnailInputRef}
+                    className="w-full px-4 py-3 border-2 border-black rounded-2xl text-base md:text-lg outline-none file:hidden"
+                    type="file"
+                    name="thumbnail"
+                    onChange={handleCustomThumbnailChange}
+                    accept="image/*"
+                    style={{ color: "transparent" }}
+                  />
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-gray-700 truncate max-w-[75%]">
+                    {removeThumbnail || (!thumbnail && !previewImage)
+                      ? "No Image selected"
+                      : previewImage && typeof previewImage === "string"
+                      ? previewImage.split("/").pop()
+                      : thumbnail && thumbnail.name}
+                  </div>
+                  {previewImage && !removeThumbnail && (
+                    <button
+                      type="button"
+                      onClick={handleRemoveThumbnail}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-red-600 hover:text-red-800"
+                    >
+                      <XIcon size={15} strokeWidth={3} />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Rich Text Editor */}
+              <RichTextEditor
+                ref={editorRef}
+                errors={errors}
+                setIsDirty={setIsDirty}
+                fontSizes={fontSizes}
+                onImageUpload={handleImageUpload}
+                editable={!isReviewer}
+                placeholder="Start writing your article..."
+                initialHTML={editorHTML || article?.description || ""}
+                onUpdate={({ html, text }) => {
+                  setEditorHTML(html);
+                  setEditorText(text);
+                  setIsDirty(true);
+                }}
+              />
+
+              {/* Caption */}
+              <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 border border-gray-200">
+                <div className="flex justify-between items-center mb-2">
+                  <label htmlFor="caption" className="text-xl font-bold text-gray-800">
+                    Publicly Displayed Caption
+                  </label>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleGenerateCaption(editorText, setCaption, setIsGeneratingCaption)}
+                      disabled={isGeneratingCaption || !editorText.trim()}
+                      className="px-4 py-2 bg-purple-600 text-white font-semibold rounded-lg shadow-md hover:bg-purple-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+                    >
+                      {isGeneratingCaption ? "Generating..." : "Generate with AI"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSummarizeCaption(editorText, setCaption, setIsSummarizing, BASE_URL)}
+                      disabled={isSummarizing || !editorText.trim()}
+                      className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+                    >
+                      {isSummarizing ? "Summarizing..." : "Summarize with Node"}
+                    </button>
+                  </div>
+                </div>
+                <textarea
+                  id="caption"
+                  className="w-full h-24 p-3 border-2 border-gray-300 rounded-lg text-base md:text-lg outline-none resize-none focus:border-blue-500 transition-colors"
+                  value={caption}
+                  onChange={(e) => setCaption(e.target.value)}
+                  placeholder="Enter a brief, engaging caption for the article. This will be visible on the homepage."
+                  readOnly={isViewer}
+                />
+              </div>
+
+              {/* Buttons */}
+              <div className="flex justify-between">
+                <StyledButton
+                  type="button"
+                  onClick={handleCancelClick}
+                  buttonColor="bg-gray-500"
+                  hoverColor="hover:bg-gray-600"
+                  textColor="text-white"
+                >
+                  Cancel
+                </StyledButton>
+                <StyledButton
+                  type="submit"
+                  buttonColor="bg-blue-600"
+                  hoverColor="hover:bg-[#d69641]"
+                  textColor="text-white"
+                  className="mt-4"
+                >
+                  {isEditing ? "Save Changes" : "Submit Article"}
+                </StyledButton>
+              </div>
+            </form>
+          </div>
+        ) : (
+          // Reviewer view
+          <div className="bg-white w-full 2xl:w-1/2 p-6 rounded-lg shadow-xl ...">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-3xl font-bold">Review Article</h2>
+
+              {isPrivileged && (
+                <StyledButton
+                  type="button"
+                  buttonColor="bg-indigo-600"
+                  hoverColor="hover:bg-indigo-700"
+                  textColor="text-white"
+                  onClick={() => {
+                    navigate(`/admin/article/edit-article/${encoded}?mode=edit`, {
+                      state: { forceReviewMode: true },
+                      replace: true,
+                    });
+                  }}
+                >
+                  Edit this article
+                </StyledButton>
+              )}
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <p className="text-lg font-bold">Title:</p>
+                <p>{title || "N/A"}</p>
+              </div>
+
+              <div className="flex gap-4">
+                <div className="flex flex-col md:flex-row gap-4">
+                  <div className="flex-1">
+                    <label className="font-bold">Date Created</label>
+                    <p className="text-lg text-gray-700">{article?.created_at}</p>
+                  </div>
+                  <div className="flex-1">
+                    <label className="font-bold">Last Updated</label>
+                    <p className="text-lg text-gray-700">{article?.updated_at}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <p className="text-lg font-bold">Current Status:</p>
+                <p className="capitalize">{status}</p>
+              </div>
+
+              <div className="space-y-2">
+                <label htmlFor="reviewerNotes" className="text-lg font-bold">
+                  Reviewer's Notes
+                </label>
+                <textarea
+                  id="reviewerNotes"
+                  className="w-full h-40 p-4 border-2 border-black rounded-lg text-base md:text-lg outline-none resize-none"
+                  value={reviewerNotes}
+                  onChange={(e) => setReviewerNotes(e.target.value)}
+                  placeholder="Add your notes here..."
+                  disabled={isViewer}
+                />
+              </div>
+            </div>
+
+            <form onSubmit={handleFormSubmit} className="mt-6 space-y-6">
+              <div className="flex items-center gap-4">
+                <label htmlFor="reviewerStatus" className="font-bold whitespace-nowrap">
+                  Change Status:
+                </label>
+                <select
+                  id="reviewerStatus"
+                  className="flex-1 px-4 py-3 border-2 border-black rounded-2xl text-base md:text-lg outline-none"
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value)}
+                  disabled={isViewer}
+                >
+                  {STATUS.map((s) => (
+                    <option key={s.value} value={s.value}>
+                      {STATUS_LABELS[s.value] ?? s.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {status === "scheduled" && (
+                <div className="flex flex-col gap-4">
+                  <div className="flex flex-col md:flex-row gap-2">
+                    <div className="flex-1">
+                      <label htmlFor="uploadPeriodStart" className="font-bold">
+                        Start Date
+                      </label>
+                      <input
+                        id="uploadPeriodStart"
+                        type="date"
+                        className={`w-full px-4 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 ${
+                          errors.uploadPeriodStart ? "border-red-600" : "border-black"
+                        }`}
+                        value={uploadPeriodStart}
+                        onChange={(e) => {
+                          setUploadPeriodStart(e.target.value);
+                          setIsDirty(true);
+                          clearFieldError("uploadPeriodStart");
+                        }}
+                        disabled={isViewer}
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <label htmlFor="uploadPeriodStartTime" className="font-bold">
+                        Start Time
+                      </label>
+                      <input
+                        id="uploadPeriodStartTime"
+                        type="time"
+                        className="w-full px-4 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 border-black"
+                        value={uploadPeriodStartTime}
+                        onChange={(e) => {
+                          setUploadPeriodStartTime(e.target.value);
+                          setIsDirty(true);
+                        }}
+                        disabled={isViewer}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col md:flex-row gap-2">
+                    <div className="flex-1">
+                      <label htmlFor="uploadPeriodEnd" className="font-bold">
+                        End Date
+                      </label>
+                      <input
+                        id="uploadPeriodEnd"
+                        type="date"
+                        className={`w-full px-4 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 ${
+                          errors.uploadPeriodEnd ? "border-red-600" : "border-black"
+                        }`}
+                        value={uploadPeriodEnd}
+                        onChange={(e) => {
+                          setUploadPeriodEnd(e.target.value);
+                          setIsDirty(true);
+                          clearFieldError("uploadPeriodEnd");
+                        }}
+                        min={uploadPeriodStart}
+                        disabled={isViewer}
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <label htmlFor="uploadPeriodEndTime" className="font-bold">
+                        End Time
+                      </label>
+                      <input
+                        id="uploadPeriodEndTime"
+                        type="time"
+                        className="w-full px-4 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 border-black"
+                        value={uploadPeriodEndTime}
+                        onChange={(e) => {
+                          setUploadPeriodEndTime(e.target.value);
+                          setIsDirty(true);
+                        }}
+                        disabled={isViewer}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {userRole !== 3 && (
+                <div className="flex justify-end gap-3">
+                  <StyledButton
+                    type="button"
+                    onClick={() => navigate("/admin/article")}
+                    buttonColor="bg-gray-500"
+                    hoverColor="hover:bg-gray-600"
+                    textColor="text-white"
+                  >
+                    Cancel
+                  </StyledButton>
+
+                  <Button
+                    type="submit"
+                    className="w-full md:w-auto px-6 py-3 bg-[#c78216] text-white font-bold rounded-2xl hover:bg-[#d69641] transition-colors"
+                  >
+                    Save Status
+                  </Button> 
+                </div>
+              )}
+            </form>
+          </div>
+        )}
+
+        {/* RIGHT SIDE - Article Preview */}
+        <ViewPort
+          sizes={{
+            lg: { width: 450, height: 545 },
+            xl: { width: 450, height: 545 },
+            "2xl": { width: 550, height: 545 },
+            "3xl": { width: 650, height: 545 },
           }}
-        />
-
-        {/* Caption */}
-        <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 border border-gray-200">
-          <div className="flex justify-between items-center mb-2">
-            <label htmlFor="caption" className="text-xl font-bold text-gray-800">
-              Publicly Displayed Caption
-            </label>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => handleGenerateCaption(editorText, setCaption, setIsGeneratingCaption)}
-                disabled={isGeneratingCaption || !editorText.trim()}
-                className="px-4 py-2 bg-purple-600 text-white font-semibold rounded-lg shadow-md hover:bg-purple-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
-              >
-                {isGeneratingCaption ? "Generating..." : "Generate with AI"}
-              </button>
-              <button
-                type="button"
-                onClick={() => handleSummarizeCaption(editorText, setCaption, setIsSummarizing, BASE_URL)}
-                disabled={isSummarizing || !editorText.trim()}
-                className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
-              >
-                {isSummarizing ? "Summarizing..." : "Summarize with Node"}
-              </button>
-            </div>
-          </div>
-          <textarea
-            id="caption"
-            className="w-full h-24 p-3 border-2 border-gray-300 rounded-lg text-base md:text-lg outline-none resize-none focus:border-blue-500 transition-colors"
-            value={caption}
-            onChange={(e) => setCaption(e.target.value)}
-            placeholder="Enter a brief, engaging caption for the article. This will be visible on the homepage."
-            readOnly={isViewer}
+        >
+          <ArticlePreview
+            title={title}
+            selectedDate={selectedDate}
+            author={author}
+            municipality={municipality}
+            barangay={barangay}
+            category={category}
+            previewImage={previewImage}
+            removeThumbnail={removeThumbnail}
+            editorHTML={editorHTML}
           />
-        </div>
-
-        {/* Buttons */}
-        <div className="flex justify-between">
-          <StyledButton
-            type="button"
-            onClick={handleCancelClick}
-            buttonColor="bg-gray-500"
-            hoverColor="hover:bg-gray-600"
-            textColor="text-white"
-          >
-            Cancel
-          </StyledButton>
-          <StyledButton
-            type="submit"
-            buttonColor="bg-blue-600"
-            hoverColor="hover:bg-[#d69641]"
-            textColor="text-white"
-            className="mt-4"
-          >
-            {isEditing ? "Save Changes" : "Submit Article"}
-          </StyledButton>
-        </div>
-      </form>
-    </div>
-  ) : (
-    // Reviewer view
-    <div className="bg-white w-full 2xl:w-1/2 p-6 rounded-lg shadow-xl ...">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-3xl font-bold">Review Article</h2>
-
-        {isPrivileged && (
-          <StyledButton
-            type="button"
-            buttonColor="bg-indigo-600"
-            hoverColor="hover:bg-indigo-700"
-            textColor="text-white"
-            onClick={() => {
-              navigate(`/admin/article/edit-article/${encoded}?mode=edit`, {
-                state: { forceReviewMode: true },
-                replace: true,
-              });
-            }}
-          >
-            Edit this article
-          </StyledButton>
-        )}
+        </ViewPort>
       </div>
-
-      <div className="space-y-4">
-        <div>
-          <p className="text-lg font-bold">Title:</p>
-          <p>{title || "N/A"}</p>
-        </div>
-
-        <div className="flex gap-4">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1">
-              <label className="font-bold">Date Created</label>
-              <p className="text-lg text-gray-700">{article?.created_at}</p>
-            </div>
-            <div className="flex-1">
-              <label className="font-bold">Last Updated</label>
-              <p className="text-lg text-gray-700">{article?.updated_at}</p>
-            </div>
-          </div>
-        </div>
-
-        <div>
-          <p className="text-lg font-bold">Current Status:</p>
-          <p className="capitalize">{status}</p>
-        </div>
-
-        <div className="space-y-2">
-          <label htmlFor="reviewerNotes" className="text-lg font-bold">
-            Reviewer's Notes
-          </label>
-          <textarea
-            id="reviewerNotes"
-            className="w-full h-40 p-4 border-2 border-black rounded-lg text-base md:text-lg outline-none resize-none"
-            value={reviewerNotes}
-            onChange={(e) => setReviewerNotes(e.target.value)}
-            placeholder="Add your notes here..."
-            disabled={isViewer}
-          />
-        </div>
-      </div>
-
-      <form onSubmit={handleFormSubmit} className="mt-6 space-y-6">
-        <div className="flex items-center gap-4">
-          <label htmlFor="reviewerStatus" className="font-bold whitespace-nowrap">
-            Change Status:
-          </label>
-          <select
-            id="reviewerStatus"
-            className="flex-1 px-4 py-3 border-2 border-black rounded-2xl text-base md:text-lg outline-none"
-            value={status}
-            onChange={(e) => setStatus(e.target.value)}
-            disabled={isViewer}
-          >
-            {STATUS.map((s) => (
-              <option key={s.value} value={s.value}>
-                {STATUS_LABELS[s.value] ?? s.label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {status === "scheduled" && (
-          <div className="flex flex-col gap-4">
-            <div className="flex flex-col md:flex-row gap-2">
-              <div className="flex-1">
-                <label htmlFor="uploadPeriodStart" className="font-bold">
-                  Start Date
-                </label>
-                <input
-                  id="uploadPeriodStart"
-                  type="date"
-                  className={`w-full px-4 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 ${
-                    errors.uploadPeriodStart ? "border-red-600" : "border-black"
-                  }`}
-                  value={uploadPeriodStart}
-                  onChange={(e) => {
-                    setUploadPeriodStart(e.target.value);
-                    setIsDirty(true);
-                    clearFieldError("uploadPeriodStart");
-                  }}
-                  disabled={isViewer}
-                />
-              </div>
-              <div className="flex-1">
-                <label htmlFor="uploadPeriodStartTime" className="font-bold">
-                  Start Time
-                </label>
-                <input
-                  id="uploadPeriodStartTime"
-                  type="time"
-                  className="w-full px-4 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 border-black"
-                  value={uploadPeriodStartTime}
-                  onChange={(e) => {
-                    setUploadPeriodStartTime(e.target.value);
-                    setIsDirty(true);
-                  }}
-                  disabled={isViewer}
-                />
-              </div>
-            </div>
-
-            <div className="flex flex-col md:flex-row gap-2">
-              <div className="flex-1">
-                <label htmlFor="uploadPeriodEnd" className="font-bold">
-                  End Date
-                </label>
-                <input
-                  id="uploadPeriodEnd"
-                  type="date"
-                  className={`w-full px-4 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 ${
-                    errors.uploadPeriodEnd ? "border-red-600" : "border-black"
-                  }`}
-                  value={uploadPeriodEnd}
-                  onChange={(e) => {
-                    setUploadPeriodEnd(e.target.value);
-                    setIsDirty(true);
-                    clearFieldError("uploadPeriodEnd");
-                  }}
-                  min={uploadPeriodStart}
-                  disabled={isViewer}
-                />
-              </div>
-              <div className="flex-1">
-                <label htmlFor="uploadPeriodEndTime" className="font-bold">
-                  End Time
-                </label>
-                <input
-                  id="uploadPeriodEndTime"
-                  type="time"
-                  className="w-full px-4 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 border-black"
-                  value={uploadPeriodEndTime}
-                  onChange={(e) => {
-                    setUploadPeriodEndTime(e.target.value);
-                    setIsDirty(true);
-                  }}
-                  disabled={isViewer}
-                />
-              </div>
-            </div>
-          </div>
-        )}
-
-        {userRole !== 3 && (
-          <div className="flex justify-end gap-3">
-            <StyledButton
-              type="button"
-              onClick={() => navigate("/admin/article")}
-              buttonColor="bg-gray-500"
-              hoverColor="hover:bg-gray-600"
-              textColor="text-white"
-            >
-              Cancel
-            </StyledButton>
-
-            <Button
-              type="submit"
-              className="w-full md:w-auto px-6 py-3 bg-[#c78216] text-white font-bold rounded-2xl hover:bg-[#d69641] transition-colors"
-            >
-              Save Status
-            </Button>
-          </div>
-        )}
-      </form>
-    </div>
-  )}
-
-  {/* RIGHT SIDE - Article Preview */}
-  <ViewPort 
-  // width={550} height={545}
-  sizes={{
-                    // breakpoints
-                    // base:  { width: 320,  height: 240 },
-                    // sm:    { width: 480,  height: 320 },
-                    // md:    { width: 640,  height: 400 },
-                    // lg:    { width: 800,  height: 500 },
-                    // xl: { width: 100, height: 600 },
-                    "2xl": { width: 550, height: 545 },
-                    "3xl": { width: 750, height: 700 },
-                  }}
-  >
-    <div className="bg-white w-full max-w-[50rem] p-6 rounded-lg shadow-2xl mt-4 2xl:mt-0">
-      <h3 className="text-2xl font-bold mb-4">Preview</h3>
-      <div className="border border-gray-200 p-4 mb-4 rounded">
-        <h1 className="text-center text-3xl font-bold">{title || "Title of the News or Event"}</h1>
-      </div>
-
-      <div className="flex w-full justify-center mb-6 font-hina">
-        <div className="flex w-full items-center justify-center text-center text-base">
-          <span className="w-1/4 h-24 border border-gray-300 flex flex-col items-center justify-center p-2">
-            <h4 className="text-lg font-medium">Date</h4>
-            <p className={`text-sm ${!selectedDate ? "text-gray-500 italic" : ""}`}>
-              {selectedDate
-                ? new Date(selectedDate).toLocaleDateString("en-US", {
-                    month: "long",
-                    day: "numeric",
-                    year: "numeric",
-                  })
-                : "[month dd, yyyy]"}
-            </p>
-          </span>
-          <span className="w-1/4 h-24 border border-gray-300 flex flex-col items-center justify-center p-2">
-            <h4 className="text-lg font-medium">Author</h4>
-            <p className={`text-sm ${!author ? "text-gray-500 italic" : ""}`}>{author || "[Name of the Author]"}</p>
-          </span>
-          <span className="w-1/4 h-24 border border-gray-300 flex flex-col items-center justify-center p-2">
-            <h4 className="text-lg font-medium">Address</h4>
-            <p className={`text-sm ${!municipality && !barangay ? "text-gray-500 italic" : ""}`}>
-              {barangay ? `${barangay}, ` : ""}
-              {municipality || "[Location]"}
-            </p>
-          </span>
-          <span className="w-1/4 h-24 border border-gray-300 flex flex-col items-center justify-center p-2">
-            <h4 className="text-lg font-medium">Category</h4>
-            <p className={`text-sm ${!category ? "text-gray-500 italic" : ""}`}>{category || "[placeholder]"}</p>
-          </span>
-        </div>
-      </div>
-
-      <div className="border border-gray-200 p-4 rounded min-h-[300px] font-[Hina Mincho]">
-        {previewImage && !removeThumbnail ? (
-          <div className="flex justify-center mb-4">
-            <img src={previewImage} alt="Article thumbnail" className="max-h-64 object-contain" />
-          </div>
-        ) : null}
-
-        <div className="editor-content-preview not-prose max-w-none break-words font-hina">
-          {editorHTML ? (
-            <div className="editor-content-preview" dangerouslySetInnerHTML={{ __html: editorHTML }} />
-          ) : (
-            <p className="text-gray-400 italic">Article content will appear here...</p>
-          )}
-        </div>
-      </div>
-    </div>
-  </ViewPort>
-</div>
-
 
       {/* Cancel Confirmation Dialog */}
       <ConfirmDialog

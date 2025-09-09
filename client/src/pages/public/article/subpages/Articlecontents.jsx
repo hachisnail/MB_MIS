@@ -1,8 +1,10 @@
-import React, { useEffect, useMemo, useState, useCallback } from "react";
+import React, { useEffect, useMemo, useState, useCallback, useRef} from "react";
 import { useParams, useLocation, Link } from "react-router-dom";
 import texture from "@/assets/Texture.png";
 import MSBLogo from "@/assets/MSBLogo.png";
 import seal from "@/assets/seal.png";
+import useEngagement from "../../../../../../server/src/hooks/useEngagement";
+import { setEngagementEndpoint, trackTransition } from "../../../../../../server/src/services/engagementTracker";
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL;
 const SERVER_ORIGIN = BASE_URL.replace(/\/api$/, "");
@@ -30,15 +32,33 @@ const buildShareTargets = (url, title, text) => ({
   whatsapp: `https://api.whatsapp.com/send?text=${encodeURIComponent((title ? title + " — " : "") + url)}`,
 });
 
-const Appointment = () => {
+const ArticleContents = () => {
   const { id } = useParams();
   const location = useLocation();
   const [article, setArticle] = useState(null);
   const [related, setRelated] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
+  const containerRef = useRef(null);
   const { id: articleId, name: articleName } = decodeId(id);
+
+
+// set tracker endpoint once
+  useEffect(() => {
+    setEngagementEndpoint(`${SERVER_ORIGIN}/api/engagement`);
+  }, []);
+
+  // transition: from previous article -> this article
+  useEffect(() => {
+    const from = location.state?.fromArticleId;
+    if (from && articleId && String(from) !== String(articleId)) {
+      trackTransition(from, articleId, null); // pass real userId if you have auth
+    }
+  }, [location.state, articleId]);
+
+  // time + clicks
+  useEngagement({ articleId, userId: null, containerRef });
+
 
   // compute canonical share URL
   const shareUrl = useMemo(() => {
@@ -104,29 +124,117 @@ const Appointment = () => {
     fetchArticle();
   }, [articleId]);
 
-  useEffect(() => {
-    const fetchRelated = async (current) => {
-      if (!current) return;
+useEffect(() => {
+  if (!article) return;
+
+  const pickUnique = (arr) => {
+    const seen = new Set();
+    const out = [];
+    for (const a of arr) {
+      const key = String(a.article_id ?? a.id);
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      out.push(a);
+    }
+    return out;
+  };
+
+  // deterministic light shuffle so it isn’t always the same order
+  const shuffleLight = (arr, seed = String(article.article_id || "")) => {
+    let s = 0;
+    for (let i = 0; i < seed.length; i++) s = (s * 31 + seed.charCodeAt(i)) >>> 0;
+    const copy = arr.slice();
+    for (let i = copy.length - 1; i > 0; i--) {
+      s = (s * 1664525 + 1013904223) >>> 0;
+      const j = s % (i + 1);
+      [copy[i], copy[j]] = [copy[j], copy[i]];
+    }
+    return copy;
+  };
+
+  const hydrateByIds = async (ids) => {
+    const tasks = ids.map(async (aid) => {
       try {
-        const res = await fetch(`${SERVER_ORIGIN}/api/auth/public-articles`, { headers: { Accept: "application/json" } });
-        if (!res.ok) throw new Error("no related endpoint");
-        const list = await res.json();
-        const pool = Array.isArray(list) ? list : [];
-        const deduped = pool
-          .filter((a) => String(a.article_id) !== String(current.article_id))
-          .filter((a) => {
-            const sameCat = current.article_category && a.article_category === current.article_category;
-            const sameLoc = current.address && a.address === current.address;
-            return sameCat || sameLoc;
-          })
-          .slice(0, 4);
-        setRelated(deduped);
-      } catch (e) {
-        setRelated([]);
+        const det = await fetch(`${SERVER_ORIGIN}/api/auth/public-article/${aid}`);
+        if (!det.ok) return null;
+        return await det.json();
+      } catch {
+        return null;
       }
-    };
-    if (article) fetchRelated(article);
-  }, [article]);
+    });
+    return (await Promise.all(tasks)).filter(Boolean);
+  };
+
+  // Build a synthetic Markov-ish score from metadata when we have no transitions yet
+  const syntheticRank = (others, current) => {
+    const now = Date.now();
+    return others
+      .map((a) => {
+        let score = 0;
+        // category and location act like "co-occurrence" edges
+        if (current.article_category && a.article_category === current.article_category) score += 3;
+        if (current.address && a.address && a.address === current.address) score += 2;
+
+        // recency weight ~ exp(-age / 30d)
+        const ageDays = (now - new Date(a.upload_date || 0).getTime()) / (1000 * 60 * 60 * 24);
+        const recency = Math.exp(-Math.max(0, ageDays) / 30); // 0..1
+        score += recency; // small smooth boost
+
+        return { a, score };
+      })
+      .sort((x, y) => y.score - x.score)
+      .map((x) => x.a);
+  };
+
+  const fetchRelated = async () => {
+    try {
+      // 1) pool of articles for fallbacks & hydration
+      const allRes = await fetch(`${SERVER_ORIGIN}/api/auth/public-articles`);
+      const allJson = await allRes.json();
+      const all = Array.isArray(allJson) ? allJson : [];
+
+      // exclude current
+      const others = all.filter((x) => String(x.article_id) !== String(article.article_id));
+
+      // 2) engagement-based suggestions
+      let suggestedDetailed = [];
+      try {
+        const sRes = await fetch(
+          `${SERVER_ORIGIN}/api/engagement/suggest/next?fromId=${encodeURIComponent(
+            article.article_id
+          )}&limit=12`
+        );
+        if (sRes.ok) {
+          const sData = await sRes.json();
+          const ids = (sData?.next || []).map((x) => x.to).filter(Boolean);
+          if (ids.length) suggestedDetailed = pickUnique(await hydrateByIds(ids));
+        }
+      } catch {
+        // ignore, we’ll fall back
+      }
+
+      // 3) synthetic Markov fallback (and/or filler)
+      const synthetic = syntheticRank(others, article);
+
+      // 4) build final set: prefer suggestions, then fill from synthetic, then any recent leftovers
+      const merged = pickUnique([
+        ...suggestedDetailed,
+        ...synthetic,
+        ...others
+          .slice()
+          .sort((a, b) => new Date(b.upload_date || 0) - new Date(a.upload_date || 0)),
+      ]);
+
+      const chosen = shuffleLight(merged).slice(0, 4);
+      setRelated(chosen);
+    } catch {
+      setRelated([]);
+    }
+  };
+
+  fetchRelated();
+}, [article, SERVER_ORIGIN]);
+
 
   if (loading) {
     return (
@@ -142,6 +250,7 @@ const Appointment = () => {
 
   return (
     <div
+    ref={containerRef}
       className="flex flex-col gap-y-4 h-auto w-screen pt-7"
       style={{ backgroundImage: `url(${texture})` }}
     >
@@ -195,7 +304,7 @@ const Appointment = () => {
       {/* Share Row */}
       <div className="w-full flex justify-center mb-6">
         <div className="flex items-center gap-3 flex-wrap px-4">
-          <button onClick={handleNativeShare} className="px-4 py-2 rounded-2xl bg-black text-white hover:opacity-90">Share</button>
+          <button data-track-click onClick={handleNativeShare} className="px-4 py-2 rounded-2xl bg-black text-white hover:opacity-90">Share</button>
           <a target="_blank" rel="noreferrer" href={shareTargets.facebook} className="px-4 py-2 rounded-2xl border hover:bg-gray-50">Facebook</a>
           <a target="_blank" rel="noreferrer" href={shareTargets.x} className="px-4 py-2 rounded-2xl border hover:bg-gray-50">X</a>
           <a target="_blank" rel="noreferrer" href={shareTargets.linkedin} className="px-4 py-2 rounded-2xl border hover:bg-gray-50">LinkedIn</a>
@@ -240,6 +349,7 @@ const Appointment = () => {
                 <Link
                   key={ra.article_id}
                   to={`/article/${encodeForRoute(ra.article_id, ra.title)}`}
+                  state={{ fromArticleId: article.article_id }}
                   className="group border rounded-2xl overflow-hidden hover:shadow-lg transition bg-white"
                 >
                   {ra.images && (
@@ -268,4 +378,4 @@ const Appointment = () => {
   );
 };
 
-export default Appointment;
+export default ArticleContents;

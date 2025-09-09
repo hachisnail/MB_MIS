@@ -62,6 +62,7 @@ import ManageArticle from "./pages/admin/article/subpages/ManageArticle";
 
 // schedules
 import Schedule from "./pages/admin/schedule/Schedule";
+import AddSchedulePage from "./pages/admin/schedule/subpages/AddSchedulePage";
 
 // configurations
 import Configuration from "./pages/admin/configuration/Configuration";
@@ -231,7 +232,10 @@ const Router = () => {
             </>
           )}
           {flags["schedule"] && (
-            <Route path="schedule" element={<Schedule />} />
+            <>
+              <Route path="schedule" element={<Schedule />} />
+              <Route path="schedule/add" element={<AddSchedulePage />} />
+            </>
           )}
           {flags["article"] && (
             <>

@@ -22,6 +22,7 @@ const routeMeta = [
   { path: "/admin/appointment/:encoded/view", title: "File Viewer", theme: "text-gray-800" },
   { path: "/admin/appointment/walk-ins", title: "New Appointment", theme: "text-gray-800" },
   { path: "/admin/schedule", title: "Schedules Management" },
+  { path: "/admin/schedule/add", title: "Add Schedule / Manage Dates" },
   { path: "/admin/schedule/:encoded", title: "View Appointment from Schedule", theme: "text-gray-800" },
   { path: "/admin/article", title: "Articles Management" },
   { path: "/admin/article/add-article", title: "Create a new Article" },

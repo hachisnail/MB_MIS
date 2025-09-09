@@ -1,29 +1,23 @@
 import Article from '../models/Article.js';
 
-
-
-
-// Controller to handle uploading multiple article images (not the main thumbnail)
+// Upload content images (unchanged)
 export const uploadContentImages = async (req, res) => {
   try {
-    // req.files is an array of files
     const images = req.files.map((file) => file.filename);
-    return res.status(200).json({
-      message: 'Content images uploaded successfully',
-      images,
-    });
+    return res.status(200).json({ message: 'Content images uploaded successfully', images });
   } catch (error) {
     console.error('Error uploading content images:', error.message);
     return res.status(500).json({ message: 'Server Error', error: error.message });
   }
 };
 
-// Controller to create an article
+// CREATE
 export const createArticle = async (req, res) => {
   try {
     const {
       title,
       article_category,
+      content_type,      
       description,
       user_id,
       author,
@@ -35,27 +29,32 @@ export const createArticle = async (req, res) => {
       uploadPeriodStart,
       uploadPeriodEnd,
       barangay,
-      reviewer_notes
+      reviewer_notes,
+      volume,
+      sequence_number,
     } = req.body;
 
     const articleData = {
       title,
       article_category,
+      content_type: content_type || null, // "article" | "event"
       description,
       user_id,
       author,
       address,
       barangay,
-      upload_date: selectedDate,
+      upload_date: selectedDate ? new Date(selectedDate) : null,
       images: req.file ? req.file.filename : null,
-      editImages: editImages,
+      editImages,
       caption,
       status,
-      reviewer_notes
+      reviewer_notes,
+
+      // persist minimal archive fields
+      volume: volume ? Number(volume) : null,
+      sequence_number: sequence_number ? Number(sequence_number) : null,
     };
 
-
-    // Conditionally set the scheduling dates based on status
     if (status === 'scheduled') {
       articleData.upload_period_start = uploadPeriodStart ? new Date(uploadPeriodStart) : null;
       articleData.upload_period_end = uploadPeriodEnd ? new Date(uploadPeriodEnd) : null;
@@ -68,21 +67,17 @@ export const createArticle = async (req, res) => {
     }
 
     const article = await Article.create(articleData);
-
     return res.status(201).json(article);
   } catch (error) {
     console.error('Error creating article:', error);
-    return res.status(500).json({
-      message: 'Server error creating article.'
-    });
+    return res.status(500).json({ message: 'Server error creating article.' });
   }
 };
-// Retrieve ALL articles (admin or private usage)
+
+// ADMIN list
 export const getAllArticles = async (req, res) => {
   try {
-    const articles = await Article.findAll({
-      order: [['created_at', 'DESC']],
-    });
+    const articles = await Article.findAll({ order: [['created_at', 'DESC']] });
     return res.json(articles);
   } catch (error) {
     console.error('Error fetching articles:', error);
@@ -90,76 +85,72 @@ export const getAllArticles = async (req, res) => {
   }
 };
 
-// Retrieve public articles (lightweight list for landing page)
+// PUBLIC list
 export const getPublicArticles = async (req, res) => {
   try {
     const articles = await Article.findAll({
-      attributes: ['article_id', 'images', 'title', 'article_category', 'upload_date','status', 'description','caption'],
+      attributes: [
+        'article_id', 'images', 'title', 'article_category', 'content_type',
+        'upload_date', 'status', 'description', 'caption',
+        'volume', 'sequence_number',
+      ],
       where: { status: 'posted' },
-      order: [['created_at', 'DESC']]
+      order: [['created_at', 'DESC']],
     });
 
-    // Use req.protocol and req.get('host') to build the base URL
     const baseUrl = `${req.protocol}://${req.get('host')}`;
-
-    const formattedArticles = articles.map((article) => ({
-      ...article.dataValues,
-      images: article.images
-        ? `${baseUrl}/uploads/pictures/${article.images}`
-        : null
+    const formatted = articles.map((a) => ({
+      ...a.dataValues,
+      images: a.images ? `${baseUrl}/uploads/pictures/${a.images}` : null,
     }));
-
-    return res.json(formattedArticles);
+    return res.json(formatted);
   } catch (error) {
     console.error('Error fetching public articles:', error);
     return res.status(500).json({ message: 'Server error retrieving public articles.' });
   }
 };
 
-// Retrieve a specific public article
+// PUBLIC single
 export const getPublicArticle = async (req, res) => {
   try {
     const { id } = req.params;
-    if (!id) {
-      return res.status(400).json({ message: 'Article ID is required.' });
-    }
+    if (!id) return res.status(400).json({ message: 'Article ID is required.' });
 
     const article = await Article.findOne({
       where: { article_id: id },
       attributes: [
         'article_id', 'title', 'user_id', 'upload_date', 'images',
-        'editImages','caption' , 'article_category', 'description', 'author',
-        'address', 'barangay', 'status', 'upload_period_start',
-        'upload_period_end', 'created_at', 'updated_at', 'reviewer_notes'
-      ]
+        'editImages', 'caption', 'article_category', 'content_type',
+        'description', 'author', 'address', 'barangay',
+        'status', 'upload_period_start', 'upload_period_end',
+        'created_at', 'updated_at', 'reviewer_notes',
+        'volume', 'sequence_number',
+      ],
     });
 
-    if (!article) {
-      return res.status(404).json({ message: 'Article not found.' });
-    }
+    if (!article) return res.status(404).json({ message: 'Article not found.' });
 
     const baseUrl = `${req.protocol}://${req.get('host')}`;
-    const formattedArticle = {
+    const formatted = {
       ...article.dataValues,
-      images: article.images
-        ? `${baseUrl}/uploads/pictures/${article.images}`
-        : null
+      images: article.images ? `${baseUrl}/uploads/pictures/${article.images}` : null,
     };
 
-    return res.json(formattedArticle);
+    return res.json(formatted);
   } catch (error) {
     console.error('Error fetching public article:', error);
     return res.status(500).json({ message: 'Server error retrieving public article.' });
   }
 };
 
-// Update an existing article
+// UPDATE
 export const updateArticle = async (req, res) => {
   try {
     const { id } = req.params;
     const {
       title,
       article_category,
+      content_type, 
       description,
       user_id,
       author,
@@ -171,79 +162,63 @@ export const updateArticle = async (req, res) => {
       barangay,
       uploadPeriodStart,
       uploadPeriodEnd,
-      reviewer_notes
+      reviewer_notes,
+      volume,
+      sequence_number,
     } = req.body;
 
     const updateData = {
       title,
       article_category,
+      content_type: content_type || null,
       description,
       user_id,
       author,
       address,
       barangay,
-      upload_date: selectedDate,
+      upload_date: selectedDate ? new Date(selectedDate) : null,
       images: req.file ? req.file.filename : undefined,
-      editImages: editImages,
+      editImages,
       caption,
       status,
-      reviewer_notes: reviewer_notes,
+      reviewer_notes,
       updated_at: new Date(),
+
+      volume: volume ? Number(volume) : null,
+      sequence_number: sequence_number ? Number(sequence_number) : null,
     };
 
-    // Set scheduling dates based on status
     if (status === 'scheduled') {
       updateData.upload_period_start = uploadPeriodStart ? new Date(uploadPeriodStart) : null;
       updateData.upload_period_end = uploadPeriodEnd ? new Date(uploadPeriodEnd) : null;
+    } else if (status === 'posted') {
+      updateData.upload_period_start = new Date();
+      updateData.upload_period_end = null;
     } else {
       updateData.upload_period_start = null;
       updateData.upload_period_end = null;
     }
 
-    const [updatedCount] = await Article.update(
-      updateData, {
-        where: {
-          article_id: id
-        }
-      }
-    );
+    const [updatedCount] = await Article.update(updateData, { where: { article_id: id } });
+    if (updatedCount === 0) return res.status(404).json({ message: 'Article not found' });
 
-    if (updatedCount === 0) {
-      return res.status(404).json({ message: 'Article not found' });
-    }
-
-    const updatedArticle = await Article.findOne({
-      where: {
-        article_id: id
-      }
-    });
-    return res.status(200).json({
-      message: 'Article updated successfully',
-      article: updatedArticle
-    });
+    const updated = await Article.findOne({ where: { article_id: id } });
+    return res.status(200).json({ message: 'Article updated successfully', article: updated });
   } catch (error) {
     console.error('Error updating article:', error);
-    return res.status(500).json({
-      message: 'Server error updating article',
-      error: error.message
-    });
+    return res.status(500).json({ message: 'Server error updating article', error: error.message });
   }
 };
 
+// BY ID
 export const getArticleById = async (req, res) => {
   try {
-    const { id } = req.params; // Get the ID from the URL parameters
-    // Assuming your article model has a method to find by primary key or ID
-    const article = await Article.findByPk(id); // Example: if using Sequelize
-
-    if (!article) {
-      return res.status(404).json({ message: 'Article not found.' });
-    }
-
+    const { id } = req.params;
+    const article = await Article.findByPk(id);
+    if (!article) return res.status(404).json({ message: 'Article not found.' });
     res.status(200).json(article);
   } catch (error) {
     console.error('Error fetching article by ID:', error);
     res.status(500).json({ message: 'Server error.', error: error.message });
   }
 };
-

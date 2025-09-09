@@ -13,9 +13,13 @@ import { handleGenerateCaption, handleSummarizeCaption } from "../components/Cap
 import RichTextEditor from "../components/RichTextEditor";
 import { X as XIcon } from "lucide-react";
 import { STATUS, STATUS_LABELS } from "../components/articleStatus";
-import texture from "../../../../assets/Texture.png";
-// ⬇️ NEW: import the separated Preview component
 import ArticlePreview from "../components/ArticlePreview";
+import {
+  getVolumeFromYYYYMMDD,
+  getYearFromYYYYMMDD,
+  computeNextSequence,
+  makeDisplayLabel,
+} from "../components/archiveHelpers";
 
 const ArticleEditorForm = () => {
   const BASE_URL = import.meta.env.VITE_API_BASE_URL;
@@ -31,12 +35,11 @@ const ArticleEditorForm = () => {
   const AUTHOR_ALLOWED = new Set(["pending", "scheduled", "posted", "archived"]);
   const navigate = useNavigate();
 
-  // Came from reviewer UI?
   const forcedFromNav = routerLocation.state?.forceReviewMode === true;
   const queryParams = new URLSearchParams(routerLocation.search);
   const forceEditorMode = queryParams.get("mode") === "edit";
 
-  // editor mirror state (strings) + ref for commands
+  // Editor mirror + ref
   const [editorHTML, setEditorHTML] = useState("");
   const [editorText, setEditorText] = useState("");
   const editorRef = useRef(null);
@@ -47,12 +50,13 @@ const ArticleEditorForm = () => {
   const [title, setTitle] = useState("");
   const [author, setAuthor] = useState("");
   const [category, setCategory] = useState("");
+  const [contentType, setContentType] = useState(""); 
   const [address, setAddress] = useState("");
   const [selectedDate, setSelectedDate] = useState("");
   const [thumbnail, setThumbnail] = useState(null);
   const [previewImage, setPreviewImage] = useState(null);
 
-  const Categories = ["Article", "Education", "Exhibit", "Contests", "Other"];
+  const Categories = ["Article", "Education", "Exhibit", "Contests", "Events", "Other"];
   const municipalitiesWithBarangays = {
     Basud: ["Mampili", "Matnog", "San Felipe", "San Isidro", "Tuaca"],
     Capalonga: ["Alayao", "Bayabas", "Del Pilar", "Itok", "Old Camp"],
@@ -94,11 +98,15 @@ const ArticleEditorForm = () => {
   const [uploadPeriodStartTime, setUploadPeriodStartTime] = useState("");
   const [uploadPeriodEndTime, setUploadPeriodEndTime] = useState("");
 
-  // Draft prompt modal state
+  // Keep original archive bucket on edit
+  const [origVolume, setOrigVolume] = useState(null);
+  const [origSeqNum, setOrigSeqNum] = useState(null);
+  const [origContentType, setOrigContentType] = useState(null);
+
+  // Draft prompt
   const [showDraftPrompt, setShowDraftPrompt] = useState(false);
   const [draftToLoad, setDraftToLoad] = useState(null);
 
-  // Unsaved changes prompt
   const { PromptModal } = usePrompt(
     "You have unsaved changes. Are you sure you want to leave?",
     isDirty,
@@ -130,6 +138,7 @@ const ArticleEditorForm = () => {
       selectedDate,
       author,
       category,
+      content_type: contentType,
       municipality,
       barangay,
       status,
@@ -142,6 +151,7 @@ const ArticleEditorForm = () => {
       selectedDate,
       author,
       category,
+      contentType,
       municipality,
       barangay,
       status,
@@ -152,13 +162,12 @@ const ArticleEditorForm = () => {
   );
   useAutosave(isDirty ? draftData : null, draftKey, 1000);
 
-  // Submit (create/update)
   const handleSubmit = async (e) => {
     e.preventDefault();
     const formData = new FormData();
-
     formData.append("title", title);
     formData.append("article_category", category);
+    formData.append("content_type", contentType); // required
     formData.append("description", editorHTML || "");
     formData.append("user_id", String(user.id));
     formData.append("author", author);
@@ -170,24 +179,20 @@ const ArticleEditorForm = () => {
     formData.append("reviewer_notes", reviewerNotes || "");
     formData.append("status", status);
 
-    // inside handleSubmit
+    // Manila → UTC helpers
     let startDateTime = '';
     let endDateTime = '';
-
     const toISOZFromManila = (datePart, timePart, fallbackHHmm = '00:00') => {
       if (!datePart) return '';
       const hhmm = (timePart && timePart.length ? timePart : fallbackHHmm).slice(0, 5);
-      // Build an explicit Manila offset, then normalize to UTC Z
       const isoWithOffset = `${datePart}T${hhmm}:00+08:00`;
       return new Date(isoWithOffset).toISOString();
     };
 
     if (status === 'scheduled') {
-      // if user didn’t pick a time, default start 08:00 and end 23:59 (optional, tweak as you like)
       startDateTime = toISOZFromManila(uploadPeriodStart, uploadPeriodStartTime, '08:00');
       endDateTime   = toISOZFromManila(uploadPeriodEnd,   uploadPeriodEndTime,   '23:59');
 
-      // Validate: end must be strictly after start
       if (!startDateTime) {
         setErrors((e) => ({ ...e, uploadPeriodStart: 'Start is required for scheduled.' }));
         return;
@@ -208,10 +213,27 @@ const ArticleEditorForm = () => {
       formData.append('uploadPeriodEnd', '');
     }
 
-
     if (thumbnail && thumbnail instanceof File) {
       formData.append("thumbnail", thumbnail);
     }
+
+    // === Derived archive fields (editor-computed) ===
+    const finalVolume = getVolumeFromYYYYMMDD(selectedDate) || "";
+    const year = getYearFromYYYYMMDD(selectedDate);
+    const sameBucket =
+      isEditing &&
+      origVolume &&
+      origContentType &&
+      Number(origVolume) === Number(finalVolume) &&
+      String(origContentType || "").toLowerCase() === String(contentType || "").toLowerCase();
+
+    const finalSeqNum = sameBucket
+      ? (origSeqNum || "")
+      : (computeNextSequence(articles, year, contentType) || "");
+
+
+    if (finalVolume) formData.append("volume", String(finalVolume));
+    if (finalSeqNum) formData.append("sequence_number", String(finalSeqNum));
 
     try {
       let response;
@@ -255,6 +277,7 @@ const ArticleEditorForm = () => {
     setTitle("");
     setAuthor("");
     setCategory("");
+    setContentType("");        
     setMunicipality("");
     setSelectedDate("");
     setThumbnail(null);
@@ -263,14 +286,25 @@ const ArticleEditorForm = () => {
     setCaption("");
     setBarangay("");
     setReviewerNotes("");
+    setStatus("pending");       
+    setUploadPeriodStart("");
+    setUploadPeriodEnd("");
+    setUploadPeriodStartTime("");
+    setUploadPeriodEndTime("");
     editorRef.current?.setContent("");
+    setEditorHTML("");
+    setEditorText("");
     setIsEditing(false);
     setEditingArticleId(null);
     setArticle(null);
+    setOrigVolume(null);
+    setOrigSeqNum(null);
+    setOrigContentType(null);
     clearDraft(draftKey);
   };
 
-  // re-run guard when articleId changes
+
+  // re-run guard when id changes
   useEffect(() => {
     hasRun.current = false;
   }, [articleId]);
@@ -282,7 +316,7 @@ const ArticleEditorForm = () => {
     const fetchArticleAndLoadDraft = async () => {
       hasRun.current = true;
 
-      const draft = loadDraft(draftKey); // { data, hash, _savedAt }
+      const draft = loadDraft(draftKey);
       if (draft?.data && (draft.data.title || draft.data.description || draft.data.author)) {
         const draftAge = draft._savedAt ? Math.floor((new Date() - new Date(draft._savedAt)) / (1000 * 60)) : null;
         setDraftToLoad({ draft, draftAge });
@@ -301,6 +335,7 @@ const ArticleEditorForm = () => {
           setTitle(data.title || "");
           setAuthor(data.author || "");
           setCategory(data.article_category || "");
+          setContentType((data.content_type || "").toLowerCase() || "");
           setMunicipality(data.address || "");
           setBarangay(data.barangay || "");
           setStatus(data.status || "pending");
@@ -312,6 +347,10 @@ const ArticleEditorForm = () => {
           setEditorHTML(data.description || "");
           setEditorText(editorRef.current?.getText() || "");
 
+          setOrigVolume(data.volume ?? null);
+          setOrigSeqNum(data.sequence_number ?? null);
+          setOrigContentType((data.content_type || "").toLowerCase() || null);
+
           if (data.upload_date) {
             const formattedDate = new Date(data.upload_date).toISOString().split("T")[0];
             setSelectedDate(formattedDate);
@@ -319,11 +358,8 @@ const ArticleEditorForm = () => {
             setSelectedDate("");
           }
 
-          if (data.images) {
-            setPreviewImage(`${UPLOAD_PATH}${data.images}`);
-          } else {
-            setPreviewImage(null);
-          }
+          if (data.images) setPreviewImage(`${UPLOAD_PATH}${data.images}`);
+          else setPreviewImage(null);
           setThumbnail(null);
 
           setUploadPeriodStart(data.upload_period_start ? data.upload_period_start.split("T")[0] : "");
@@ -358,7 +394,7 @@ const ArticleEditorForm = () => {
     fetchArticleAndLoadDraft();
   }, [articleId, draftKey]);
 
-  // HYDRATE editor when switching from Review -> Edit (in-place)
+  // hydrate switching review -> edit
   useEffect(() => {
     if (forceEditorMode && article?.description && editorRef.current) {
       const current = editorRef.current.getHTML?.() || "";
@@ -472,26 +508,37 @@ const ArticleEditorForm = () => {
   };
 
   const handleCustomThumbnailChange = (e) => {
-    if (removeThumbnail) {
-      setRemoveThumbnail(false);
-    }
+    if (removeThumbnail) setRemoveThumbnail(false);
     handleThumbnailChange(e);
     setHasThumbnail(!!e.target.files && e.target.files.length > 0);
-    if (e.target.files && e.target.files.length > 0) {
-      setIsDirty(true);
-    }
+    if (e.target.files && e.target.files.length > 0) setIsDirty(true);
   };
 
   const validateForm = () => {
     const newErrors = {};
+
     if (!title.trim()) newErrors.title = "Title is required";
+    if (!selectedDate) newErrors.selectedDate = "Date is required";
     if (!author.trim()) newErrors.author = "Author is required";
     if (!category) newErrors.category = "Category is required";
-    if (!municipality.trim()) newErrors.municipality = "Address is required";
-    if (!selectedDate) newErrors.selectedDate = "Date is required";
+    if (!contentType) newErrors.content_type = "Type is required";
+    if (!status) newErrors.status = "Status is required";
+
     if (!editorHTML || editorHTML === "<p></p>") newErrors.description = "Body content is required";
+
+    if (status === "scheduled") {
+      if (!uploadPeriodStart) newErrors.uploadPeriodStart = "Start date is required for scheduled.";
+      if (!uploadPeriodEnd) newErrors.uploadPeriodEnd = "End date is required for scheduled.";
+      if (uploadPeriodStart && uploadPeriodEnd) {
+        const start = new Date(`${uploadPeriodStart}T${(uploadPeriodStartTime || "00:00").slice(0,5)}:00+08:00`);
+        const end   = new Date(`${uploadPeriodEnd}T${(uploadPeriodEndTime || "23:59").slice(0,5)}:00+08:00`);
+        if (end <= start) newErrors.uploadPeriodEnd = "End must be after Start.";
+      }
+    }
+
     return newErrors;
   };
+
 
   const handleCancel = () => {
     resetForm();
@@ -515,8 +562,31 @@ const ArticleEditorForm = () => {
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [isDirty]);
 
-  // Guard for Back to Review button
   const showBackToReview = isPrivileged && forcedFromNav && !!articleId && forceEditorMode;
+
+  // --- Live archive preview ---
+  const volumePreview = useMemo(
+    () => getVolumeFromYYYYMMDD(selectedDate),
+    [selectedDate]
+  );
+
+  const seqPreview = useMemo(() => {
+    const year = getYearFromYYYYMMDD(selectedDate);
+    const sameBucket =
+      isEditing &&
+      origVolume &&
+      origContentType &&
+      Number(origVolume) === Number(volumePreview) &&
+      String(origContentType || "").toLowerCase() === String(contentType || "").toLowerCase();
+
+    if (sameBucket && origSeqNum) return origSeqNum;
+    return computeNextSequence(articles, year, contentType);
+  }, [articles, selectedDate, contentType, isEditing, origVolume, origContentType, origSeqNum, volumePreview]);
+
+  const seqLabelPreview = useMemo(
+    () => makeDisplayLabel(contentType, seqPreview),
+    [contentType, seqPreview]
+  );
 
   return (
     <>
@@ -527,11 +597,22 @@ const ArticleEditorForm = () => {
         lg:flex lg:flex-row
         2xl:flex 2xl:flex-row
         3xl:flex 3xl:flex-row overflow-auto"
+        
       >
         {/* LEFT SIDE - Editor + Form */}
         {userRole && allowedRoles.includes(userRole) && !shouldShowReviewer ? (
           <div className="bg-white w-full p-6 xl:mx-[10rem] 2xl:mx-[20rem] rounded-lg shadow-xl relative max-h-full transition-all duration-300 md:max-w-[63rem]">
-            <h2 className="text-3xl font-bold mb-6">Header</h2>
+            <h2 className="text-3xl font-bold mb-2">Header</h2>
+
+            {/* Archive badges preview */}
+            <div className="flex items-center gap-3 mb-6">
+              <span className="inline-flex items-center rounded-full border px-3 py-1 text-sm">
+                {volumePreview ? `Vol.${volumePreview}` : "Vol.—"}
+              </span>
+              <span className="inline-flex items-center rounded-full border px-3 py-1 text-sm">
+                {seqLabelPreview || (contentType === "article" ? "No.—" : "Event #—")}
+              </span>
+            </div>
 
             {showBackToReview && (
               <div className="flex justify-end mb-4">
@@ -572,7 +653,7 @@ const ArticleEditorForm = () => {
                 placeholder={`Title${errors.title ? " *" : ""}`}
               />
 
-              {/* Date, Author, Category */}
+              {/* Date, Author */}
               <div className="flex flex-col md:flex-row gap-4">
                 <div className="flex-1">
                   <label htmlFor="selectedDate" className={`font-bold ${errors.selectedDate ? "text-red-600" : ""}`}>
@@ -611,6 +692,10 @@ const ArticleEditorForm = () => {
                     placeholder={`Author${errors.author ? " *" : ""}`}
                   />
                 </div>
+              </div>
+
+              {/* Category + Type */}
+              <div className="flex flex-col md:flex-row gap-4">
                 <div className="flex-1">
                   <label htmlFor="category" className={`font-bold ${errors.category ? "text-red-600" : ""}`}>
                     Category {errors.category && "*"}
@@ -637,63 +722,82 @@ const ArticleEditorForm = () => {
                     ))}
                   </select>
                 </div>
-              </div>
 
-              {/* Barangay, Municipality */}
-              <div className="flex flex-col md:flex-row gap-4">
                 <div className="flex-1">
-                  <label htmlFor="municipality" className={`font-bold ${errors.municipality ? "text-red-600" : ""}`}>
-                    Municipality {errors.municipality && "*"}
+                  <label htmlFor="contentType" className={`font-bold ${errors.content_type ? "text-red-600" : ""}`}>
+                    Type {errors.content_type && "*"}
                   </label>
                   <select
-                    id="municipality"
+                    id="contentType"
                     className={`w-full px-4 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 ${
-                      errors.municipality ? "border-red-600" : "border-black"
+                      errors.content_type ? "border-red-600" : "border-black"
                     }`}
-                    value={municipality}
+                    value={contentType}
                     onChange={(e) => {
-                      setMunicipality(e.target.value);
-                      setBarangay("");
+                      setContentType(e.target.value);
                       setIsDirty(true);
-                      clearFieldError("municipality");
                     }}
                   >
-                    <option value="" disabled={municipality !== ""}>
-                      {`Municipality${errors.municipality ? " *" : ""}`}
-                    </option>
-                    {Object.keys(municipalitiesWithBarangays).map((mun) => (
-                      <option key={mun} value={mun}>
-                        {mun}
-                      </option>
-                    ))}
+                    <option value="" disabled={contentType !== ""}>Type</option>
+                    <option value="article">Article</option>
+                    <option value="event">Event</option>
                   </select>
                 </div>
-                <div className="flex-1">
-                  <label htmlFor="barangay" className="font-bold">
-                    Barangay
-                  </label>
-                  <input
-                    id="barangay"
-                    list="barangayList"
-                    className="w-full px-4 py-3 border-2 border-black rounded-2xl text-base md:text-lg outline-none placeholder-gray-500"
-                    type="text"
-                    value={barangay}
-                    onChange={(e) => setBarangay(e.target.value)}
-                    placeholder="Barangay (You can type or select)"
-                  />
-                  <datalist id="barangayList">
-                    {(municipalitiesWithBarangays[municipality] || []).map((bgy) => (
-                      <option key={bgy} value={bgy} />
-                    ))}
-                  </datalist>
-                </div>
               </div>
+
+              {/* Municipality/Barangay only when Event */}
+              {contentType === "event" && (
+                <div className="flex flex-col md:flex-row gap-4">
+                  <div className="flex-1">
+                    <label htmlFor="municipality" className={`font-bold ${errors.municipality ? "text-red-600" : ""}`}>
+                      Municipality {errors.municipality && "*"}
+                    </label>
+                    <select
+                      id="municipality"
+                      className={`w-full px-4 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 ${
+                        errors.municipality ? "border-red-600" : "border-black"
+                      }`}
+                      value={municipality}
+                      onChange={(e) => {
+                        setMunicipality(e.target.value);
+                        setBarangay("");
+                        setIsDirty(true);
+                        clearFieldError("municipality");
+                      }}
+                    >
+                      <option value="" disabled={municipality !== ""}>
+                        {`Municipality${errors.municipality ? " *" : ""}`}
+                      </option>
+                      {Object.keys(municipalitiesWithBarangays).map((mun) => (
+                        <option key={mun} value={mun}>
+                          {mun}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex-1">
+                    <label htmlFor="barangay" className="font-bold">Barangay</label>
+                    <input
+                      id="barangay"
+                      list="barangayList"
+                      className="w-full px-4 py-3 border-2 border-black rounded-2xl text-base md:text-lg outline-none placeholder-gray-500"
+                      type="text"
+                      value={barangay}
+                      onChange={(e) => setBarangay(e.target.value)}
+                      placeholder="Barangay (You can type or select)"
+                    />
+                    <datalist id="barangayList">
+                      {(municipalitiesWithBarangays[municipality] || []).map((bgy) => (
+                        <option key={bgy} value={bgy} />
+                      ))}
+                    </datalist>
+                  </div>
+                </div>
+              )}
 
               {/* Status */}
               <div className="flex-1">
-                <label htmlFor="status" className="font-bold">
-                  Status
-                </label>
+                <label htmlFor="status" className="font-bold">Status</label>
                 <select
                   id="status"
                   className="w-full px-4 py-3 border-2 border-black rounded-2xl text-base md:text-lg outline-none"
@@ -716,9 +820,7 @@ const ArticleEditorForm = () => {
               {status === "scheduled" && (
                 <>
                   <div className="flex-1">
-                    <label htmlFor="uploadPeriodStart" className="font-bold">
-                      Start Date
-                    </label>
+                    <label htmlFor="uploadPeriodStart" className="font-bold">Start Date</label>
                     <div className="flex gap-2">
                       <input
                         id="uploadPeriodStart"
@@ -747,9 +849,7 @@ const ArticleEditorForm = () => {
                   </div>
 
                   <div className="flex-1">
-                    <label htmlFor="uploadPeriodEnd" className="font-bold">
-                      End Date
-                    </label>
+                    <label htmlFor="uploadPeriodEnd" className="font-bold">End Date</label>
                     <div className="flex gap-2">
                       <input
                         id="uploadPeriodEnd"
@@ -783,9 +883,7 @@ const ArticleEditorForm = () => {
               {/* Thumbnail */}
               <div className="flex flex-col md:flex-row gap-4">
                 <div className="relative flex-1">
-                  <label htmlFor="thumbnail" className="font-bold">
-                    Thumbnail
-                  </label>
+                  <label htmlFor="thumbnail" className="font-bold">Thumbnail</label>
                   <input
                     id="thumbnail"
                     ref={thumbnailInputRef}
@@ -977,9 +1075,7 @@ const ArticleEditorForm = () => {
                 <div className="flex flex-col gap-4">
                   <div className="flex flex-col md:flex-row gap-2">
                     <div className="flex-1">
-                      <label htmlFor="uploadPeriodStart" className="font-bold">
-                        Start Date
-                      </label>
+                      <label htmlFor="uploadPeriodStart" className="font-bold">Start Date</label>
                       <input
                         id="uploadPeriodStart"
                         type="date"
@@ -996,9 +1092,7 @@ const ArticleEditorForm = () => {
                       />
                     </div>
                     <div className="flex-1">
-                      <label htmlFor="uploadPeriodStartTime" className="font-bold">
-                        Start Time
-                      </label>
+                      <label htmlFor="uploadPeriodStartTime" className="font-bold">Start Time</label>
                       <input
                         id="uploadPeriodStartTime"
                         type="time"
@@ -1015,9 +1109,7 @@ const ArticleEditorForm = () => {
 
                   <div className="flex flex-col md:flex-row gap-2">
                     <div className="flex-1">
-                      <label htmlFor="uploadPeriodEnd" className="font-bold">
-                        End Date
-                      </label>
+                      <label htmlFor="uploadPeriodEnd" className="font-bold">End Date</label>
                       <input
                         id="uploadPeriodEnd"
                         type="date"
@@ -1035,9 +1127,7 @@ const ArticleEditorForm = () => {
                       />
                     </div>
                     <div className="flex-1">
-                      <label htmlFor="uploadPeriodEndTime" className="font-bold">
-                        End Time
-                      </label>
+                      <label htmlFor="uploadPeriodEndTime" className="font-bold">End Time</label>
                       <input
                         id="uploadPeriodEndTime"
                         type="time"
@@ -1071,7 +1161,7 @@ const ArticleEditorForm = () => {
                     className="w-full md:w-auto px-6 py-3 bg-[#c78216] text-white font-bold rounded-2xl hover:bg-[#d69641] transition-colors"
                   >
                     Save Status
-                  </Button> 
+                  </Button>
                 </div>
               )}
             </form>
@@ -1088,6 +1178,9 @@ const ArticleEditorForm = () => {
           }}
         >
           <ArticlePreview
+            contentType={contentType}
+            volume={volumePreview || null}
+            sequenceNumber={seqPreview || null}
             title={title}
             selectedDate={selectedDate}
             author={author}
@@ -1158,6 +1251,7 @@ const ArticleEditorForm = () => {
                       setTitle(data.title || "");
                       setAuthor(data.author || "");
                       setCategory(data.article_category || "");
+                      setContentType((data.content_type || "").toLowerCase() || "");
                       setMunicipality(data.address || "");
                       setBarangay(data.barangay || "");
                       setStatus(data.status || "pending");
@@ -1169,6 +1263,10 @@ const ArticleEditorForm = () => {
                       editorRef.current?.setContent(data.description || "");
                       setEditorHTML(data.description || "");
                       setEditorText(editorRef.current?.getText() || "");
+
+                      setOrigVolume(data.volume ?? null);
+                      setOrigSeqNum(data.sequence_number ?? null);
+                      setOrigContentType((data.content_type || "").toLowerCase() || null);
 
                       if (data.upload_date) {
                         const formattedDate = new Date(data.upload_date).toISOString().split("T")[0];
@@ -1222,6 +1320,7 @@ const ArticleEditorForm = () => {
                   setTitle(draft.data.title || "");
                   setAuthor(draft.data.author || "");
                   setCategory(draft.data.category || "");
+                  setContentType(draft.data.content_type || "");
                   setMunicipality(draft.data.municipality || "");
                   setBarangay(draft.data.barangay || "");
                   setStatus(draft.data.status || "pending");
@@ -1249,6 +1348,10 @@ const ArticleEditorForm = () => {
                       if (data.images) setPreviewImage(`${UPLOAD_PATH}${data.images}`);
                       else setPreviewImage(null);
                       setThumbnail(null);
+
+                      setOrigVolume(data.volume ?? null);
+                      setOrigSeqNum(data.sequence_number ?? null);
+                      setOrigContentType((data.content_type || "").toLowerCase() || null);
 
                       setUploadPeriodStart(data.upload_period_start ? data.upload_period_start.split("T")[0] : "");
                       setUploadPeriodEnd(data.upload_period_end ? data.upload_period_end.split("T")[0] : "");

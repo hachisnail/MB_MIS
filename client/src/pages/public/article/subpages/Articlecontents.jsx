@@ -296,24 +296,20 @@ useEffect(() => {
                 ? new Date(article.upload_date).toLocaleDateString("en-US", { day: "numeric", month: "long", year: "numeric" })
                 : "N/A"}
             </span>
-            <span className="font-semibold text-[1.1rem]">Vol.2, No.3</span>
+            <span className="font-semibold">
+              {article?.volume ? `Vol.${article.volume}` : "Vol.—"},{" "}
+              {article?.sequence_number
+                ? ((article?.content_type || "").toLowerCase() === "article"
+                    ? `No.${article.sequence_number}`
+                    : `Event #${article.sequence_number}`)
+                : ((article?.content_type || "").toLowerCase() === "article" ? "No.—" : "Event #—")}
+            </span>
+
           </div>
         </div>
       </div>
 
-      {/* Share Row */}
-      <div className="w-full flex justify-center mb-6">
-        <div className="flex items-center gap-3 flex-wrap px-4">
-          <button data-track-click onClick={handleNativeShare} className="px-4 py-2 rounded-2xl bg-black text-white hover:opacity-90">Share</button>
-          <a target="_blank" rel="noreferrer" href={shareTargets.facebook} className="px-4 py-2 rounded-2xl border hover:bg-gray-50">Facebook</a>
-          <a target="_blank" rel="noreferrer" href={shareTargets.x} className="px-4 py-2 rounded-2xl border hover:bg-gray-50">X</a>
-          <a target="_blank" rel="noreferrer" href={shareTargets.linkedin} className="px-4 py-2 rounded-2xl border hover:bg-gray-50">LinkedIn</a>
-          <a target="_blank" rel="noreferrer" href={shareTargets.reddit} className="px-4 py-2 rounded-2xl border hover:bg-gray-50">Reddit</a>
-          <a target="_blank" rel="noreferrer" href={shareTargets.telegram} className="px-4 py-2 rounded-2xl border hover:bg-gray-50">Telegram</a>
-          <a target="_blank" rel="noreferrer" href={shareTargets.whatsapp} className="px-4 py-2 rounded-2xl border hover:bg-gray-50">WhatsApp</a>
-          <button onClick={handleCopy} className="px-4 py-2 rounded-2xl border hover:bg-gray-50">Copy Link</button>
-        </div>
-      </div>
+
 
       {/* Body */}
       <div className="w-screen h-auto min-h-[79rem] mx-auto font-hina">
@@ -334,6 +330,20 @@ useEffect(() => {
               <p className="text-gray-400 italic text-xl">No article content available.</p>
             )}
           </div>
+        </div>
+      </div>
+
+      {/* Share Row */}
+      <div className="w-full flex justify-center mb-6">
+        <div className="flex items-center gap-3 flex-wrap px-4">
+          <button data-track-click onClick={handleNativeShare} className="px-4 py-2 rounded-2xl bg-black text-white hover:opacity-90">Share</button>
+          <a target="_blank" rel="noreferrer" href={shareTargets.facebook} className="px-4 py-2 rounded-2xl border hover:bg-gray-50">Facebook</a>
+          <a target="_blank" rel="noreferrer" href={shareTargets.x} className="px-4 py-2 rounded-2xl border hover:bg-gray-50">X</a>
+          <a target="_blank" rel="noreferrer" href={shareTargets.linkedin} className="px-4 py-2 rounded-2xl border hover:bg-gray-50">LinkedIn</a>
+          <a target="_blank" rel="noreferrer" href={shareTargets.reddit} className="px-4 py-2 rounded-2xl border hover:bg-gray-50">Reddit</a>
+          <a target="_blank" rel="noreferrer" href={shareTargets.telegram} className="px-4 py-2 rounded-2xl border hover:bg-gray-50">Telegram</a>
+          <a target="_blank" rel="noreferrer" href={shareTargets.whatsapp} className="px-4 py-2 rounded-2xl border hover:bg-gray-50">WhatsApp</a>
+          <button onClick={handleCopy} className="px-4 py-2 rounded-2xl border hover:bg-gray-50">Copy Link</button>
         </div>
       </div>
 
@@ -374,6 +384,7 @@ useEffect(() => {
           )}
         </div>
       </div>
+      
     </div>
   );
 };

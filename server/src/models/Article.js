@@ -35,6 +35,18 @@ const Article = sequelize.define('Article', {
     type: DataTypes.STRING,
     allowNull: false,
   },
+    content_type: {
+    type: DataTypes.ENUM('article', 'event'),
+    allowNull: true,
+  },
+  volume: {
+  type: DataTypes.INTEGER,
+  allowNull: true,
+  },
+  sequence_number: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+  },
   description: {
     type: DataTypes.TEXT,
     allowNull: false,

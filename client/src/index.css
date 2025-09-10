@@ -343,3 +343,39 @@ input:-webkit-autofill {
 .editor-content-preview [style*="font-size"] {
   line-height: 1.6;
 }
+
+/* scope to your editor root if you have one */
+/* .ProseMirror .resizable-image {
+  flex: 0 0 auto;
+  align-self: flex-start;
+} */
+
+
+/* If a paragraph is centered AND contains only an image, treat the image like a block centered */
+.editor-content-preview [data-text-align="center"] > img:only-child {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* If an inline image sits with text, keep it inline so text-align works */
+.editor-content-preview img[data-inline="true"] {
+  display: inline;
+  vertical-align: middle;
+}
+
+/* Beat .prose defaults if needed */
+.editor-content-preview [data-text-align] {
+  text-align: inherit;         /* reset */
+}
+.editor-content-preview [data-text-align="center"],
+.editor-content-preview [data-text-align="right"],
+.editor-content-preview [data-text-align="left"],
+.editor-content-preview [data-text-align="justify"] {
+  text-align: unset;           /* ensure specificity bump */
+}
+.editor-content-preview [data-text-align="center"] { text-align: center !important; }
+.editor-content-preview [data-text-align="right"]  { text-align: right  !important; }
+.editor-content-preview [data-text-align="left"]   { text-align: left   !important; }
+.editor-content-preview [data-text-align="justify"]{ text-align: justify!important; }
+

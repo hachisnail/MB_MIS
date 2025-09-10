@@ -16,6 +16,7 @@ const ArticleForm = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedStatusFilter, setSelectedStatusFilter] = useState("");
   const [selectedCat, setSelectedCat] = useState("");
+  const [selectedType, setSelectedType] = useState("");
   const [activeTab, setActiveTab] = useState("articles");
 
   const tabs = [
@@ -95,6 +96,9 @@ const ArticleForm = () => {
     const matchesCategory =
       !selectedCat || article.article_category === selectedCat;
 
+    const matchesType =
+    !selectedType || article.content_type === selectedType;
+
     const matchesStatus =
       !selectedStatusFilter || article.status === selectedStatusFilter;
 
@@ -102,7 +106,7 @@ const ArticleForm = () => {
       ? new Date(article.created_at).toDateString() ===
       new Date(filterDate).toDateString()
       : true;
-    return matchesSearch && matchesCategory && matchesStatus && matchesDate;
+    return matchesSearch && matchesCategory && matchesType && matchesStatus && matchesDate;
   });
 
   // Filtered lists for each tab
@@ -214,6 +218,13 @@ const ArticleForm = () => {
     { label: "Other", value: "Other" },
   ];
 
+
+const TypeOptions = [
+  { label: "Type", value: "" },
+  { label: "Article", value: "article" },
+  { label: "Event", value: "event" },
+];
+
   return (
     <>
       <div className="w-full h-full flex gap-x-15 overflow-scroll lg:flex-row flex-col">
@@ -261,6 +272,14 @@ const ArticleForm = () => {
               theme="light"
               options={CatOptions}
             />
+            <CardDropdownPicker
+              value={selectedType}
+              onChange={setSelectedType}
+              placeholder="Type"
+              theme="light"
+              options={TypeOptions}
+            />
+
             <CardDropdownPicker
               value={selectedStatusFilter}
               onChange={setSelectedStatusFilter}

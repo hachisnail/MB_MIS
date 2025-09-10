@@ -3,9 +3,8 @@ import { EditorContent, useEditor, BubbleMenu } from "@tiptap/react";
 
 // TipTap extensions
 import StarterKit from "@tiptap/starter-kit";
-import TextAlign from "@tiptap/extension-text-align";
 import Underline from "@tiptap/extension-underline";
-import Image from "@tiptap/extension-image";
+import CustomTextAlign from "../components/CustomTextAlign";
 import TextStyle from "@tiptap/extension-text-style";
 import Placeholder from "@tiptap/extension-placeholder";
 import Link from "@tiptap/extension-link";
@@ -71,9 +70,8 @@ const RichTextEditor = forwardRef(
       extensions: [
         StarterKit,
         Underline,
-        TextAlign.configure({ types: ["heading", "paragraph"], alignments: ["left", "center", "right", "justify"] }),
+        CustomTextAlign.configure({ types: ["heading", "paragraph"], alignments: ["left","center","right","justify"] }),
         TextStyle,
-        Image.configure({ draggable: true }),
         ColumnBlock,
         Column,
         FontSize,
@@ -122,6 +120,118 @@ const RichTextEditor = forwardRef(
         fn(chain);
       },
     }));
+
+    // --- helpers: split selected text into N columns (by character length, word-safe) ---
+const splitTextIntoNColumns = (text, n) => {
+  // normalize spacing but keep paragraph breaks if present
+  const cleaned = (text || "").trim().replace(/\s+/g, " ");
+  if (!cleaned) return Array.from({ length: n }, () => "");
+
+  const words = cleaned.split(/\s+/);
+  const totalChars = words.reduce((sum, w, i) => sum + w.length + (i === 0 ? 0 : 1), 0);
+  let target = Math.ceil(totalChars / n);
+
+  const chunks = [];
+  let current = "";
+  let curLen = 0;
+
+  for (let i = 0; i < words.length; i++) {
+    const w = words[i];
+    const add = (current ? " " : "") + w;
+    if (curLen + add.length > target && chunks.length < n - 1) {
+      chunks.push(current);
+      current = w;
+      curLen = w.length;
+
+      // recompute target for the remainder to balance better
+      const wordsLeft = words.length - (i + 1);
+      const remainingTextLen =
+        words.slice(i + 1).reduce((s, ww, j) => s + ww.length + (j === 0 ? 0 : 1), 0) + curLen;
+      const colsLeft = n - chunks.length;
+      target = Math.ceil(remainingTextLen / colsLeft);
+    } else {
+      current += add;
+      curLen += add.length;
+    }
+  }
+  chunks.push(current);
+
+  // ensure exactly n chunks
+  while (chunks.length < n) chunks.push("");
+  if (chunks.length > n) {
+    // merge extras into the last one (shouldn't really happen, but safe)
+    const tail = chunks.splice(n - 1).join(" ");
+    chunks[n - 1] = (chunks[n - 1] + " " + tail).trim();
+  }
+
+  return chunks;
+};
+
+const textToParagraphNodes = (text) => {
+  // split by blank lines into paragraphs; fallback to single paragraph
+  const parts = (text || "")
+    .split(/\n{2,}/)
+    .map((p) => p.trim())
+    .filter(Boolean);
+
+  if (parts.length === 0) return [{ type: "paragraph" }];
+
+  return parts.map((p) => ({
+    type: "paragraph",
+    content: [{ type: "text", text: p }],
+  }));
+};
+
+/**
+ * Replace current selection with a columnBlock of N columns, auto-distributing text.
+ * If no selection, falls back to inserting empty columns (old behavior).
+ */
+const distributeSelectionIntoColumns = (n) => {
+  if (!editor) return;
+
+  const { state } = editor;
+  const { from, to, empty } = state.selection;
+
+  // If no selection, behave like your existing "insert empty columns"
+  if (empty || from === to) {
+    const emptyColumns = Array.from({ length: n }, () => ({
+      type: "column",
+      content: [{ type: "paragraph" }],
+    }));
+    editor
+      .chain()
+      .focus()
+      .insertContent({ type: "columnBlock", content: emptyColumns })
+      .run();
+    setIsDirty?.(true);
+    return;
+  }
+
+  // Extract selected text (plain text; preserves paragraph breaks via blockSeparator)
+  const selectedText = state.doc.textBetween(from, to, "\n\n", " ");
+  const chunks = splitTextIntoNColumns(selectedText, n);
+
+  const columnNodes = chunks.map((txt) => ({
+    type: "column",
+    content: textToParagraphNodes(txt),
+  }));
+
+  const columnBlockNode = {
+    type: "columnBlock",
+    content: columnNodes,
+  };
+
+  // Replace selection with our columnBlock
+  editor
+    .chain()
+    .focus()
+    .deleteRange({ from, to })
+    .insertContent(columnBlockNode)
+    .run();
+
+  setIsDirty?.(true);
+};
+
 
     return (
       <div className="space-y-2">
@@ -255,61 +365,41 @@ const RichTextEditor = forwardRef(
 
           <div className="border-l h-6 mx-2" />
 
-          {/* Columns */}
-          <div className="flex gap-1">
-            <button
-              type="button"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                editor
-                  ?.chain()
-                  .focus()
-                  .insertContent({
-                    type: "columnBlock",
-                    content: [
-                      { type: "column", content: [{ type: "paragraph" }] },
-                      { type: "column", content: [{ type: "paragraph" }] },
-                    ],
-                  })
-                  .run();
-                setIsDirty?.(true);
-              }}
-              className="p-1 border rounded"
-              title="Insert Two Column Layout"
-            >
-              <ColumnsIcon size={16} />
-            </button>
+{/* Columns */}
+<div className="flex gap-1">
+  {/* 2 columns, distribute selection if any */}
+  <button
+    type="button"
+    onClick={(e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      distributeSelectionIntoColumns(2);
+    }}
+    className="p-1 border rounded"
+    title="Split selection into 2 columns (or insert empty)"
+  >
+    <ColumnsIcon size={16} />
+  </button>
 
-            <button
-              type="button"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                editor
-                  ?.chain()
-                  .focus()
-                  .insertContent({
-                    type: "columnBlock",
-                    content: [
-                      { type: "column", content: [{ type: "paragraph" }] },
-                      { type: "column", content: [{ type: "paragraph" }] },
-                      { type: "column", content: [{ type: "paragraph" }] },
-                    ],
-                  })
-                  .run();
-                setIsDirty?.(true);
-              }}
-              className="p-1 border rounded flex items-center justify-center"
-              title="Insert Three Column Layout"
-            >
-              <svg width="18" height="16" viewBox="0 0 18 16" fill="none">
-                <rect x="1" y="2" width="4" height="12" rx="1" fill="#555" />
-                <rect x="7" y="2" width="4" height="12" rx="1" fill="#555" />
-                <rect x="13" y="2" width="4" height="12" rx="1" fill="#555" />
-              </svg>
-            </button>
-          </div>
+  {/* 3 columns, distribute selection if any */}
+  <button
+    type="button"
+    onClick={(e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      distributeSelectionIntoColumns(3);
+    }}
+    className="p-1 border rounded flex items-center justify-center"
+    title="Split selection into 3 columns (or insert empty)"
+  >
+    <svg width="18" height="16" viewBox="0 0 18 16" fill="none">
+      <rect x="1" y="2" width="4" height="12" rx="1" fill="#555" />
+      <rect x="7" y="2" width="4" height="12" rx="1" fill="#555" />
+      <rect x="13" y="2" width="4" height="12" rx="1" fill="#555" />
+    </svg>
+  </button>
+</div>
+
 
           <div className="border-l h-6 mx-2" />
 

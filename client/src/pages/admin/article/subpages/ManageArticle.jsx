@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useMemo } from "react";
+import { useEffect, useState, useRef, useMemo, useLayoutEffect  } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import axiosClient from "@/lib/axiosClient";
 import axios from "axios";
@@ -691,21 +691,63 @@ useEffect(() => {
 
 function Collapsible({ title = "Details", collapsed, onToggle, children }) {
   const bodyRef = useRef(null);
-  const [maxH, setMaxH] = useState("none");
 
-  // Recompute natural height when content or state changes
-  useEffect(() => {
+  // When closed: 0. When open and done animating: 'none' (no more measuring while typing).
+  const [maxH, setMaxH] = useState(collapsed ? 0 : "none");
+  const isFirstRender = useRef(true);
+  const isAnimatingRef = useRef(false);
+
+  // Toggle open/close animation
+  useLayoutEffect(() => {
     const el = bodyRef.current;
     if (!el) return;
-    // Use scrollHeight for smooth slide-open; 0 when collapsed
-    requestAnimationFrame(() => {
-      setMaxH(collapsed ? 0 : el.scrollHeight);
-    });
-  }, [collapsed, children]);
+
+    // Skip first render to avoid an initial flash
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      setMaxH(collapsed ? 0 : "none");
+      return;
+    }
+
+    const onEnd = () => {
+      isAnimatingRef.current = false;
+      // After expanding, let height be natural so typing doesn't animate.
+      if (!collapsed) setMaxH("none");
+      el.removeEventListener("transitionend", onEnd);
+    };
+
+    el.addEventListener("transitionend", onEnd);
+    isAnimatingRef.current = true;
+
+    if (collapsed) {
+      // Collapse: snap to current pixel height, then to 0.
+      if (maxH === "none") setMaxH(el.scrollHeight);
+      // next frame -> 0 to animate closed
+      requestAnimationFrame(() => setMaxH(0));
+    } else {
+      // Expand: from 0 to content height; once finished, set to 'none'
+      const target = el.scrollHeight;
+      // If currently at 0, growing to the measured height will animate
+      setMaxH(target);
+    }
+
+    return () => el.removeEventListener("transitionend", onEnd);
+  }, [collapsed]);
+
+  // While expanding (not after), follow content growth (e.g., images load)
+  useLayoutEffect(() => {
+    const el = bodyRef.current;
+    if (!el) return;
+    if (!collapsed && maxH !== "none" && isAnimatingRef.current) {
+      const next = el.scrollHeight;
+      if (next !== maxH) setMaxH(next);
+    }
+    // Intentionally ignore when maxH === 'none' so typing doesn't cause re-animations.
+  }, [children, collapsed, maxH]);
 
   return (
-    <div className="rounded-xl border border-gray-200 overflow-hidden">
-      {/* Header with toggle */}
+    <div className="rounded-xl border border-gray-200">
+      {/* Header */}
       <div className="flex items-center justify-between px-4 py-2 border-b bg-white">
         <span className="font-semibold">{title}</span>
         <button
@@ -718,11 +760,11 @@ function Collapsible({ title = "Details", collapsed, onToggle, children }) {
         </button>
       </div>
 
-      {/* Body is always mounted; just changes max-height */}
+      {/* Body */}
       <div
         ref={bodyRef}
-        className="transition-[max-height] duration-300 ease-in-out overflow-hidden"
-        style={{ maxHeight: typeof maxH === "number" ? `${maxH}px` : maxH }}
+        className="transition-[max-height] duration-300 ease-in-out overflow-hidden will-change-[max-height]"
+        style={{ maxHeight: maxH === "none" ? "none" : `${maxH}px` }}
         aria-hidden={collapsed}
       >
         <div className="p-4 space-y-6">{children}</div>
@@ -730,6 +772,7 @@ function Collapsible({ title = "Details", collapsed, onToggle, children }) {
     </div>
   );
 }
+
 
 
 

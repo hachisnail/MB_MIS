@@ -1,5 +1,5 @@
 import Article from '../models/Article.js';
-
+import User from '../models/Users.js';
 // Upload content images (unchanged)
 export const uploadContentImages = async (req, res) => {
   try {
@@ -147,6 +147,10 @@ export const getPublicArticle = async (req, res) => {
 export const updateArticle = async (req, res) => {
   try {
     const { id } = req.params;
+    // 1) Load current record so we can preserve fields as needed
+    const current = await Article.findByPk(id);
+    if (!current) return res.status(404).json({ message: 'Article not found' });
+
     const {
       title,
       article_category,
@@ -188,15 +192,19 @@ export const updateArticle = async (req, res) => {
       sequence_number: sequence_number ? Number(sequence_number) : null,
     };
 
+    // 2) Only change scheduling window when appropriate
     if (status === 'scheduled') {
       updateData.upload_period_start = uploadPeriodStart ? new Date(uploadPeriodStart) : null;
-      updateData.upload_period_end = uploadPeriodEnd ? new Date(uploadPeriodEnd) : null;
+      updateData.upload_period_end   = uploadPeriodEnd   ? new Date(uploadPeriodEnd)   : null;
     } else if (status === 'posted') {
-      updateData.upload_period_start = new Date();
-      updateData.upload_period_end = null;
+      updateData.upload_period_start = current.upload_period_start || new Date();
+      updateData.upload_period_end   = current.upload_period_end ?? null;
+    } else if (status === 'archived') {
+      // DO NOT touch the window: preserve history
+      // (i.e., don't set upload_period_start/end on updateData)
     } else {
-      updateData.upload_period_start = null;
-      updateData.upload_period_end = null;
+      // pending / rejected, etc. — also preserve existing values by default
+      // (only clear if you explicitly want to wipe them)
     }
 
     const [updatedCount] = await Article.update(updateData, { where: { article_id: id } });

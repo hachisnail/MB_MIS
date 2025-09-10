@@ -1385,15 +1385,16 @@ function Collapsible({ title = "Details", collapsed, onToggle, children }) {
         )}
 
         {/* RIGHT SIDE - Article Preview */}
-        <ViewPort
-          sizes={{
-            // md: { width: 400,  height: 400 },
-            lg: { width: 500, height: 545 },
-            xl: { width: 600, height: 545 },
-            "2xl": { width: 750, height: 545 },
-            "3xl": { width: 800, height: 725 },
-          }}
-        >
+<ViewPort
+  
+  sizes={{
+    "lg": { width: 500, height: 545, minWidth: 400, maxWidth: 600 },
+    "xl": { width: 675, height: 545, minHeight: 500, maxHeight: 600 },
+    "2xl": { width: 800, height: 545 },
+    "3xl": { width: 1100, height: 700, minWidth: 900, maxWidth: 1200 },
+  }}
+>
+
           <ArticlePreview
             contentType={contentType}
             volume={volumePreview || null}

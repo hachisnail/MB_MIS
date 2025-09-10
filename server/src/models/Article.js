@@ -18,10 +18,11 @@ const Article = sequelize.define('Article', {
     type: DataTypes.INTEGER,
     allowNull: false,
     references: {
-      model: Credential,
+      model: 'users',
       key: 'id',
     },
     onDelete: 'CASCADE',
+    onUpdate: 'CASCADE',
   },
   upload_date: {
     type: DataTypes.DATE,

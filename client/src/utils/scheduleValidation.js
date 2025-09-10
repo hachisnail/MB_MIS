@@ -12,16 +12,16 @@ import { timeStringToMinutes, countOverlappingEvents } from './scheduleUtils';
 export const validateAppointmentSchedule = (appointmentData, existingEvents) => {
   const { date, startTime, endTime } = appointmentData;
   
-  // Validate time constraints (7:00 AM to 5:00 PM)
+  // Validate time constraints (6:00 AM to 6:00 PM)
   const startMinutes = timeStringToMinutes(startTime);
   const endMinutes = timeStringToMinutes(endTime);
-  const sevenAM = timeStringToMinutes('07:00');
-  const fivePM = timeStringToMinutes('17:00');
+  const sixAM = timeStringToMinutes('06:00');
+  const sixPM = timeStringToMinutes('18:00');
   
-  if (startMinutes < sevenAM || endMinutes > fivePM) {
+  if (startMinutes < sixAM || endMinutes > sixPM) {
     return {
       isValid: false,
-      error: 'Appointments must be scheduled between 7:00 AM and 5:00 PM'
+      error: 'Appointments must be scheduled between 6:00 AM and 6:00 PM'
     };
   }
   
@@ -81,6 +81,70 @@ export const validateAppointmentSchedule = (appointmentData, existingEvents) => 
 };
 
 /**
+ * Validates if a schedule can be created based on various constraints
+ * Note: Schedules are NOT blocked by exclusive events, only by the 5-limit rule
+ * @param {Object} scheduleData - The schedule data to validate
+ * @param {string} scheduleData.date - Date in YYYY-MM-DD format
+ * @param {string} scheduleData.startTime - Start time in HH:MM format
+ * @param {string} scheduleData.endTime - End time in HH:MM format
+ * @param {Array} existingEvents - Array of existing schedules and appointments
+ * @returns {Object} { isValid: boolean, error: string|null }
+ */
+export const validateScheduleCreation = (scheduleData, existingEvents) => {
+  const { date, startTime, endTime } = scheduleData;
+  
+  // Validate time constraints (6:00 AM to 6:00 PM)
+  const startMinutes = timeStringToMinutes(startTime);
+  const endMinutes = timeStringToMinutes(endTime);
+  const sixAM = timeStringToMinutes('06:00');
+  const sixPM = timeStringToMinutes('18:00');
+  
+  if (startMinutes < sixAM || endMinutes > sixPM) {
+    return {
+      isValid: false,
+      error: 'Schedules must be between 6:00 AM and 6:00 PM'
+    };
+  }
+  
+  // Validate start time is before end time
+  if (startMinutes >= endMinutes) {
+    return {
+      isValid: false,
+      error: 'Start time must be earlier than end time'
+    };
+  }
+  
+  // Validate minimum duration (15 minutes)
+  const duration = endMinutes - startMinutes;
+  if (duration < 15) {
+    return {
+      isValid: false,
+      error: 'Schedule duration must be at least 15 minutes'
+    };
+  }
+  
+  // NOTE: Schedules are NOT blocked by exclusive events
+  // Only check overlapping events limit (max 5)
+  const overlappingCount = countOverlappingEvents(
+    existingEvents.filter(e => e.date === date),
+    startTime,
+    endTime
+  );
+  
+  if (overlappingCount >= 5) {
+    return {
+      isValid: false,
+      error: 'Maximum limit reached: Cannot add more than 5 overlapping events'
+    };
+  }
+  
+  return {
+    isValid: true,
+    error: null
+  };
+};
+
+/**
  * Check time slot availability for a specific date
  * @param {Date} date - The date to check
  * @param {Object} axiosClient - Axios instance for API calls
@@ -89,6 +153,7 @@ export const validateAppointmentSchedule = (appointmentData, existingEvents) => 
  * @param {Function} setTimeSlotExclusive - State setter for exclusive slots
  * @param {Function} setConfirmedSlots - State setter for confirmed slots
  * @param {Function} setIsLoadingTimeSlots - State setter for loading state
+ * @param {string} checkType - Type of check: 'appointment' or 'schedule' (default: 'appointment')
  */
 export const checkTimeSlotAvailability = async (
   date,
@@ -97,7 +162,8 @@ export const checkTimeSlotAvailability = async (
   setTimeSlotCounts,
   setTimeSlotExclusive,
   setConfirmedSlots,
-  setIsLoadingTimeSlots
+  setIsLoadingTimeSlots,
+  checkType = 'appointment'
 ) => {
   if (!date) return;
 
@@ -180,11 +246,18 @@ export const checkTimeSlotAvailability = async (
     setTimeSlotExclusive(exclusive);
     setConfirmedSlots(confirmed);
 
-    const availableSlots = timeSlots.filter(slot => !exclusive[slot] && !confirmed[slot] && counts[slot] < 5);
+    // For appointments: blocked by exclusive events and confirmed slots
+    // For schedules: only blocked by confirmed slots and 5-limit rule
+    const availableSlots = timeSlots.filter(slot => {
+      if (confirmed[slot]) return false; // Both types blocked by confirmed appointments
+      if (checkType === 'appointment' && exclusive[slot]) return false; // Only appointments blocked by exclusive events
+      return counts[slot] < 5; // Both types respect 5-limit rule
+    });
+    
     if (availableSlots.length === 0) {
-      showToast('No time slots available for this date', 'warning');
+      showToast(`No time slots available for ${checkType}s on this date`, 'warning');
     } else {
-      showToast(`${availableSlots.length} time slots available`, 'success');
+      showToast(`${availableSlots.length} time slots available for ${checkType}s`, 'success');
     }
 
   } catch (error) {

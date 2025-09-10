@@ -1,0 +1,223 @@
+/* Custom React Calendar Styles for AddSchedulePage Full-Size Layout */
+.add-schedule-page .react-calendar {
+  width: 98% !important;
+  max-width: none !important;
+  background: white;
+  border: none !important;
+  font-family: Arial, Helvetica, sans-serif;
+  height: 100% !important;
+  margin: 0 auto !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.add-schedule-page .react-calendar--doubleView {
+  width: 100% !important;
+}
+
+.add-schedule-page .react-calendar--doubleView .react-calendar__viewContainer {
+  display: flex;
+  margin: -0.5em;
+}
+
+.add-schedule-page .react-calendar--doubleView .react-calendar__viewContainer > * {
+  width: 50%;
+  margin: 0.5em;
+}
+
+.add-schedule-page .react-calendar *,
+.add-schedule-page .react-calendar *:before,
+.add-schedule-page .react-calendar *:after {
+  -moz-box-sizing: border-box;
+  -webkit-box-sizing: border-box;
+  box-sizing: border-box;
+}
+
+.add-schedule-page .react-calendar button {
+  margin: 0;
+  border: 0;
+  outline: none;
+}
+
+.add-schedule-page .react-calendar button:enabled:hover,
+.add-schedule-page .react-calendar button:enabled:focus {
+  background-color: #e6e6e6;
+}
+
+.add-schedule-page .react-calendar__navigation {
+  display: flex;
+  height: 44px;
+  margin-bottom: 1em;
+}
+
+.add-schedule-page .react-calendar__navigation button {
+  min-width: 50px;
+  background: none;
+  font-size: 18px;
+  margin-top: 8px;
+  padding: 8px 12px;
+}
+
+.add-schedule-page .react-calendar__navigation button:disabled {
+  background-color: #f0f0f0;
+}
+
+.add-schedule-page .react-calendar__navigation button:enabled:hover,
+.add-schedule-page .react-calendar__navigation button:enabled:focus {
+  background-color: #e6e6e6;
+}
+
+.add-schedule-page .react-calendar__month-view__weekdays {
+  text-align: center;
+  text-transform: uppercase;
+  font-weight: bold;
+  font-size: 0.9em;
+  padding: 0.8em 0;
+}
+
+.add-schedule-page .react-calendar__month-view__weekdays__weekday {
+  padding: 0.8em;
+}
+
+.add-schedule-page .react-calendar__month-view__weekNumbers .react-calendar__tile {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75em;
+  font-weight: bold;
+}
+
+.add-schedule-page .react-calendar__month-view__days__day--weekend {
+  color: #d10000;
+}
+
+.add-schedule-page .react-calendar__month-view__days__day--neighboringMonth {
+  color: #757575;
+}
+
+.add-schedule-page .react-calendar__year-view .react-calendar__tile,
+.add-schedule-page .react-calendar__decade-view .react-calendar__tile,
+.add-schedule-page .react-calendar__century-view .react-calendar__tile {
+  padding: 2em 0.5em;
+}
+
+/* Enhanced tile styling for larger calendar */
+.add-schedule-page .react-calendar__tile {
+  max-width: 100%;
+  padding: 1.2em 0.8em !important;
+  background: none;
+  text-align: center;
+  line-height: 1.2;
+  font-size: 1.1em !important;
+  position: relative;
+  min-height: 65px !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+}
+
+.add-schedule-page .react-calendar__tile:disabled {
+  background-color: #f0f0f0;
+}
+
+.add-schedule-page .react-calendar__tile:enabled:hover,
+.add-schedule-page .react-calendar__tile:enabled:focus {
+  background-color: #e6e6e6;
+}
+
+.add-schedule-page .react-calendar__tile--now {
+  background: #ffff76;
+}
+
+.add-schedule-page .react-calendar__tile--now:enabled:hover,
+.add-schedule-page .react-calendar__tile--now:enabled:focus {
+  background: #ffffa9;
+}
+
+.add-schedule-page .react-calendar__tile--hasActive {
+  background: #76baff;
+}
+
+.add-schedule-page .react-calendar__tile--hasActive:enabled:hover,
+.add-schedule-page .react-calendar__tile--hasActive:enabled:focus {
+  background: #a9d4ff;
+}
+
+.add-schedule-page .react-calendar__tile--active {
+  background: #006edc !important;
+  color: white !important;
+}
+
+.add-schedule-page .react-calendar__tile--active:enabled:hover,
+.add-schedule-page .react-calendar__tile--active:enabled:focus {
+  background: #1087ff !important;
+}
+
+/* Custom styling for the calendar container */
+.add-schedule-page .calendar-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.add-schedule-page .calendar-wrapper {
+  flex: 1;
+  display: flex;
+  align-items: stretch;
+  justify-content: stretch;
+  padding: 0;
+}
+
+/* Make the calendar fill the entire container */
+.add-schedule-page .react-calendar__viewContainer {
+  flex: 1 !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.add-schedule-page .react-calendar__month-view {
+  flex: 1 !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.add-schedule-page .react-calendar__month-view__days {
+  flex: 1 !important;
+  display: grid !important;
+  grid-template-columns: repeat(7, 1fr) !important;
+  grid-template-rows: repeat(6, 1fr) !important;
+  gap: 1px !important;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1280px) {
+  .add-schedule-page .react-calendar__tile {
+    padding: 1.2em 0.8em !important;
+    min-height: 70px !important;
+    font-size: 1em !important;
+  }
+  
+  .add-schedule-page .react-calendar__navigation button {
+    font-size: 16px;
+    padding: 6px 10px;
+  }
+}
+
+@media (max-width: 768px) {
+  .add-schedule-page .react-calendar__tile {
+    padding: 1em 0.6em !important;
+    min-height: 60px !important;
+    font-size: 0.95em !important;
+  }
+  
+  .add-schedule-page .react-calendar__navigation button {
+    font-size: 15px;
+    padding: 6px 8px;
+  }
+  
+  .add-schedule-page .react-calendar__month-view__weekdays {
+    font-size: 0.8em;
+  }
+}

@@ -1,23 +1,66 @@
 import React, { useState, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import Calendar from "react-calendar";
 
 import "react-calendar/dist/Calendar.css";
+import "./AddSchedulePage.css";
 
 import TimePicker from "../../../../features/TimePicker";
 import { FormInput } from "@/features/FormUtilities";
+import MultiLineInput from "@/features/MultiLineInput";
 import Toast from "@/features/Toast";
 import StyledButton from "@/components/buttons/StyledButton";
 import { LoadingSpinner } from "@/components/commons";
-import Breadcrumb from "@/components/Breadcrumb";
+
+// Custom multiline input component with same styling as FormInput
+const CustomMultiLineInput = ({
+  placeholder,
+  register,
+  name,
+  error = "",
+  className = "",
+  disabled = false,
+  rows = 3,
+}) => {
+  return (
+    <div className={`flex flex-col ${className}`}>
+      <textarea
+        {...register(name, {
+          onChange: (e) => {
+            // No auto-capitalization for multiline inputs
+            // Just let the user type naturally
+          },
+        })}
+        rows={rows}
+        disabled={disabled}
+        className={`border text-xl px-2 py-3 rounded-2xl w-full resize-y min-h-[3rem] ${
+          error !== "" ? "border-red-600" : "border-black"
+        } focus:outline-none ${
+          disabled ? "border-gray-400 cursor-not-allowed" : ""
+        }`}
+        style={{
+          boxShadow: "inset 0 1px 1px rgba(1, 1, 1, 0.50)",
+        }}
+        placeholder={placeholder}
+      />
+      <span className="text-red-600 text-md h-6 pl-2">
+        {error?.message || ""}
+      </span>
+    </div>
+  );
+};
+
 import axiosClient from "@/lib/axiosClient";
+import { useSocketClient } from '@/context/authContext';
 import {
   getLocalDateString,
   timeStringToMinutes,
   countOverlappingEvents,
   formatTimeTo12H,
+  convertTo24Hour
 } from "@/utils/scheduleUtils";
+import { validateScheduleCreation } from "@/utils/scheduleValidation";
 import { normalizeStatus } from "../../appointments/components/statusUtils";
 
 const AddSchedulePage = () => {
@@ -29,14 +72,24 @@ const AddSchedulePage = () => {
   const [calendarEvents, setCalendarEvents] = useState([]);
   const [disabledDates, setDisabledDates] = useState([]);
   const [backendEvents, setBackendEvents] = useState([]);
+  const [dayEvents, setDayEvents] = useState([]); // Combined schedules and appointments for selected date
   const [isLoading, setIsLoading] = useState(false);
+
+  // Socket client for real-time updates
+  const socket = useSocketClient();
 
   // Form state with react-hook-form
   const [newStartTime, setNewStartTime] = useState("");
   const [newEndTime, setNewEndTime] = useState("");
 
-  // Date disable feature state
-  const [isDateDisableMode, setIsDateDisableMode] = useState(false);
+  // Selected schedule for details viewer
+  const [selectedSchedule, setSelectedSchedule] = useState(null);
+
+  // Schedule type state (Day or Time) - only for Close a Date
+  const [scheduleType, setScheduleType] = useState("time"); // "time" or "day"
+
+  // Active mode state (Add Schedule or Close a Date)
+  const [activeMode, setActiveMode] = useState("addSchedule"); // "addSchedule" or "closeDate"
 
   // Form setup for Add Schedule
   const {
@@ -46,6 +99,7 @@ const AddSchedulePage = () => {
     formState: { errors: scheduleErrors },
     reset: resetScheduleForm,
     watch: watchSchedule,
+    setValue: setScheduleValue,
   } = useForm({
     defaultValues: {
       title: "",
@@ -70,417 +124,822 @@ const AddSchedulePage = () => {
   // Watch form values
   const watchedScheduleData = watchSchedule();
 
-  // Availability options for dropdown
-  const availabilityOptions = [
-    { value: "SHARED", label: "Shared - Can be booked with other events" },
-    { value: "EXCLUSIVE", label: "Exclusive - Reserved for this event only" },
-  ];
-
   // Toast state
   const [toastConfig, setToastConfig] = useState({
     message: "",
-    type: "success",
+    type: "info",
+    visible: false,
   });
 
-  const showToast = (message, type = "success") => {
+  // Show toast message
+  const showToast = (message, type = "info") => {
     setToastConfig({
       message,
       type,
+      visible: true,
     });
   };
 
+  // Hide toast message
   const hideToast = () => {
-    setToastConfig({
-      ...toastConfig,
-      message: "",
-    });
+    setToastConfig((prev) => ({ ...prev, visible: false }));
   };
 
-  // Build date strings
-  const dateString = getLocalDateString(selectedDate);
-  const monthLabel =
-    selectedDate.toLocaleString("default", { month: "long" }) +
-    " " +
-    selectedDate.getFullYear();
-  const weekdayName = selectedDate.toLocaleString("default", {
-    weekday: "long",
-  });
-  const dayNum = selectedDate.getDate();
-
-  // Fetch events for the selected date
-  const fetchEvents = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const formattedDate = dateString;
-
-      // Fetch schedules
-      const schedulesResponse = await axiosClient.get(
-        `/auth/schedules?date=${formattedDate}`
-      );
-
-      // Process schedules - exclude COMPLETED and DISABLED (date disable entries)
-      const scheduleEvents = schedulesResponse.data
-        .filter(
-          (schedule) =>
-            schedule.status !== "COMPLETED" &&
-            !(
-              schedule.status === "DISABLED" &&
-              schedule.title === "DATE_DISABLED"
-            )
-        )
-        .map((schedule) => ({
-          id: `schedule-${schedule.schedule_id}`,
-          title: schedule.title || "Unnamed Schedule",
-          description: schedule.description || "",
-          date: schedule.date,
-          startTime: schedule.start_time,
-          endTime: schedule.end_time,
-          availability: schedule.availability || "SHARED",
-          status: schedule.status || "ACTIVE",
-          isSchedule: true,
-          schedule_id: schedule.schedule_id,
-        }));
-
-      // Fetch appointments
-      const appointmentsResponse = await axiosClient.get(`/auth/appointment`);
-
-      // Filter approved appointments for the selected date
-      const approvedAppointments = appointmentsResponse.data.filter(
-        (appointment) => {
-          if (!appointment || !appointment.preferred_date) return false;
-
-          const status = appointment.AppointmentStatus?.status || "";
-          const isApproved = normalizeStatus(status) === "APPROVED";
-          const appointmentDate = appointment.preferred_date.split("T")[0];
-
-          return appointmentDate === formattedDate && isApproved;
-        }
-      );
-
-      // Process appointments
-      const appointmentEvents = approvedAppointments.map((appointment) => {
-        let startTime = "09:00";
-        let endTime = "10:00";
-
-        if (appointment.start_time && appointment.end_time) {
-          startTime = appointment.start_time;
-          endTime = appointment.end_time;
-        }
-
-        return {
-          id: `appointment-${appointment.appointment_id}`,
-          appointment_id: appointment.appointment_id,
-          title: appointment.purpose_of_visit || "Unnamed Appointment",
-          date: appointment.preferred_date.split("T")[0],
-          startTime,
-          endTime,
-          isAppointment: true,
-          status: "APPROVED",
-          availability: "SHARED",
-        };
-      });
-
-      setBackendEvents([...scheduleEvents, ...appointmentEvents]);
-    } catch (error) {
-      console.error("Error fetching events:", error);
-      showToast("Error loading schedule data", "error");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [dateString]);
-
-  // Fetch calendar events for the month
+  // Fetch monthly events for calendar display (schedules + appointments)
   const fetchMonthEvents = useCallback(async () => {
     try {
       const year = viewedDate.getFullYear();
       const month = viewedDate.getMonth();
 
-      const schedulesResponse = await axiosClient.get("/auth/schedules");
-      const appointmentsResponse = await axiosClient.get("/auth/appointment");
+      console.log(`Fetching calendar events for month: ${month + 1}/${year}`);
 
-      // Process schedules for the month
-      const monthSchedules = schedulesResponse.data
-        .filter((schedule) => {
-          if (!schedule.date) return false;
-          const scheduleDate = new Date(schedule.date);
-          return (
-            !isNaN(scheduleDate.getTime()) &&
-            scheduleDate.getMonth() === month &&
-            scheduleDate.getFullYear() === year
-          );
-        })
-        .map((schedule) => ({
-          id: `schedule-${schedule.schedule_id}`,
-          date: schedule.date.split("T")[0],
-          isActive: schedule.status !== "COMPLETED",
-          isSchedule: true,
-          isDisabled: schedule.status === "DISABLED",
-        }));
+      // Fetch all schedules
+      const schedulesResponse = await axiosClient.get('/auth/schedules');
+      console.log("All schedules:", schedulesResponse.data.length);
 
-      // Process appointments for the month
-      const monthAppointments = appointmentsResponse.data
-        .filter((appointment) => {
-          if (!appointment.preferred_date) return false;
-          const dateStr = appointment.preferred_date.split("T")[0];
-          const appointmentDate = new Date(dateStr);
+      // Fetch all appointments
+      const appointmentsResponse = await axiosClient.get('/auth/appointment');
+      console.log("All appointments:", appointmentsResponse.data.length);
 
-          return (
-            !isNaN(appointmentDate.getTime()) &&
-            appointmentDate.getMonth() === month &&
-            appointmentDate.getFullYear() === year
-          );
-        })
-        .map((appointment) => ({
-          id: `appointment-${appointment.appointment_id}`,
-          date: appointment.preferred_date.split("T")[0],
-          isActive:
-            normalizeStatus(appointment.AppointmentStatus?.status || "") ===
-            "APPROVED",
-          isAppointment: true,
-        }));
+      // Filter schedules for current month
+      const monthSchedules = schedulesResponse.data.filter(schedule => {
+        if (!schedule.date) return false;
+        const scheduleDate = new Date(schedule.date);
+        return !isNaN(scheduleDate.getTime()) &&
+          scheduleDate.getMonth() === month &&
+          scheduleDate.getFullYear() === year;
+      });
 
-      setCalendarEvents([...monthSchedules, ...monthAppointments]);
+      console.log("Month-filtered schedules:", monthSchedules.length);
+
+      // Filter appointments for current month
+      const monthAppointments = appointmentsResponse.data.filter(appointment => {
+        if (!appointment.preferred_date) return false;
+        const dateStr = appointment.preferred_date.split('T')[0];
+        const appointmentDate = new Date(dateStr);
+
+        // Include all appointments (both flexible and fixed time) for calendar indicators
+        return !isNaN(appointmentDate.getTime()) &&
+          appointmentDate.getMonth() === month &&
+          appointmentDate.getFullYear() === year;
+      });
+
+      console.log("Month-filtered appointments:", monthAppointments.length);
+
+      // Process schedules for calendar display
+      const scheduleEvents = monthSchedules.map(schedule => ({
+        id: `schedule-${schedule.schedule_id}`,
+        date: schedule.date.split('T')[0],
+        isActive: schedule.status !== 'COMPLETED',
+        isSchedule: true,
+        type: schedule.type || "schedule"
+      }));
+
+      // Process appointments for calendar display
+      const appointmentEvents = monthAppointments.map(appointment => ({
+        id: `appointment-${appointment.appointment_id}`,
+        date: appointment.preferred_date.split('T')[0],
+        isActive: normalizeStatus(appointment.AppointmentStatus?.status || '') === 'APPROVED',
+        isAppointment: true
+      }));
+
+      const allCalendarEvents = [...scheduleEvents, ...appointmentEvents];
+      console.log(`Total filtered calendar events: ${allCalendarEvents.length}`);
+
+      setCalendarEvents(allCalendarEvents);
+      setBackendEvents(monthSchedules); // Keep for backward compatibility
+
+      // Extract disabled dates
+      const disabled = monthSchedules
+        .filter((event) => event.type === "DISABLED")
+        .map((event) => new Date(event.date));
+      setDisabledDates(disabled);
+
     } catch (error) {
-      console.error("Error fetching monthly events:", error);
+      console.error('Error fetching monthly events:', error);
+      showToast('Error loading calendar events', 'error');
     }
   }, [viewedDate]);
 
-  // Fetch disabled dates from schedules table
-  const fetchDisabledDates = useCallback(async () => {
+  // Fetch events for selected date (schedules + appointments)
+  const fetchDayEvents = useCallback(async () => {
     try {
-      const response = await axiosClient.get("/auth/schedules");
-      if (response.data && Array.isArray(response.data)) {
-        // Filter schedules that are marked as disabled (status = 'DISABLED')
-        const disabledSchedules = response.data.filter(
-          (schedule) =>
-            schedule.status === "DISABLED" && schedule.title === "DATE_DISABLED"
-        );
-        setDisabledDates(
-          disabledSchedules.map((schedule) => schedule.date.split("T")[0])
-        );
-      }
-    } catch (error) {
-      console.error("Error fetching disabled dates:", error);
-    }
-  }, []);
+      const dateString = getLocalDateString(selectedDate);
+      console.log("Fetching day events for:", dateString);
 
-  useEffect(() => {
-    fetchEvents();
-  }, [selectedDate, fetchEvents]);
+      // Fetch schedules for the selected date
+      const schedulesResponse = await axiosClient.get(`/auth/schedules?date=${dateString}`);
+      console.log("Day schedules:", schedulesResponse.data.length);
 
-  useEffect(() => {
-    fetchMonthEvents();
-    fetchDisabledDates();
-  }, [viewedDate, fetchMonthEvents, fetchDisabledDates]);
+      // Fetch all appointments and filter by date
+      const appointmentsResponse = await axiosClient.get('/auth/appointment');
+      console.log("All appointments for filtering:", appointmentsResponse.data.length);
 
-  // Handle adding a new schedule with react-hook-form
-  const onScheduleSubmit = async (data) => {
-    try {
-      if (!newStartTime || !newEndTime) {
-        showToast("Please select start and end times", "error");
-        return;
-      }
+      // Process schedules
+      const daySchedules = schedulesResponse.data.map(schedule => ({
+        id: `schedule-${schedule.schedule_id}`,
+        title: schedule.title || 'Schedule',
+        description: schedule.description || '',
+        date: schedule.date,
+        startTime: schedule.start_time,
+        endTime: schedule.end_time,
+        availability: schedule.availability || 'SHARED',
+        status: schedule.status || 'ACTIVE',
+        type: schedule.type || 'schedule',
+        isSchedule: true,
+        schedule_id: schedule.schedule_id
+      }));
 
-      const startMinutes = timeStringToMinutes(newStartTime);
-      const endMinutes = timeStringToMinutes(newEndTime);
-      const sixAM = timeStringToMinutes("06:00");
-      const sixPM = timeStringToMinutes("18:00");
+      // Filter and process appointments for selected date
+      const dayAppointments = appointmentsResponse.data
+        .filter(appointment => {
+          if (!appointment.preferred_date) return false;
+          const appointmentDate = appointment.preferred_date.split('T')[0];
+          return appointmentDate === dateString;
+        })
+        .filter(appointment => {
+          const status = appointment.AppointmentStatus?.status || '';
+          const normalizedStatus = normalizeStatus(status);
+          return normalizedStatus === 'APPROVED' || normalizedStatus === 'COMPLETED';
+        })
+        .map(appointment => {
+          // Handle time formats
+          let startTime = "09:00";
+          let endTime = "10:00";
+          let hasFlexibleTime = false;
 
-      if (startMinutes < sixAM || endMinutes > sixPM) {
-        showToast("Schedule must be between 6:00 AM and 6:00 PM", "error");
-        return;
-      }
+          // Check if appointment has flexible time
+          if (!appointment.start_time && !appointment.end_time) {
+            hasFlexibleTime = true;
+            startTime = "Flexible";
+            endTime = "";
+          } else if (appointment.start_time && appointment.end_time) {
+            startTime = appointment.start_time;
+            endTime = appointment.end_time;
+          } else if (appointment.preferred_time && typeof appointment.preferred_time === 'string') {
+            try {
+              const timeParts = appointment.preferred_time.split('-');
+              if (timeParts[0]) startTime = convertTo24Hour(timeParts[0].trim());
+              if (timeParts[1]) endTime = convertTo24Hour(timeParts[1].trim());
+            } catch (error) {
+              console.error("Error parsing preferred_time:", appointment.preferred_time, error);
+            }
+          }
 
-      if (startMinutes >= endMinutes) {
-        showToast("Start time must be earlier than end time", "error");
-        return;
-      }
-
-      const duration = endMinutes - startMinutes;
-      if (duration < 15) {
-        showToast("Schedule duration must be at least 15 minutes", "error");
-        return;
-      }
-
-      // Check for exclusive event conflicts
-      const existingExclusiveEvent = backendEvents.find((event) => {
-        if (!event.isSchedule) return false;
-        if (event.availability === "EXCLUSIVE" && event.date === dateString) {
-          const eventStart = timeStringToMinutes(event.startTime);
-          const eventEnd = timeStringToMinutes(event.endTime);
-          return startMinutes < eventEnd && eventStart < endMinutes;
-        }
-        return false;
-      });
-
-      if (existingExclusiveEvent) {
-        showToast(
-          "Cannot schedule during an exclusive event time slot",
-          "error"
-        );
-        return;
-      }
-
-      if (data.availability === "EXCLUSIVE") {
-        const existingEvents = backendEvents.filter((event) => {
-          if (event.date !== dateString) return false;
-          const eventStart = timeStringToMinutes(event.startTime);
-          const eventEnd = timeStringToMinutes(event.endTime);
-          return startMinutes < eventEnd && eventStart < endMinutes;
+          return {
+            id: `appointment-${appointment.appointment_id}`,
+            appointment_id: appointment.appointment_id,
+            title: appointment.purpose_of_visit || 'Visitor Appointment',
+            description: appointment.additional_notes || '',
+            organizer: appointment.Visitor ?
+              `${appointment.Visitor.first_name || ''} ${appointment.Visitor.last_name || ''}`.trim() :
+              'Unknown Visitor',
+            numPeople: `${appointment.population_count || 1} visitors`,
+            date: appointment.preferred_date.split('T')[0],
+            startTime,
+            endTime,
+            status: normalizeStatus(appointment.AppointmentStatus?.status || ''),
+            isAppointment: true,
+            hasFlexibleTime
+          };
         });
 
-        if (existingEvents.length > 0) {
-          showToast(
-            "Cannot set as exclusive - time slot already has events scheduled",
-            "error"
-          );
-          return;
-        }
-      }
+      const allDayEvents = [...daySchedules, ...dayAppointments];
+      console.log("Combined day events:", allDayEvents.length);
 
-      if (data.availability === "SHARED") {
-        const overlappingCount = countOverlappingEvents(
-          backendEvents,
-          newStartTime,
-          newEndTime
-        );
-        if (overlappingCount >= 5) {
-          showToast(
-            "Maximum limit reached: Cannot add more than 5 overlapping events",
-            "error"
-          );
-          return;
-        }
-      }
+      setDayEvents(allDayEvents);
 
-      const scheduleData = {
-        title: data.title,
-        description: data.description,
-        date: dateString,
-        start_time: newStartTime,
-        end_time: newEndTime,
-        availability: data.availability,
-      };
-
-      await axiosClient.post("/auth/schedules", scheduleData);
-      showToast("Schedule added successfully", "success");
-
-      // Reset form
-      resetScheduleForm();
-      setNewStartTime("");
-      setNewEndTime("");
-
-      // Refresh events
-      fetchEvents();
-      fetchMonthEvents();
     } catch (error) {
-      console.error("Error creating schedule:", error);
-      showToast(
-        error.response?.data?.message || "Failed to create schedule",
-        "error"
-      );
+      console.error('Error fetching day events:', error);
+      showToast('Error loading day events', 'error');
     }
-  };
+  }, [selectedDate]);
 
-  // Handle disabling a date with react-hook-form
-  const onDisableDateSubmit = async (data) => {
+  // Main data fetching function
+  const fetchAllData = useCallback(async () => {
+    setIsLoading(true);
     try {
-      // Create a special schedule entry to mark the date as disabled
-      // For disable dates, we bypass the 6AM-6PM validation since it's a different use case
-      const disableScheduleData = {
-        title: "DATE_DISABLED",
-        description: data.reason,
+      await Promise.all([
+        fetchMonthEvents(),
+        fetchDayEvents()
+      ]);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      showToast('Error loading data', 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [fetchMonthEvents, fetchDayEvents]);
+
+  // Handle calendar date change
+  const handleDateChange = (date) => {
+    setSelectedDate(date);
+  };
+
+  // Handle calendar navigation (month change)
+  const handleViewChange = ({ activeStartDate }) => {
+    setViewedDate(activeStartDate);
+  };
+
+  // Check if a date is disabled
+  const isDateDisabled = (date) => {
+    return disabledDates.some(
+      (disabledDate) =>
+        date.getFullYear() === disabledDate.getFullYear() &&
+        date.getMonth() === disabledDate.getMonth() &&
+        date.getDate() === disabledDate.getDate()
+    );
+  };
+
+  // Handle form submission for adding a new schedule (SHARED only)
+  const onNewScheduleSubmit = async (data) => {
+    // Validate time inputs - always required for Add Schedule
+    if (!newStartTime || !newEndTime) {
+      showToast("Please select both start and end times", "error");
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const dateString = getLocalDateString(selectedDate);
+
+      // Add Schedule is always SHARED with specific time
+      const requestData = {
         date: dateString,
-        start_time: "00:00", // Full day disable - bypass time validation
-        end_time: "23:59", // Full day disable - bypass time validation
-        availability: "EXCLUSIVE",
-        status: "DISABLED",
+        title: data.title,
+        description: data.description || "",
+        startTime: newStartTime,
+        endTime: newEndTime,
+        availability: "SHARED", // Always SHARED for Add Schedule
       };
 
-      await axiosClient.post("/auth/schedules", disableScheduleData);
+      const response = await axiosClient.post("/auth/schedules", requestData);
 
-      showToast("Date disabled successfully", "success");
-      resetDisableDateForm();
-      setIsDateDisableMode(false);
+      if (response.status === 201) {
+        showToast("Schedule added successfully!", "success");
 
-      // Refresh disabled dates
-      fetchDisabledDates();
-      fetchMonthEvents();
+        // Reset form
+        resetScheduleForm();
+        setNewStartTime("");
+        setNewEndTime("");
+
+        // Refresh data
+        fetchAllData();
+      }
     } catch (error) {
-      console.error("Error disabling date:", error);
+      console.error("Error adding schedule:", error);
       showToast(
-        error.response?.data?.message || "Failed to disable date",
+        `Failed to add schedule. ${error.response?.data?.message || "Please try again."
+        }`,
         "error"
       );
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  // Check if date is disabled
-  const isDateDisabled = (date) => {
-    const dateStr = getLocalDateString(date);
-    return disabledDates.includes(dateStr);
+  // Handle form submission for closing a date (Day or Time with EXCLUSIVE)
+  const onDisableDateSubmit = async (data) => {
+    // Validate time inputs if in time mode
+    if (scheduleType === "time" && (!newStartTime || !newEndTime)) {
+      showToast("Please select both start and end times", "error");
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const dateString = getLocalDateString(selectedDate);
+      let requestData = {};
+
+      if (scheduleType === "day") {
+        // For day mode, disable the entire date
+        requestData = {
+          date: dateString,
+          type: "DISABLED",
+          reason: data.reason || "Date closed",
+        };
+      } else {
+        // For time mode, create an EXCLUSIVE schedule
+        requestData = {
+          date: dateString,
+          title: data.title || "Time Slot Closed",
+          description: data.reason || "Time slot unavailable",
+          startTime: newStartTime,
+          endTime: newEndTime,
+          availability: "EXCLUSIVE", // EXCLUSIVE for Close Date time mode
+        };
+      }
+
+      // Send to appropriate endpoint
+      let response;
+      if (scheduleType === "day") {
+        response = await axiosClient.post("/auth/schedules/disable", requestData);
+      } else {
+        response = await axiosClient.post("/auth/schedules", requestData);
+      }
+
+      if (response.status === 201) {
+        showToast(
+          scheduleType === "day"
+            ? "Date disabled successfully!"
+            : "Time slot closed successfully!",
+          "success"
+        );
+
+        // Reset form
+        resetDisableDateForm();
+        setNewStartTime("");
+        setNewEndTime("");
+
+        // Refresh data
+        fetchAllData();
+      }
+    } catch (error) {
+      console.error("Error closing date/time:", error);
+      showToast(
+        `Failed to ${scheduleType === "day" ? "disable date" : "close time slot"}. ${error.response?.data?.message || "Please try again."
+        }`,
+        "error"
+      );
+    } finally {
+      setIsLoading(false);
+    }
   };
+
+  // Handle time picker changes
+  const handleStartTimeChange = (time) => {
+    setNewStartTime(time);
+  };
+
+  const handleEndTimeChange = (time) => {
+    setNewEndTime(time);
+  };
+
+  // Handle mode switch
+  const handleModeSwitch = (mode) => {
+    setActiveMode(mode);
+  };
+
+  // Handle schedule type switch
+  const handleTypeSwitch = (type) => {
+    setScheduleType(type);
+
+    // If switching to day mode, set title automatically
+    if (type === "day") {
+      const formattedDate = selectedDate.toLocaleDateString("en-US", {
+        month: "long",
+        day: "numeric",
+        year: "numeric",
+      });
+      setScheduleValue("title", `Make ${formattedDate} unavailable`);
+    } else {
+      setScheduleValue("title", "");
+    }
+  };
+
+  // Load data on component mount and when viewed date changes
+  useEffect(() => {
+    fetchAllData();
+  }, [fetchAllData]);
+
+  // Socket integration for real-time updates
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleScheduleChange = () => {
+      console.log("[Socket] Schedule changed – fetching data...");
+      fetchAllData();
+    };
+
+    const handleAppointmentChange = () => {
+      console.log("[Socket] Appointment changed – fetching data...");
+      fetchAllData();
+    };
+
+    // Listen for schedule changes
+    socket.onDbChange("Schedule", "*", handleScheduleChange);
+
+    // Listen for appointment changes
+    socket.onDbChange("Appointment", "*", handleAppointmentChange);
+    socket.onDbChange("AppointmentStatus", "*", handleAppointmentChange);
+
+    return () => {
+      socket.offDbChange("Schedule", "*", handleScheduleChange);
+      socket.offDbChange("Appointment", "*", handleAppointmentChange);
+      socket.offDbChange("AppointmentStatus", "*", handleAppointmentChange);
+    };
+  }, [socket, fetchAllData]);
+
+  // Update title when selected date changes in day mode
+  useEffect(() => {
+    if (scheduleType === "day") {
+      const formattedDate = selectedDate.toLocaleDateString("en-US", {
+        month: "long",
+        day: "numeric",
+        year: "numeric",
+      });
+      setScheduleValue("title", `Make ${formattedDate} unavailable`);
+    }
+  }, [selectedDate, scheduleType, setScheduleValue]);
 
   return (
-    <>
-      <div className="flex w-full h-full select-none gap-x-10">
-        <div className="min-w-[55rem] h-full">
-          
- <Calendar
-    onChange={setSelectedDate}
-    value={selectedDate}
-    tileClassName={({ date }) => {
-      const dateStr = getLocalDateString(date);
-      if (isDateDisabled(date)) {
-        return "bg-red-100  text-red-500 cursor-not-allowed";
-      }
-      return "relative";
-    }}
-    tileContent={({ date, view }) => {
-      if (view === "month") {
-        const ds = getLocalDateString(date);
-
-        if (isDateDisabled(date)) {
-          return (
-            <span className="absolute top-1 right-1 text-red-500 text-xs font-bold">
-              X
-            </span>
-          );
-        }
-
-        const activeSchedules = calendarEvents.filter(
-          (event) =>
-            event.date === ds && event.isSchedule && event.isActive
-        ).length;
-
-        const confirmedAppointments = calendarEvents.filter(
-          (event) =>
-            event.date === ds && event.isAppointment && event.isActive
-        ).length;
-
-        const totalCount = activeSchedules + confirmedAppointments;
-
-        return totalCount > 0 ? (
-          <span className="absolute top-1 right-1 rounded-full bg-red-500 text-white text-[10px] w-4 h-4 flex items-center justify-center">
-            {totalCount}
-          </span>
-        ) : null;
-      }
-      return null;
-    }}
-    tileDisabled={({ date }) =>
-      isDateDisabled(date) && !isDateDisableMode
-    }
-    showNeighboringMonth={false}
-    className="w-full h-[400px]  rounded-lg text-4xl" // override width & height heres
-    
-  />
-
-
-        </div>
-        <div className="min-w-[30rem] h-full"></div>
-        <div className="w-full h-full"></div>
+    <div className="add-schedule-page h-full bg-gray-50 flex flex-col overflow-hidden">
+      {/* Back Button */}
+      <div className="flex-shrink-0 p-4 pb-2">
+        <button
+          onClick={() => navigate('/admin/schedule')}
+          className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
+        >
+          <svg
+            className="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M15 19l-7-7 7-7"
+            />
+          </svg>
+          Back to Schedule
+        </button>
       </div>
+
+      <div className="flex-1 grid grid-cols-1 xl:grid-cols-12 gap-4 px-4 pb-4 min-h-0">
+        {/* Left Column - Calendar */}
+        <div className="bg-white rounded-lg shadow-md p-4 min-w-0 min-h-0 flex flex-col xl:col-span-6">
+          <div className="flex justify-between items-center mb-4">
+            <span className="text-2xl font-semibold">
+              {viewedDate.toLocaleString('default', { month: 'long' })} {viewedDate.getFullYear()}
+            </span>
+          </div>
+          <div className="rounded-xl bg-black p-3 shadow-md shadow-gray-600 flex-1 flex flex-col">
+            <Calendar
+              onChange={handleDateChange}
+              value={selectedDate}
+              onActiveStartDateChange={handleViewChange}
+              tileClassName="relative"
+              tileContent={({ date, view }) => {
+                if (view === 'month') {
+                  const ds = getLocalDateString(date);
+
+                  const activeSchedules = calendarEvents.filter(event =>
+                    event.date === ds && event.isSchedule && event.isActive
+                  ).length;
+
+                  const confirmedAppointments = calendarEvents.filter(event =>
+                    event.date === ds && event.isAppointment && event.isActive
+                  ).length;
+
+                  const totalCount = activeSchedules + confirmedAppointments;
+
+                  return totalCount > 0 ? (
+                    <span className="absolute top-1 right-1 rounded-full bg-red-500 text-white text-[10px] w-4 h-4 flex items-center justify-center">
+                      {totalCount}
+                    </span>
+                  ) : null;
+                }
+                return null;
+              }}
+              showNeighboringMonth={false}
+              className="w-full rounded-lg flex-1"
+            />
+          </div>
+        </div>
+
+        {/* Middle Column - Selected Date Details */}
+        <div className="flex flex-col gap-4 min-w-0 min-h-0 xl:col-span-3">
+          {/* Top Card - Schedules list */}
+          <div className="bg-white rounded-xl shadow-md p-4 flex flex-col flex-1 min-h-0">
+            <h2 className="text-2xl font-bold mb-1">
+              {selectedDate.toLocaleDateString("en-US", {
+                month: "long",
+                day: "numeric",
+                year: "numeric",
+              })}
+            </h2>
+            <div className="text-gray-600 font-semibold mb-3">Schedules</div>
+
+            <div className="space-y-2 flex-1 overflow-y-auto px-1">
+              {dayEvents.length > 0 ? (
+                dayEvents.map((event, index) => (
+                  <div
+                    key={event.id || index}
+                    onClick={() => setSelectedSchedule(event)}
+                    className={`bg-gray-200 hover:bg-gray-300 transition-colors cursor-pointer rounded-lg px-3 py-2 ${selectedSchedule?.id === event.id ? "ring-2 ring-inset ring-purple-500" : ""
+                      }`}
+                  >
+                    <div className="font-semibold truncate">{event.title || (event.type === "DISABLED" ? "Date Closed" : "Untitled")}</div>
+                    <div className="text-xs text-gray-600">
+                      {event.type !== "DISABLED" && event.startTime && event.endTime && !event.hasFlexibleTime
+                        ? `${formatTimeTo12H(event.startTime)} - ${formatTimeTo12H(event.endTime)}`
+                        : event.hasFlexibleTime
+                          ? "Flexible Time"
+                          : event.type === "DISABLED"
+                            ? "All Day - Unavailable"
+                            : "No time specified"}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-gray-500 italic">No schedules or appointments for this date</div>
+              )}
+            </div>
+          </div>
+
+          {/* Bottom Card - Selected event details */}
+          <div className="bg-white rounded-xl shadow-md p-4 h-[20rem] overflow-y-auto">
+            {selectedSchedule ? (
+              <>
+                <div className="mb-2">
+                  <div className="text-xl font-bold">{selectedSchedule.title || "Event Details"}</div>
+                  <div className="text-sm text-gray-600">
+                    {selectedSchedule.startTime && selectedSchedule.endTime && !selectedSchedule.hasFlexibleTime
+                      ? `${formatTimeTo12H(selectedSchedule.startTime)} - ${formatTimeTo12H(selectedSchedule.endTime)}`
+                      : selectedSchedule.hasFlexibleTime
+                        ? "Flexible Time"
+                        : ""}
+                  </div>
+                </div>
+
+                <div className="text-gray-800 mb-2 font-semibold text-lg">Description</div>
+                <div className="text-sm text-gray-700 leading-relaxed">
+                  {selectedSchedule.description
+                    ? selectedSchedule.description
+                    : "No description provided for this event."}
+                </div>
+              </>
+            ) : (
+              <div className="text-gray-500 italic">Select an event from the list above to view details</div>
+            )}
+          </div>
+        </div>
+
+        {/* Right Column - Add Schedule / Close Date Form */}
+        <div className="bg-white rounded-lg shadow-md p-4 overflow-y-auto min-w-0 min-h-0 xl:col-span-3">
+
+
+          {/* Mode Selection Buttons */}
+          <div className="flex gap-2 mb-4">
+            <button
+              onClick={() => handleModeSwitch("addSchedule")}
+              className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors ${activeMode === "addSchedule"
+                  ? "bg-purple-500 text-white"
+                  : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                }`}
+            >
+              Add Schedule
+            </button>
+            <button
+              onClick={() => handleModeSwitch("closeDate")}
+              className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors ${activeMode === "closeDate"
+                  ? "bg-red-500 text-white"
+                  : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                }`}
+            >
+              Close a Date
+            </button>
+          </div>
+
+          {activeMode === "addSchedule" && (
+            <>
+              {/* Add Schedule Form - Only for specific time (SHARED) */}
+              <form onSubmit={handleScheduleSubmit(onNewScheduleSubmit)} className="space-y-4">
+                <div className="text-lg font-semibold mb-4">
+                  Add a schedule for {selectedDate.toLocaleDateString("en-US", {
+                    month: "long",
+                    day: "numeric",
+                    year: "numeric",
+                  })}
+                </div>
+                <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <h3 className="text-sm font-semibold text-blue-800 mb-2">
+                    Important Notes for Regular Schedules:
+                  </h3>
+                  <ul className="text-xs text-blue-700 space-y-1 list-disc pl-5">
+                    <li>Schedules must be between 6:00 AM and 6:00 PM</li>
+                    <li>Minimum duration is 15 minutes</li>
+                    <li>Schedules can be created during exclusive event times</li>
+                    <li>Maximum 5 overlapping shared events allowed</li>
+                  </ul>
+                </div>
+                {/* Schedule Title */}
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Schedule Title
+                  </label>
+                  <FormInput
+                    register={scheduleRegister}
+                    name="title"
+                    placeholder="Enter schedule title"
+                    error={scheduleErrors.title || ""}
+                    type="text"
+                    className="w-full"
+                  />
+                </div>
+
+                {/* Description */}
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Description
+                  </label>
+                  <CustomMultiLineInput
+                    register={scheduleRegister}
+                    name="description"
+                    placeholder="Enter description (optional)"
+                    rows={4}
+                    error={scheduleErrors?.description || ""}
+                    className="w-full"
+                  />
+                </div>
+
+                {/* Time Pickers */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">
+                      Start Time
+                    </label>
+                    <TimePicker
+                      value={newStartTime}
+                      onChange={handleStartTimeChange}
+                      placeholder="Start time"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">
+                      End Time
+                    </label>
+                    <TimePicker
+                      value={newEndTime}
+                      onChange={handleEndTimeChange}
+                      placeholder="End time"
+                    />
+                  </div>
+                </div>
+
+                {/* Submit Button */}
+                <StyledButton
+                  type="submit"
+                  buttonColor="bg-purple-500"
+                  hoverColor="hover:bg-purple-600"
+                  textColor="text-white"
+                  className="w-full py-3 font-semibold transition-all"
+                  disabled={isLoading}
+                >
+                  {isLoading ? "Adding..." : "Add Schedule"}
+                </StyledButton>
+              </form>
+
+            </>
+          )}
+
+          {activeMode === "closeDate" && (
+            <>
+              {/* Schedule Type Selection for Close Date */}
+              <div className="flex gap-2 mb-2">
+                <button
+                  onClick={() => handleTypeSwitch("day")}
+                  className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors ${scheduleType === "day"
+                      ? "bg-gray-800 text-white"
+                      : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                    }`}
+                >
+                  Day
+                </button>
+                <button
+                  onClick={() => handleTypeSwitch("time")}
+                  className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors ${scheduleType === "time"
+                      ? "bg-red-500 text-white"
+                      : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                    }`}
+                >
+                  Time
+                </button>
+              </div>
+
+              {/* Warning and Notes for Close Date (Below buttons) */}
+              <div className="mb-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+                <h3 className="text-sm font-semibold text-red-800 mb-1">
+                  Make {selectedDate.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })} unavailable
+                </h3>
+                <div className="text-sm text-red-700 font-semibold">Warning!</div>
+                <p className="text-xs text-red-700 mt-1">
+                  Disabling this date will prevent any new appointments or schedules from being created on this date. Existing appointments and schedules will not be affected.
+                </p>
+              </div>
+              <div className="mb-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <h4 className="text-sm font-semibold text-yellow-800 mb-1">Note for Date Disabling:</h4>
+                <ul className="text-xs text-gray-700 list-disc pl-5 space-y-1">
+                  <li>Date disabling covers the entire day (24 hours)</li>
+                  <li>No time restrictions apply for disabling dates</li>
+                  <li>This is different from regular schedule creation</li>
+                </ul>
+              </div>
+
+              {/* Close Date Form */}
+              <form onSubmit={handleDisableDateSubmit(onDisableDateSubmit)} className="space-y-3">
+                <div className="text-lg font-semibold mb-1">
+                  Close {selectedDate.toLocaleDateString("en-US", {
+                    month: "long",
+                    day: "numeric",
+                    year: "numeric",
+                  })}
+                </div>
+
+                {/* Schedule Title - Hidden in Day Mode */}
+                {scheduleType === "time" && (
+                  <div>
+                    <label className="block text-sm font-medium mb-1">
+                      Schedule Title
+                    </label>
+                    <FormInput
+                      register={disableDateRegister}
+                      name="title"
+                      placeholder="Enter schedule title"
+                      error={disableDateErrors?.title || ""}
+                      type="text"
+                      className="w-full"
+                    />
+                  </div>
+                )}
+
+                {/* Description/Reason */}
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    {scheduleType === "day" ? "Reason for closing" : "Description"}
+                  </label>
+                  <CustomMultiLineInput
+                    register={disableDateRegister}
+                    name="reason"
+                    placeholder={scheduleType === "day" ? "Enter reason for closing this date" : "Enter description (optional)"}
+                    rows={4}
+                    error={disableDateErrors?.reason || ""}
+                    className="w-full"
+                  />
+                </div>
+
+                {/* Time Pickers - Only in Time Mode */}
+                {scheduleType === "time" && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium mb-1">
+                        Start Time
+                      </label>
+                      <TimePicker
+                        value={newStartTime}
+                        onChange={handleStartTimeChange}
+                        placeholder="Start time"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-1">
+                        End Time
+                      </label>
+                      <TimePicker
+                        value={newEndTime}
+                        onChange={handleEndTimeChange}
+                        placeholder="End time"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                <StyledButton
+                  type="submit"
+                  buttonColor="bg-red-500"
+                  hoverColor="hover:bg-red-600"
+                  textColor="text-white"
+                  className="w-full py-3 font-semibold transition-all flex items-center justify-center gap-2"
+                  disabled={isLoading}
+                >
+                  <svg
+                    className="w-5 h-5"
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="M15 9l-6 6" />
+                    <path d="M9 9l6 6" />
+                  </svg>
+                  {isLoading ? "Processing..." : scheduleType === "day" ? "Disable Date" : "Close Time Slot"}
+                </StyledButton>
+              </form>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Loading Overlay */}
       {isLoading && (
         <div className="fixed inset-0 flex items-center justify-center z-50">
           <div className="bg-white p-5 rounded-lg shadow-lg flex items-center space-x-3">
@@ -491,12 +950,14 @@ const AddSchedulePage = () => {
           </div>
         </div>
       )}
+
+      {/* Toast */}
       <Toast
         message={toastConfig.message}
         type={toastConfig.type}
         onClose={hideToast}
       />
-    </>
+    </div>
   );
 };
 

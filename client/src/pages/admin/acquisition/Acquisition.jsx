@@ -34,6 +34,7 @@ const Acquisition = () => {
     pendingCount: 0,
     donationCount: 0,
     lendingCount: 0,
+    completedCount: 0,
   });
   
   const [transferFilter, setTransferFilter] = useState("All");
@@ -135,23 +136,18 @@ const Acquisition = () => {
       setIsLoading(true);
       setError("");
 
-      let params = {};
       let endpoint = "/auth/contributions";
+      let params = {};
 
       switch (activeTab) {
         case "pendings":
           endpoint = "/auth/contributions";
-          params.status = "pending";
+          params.status = ["pending", "approved"];
           break;
 
         case "form":
           endpoint = "/auth/contributions";
-          if (
-            statusFilter.toLowerCase() !== "pending" &&
-            statusFilter !== "All Statuses"
-          ) {
-            params.status = statusFilter.toLowerCase();
-          }
+          params.status = ["completed", "canceled"];
           break;
 
         case "donator-records":
@@ -162,29 +158,46 @@ const Acquisition = () => {
           break;
       }
 
+      // cleanup undefined
       Object.keys(params).forEach(
         (key) => params[key] === undefined && delete params[key]
       );
 
-      const response = await axiosClient.get(endpoint, { params });
+      // ✅ Build query manually so arrays become ?status=a&status=b
+      const searchParams = new URLSearchParams();
+      Object.entries(params).forEach(([key, value]) => {
+        if (Array.isArray(value)) {
+          value.forEach((v) => searchParams.append(key, v));
+        } else {
+          searchParams.append(key, value);
+        }
+      });
+
+      const response = await axiosClient.get(
+        `${endpoint}?${searchParams.toString()}`
+      );
       let data = response.data || [];
 
-      if (activeTab === "form") {
-        data = data.filter((item) => item.status !== "pending");
+      if (activeTab === "pendings") {
+        data.sort((a, b) => {
+          if (a.status === "pending" && b.status === "approved") return -1;
+          if (a.status === "approved" && b.status === "pending") return 1;
+          return 0;
+        });
       }
 
       setAcquisiitons(data);
       console.log("Fetched:", data);
     } catch (err) {
       console.error("Error fetching acquisitions:", err);
-      setError(
-        "Failed to load acquisitions. Check that the API server is running."
-      );
+      setError("Failed to load acquisitions. Check that the API server is running.");
       setAcquisiitons([]);
     } finally {
       setIsLoading(false);
     }
   };
+
+
 
   const fetchSummary = async () => {
     try {
@@ -206,6 +219,7 @@ const Acquisition = () => {
         pendingCount: data.pendingCount,
         donationCount: data.donationCount,
         lendingCount: data.lendingCount,
+        completedCount: data.completedCount,
       });
     } catch (err) {
       console.error("Error fetching summary:", err);
@@ -216,6 +230,7 @@ const Acquisition = () => {
         pendingCount: 0,
         donationCount: 0,
         lendingCount: 0,
+        completedCount: 0,
       });
     }
   };
@@ -238,6 +253,8 @@ const Acquisition = () => {
             { label: "Pending", value: summaryData.pendingCount },
             { label: "Donation", value: summaryData.donationCount },
             { label: "Lend", value: summaryData.lendingCount },
+            { label: "Completed", value: summaryData.completedCount },
+
           ]}
           button={{
             label: "Add new acquisition",

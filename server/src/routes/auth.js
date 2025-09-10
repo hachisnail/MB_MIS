@@ -47,7 +47,11 @@ import {
   getContributionStats,
   uploadContributionFiles,
   getDonorRecords,
-  getContributionsSummary
+  getContributionsSummary,
+  getContract,
+  setContract,
+  updateTimelineStep,
+  getContributionSession
 } from '../controllers/contributionController.js';
 
 import { upload, multerErrorHandler } from '../middlewares/multerMiddleware.js';
@@ -140,6 +144,12 @@ router.get("/article/:id", getArticleStats);
 router.get("/suggest/next", getNextSuggestions);
 
 // Contributions
+router.put("/update-step",requireAuth, updateTimelineStep);
+router.get("/contract/:contractId", getContract);
+router.post("/set-contract", requireAuth, setContract);
+
+router.get("/contributions/session/:uuid", getContributionSession);
+
 router.post('/contribution', createContribution); 
 router.get("/contributions/summary", requireAuth, requireRole([1, 2, 5]), getContributionsSummary);
 router.get("/contributions/donors", requireAuth, requireRole([1, 2, 5]), getDonorRecords);

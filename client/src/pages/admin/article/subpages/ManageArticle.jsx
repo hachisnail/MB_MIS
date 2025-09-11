@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useMemo, useLayoutEffect  } from "react";
+import { useEffect, useState, useRef, useMemo, useLayoutEffect } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import axiosClient from "@/lib/axiosClient";
 import axios from "axios";
@@ -11,7 +11,7 @@ import usePrompt from "@/hooks/usePrompt";
 import ViewPort from "../../../../features/Viewport";
 import { handleGenerateCaption, handleSummarizeCaption } from "../components/CaptionGenerator";
 import RichTextEditor from "../components/RichTextEditor";
-import { X as XIcon, ChevronDown, ChevronRight } from "lucide-react";
+import { X as XIcon } from "lucide-react";
 import { STATUS, STATUS_LABELS } from "../components/articleStatus";
 import ArticlePreview from "../components/ArticlePreview";
 import {
@@ -47,12 +47,12 @@ const ArticleEditorForm = () => {
   const editorRef = useRef(null);
 
   const [isEditing, setIsEditing] = useState(false);
-  const [detailsCollapsed, setDetailsCollapsed] = useState(false);
+
   // Form state
   const [title, setTitle] = useState("");
   const [author, setAuthor] = useState("");
   const [category, setCategory] = useState("");
-  const [contentType, setContentType] = useState(""); 
+  const [contentType, setContentType] = useState("");
   const [address, setAddress] = useState("");
   const [selectedDate, setSelectedDate] = useState("");
   const [thumbnail, setThumbnail] = useState(null);
@@ -182,34 +182,34 @@ const ArticleEditorForm = () => {
     formData.append("status", status);
 
     // Manila → UTC helpers
-    let startDateTime = '';
-    let endDateTime = '';
-    const toISOZFromManila = (datePart, timePart, fallbackHHmm = '00:00') => {
-      if (!datePart) return '';
+    let startDateTime = "";
+    let endDateTime = "";
+    const toISOZFromManila = (datePart, timePart, fallbackHHmm = "00:00") => {
+      if (!datePart) return "";
       const hhmm = (timePart && timePart.length ? timePart : fallbackHHmm).slice(0, 5);
       const isoWithOffset = `${datePart}T${hhmm}:00+08:00`;
       return new Date(isoWithOffset).toISOString();
     };
 
-    if (status === 'scheduled') {
-      startDateTime = toISOZFromManila(uploadPeriodStart, uploadPeriodStartTime, '08:00');
-      endDateTime   = toISOZFromManila(uploadPeriodEnd,   uploadPeriodEndTime,   '23:59');
+    if (status === "scheduled") {
+      startDateTime = toISOZFromManila(uploadPeriodStart, uploadPeriodStartTime, "08:00");
+      endDateTime = toISOZFromManila(uploadPeriodEnd, uploadPeriodEndTime, "23:59");
 
       if (!startDateTime) {
-        setErrors((e) => ({ ...e, uploadPeriodStart: 'Start is required for scheduled.' }));
+        setErrors((e) => ({ ...e, uploadPeriodStart: "Start is required for scheduled." }));
         return;
       }
       if (!endDateTime) {
-        setErrors((e) => ({ ...e, uploadPeriodEnd: 'End is required for scheduled.' }));
+        setErrors((e) => ({ ...e, uploadPeriodEnd: "End is required for scheduled." }));
         return;
       }
       if (new Date(endDateTime) <= new Date(startDateTime)) {
-        setErrors((e) => ({ ...e, uploadPeriodEnd: 'End must be after Start.' }));
+        setErrors((e) => ({ ...e, uploadPeriodEnd: "End must be after Start." }));
         return;
       }
 
-      formData.append('uploadPeriodStart', startDateTime);
-      formData.append('uploadPeriodEnd', endDateTime);
+      formData.append("uploadPeriodStart", startDateTime);
+      formData.append("uploadPeriodEnd", endDateTime);
     }
 
     if (thumbnail && thumbnail instanceof File) {
@@ -226,10 +226,7 @@ const ArticleEditorForm = () => {
       Number(origVolume) === Number(finalVolume) &&
       String(origContentType || "").toLowerCase() === String(contentType || "").toLowerCase();
 
-    const finalSeqNum = sameBucket
-      ? (origSeqNum || "")
-      : (computeNextSequence(articles, year, contentType) || "");
-
+    const finalSeqNum = sameBucket ? origSeqNum || "" : computeNextSequence(articles, year, contentType) || "";
 
     if (finalVolume) formData.append("volume", String(finalVolume));
     if (finalSeqNum) formData.append("sequence_number", String(finalSeqNum));
@@ -276,7 +273,7 @@ const ArticleEditorForm = () => {
     setTitle("");
     setAuthor("");
     setCategory("");
-    setContentType("");        
+    setContentType("");
     setMunicipality("");
     setSelectedDate("");
     setThumbnail(null);
@@ -285,7 +282,7 @@ const ArticleEditorForm = () => {
     setCaption("");
     setBarangay("");
     setReviewerNotes("");
-    setStatus("pending");       
+    setStatus("pending");
     setUploadPeriodStart("");
     setUploadPeriodEnd("");
     setUploadPeriodStartTime("");
@@ -301,7 +298,6 @@ const ArticleEditorForm = () => {
     setOrigContentType(null);
     clearDraft(draftKey);
   };
-
 
   // re-run guard when id changes
   useEffect(() => {
@@ -483,10 +479,13 @@ const ArticleEditorForm = () => {
         const fullImageUrl = `${SERVER_ORIGIN}/uploads/pictures/${uploadedFilename}`;
 
         editorRef.current?.runChain((chain) =>
-    chain.focus().insertContent({
-    type: 'image',
-    attrs: { src: fullImageUrl, alt: file.name },
-  }).run()
+          chain
+            .focus()
+            .insertContent({
+              type: "image",
+              attrs: { src: fullImageUrl, alt: file.name },
+            })
+            .run()
         );
 
         setContentImages((prev) => [...prev, uploadedFilename]);
@@ -532,15 +531,14 @@ const ArticleEditorForm = () => {
       if (!uploadPeriodStart) newErrors.uploadPeriodStart = "Start date is required for scheduled.";
       if (!uploadPeriodEnd) newErrors.uploadPeriodEnd = "End date is required for scheduled.";
       if (uploadPeriodStart && uploadPeriodEnd) {
-        const start = new Date(`${uploadPeriodStart}T${(uploadPeriodStartTime || "00:00").slice(0,5)}:00+08:00`);
-        const end   = new Date(`${uploadPeriodEnd}T${(uploadPeriodEndTime || "23:59").slice(0,5)}:00+08:00`);
+        const start = new Date(`${uploadPeriodStart}T${(uploadPeriodStartTime || "00:00").slice(0, 5)}:00+08:00`);
+        const end = new Date(`${uploadPeriodEnd}T${(uploadPeriodEndTime || "23:59").slice(0, 5)}:00+08:00`);
         if (end <= start) newErrors.uploadPeriodEnd = "End must be after Start.";
       }
     }
 
     return newErrors;
   };
-
 
   const handleCancel = () => {
     resetForm();
@@ -567,10 +565,7 @@ const ArticleEditorForm = () => {
   const showBackToReview = isPrivileged && forcedFromNav && !!articleId && forceEditorMode;
 
   // --- Live archive preview ---
-  const volumePreview = useMemo(
-    () => getVolumeFromYYYYMMDD(selectedDate),
-    [selectedDate]
-  );
+  const volumePreview = useMemo(() => getVolumeFromYYYYMMDD(selectedDate), [selectedDate]);
 
   const seqPreview = useMemo(() => {
     const year = getYearFromYYYYMMDD(selectedDate);
@@ -585,196 +580,186 @@ const ArticleEditorForm = () => {
     return computeNextSequence(articles, year, contentType);
   }, [articles, selectedDate, contentType, isEditing, origVolume, origContentType, origSeqNum, volumePreview]);
 
-  const seqLabelPreview = useMemo(
-    () => makeDisplayLabel(contentType, seqPreview),
-    [contentType, seqPreview]
-  );
+  const seqLabelPreview = useMemo(() => makeDisplayLabel(contentType, seqPreview), [contentType, seqPreview]);
 
   // ---- Schedule date rules (tile disabler) ----
-const manilaTodayISO = useMemo(() => {
-  // normalize to Manila midnight, then to yyyy-mm-dd
-  const now = new Date();
-  const manilaNow = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Manila" }));
-  manilaNow.setHours(0, 0, 0, 0);
-  const y = manilaNow.getFullYear();
-  const m = String(manilaNow.getMonth() + 1).padStart(2, "0");
-  const d = String(manilaNow.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
-}, []);
+  const manilaTodayISO = useMemo(() => {
+    // normalize to Manila midnight, then to yyyy-mm-dd
+    const now = new Date();
+    const manilaNow = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Manila" }));
+    manilaNow.setHours(0, 0, 0, 0);
+    const y = manilaNow.getFullYear();
+    const m = String(manilaNow.getMonth() + 1).padStart(2, "0");
+    const d = String(manilaNow.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  }, []);
 
-const isDateDisabledForSchedule = (isoDate) => {
-  if (!isoDate) return false;
+  const isDateDisabledForSchedule = (isoDate) => {
+    if (!isoDate) return false;
 
-  // Rule 1: disallow past dates vs Manila today
-  const selected = new Date(`${isoDate}T00:00:00+08:00`);
-  const today = new Date(`${manilaTodayISO}T00:00:00+08:00`);
-  if (selected < today) return true;
+    // Rule 1: disallow past dates vs Manila today
+    const selected = new Date(`${isoDate}T00:00:00+08:00`);
+    const today = new Date(`${manilaTodayISO}T00:00:00+08:00`);
+    if (selected < today) return true;
 
-  // Rule 2 (optional): blackout dates example
-  // const blackout = new Set(["2025-12-25", "2025-01-01"]);
-  // if (blackout.has(isoDate)) return true;
+    return false;
+  };
 
-  // Rule 3 (optional): block weekends
-  // const dow = selected.getDay();
-  // if (dow === 0 || dow === 6) return true;
-
-  return false;
-};
-
-const handleStartDateChange = (val) => {
-  if (isDateDisabledForSchedule(val)) {
-    setErrors((e) => ({ ...e, uploadPeriodStart: "That date isn’t allowed for scheduling." }));
-    return;
-  }
-  setUploadPeriodStart(val);
-  setIsDirty(true);
-  clearFieldError("uploadPeriodStart");
-
-  // If end is before new start, snap it forward
-  if (uploadPeriodEnd && new Date(`${uploadPeriodEnd}T00:00:00+08:00`) < new Date(`${val}T00:00:00+08:00`)) {
-    setUploadPeriodEnd(val);
-    clearFieldError("uploadPeriodEnd");
-  }
-};
-
-const handleEndDateChange = (val) => {
-  if (isDateDisabledForSchedule(val)) {
-    setErrors((e) => ({ ...e, uploadPeriodEnd: "That date isn’t allowed for scheduling." }));
-    return;
-  }
-  if (uploadPeriodStart && new Date(`${val}T00:00:00+08:00`) < new Date(`${uploadPeriodStart}T00:00:00+08:00`)) {
-    setErrors((e) => ({ ...e, uploadPeriodEnd: "End must be the same as or after Start." }));
-    return;
-  }
-  setUploadPeriodEnd(val);
-  setIsDirty(true);
-  clearFieldError("uploadPeriodEnd");
-};
-
-// Manila-friendly date/time parts
-const toManilaParts = (iso) => {
-  if (!iso) return { date: "—", time: "—" };
-  const d = new Date(iso);
-  const date = d.toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "2-digit",
-    timeZone: "Asia/Manila",
-  });
-  const time = d.toLocaleTimeString("en-GB", {
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: false,
-    timeZone: "Asia/Manila",
-  });
-  return { date, time };
-};
-
-const createdParts = useMemo(() => toManilaParts(article?.created_at), [article?.created_at]);
-const updatedParts = useMemo(() => toManilaParts(article?.updated_at), [article?.updated_at]);
-
-
-// prefill author on first render if creating a new article
-useEffect(() => {
-  if (!isEditing && !author && user) {
-    const first = (user.fname || "").trim();
-    const last  = (user.lname || "").trim();
-    const full  = [first, last].filter(Boolean).join(" ").trim();
-
-    if (full) {
-      setAuthor(full);
-      // don't mark dirty; it's an auto-fill
-    }
-  }
-}, [isEditing, author, user]);
-
-function Collapsible({ title = "Details", collapsed, onToggle, children }) {
-  const bodyRef = useRef(null);
-
-  // When closed: 0. When open and done animating: 'none' (no more measuring while typing).
-  const [maxH, setMaxH] = useState(collapsed ? 0 : "none");
-  const isFirstRender = useRef(true);
-  const isAnimatingRef = useRef(false);
-
-  // Toggle open/close animation
-  useLayoutEffect(() => {
-    const el = bodyRef.current;
-    if (!el) return;
-
-    // Skip first render to avoid an initial flash
-    if (isFirstRender.current) {
-      isFirstRender.current = false;
-      setMaxH(collapsed ? 0 : "none");
+  const handleStartDateChange = (val) => {
+    if (isDateDisabledForSchedule(val)) {
+      setErrors((e) => ({ ...e, uploadPeriodStart: "That date isn’t allowed for scheduling." }));
       return;
     }
+    setUploadPeriodStart(val);
+    setIsDirty(true);
+    clearFieldError("uploadPeriodStart");
 
-    const onEnd = () => {
-      isAnimatingRef.current = false;
-      // After expanding, let height be natural so typing doesn't animate.
-      if (!collapsed) setMaxH("none");
-      el.removeEventListener("transitionend", onEnd);
-    };
-
-    el.addEventListener("transitionend", onEnd);
-    isAnimatingRef.current = true;
-
-    if (collapsed) {
-      // Collapse: snap to current pixel height, then to 0.
-      if (maxH === "none") setMaxH(el.scrollHeight);
-      // next frame -> 0 to animate closed
-      requestAnimationFrame(() => setMaxH(0));
-    } else {
-      // Expand: from 0 to content height; once finished, set to 'none'
-      const target = el.scrollHeight;
-      // If currently at 0, growing to the measured height will animate
-      setMaxH(target);
+    // If end is before new start, snap it forward
+    if (uploadPeriodEnd && new Date(`${uploadPeriodEnd}T00:00:00+08:00`) < new Date(`${val}T00:00:00+08:00`)) {
+      setUploadPeriodEnd(val);
+      clearFieldError("uploadPeriodEnd");
     }
+  };
 
-    return () => el.removeEventListener("transitionend", onEnd);
-  }, [collapsed]);
-
-  // While expanding (not after), follow content growth (e.g., images load)
-  useLayoutEffect(() => {
-    const el = bodyRef.current;
-    if (!el) return;
-    if (!collapsed && maxH !== "none" && isAnimatingRef.current) {
-      const next = el.scrollHeight;
-      if (next !== maxH) setMaxH(next);
+  const handleEndDateChange = (val) => {
+    if (isDateDisabledForSchedule(val)) {
+      setErrors((e) => ({ ...e, uploadPeriodEnd: "That date isn’t allowed for scheduling." }));
+      return;
     }
-    // Intentionally ignore when maxH === 'none' so typing doesn't cause re-animations.
-  }, [children, collapsed, maxH]);
+    if (uploadPeriodStart && new Date(`${val}T00:00:00+08:00`) < new Date(`${uploadPeriodStart}T00:00:00+08:00`)) {
+      setErrors((e) => ({ ...e, uploadPeriodEnd: "End must be the same as or after Start." }));
+      return;
+    }
+    setUploadPeriodEnd(val);
+    setIsDirty(true);
+    clearFieldError("uploadPeriodEnd");
+  };
 
-  return (
-    <div className="rounded-xl border border-gray-200">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-2 border-b bg-white">
-        <span className="font-semibold">{title}</span>
-        <button
-          type="button"
-          onClick={onToggle}
-          aria-expanded={!collapsed}
-          className="inline-flex items-center gap-1 px-3 py-1.5 border rounded-lg text-sm hover:bg-gray-50"
-        >
-          {collapsed ? "Expand" : "Collapse"}
-        </button>
+  // Manila-friendly date/time parts
+  const toManilaParts = (iso) => {
+    if (!iso) return { date: "—", time: "—" };
+    const d = new Date(iso);
+    const date = d.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "2-digit",
+      timeZone: "Asia/Manila",
+    });
+    const time = d.toLocaleTimeString("en-GB", {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+      timeZone: "Asia/Manila",
+    });
+    return { date, time };
+  };
+
+  const createdParts = useMemo(() => toManilaParts(article?.created_at), [article?.created_at]);
+  const updatedParts = useMemo(() => toManilaParts(article?.updated_at), [article?.updated_at]);
+
+  // prefill author on first render if creating a new article
+  useEffect(() => {
+    if (!isEditing && !author && user) {
+      const first = (user.fname || "").trim();
+      const last = (user.lname || "").trim();
+      const full = [first, last].filter(Boolean).join(" ").trim();
+
+      if (full) {
+        setAuthor(full);
+        // don't mark dirty; it's an auto-fill
+      }
+    }
+  }, [isEditing, author, user]);
+
+  // ---------- Auto-hide Header (Summary) ----------
+  const headerRef = useRef(null);
+
+  const headerComplete = useMemo(() => {
+    if (!title.trim() || !selectedDate || !author.trim() || !category || !contentType) return false;
+    if (contentType === "event" && !municipality) return false;
+    if (status === "scheduled" && (!uploadPeriodStart || !uploadPeriodEnd)) return false;
+    return true;
+  }, [
+    title,
+    selectedDate,
+    author,
+    category,
+    contentType,
+    municipality,
+    status,
+    uploadPeriodStart,
+    uploadPeriodEnd,
+  ]);
+
+  const [headerHidden, setHeaderHidden] = useState(false);
+
+  const onHeaderBlurCapture = (e) => {
+    const next = e.relatedTarget;
+    const stillInside = next && headerRef.current?.contains(next);
+    if (!stillInside && headerComplete) {
+      setHeaderHidden(true);
+    }
+  };
+
+  function HeaderSummaryCard({
+    title,
+    selectedDate,
+    author,
+    category,
+    contentType,
+    municipality,
+    barangay,
+    status,
+    onEdit,
+  }) {
+    return (
+      <div className="rounded-xl border border-gray-200 bg-white p-4">
+        <div className="flex items-center justify-between gap-3">
+          <div className="font-semibold">Details</div>
+          <button
+            type="button"
+            onClick={onEdit}
+            className="px-3 py-1.5 text-sm border rounded-lg hover:bg-gray-50"
+          >
+            Edit details
+          </button>
+        </div>
+
+        <div className="mt-3 grid grid-cols-1 lg:grid-cols-2 gap-2 text-sm">
+          <div>
+            <span className="font-medium">Title:</span> {title || "—"}
+          </div>
+          <div>
+            <span className="font-medium">Date:</span> {selectedDate || "—"}
+          </div>
+          <div>
+            <span className="font-medium">Author:</span> {author || "—"}
+          </div>
+          <div>
+            <span className="font-medium">Category:</span> {category || "—"}
+          </div>
+          <div>
+            <span className="font-medium">Type:</span> {contentType || "—"}
+          </div>
+          {contentType === "event" && (
+            <>
+              <div>
+                <span className="font-medium">Municipality:</span> {municipality || "—"}
+              </div>
+              <div>
+                <span className="font-medium">Barangay:</span> {barangay || "—"}
+              </div>
+            </>
+          )}
+          <div>
+            <span className="font-medium">Status:</span> {STATUS_LABELS[status] ?? status ?? "—"}
+          </div>
+        </div>
       </div>
-
-      {/* Body */}
-      <div
-        ref={bodyRef}
-        className="transition-[max-height] duration-300 ease-in-out overflow-hidden will-change-[max-height]"
-        style={{ maxHeight: maxH === "none" ? "none" : `${maxH}px` }}
-        aria-hidden={collapsed}
-      >
-        <div className="p-4 space-y-6">{children}</div>
-      </div>
-    </div>
-  );
-}
-
-
-
+    );
+  }
+  // -----------------------------------------------
 
   return (
     <>
@@ -786,7 +771,6 @@ function Collapsible({ title = "Details", collapsed, onToggle, children }) {
         lg:flex lg:flex-row
         2xl:flex 2xl:flex-row
         3xl:flex 3xl:flex-row overflow-auto"
-        
       >
         {/* LEFT SIDE - Editor + Form */}
         {userRole && allowedRoles.includes(userRole) && !shouldShowReviewer ? (
@@ -822,308 +806,366 @@ function Collapsible({ title = "Details", collapsed, onToggle, children }) {
             )}
 
             <form onSubmit={handleFormSubmit} className="space-y-6">
-
-              <Collapsible
-  title="Details"
-  collapsed={detailsCollapsed}
-  onToggle={() => setDetailsCollapsed((v) => !v)}
->
-              {/* Title */}
-              <div className="flex flex-col md:flex-row gap-4">
-                <div className="flex-1">
-                  <label htmlFor="title" className={`font-bold ${errors.title ? "text-red-600" : ""}`}>
-                    Title {errors.title && "*"}
-                  </label>
-                  <input
-                    id="title"
-                    className={`w-full px-4 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 placeholder-gray-500 ${
-                      errors.title ? "border-red-600" : "border-black"
-                    }`}
-                    type="text"
-                    value={title}
-                    onChange={(e) => {
-                      setTitle(e.target.value);
-                      setIsDirty(true);
-                      clearFieldError("title");
-                    }}
-                    onClick={() => clearFieldError("title")}
-                    placeholder={`Title${errors.title ? " *" : ""}`}
-                  />
-              </div>
-              </div>
-              {/* Date, Author */}
-              <div className="flex flex-col md:flex-row gap-4">
-                <div className="flex-1">
-                  <label htmlFor="selectedDate" className={`font-bold ${errors.selectedDate ? "text-red-600" : ""}`}>
-                    Date {errors.selectedDate && "*"}
-                  </label>
-                  <input
-                    id="selectedDate"
-                    className={`w-full px-4 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 ${
-                      errors.selectedDate ? "border-red-600" : "border-black"
-                    }`}
-                    type="date"
-                    value={selectedDate}
-                    onChange={(e) => {
-                      setSelectedDate(e.target.value);
-                      setIsDirty(true);
-                      clearFieldError("selectedDate");
-                    }}
-                  />
-                </div>
-                <div className="flex-1">
-                  <label htmlFor="author" className={`font-bold ${errors.author ? "text-red-600" : ""}`}>
-                    Author {errors.author && "*"}
-                  </label>
-                  <input
-                    id="author"
-                    className={`w-full px-4 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 placeholder-gray-500 ${
-                      errors.author ? "border-red-600" : "border-black"
-                    }`}
-                    type="text"
-                    value={author}
-                    onChange={(e) => {
-                      setAuthor(e.target.value);
-                      setIsDirty(true);
-                      clearFieldError("author");
-                    }}
-                    placeholder={`Author${errors.author ? " *" : ""}`}
-                  />
-                </div>
-              </div>
-
-              {/* Category + Type */}
-              <div className="flex flex-col md:flex-row gap-4">
-                <div className="flex-1">
-                  <label htmlFor="category" className={`font-bold ${errors.category ? "text-red-600" : ""}`}>
-                    Category {errors.category && "*"}
-                  </label>
-                  <select
-                    id="category"
-                    className={`w-full px-4 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 ${
-                      errors.category ? "border-red-600" : "border-black"
-                    }`}
-                    value={category}
-                    onChange={(e) => {
-                      setCategory(e.target.value);
-                      setIsDirty(true);
-                      clearFieldError("category");
-                    }}
-                  >
-                    <option value="" disabled={category !== ""}>
-                      {`Category${errors.category ? " *" : ""}`}
-                    </option>
-                    {Categories.map((cat) => (
-                      <option key={cat} value={cat}>
-                        {cat}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="flex-1">
-                  <label htmlFor="contentType" className={`font-bold ${errors.content_type ? "text-red-600" : ""}`}>
-                    Type {errors.content_type && "*"}
-                  </label>
-                  <select
-                    id="contentType"
-                    className={`w-full px-4 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 ${
-                      errors.content_type ? "border-red-600" : "border-black"
-                    }`}
-                    value={contentType}
-                    onChange={(e) => {
-                      setContentType(e.target.value);
-                      setIsDirty(true);
-                    }}
-                  >
-                    <option value="" disabled={contentType !== ""}>Type</option>
-                    <option value="article">Article</option>
-                    <option value="event">Event</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Municipality/Barangay only when Event */}
-              {contentType === "event" && (
-                <div className="flex flex-col md:flex-row gap-4">
-                  <div className="flex-1">
-                    <label htmlFor="municipality" className={`font-bold ${errors.municipality ? "text-red-600" : ""}`}>
-                      Municipality {errors.municipality && "*"}
-                    </label>
-                    <select
-                      id="municipality"
-                      className={`w-full px-4 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 ${
-                        errors.municipality ? "border-red-600" : "border-black"
-                      }`}
-                      value={municipality}
-                      onChange={(e) => {
-                        setMunicipality(e.target.value);
-                        setBarangay("");
-                        setIsDirty(true);
-                        clearFieldError("municipality");
-                      }}
-                    >
-                      <option value="" disabled={municipality !== ""}>
-                        {`Municipality${errors.municipality ? " *" : ""}`}
-                      </option>
-                      {Object.keys(municipalitiesWithBarangays).map((mun) => (
-                        <option key={mun} value={mun}>
-                          {mun}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-<div className="flex-1">
-  <label htmlFor="barangay" className="font-bold">
-    Barangay
-  </label>
-  <select
-    id="barangay"
-    className="w-full px-4 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 border-black disabled:bg-gray-100 disabled:text-gray-500"
-    value={barangay}
-    onChange={(e) => {
-      setBarangay(e.target.value);
-      setIsDirty(true);
-    }}
-    disabled={!municipality || (municipalitiesWithBarangays[municipality]?.length ?? 0) === 0}
-  >
-    <option value="" disabled>
-      {municipality ? "Select Barangay" : "Select Municipality first"}
-    </option>
-
-    {(municipalitiesWithBarangays[municipality] || [])
-      // optional: sort alphabetically
-      .slice()
-      .sort((a, b) => a.localeCompare(b))
-      .map((bgy) => (
-        <option key={bgy} value={bgy}>
-          {bgy}
-        </option>
-      ))}
-  </select>
-</div>
-
-                </div>
-              )}
-
-              {/* Status */}
-              <div className="flex-1">
-                <label htmlFor="status" className="font-bold">Status</label>
-                <select
-                  id="status"
-                  className="w-full px-4 py-3 border-2 border-black rounded-2xl text-base md:text-lg outline-none"
-                  name="status"
-                  value={status}
-                  onChange={(e) => {
-                    setStatus(e.target.value);
-                    setIsDirty(true);
-                  }}
+              {/* --- Auto-hide Header Block --- */}
+              {headerHidden ? (
+                <HeaderSummaryCard
+                  title={title}
+                  selectedDate={selectedDate}
+                  author={author}
+                  category={category}
+                  contentType={contentType}
+                  municipality={municipality}
+                  barangay={barangay}
+                  status={status}
+                  onEdit={() => setHeaderHidden(false)}
+                />
+              ) : (
+                <div
+                  ref={headerRef}
+                  onBlurCapture={onHeaderBlurCapture}
+                  className="rounded-xl border border-gray-200"
                 >
-                  {STATUS.filter((s) => AUTHOR_ALLOWED.has(s.value)).map((s) => (
-                    <option key={s.value} value={s.value}>
-                      {STATUS_LABELS[s.value] ?? s.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Scheduled fields */}
-{status === "scheduled" && (
-  <>
-    <div className="flex-1">
-      <label htmlFor="uploadPeriodStart" className="font-bold">Start Date</label>
-      <div className="flex gap-2">
-        <input
-          id="uploadPeriodStart"
-          type="date"
-          className={`w-full px-4 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 ${
-            errors.uploadPeriodStart ? "border-red-600" : "border-black"
-          }`}
-          value={uploadPeriodStart}
-          onChange={(e) => handleStartDateChange(e.target.value)}
-          // native guard: disable past tiles
-          min={manilaTodayISO}
-          aria-invalid={!!errors.uploadPeriodStart}
-          title={errors.uploadPeriodStart || ""}
-        />
-        <input
-          id="uploadPeriodStartTime"
-          type="time"
-          className="w-32 px-2 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 border-black"
-          value={uploadPeriodStartTime}
-          onChange={(e) => {
-            setUploadPeriodStartTime(e.target.value);
-            setIsDirty(true);
-          }}
-        />
-      </div>
-    </div>
-
-    <div className="flex-1">
-      <label htmlFor="uploadPeriodEnd" className="font-bold">End Date</label>
-      <div className="flex gap-2">
-        <input
-          id="uploadPeriodEnd"
-          type="date"
-          className={`w-full px-4 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 ${
-            errors.uploadPeriodEnd ? "border-red-600" : "border-black"
-          }`}
-          value={uploadPeriodEnd}
-          onChange={(e) => handleEndDateChange(e.target.value)}
-          // native guard: end cannot be before start and cannot be in the past
-          min={uploadPeriodStart || manilaTodayISO}
-          aria-invalid={!!errors.uploadPeriodEnd}
-          title={errors.uploadPeriodEnd || ""}
-        />
-        <input
-          id="uploadPeriodEndTime"
-          type="time"
-          className="w-32 px-2 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 border-black"
-          value={uploadPeriodEndTime}
-          onChange={(e) => {
-            setUploadPeriodEndTime(e.target.value);
-            setIsDirty(true);
-          }}
-        />
-      </div>
-    </div>
-  </>
-)}
-
-
-              {/* Thumbnail */}
-              <div className="flex flex-col md:flex-row gap-4">
-                <div className="relative flex-1">
-                  <label htmlFor="thumbnail" className="font-bold">Thumbnail</label>
-                  <input
-                    id="thumbnail"
-                    ref={thumbnailInputRef}
-                    className="w-full px-4 py-3 border-2 border-black rounded-2xl text-base md:text-lg outline-none file:hidden"
-                    type="file"
-                    name="thumbnail"
-                    onChange={handleCustomThumbnailChange}
-                    accept="image/*"
-                    style={{ color: "transparent" }}
-                  />
-                  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-gray-700 truncate max-w-[75%]">
-                    {removeThumbnail || (!thumbnail && !previewImage)
-                      ? "No Image selected"
-                      : previewImage && typeof previewImage === "string"
-                      ? previewImage.split("/").pop()
-                      : thumbnail && thumbnail.name}
-                  </div>
-                  {previewImage && !removeThumbnail && (
+                  <div className="flex items-center justify-between px-4 py-2 border-b bg-white">
+                    <span className="font-semibold">Details</span>
                     <button
                       type="button"
-                      onClick={handleRemoveThumbnail}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-red-600 hover:text-red-800"
+                      onClick={() => setHeaderHidden(true)}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 border rounded-lg text-sm hover:bg-gray-50"
+                      title={headerComplete ? "Hide details" : "Hide anyway"}
                     >
-                      <XIcon size={15} strokeWidth={3} />
+                      Hide
                     </button>
-                  )}
+                  </div>
+
+                  <div className="p-4 space-y-6">
+                    {/* Title */}
+                    <div className="flex flex-col md:flex-row gap-4">
+                      <div className="flex-1">
+                        <label
+                          htmlFor="title"
+                          className={`font-bold ${errors.title ? "text-red-600" : ""}`}
+                        >
+                          Title {errors.title && "*"}
+                        </label>
+                        <input
+                          id="title"
+                          className={`w-full px-4 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 placeholder-gray-500 ${
+                            errors.title ? "border-red-600" : "border-black"
+                          }`}
+                          type="text"
+                          value={title}
+                          onChange={(e) => {
+                            setTitle(e.target.value);
+                            setIsDirty(true);
+                            clearFieldError("title");
+                          }}
+                          onClick={() => clearFieldError("title")}
+                          placeholder={`Title${errors.title ? " *" : ""}`}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Date, Author */}
+                    <div className="flex flex-col md:flex-row gap-4">
+                      <div className="flex-1">
+                        <label
+                          htmlFor="selectedDate"
+                          className={`font-bold ${errors.selectedDate ? "text-red-600" : ""}`}
+                        >
+                          Date {errors.selectedDate && "*"}
+                        </label>
+                        <input
+                          id="selectedDate"
+                          className={`w-full px-4 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 ${
+                            errors.selectedDate ? "border-red-600" : "border-black"
+                          }`}
+                          type="date"
+                          value={selectedDate}
+                          onChange={(e) => {
+                            setSelectedDate(e.target.value);
+                            setIsDirty(true);
+                            clearFieldError("selectedDate");
+                          }}
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <label
+                          htmlFor="author"
+                          className={`font-bold ${errors.author ? "text-red-600" : ""}`}
+                        >
+                          Author {errors.author && "*"}
+                        </label>
+                        <input
+                          id="author"
+                          className={`w-full px-4 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 placeholder-gray-500 ${
+                            errors.author ? "border-red-600" : "border-black"
+                          }`}
+                          type="text"
+                          value={author}
+                          onChange={(e) => {
+                            setAuthor(e.target.value);
+                            setIsDirty(true);
+                            clearFieldError("author");
+                          }}
+                          placeholder={`Author${errors.author ? " *" : ""}`}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Category + Type */}
+                    <div className="flex flex-col md:flex-row gap-4">
+                      <div className="flex-1">
+                        <label
+                          htmlFor="category"
+                          className={`font-bold ${errors.category ? "text-red-600" : ""}`}
+                        >
+                          Category {errors.category && "*"}
+                        </label>
+                        <select
+                          id="category"
+                          className={`w-full px-4 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 ${
+                            errors.category ? "border-red-600" : "border-black"
+                          }`}
+                          value={category}
+                          onChange={(e) => {
+                            setCategory(e.target.value);
+                            setIsDirty(true);
+                            clearFieldError("category");
+                          }}
+                        >
+                          <option value="" disabled={category !== ""}>
+                            {`Category${errors.category ? " *" : ""}`}
+                          </option>
+                          {Categories.map((cat) => (
+                            <option key={cat} value={cat}>
+                              {cat}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="flex-1">
+                        <label
+                          htmlFor="contentType"
+                          className={`font-bold ${errors.content_type ? "text-red-600" : ""}`}
+                        >
+                          Type {errors.content_type && "*"}
+                        </label>
+                        <select
+                          id="contentType"
+                          className={`w-full px-4 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 ${
+                            errors.content_type ? "border-red-600" : "border-black"
+                          }`}
+                          value={contentType}
+                          onChange={(e) => {
+                            setContentType(e.target.value);
+                            setIsDirty(true);
+                          }}
+                        >
+                          <option value="" disabled={contentType !== ""}>
+                            Type
+                          </option>
+                          <option value="article">Article</option>
+                          <option value="event">Event</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Municipality/Barangay only when Event */}
+                    {contentType === "event" && (
+                      <div className="flex flex-col md:flex-row gap-4">
+                        <div className="flex-1">
+                          <label
+                            htmlFor="municipality"
+                            className={`font-bold ${errors.municipality ? "text-red-600" : ""}`}
+                          >
+                            Municipality {errors.municipality && "*"}
+                          </label>
+                          <select
+                            id="municipality"
+                            className={`w-full px-4 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 ${
+                              errors.municipality ? "border-red-600" : "border-black"
+                            }`}
+                            value={municipality}
+                            onChange={(e) => {
+                              setMunicipality(e.target.value);
+                              setBarangay("");
+                              setIsDirty(true);
+                              clearFieldError("municipality");
+                            }}
+                          >
+                            <option value="" disabled={municipality !== ""}>
+                              {`Municipality${errors.municipality ? " *" : ""}`}
+                            </option>
+                            {Object.keys(municipalitiesWithBarangays).map((mun) => (
+                              <option key={mun} value={mun}>
+                                {mun}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="flex-1">
+                          <label htmlFor="barangay" className="font-bold">
+                            Barangay
+                          </label>
+                          <select
+                            id="barangay"
+                            className="w-full px-4 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 border-black disabled:bg-gray-100 disabled:text-gray-500"
+                            value={barangay}
+                            onChange={(e) => {
+                              setBarangay(e.target.value);
+                              setIsDirty(true);
+                            }}
+                            disabled={
+                              !municipality || (municipalitiesWithBarangays[municipality]?.length ?? 0) === 0
+                            }
+                          >
+                            <option value="" disabled>
+                              {municipality ? "Select Barangay" : "Select Municipality first"}
+                            </option>
+
+                            {(municipalitiesWithBarangays[municipality] || [])
+                              .slice()
+                              .sort((a, b) => a.localeCompare(b))
+                              .map((bgy) => (
+                                <option key={bgy} value={bgy}>
+                                  {bgy}
+                                </option>
+                              ))}
+                          </select>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Status */}
+                    <div className="flex-1">
+                      <label htmlFor="status" className="font-bold">
+                        Status
+                      </label>
+                      <select
+                        id="status"
+                        className="w-full px-4 py-3 border-2 border-black rounded-2xl text-base md:text-lg outline-none"
+                        name="status"
+                        value={status}
+                        onChange={(e) => {
+                          setStatus(e.target.value);
+                          setIsDirty(true);
+                        }}
+                      >
+                        {STATUS.filter((s) => AUTHOR_ALLOWED.has(s.value)).map((s) => (
+                          <option key={s.value} value={s.value}>
+                            {STATUS_LABELS[s.value] ?? s.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Scheduled fields */}
+                    {status === "scheduled" && (
+                      <>
+                        <div className="flex-1">
+                          <label htmlFor="uploadPeriodStart" className="font-bold">
+                            Start Date
+                          </label>
+                          <div className="flex gap-2">
+                            <input
+                              id="uploadPeriodStart"
+                              type="date"
+                              className={`w-full px-4 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 ${
+                                errors.uploadPeriodStart ? "border-red-600" : "border-black"
+                              }`}
+                              value={uploadPeriodStart}
+                              onChange={(e) => handleStartDateChange(e.target.value)}
+                              // native guard: disable past tiles
+                              min={manilaTodayISO}
+                              aria-invalid={!!errors.uploadPeriodStart}
+                              title={errors.uploadPeriodStart || ""}
+                            />
+                            <input
+                              id="uploadPeriodStartTime"
+                              type="time"
+                              className="w-32 px-2 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 border-black"
+                              value={uploadPeriodStartTime}
+                              onChange={(e) => {
+                                setUploadPeriodStartTime(e.target.value);
+                                setIsDirty(true);
+                              }}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="flex-1">
+                          <label htmlFor="uploadPeriodEnd" className="font-bold">
+                            End Date
+                          </label>
+                          <div className="flex gap-2">
+                            <input
+                              id="uploadPeriodEnd"
+                              type="date"
+                              className={`w-full px-4 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 ${
+                                errors.uploadPeriodEnd ? "border-red-600" : "border-black"
+                              }`}
+                              value={uploadPeriodEnd}
+                              onChange={(e) => handleEndDateChange(e.target.value)}
+                              // native guard: end cannot be before start and cannot be in the past
+                              min={uploadPeriodStart || manilaTodayISO}
+                              aria-invalid={!!errors.uploadPeriodEnd}
+                              title={errors.uploadPeriodEnd || ""}
+                            />
+                            <input
+                              id="uploadPeriodEndTime"
+                              type="time"
+                              className="w-32 px-2 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 border-black"
+                              value={uploadPeriodEndTime}
+                              onChange={(e) => {
+                                setUploadPeriodEndTime(e.target.value);
+                                setIsDirty(true);
+                              }}
+                            />
+                          </div>
+                        </div>
+                      </>
+                    )}
+
+                    {/* Thumbnail */}
+                    <div className="flex flex-col md:flex-row gap-4">
+                      <div className="relative flex-1">
+                        <label htmlFor="thumbnail" className="font-bold">
+                          Thumbnail
+                        </label>
+                        <input
+                          id="thumbnail"
+                          ref={thumbnailInputRef}
+                          className="w-full px-4 py-3 border-2 border-black rounded-2xl text-base md:text-lg outline-none file:hidden"
+                          type="file"
+                          name="thumbnail"
+                          onChange={handleCustomThumbnailChange}
+                          accept="image/*"
+                          style={{ color: "transparent" }}
+                        />
+                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-gray-700 truncate max-w-[75%]">
+                          {removeThumbnail || (!thumbnail && !previewImage)
+                            ? "No Image selected"
+                            : previewImage && typeof previewImage === "string"
+                            ? previewImage.split("/").pop()
+                            : thumbnail && thumbnail.name}
+                        </div>
+                        {previewImage && !removeThumbnail && (
+                          <button
+                            type="button"
+                            onClick={handleRemoveThumbnail}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-red-600 hover:text-red-800"
+                          >
+                            <XIcon size={15} strokeWidth={3} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </div>
-</Collapsible>
+              )}
+              {/* --- End Auto-hide Header Block --- */}
+
               {/* Rich Text Editor */}
               <RichTextEditor
                 ref={editorRef}
@@ -1158,7 +1200,9 @@ function Collapsible({ title = "Details", collapsed, onToggle, children }) {
                     </button>
                     <button
                       type="button"
-                      onClick={() => handleSummarizeCaption(editorText, setCaption, setIsSummarizing, BASE_URL)}
+                      onClick={() =>
+                        handleSummarizeCaption(editorText, setCaption, setIsSummarizing, BASE_URL)
+                      }
                       disabled={isSummarizing || !editorText.trim()}
                       className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
                     >
@@ -1201,200 +1245,205 @@ function Collapsible({ title = "Details", collapsed, onToggle, children }) {
           </div>
         ) : (
           // Reviewer view
-<div className="bg-white w-full 2xl:w-1/2 p-6 rounded-lg shadow-xl">
-  <div className="flex justify-between items-start mb-6 gap-4">
-    <div className="flex-1">
-      <h2 className="text-3xl font-bold leading-tight">Review Article</h2>
-      {/* Title + Author */}
-      <div className="mt-3">
-        <p className="text-sm font-semibold text-neutral-600">Title</p>
-        <p className="text-xl font-medium text-neutral-900">{title || "N/A"}</p>
-        <p className="mt-1 text-sm text-neutral-600">
-          <span className="font-semibold">Author:</span>{" "}
-          <span className="text-neutral-800">{author || "N/A"}</span>
-        </p>
-      </div>
-    </div>
+          <div className="bg-white w-full 2xl:w-1/2 p-6 rounded-lg shadow-xl">
+            <div className="flex justify-between items-start mb-6 gap-4">
+              <div className="flex-1">
+                <h2 className="text-3xl font-bold leading-tight">Review Article</h2>
+                {/* Title + Author */}
+                <div className="mt-3">
+                  <p className="text-sm font-semibold text-neutral-600">Title</p>
+                  <p className="text-xl font-medium text-neutral-900">{title || "N/A"}</p>
+                  <p className="mt-1 text-sm text-neutral-600">
+                    <span className="font-semibold">Author:</span>{" "}
+                    <span className="text-neutral-800">{author || "N/A"}</span>
+                  </p>
+                </div>
+              </div>
 
-    {isPrivileged && (
-      <StyledButton
-        type="button"
-        buttonColor="bg-indigo-600"
-        hoverColor="hover:bg-indigo-700"
-        textColor="text-white"
-        onClick={() => {
-          navigate(`/admin/article/edit-article/${encoded}?mode=edit`, {
-            state: { forceReviewMode: true },
-            replace: true,
-          });
-        }}
-      >
-        Edit this article
-      </StyledButton>
-    )}
-  </div>
+              {isPrivileged && (
+                <StyledButton
+                  type="button"
+                  buttonColor="bg-indigo-600"
+                  hoverColor="hover:bg-indigo-700"
+                  textColor="text-white"
+                  onClick={() => {
+                    navigate(`/admin/article/edit-article/${encoded}?mode=edit`, {
+                      state: { forceReviewMode: true },
+                      replace: true,
+                    });
+                  }}
+                >
+                  Edit this article
+                </StyledButton>
+              )}
+            </div>
 
-  {/* Meta: Created / Updated */}
-  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-    <div className="rounded-xl border border-neutral-200 p-4">
-      <p className="text-sm font-semibold text-neutral-600">Date Created (PH)</p>
-      <div className="mt-1">
-        <p className="text-base text-neutral-900">{createdParts.date}</p>
-        <p className="text-sm text-neutral-600">{createdParts.time}</p>
-      </div>
-    </div>
-    <div className="rounded-xl border border-neutral-200 p-4">
-      <p className="text-sm font-semibold text-neutral-600">Last Updated (PH)</p>
-      <div className="mt-1">
-        <p className="text-base text-neutral-900">{updatedParts.date}</p>
-        <p className="text-sm text-neutral-600">{updatedParts.time}</p>
-      </div>
-    </div>
-  </div>
+            {/* Meta: Created / Updated */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+              <div className="rounded-xl border border-neutral-200 p-4">
+                <p className="text-sm font-semibold text-neutral-600">Date Created (PH)</p>
+                <div className="mt-1">
+                  <p className="text-base text-neutral-900">{createdParts.date}</p>
+                  <p className="text-sm text-neutral-600">{createdParts.time}</p>
+                </div>
+              </div>
+              <div className="rounded-xl border border-neutral-200 p-4">
+                <p className="text-sm font-semibold text-neutral-600">Last Updated (PH)</p>
+                <div className="mt-1">
+                  <p className="text-base text-neutral-900">{updatedParts.date}</p>
+                  <p className="text-sm text-neutral-600">{updatedParts.time}</p>
+                </div>
+              </div>
+            </div>
 
-  {/* Reviewer Notes */}
-  <div className="space-y-2">
-    <label htmlFor="reviewerNotes" className="text-lg font-bold">
-      Reviewer&apos;s Notes
-    </label>
-    <textarea
-      id="reviewerNotes"
-      className="w-full h-40 p-4 border-2 border-black rounded-lg text-base md:text-lg outline-none resize-none"
-      value={reviewerNotes}
-      onChange={(e) => setReviewerNotes(e.target.value)}
-      placeholder="Add your notes here..."
-      disabled={isViewer}
-    />
-  </div>
+            {/* Reviewer Notes */}
+            <div className="space-y-2">
+              <label htmlFor="reviewerNotes" className="text-lg font-bold">
+                Reviewer&apos;s Notes
+              </label>
+              <textarea
+                id="reviewerNotes"
+                className="w-full h-40 p-4 border-2 border-black rounded-lg text-base md:text-lg outline-none resize-none"
+                value={reviewerNotes}
+                onChange={(e) => setReviewerNotes(e.target.value)}
+                placeholder="Add your notes here..."
+                disabled={isViewer}
+              />
+            </div>
 
-  {/* Moved: Change Status (replaces 'Current Status') */}
-  <form onSubmit={handleFormSubmit} className="mt-6 space-y-6">
-    <div className="flex items-center gap-4">
-      <label htmlFor="reviewerStatus" className="font-bold whitespace-nowrap">
-        Change Status:
-      </label>
-      <select
-        id="reviewerStatus"
-        className="flex-1 px-4 py-3 border-2 border-black rounded-2xl text-base md:text-lg outline-none"
-        value={status}
-        onChange={(e) => setStatus(e.target.value)}
-        disabled={isViewer}
-      >
-        {STATUS.map((s) => (
-          <option key={s.value} value={s.value}>
-            {STATUS_LABELS[s.value] ?? s.label}
-          </option>
-        ))}
-      </select>
-    </div>
+            {/* Change Status */}
+            <form onSubmit={handleFormSubmit} className="mt-6 space-y-6">
+              <div className="flex items-center gap-4">
+                <label htmlFor="reviewerStatus" className="font-bold whitespace-nowrap">
+                  Change Status:
+                </label>
+                <select
+                  id="reviewerStatus"
+                  className="flex-1 px-4 py-3 border-2 border-black rounded-2xl text-base md:text-lg outline-none"
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value)}
+                  disabled={isViewer}
+                >
+                  {STATUS.map((s) => (
+                    <option key={s.value} value={s.value}>
+                      {STATUS_LABELS[s.value] ?? s.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-    {/* Scheduled block: keep your tile-disabler version here */}
-    {status === "scheduled" && (
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-col md:flex-row gap-2">
-          <div className="flex-1">
-            <label htmlFor="uploadPeriodStart" className="font-bold">Start Date</label>
-            <input
-              id="uploadPeriodStart"
-              type="date"
-              className={`w-full px-4 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 ${
-                errors.uploadPeriodStart ? "border-red-600" : "border-black"
-              }`}
-              value={uploadPeriodStart}
-              onChange={(e) => handleStartDateChange(e.target.value)}
-              min={manilaTodayISO}
-              aria-invalid={!!errors.uploadPeriodStart}
-              title={errors.uploadPeriodStart || ""}
-              disabled={isViewer}
-            />
+              {/* Scheduled block */}
+              {status === "scheduled" && (
+                <div className="flex flex-col gap-4">
+                  <div className="flex flex-col md:flex-row gap-2">
+                    <div className="flex-1">
+                      <label htmlFor="uploadPeriodStart" className="font-bold">
+                        Start Date
+                      </label>
+                      <input
+                        id="uploadPeriodStart"
+                        type="date"
+                        className={`w-full px-4 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 ${
+                          errors.uploadPeriodStart ? "border-red-600" : "border-black"
+                        }`}
+                        value={uploadPeriodStart}
+                        onChange={(e) => handleStartDateChange(e.target.value)}
+                        min={manilaTodayISO}
+                        aria-invalid={!!errors.uploadPeriodStart}
+                        title={errors.uploadPeriodStart || ""}
+                        disabled={isViewer}
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <label htmlFor="uploadPeriodStartTime" className="font-bold">
+                        Start Time
+                      </label>
+                      <input
+                        id="uploadPeriodStartTime"
+                        type="time"
+                        className="w-full px-4 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 border-black"
+                        value={uploadPeriodStartTime}
+                        onChange={(e) => {
+                          setUploadPeriodStartTime(e.target.value);
+                          setIsDirty(true);
+                        }}
+                        disabled={isViewer}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col md:flex-row gap-2">
+                    <div className="flex-1">
+                      <label htmlFor="uploadPeriodEnd" className="font-bold">
+                        End Date
+                      </label>
+                      <input
+                        id="uploadPeriodEnd"
+                        type="date"
+                        className={`w-full px-4 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 ${
+                          errors.uploadPeriodEnd ? "border-red-600" : "border-black"
+                        }`}
+                        value={uploadPeriodEnd}
+                        onChange={(e) => handleEndDateChange(e.target.value)}
+                        min={uploadPeriodStart || manilaTodayISO}
+                        aria-invalid={!!errors.uploadPeriodEnd}
+                        title={errors.uploadPeriodEnd || ""}
+                        disabled={isViewer}
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <label htmlFor="uploadPeriodEndTime" className="font-bold">
+                        End Time
+                      </label>
+                      <input
+                        id="uploadPeriodEndTime"
+                        type="time"
+                        className="w-full px-4 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 border-black"
+                        value={uploadPeriodEndTime}
+                        onChange={(e) => {
+                          setUploadPeriodEndTime(e.target.value);
+                          setIsDirty(true);
+                        }}
+                        disabled={isViewer}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {userRole !== 3 && (
+                <div className="flex justify-end gap-3">
+                  <StyledButton
+                    type="button"
+                    onClick={() => navigate("/admin/article")}
+                    buttonColor="bg-gray-500"
+                    hoverColor="hover:bg-gray-600"
+                    textColor="text-white"
+                  >
+                    Cancel
+                  </StyledButton>
+
+                  <Button
+                    type="submit"
+                    className="w-full md:w-auto px-6 py-3 bg-[#c78216] text-white font-bold rounded-2xl hover:bg-[#d69641] transition-colors"
+                  >
+                    Save Status
+                  </Button>
+                </div>
+              )}
+            </form>
           </div>
-          <div className="flex-1">
-            <label htmlFor="uploadPeriodStartTime" className="font-bold">Start Time</label>
-            <input
-              id="uploadPeriodStartTime"
-              type="time"
-              className="w-full px-4 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 border-black"
-              value={uploadPeriodStartTime}
-              onChange={(e) => {
-                setUploadPeriodStartTime(e.target.value);
-                setIsDirty(true);
-              }}
-              disabled={isViewer}
-            />
-          </div>
-        </div>
-
-        <div className="flex flex-col md:flex-row gap-2">
-          <div className="flex-1">
-            <label htmlFor="uploadPeriodEnd" className="font-bold">End Date</label>
-            <input
-              id="uploadPeriodEnd"
-              type="date"
-              className={`w-full px-4 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 ${
-                errors.uploadPeriodEnd ? "border-red-600" : "border-black"
-              }`}
-              value={uploadPeriodEnd}
-              onChange={(e) => handleEndDateChange(e.target.value)}
-              min={uploadPeriodStart || manilaTodayISO}
-              aria-invalid={!!errors.uploadPeriodEnd}
-              title={errors.uploadPeriodEnd || ""}
-              disabled={isViewer}
-            />
-          </div>
-          <div className="flex-1">
-            <label htmlFor="uploadPeriodEndTime" className="font-bold">End Time</label>
-            <input
-              id="uploadPeriodEndTime"
-              type="time"
-              className="w-full px-4 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 border-black"
-              value={uploadPeriodEndTime}
-              onChange={(e) => {
-                setUploadPeriodEndTime(e.target.value);
-                setIsDirty(true);
-              }}
-              disabled={isViewer}
-            />
-          </div>
-        </div>
-      </div>
-    )}
-
-    {userRole !== 3 && (
-      <div className="flex justify-end gap-3">
-        <StyledButton
-          type="button"
-          onClick={() => navigate("/admin/article")}
-          buttonColor="bg-gray-500"
-          hoverColor="hover:bg-gray-600"
-          textColor="text-white"
-        >
-          Cancel
-        </StyledButton>
-
-        <Button
-          type="submit"
-          className="w-full md:w-auto px-6 py-3 bg-[#c78216] text-white font-bold rounded-2xl hover:bg-[#d69641] transition-colors"
-        >
-          Save Status
-        </Button>
-      </div>
-    )}
-  </form>
-</div>
-
         )}
 
         {/* RIGHT SIDE - Article Preview */}
-<ViewPort
-  
-  sizes={{
-    "lg": { width: 500, height: 545, minWidth: 400, maxWidth: 600 },
-    "xl": { width: 675, height: 545, minHeight: 500, maxHeight: 600 },
-    "2xl": { width: 800, height: 545 },
-    "3xl": { width: 1100, height: 700, minWidth: 900, maxWidth: 1200 },
-  }}
->
-
+        <ViewPort
+          sizes={{
+            lg: { width: 500, height: 545 },
+            xl: { width: 675, height: 545 },
+            "2xl": { width: 1000, height: 545 },
+            "3xl": { width: 1100, height: 700 },
+          }}
+        >
           <ArticlePreview
             contentType={contentType}
             volume={volumePreview || null}
@@ -1450,7 +1499,8 @@ function Collapsible({ title = "Details", collapsed, onToggle, children }) {
             <h3 className="text-lg font-semibold mb-4">Draft Found</h3>
             <p className="text-gray-600 mb-6">
               It looks like you have a saved draft
-              {draftToLoad.draftAge ? ` (saved ${draftToLoad.draftAge} minutes ago)` : ""}. Do you want to load it?
+              {draftToLoad.draftAge ? ` (saved ${draftToLoad.draftAge} minutes ago)` : ""}. Do you want
+              to load it?
             </p>
             <div className="flex justify-end gap-3">
               <button

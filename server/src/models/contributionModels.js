@@ -202,36 +202,74 @@ export const ContributionSessions = mainDb.define(
     contribution_id: {
       type: DataTypes.INTEGER,
       allowNull: false,
-      references: {
-        model: Contributions,
-        key: "contribution_id",
-      },
+      references: { model: Contributions, key: "contribution_id" },
     },
     uuid: {
-      type: DataTypes.UUID, // Sequelize will handle CHAR(36)
-      defaultValue: DataTypes.UUIDV4, // auto-generate if not set
+      type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4,
       unique: true,
     },
     is_active: {
       type: DataTypes.BOOLEAN,
       defaultValue: true,
     },
-    created_at: {
-      type: DataTypes.DATE,
-      defaultValue: DataTypes.NOW,
-    },
-    closed_at: {
-      type: DataTypes.DATE,
+    // 🆕 store a scoped guest identity as JSON
+    guest_identity: {
+      type: DataTypes.TEXT,
       allowNull: true,
+      get() {
+        const raw = this.getDataValue("guest_identity");
+        if (!raw) return null;
+        if (typeof raw === "object") return raw;
+        try { return JSON.parse(raw); } catch { return null; }
+      },
+      set(val) {
+        if (val == null) return this.setDataValue("guest_identity", null);
+        try {
+          // ensure we store valid JSON text
+          this.setDataValue("guest_identity", JSON.stringify(val));
+        } catch {
+          // last resort: store nothing rather than corrupted text
+          this.setDataValue("guest_identity", null);
+        }
+      },
     },
+    // 🆕 scopes for server checks, duplicate inside guest_identity for convenience
+    scopes: {
+      type: DataTypes.JSON, // e.g., ["inquiry:read:<id>", "chat:write:<id>"]
+      allowNull: true,
+      defaultValue: [],
+    },
+    // 🆕 opaque magic link token (store only the hash)
+    magic_token_hash: {
+      type: DataTypes.STRING(64), // sha256 hex
+      allowNull: true,
+      unique: true,
+    },
+    // 🆕 magic link expiry
+    link_expires_at: { type: DataTypes.DATE, allowNull: true },
+
+    // 🆕 activity markers
+    last_seen_at: { type: DataTypes.DATE, allowNull: true },
+    magic_link_used_at: { type: DataTypes.DATE, allowNull: true },
+
+    // 🆕 OTP gate for write
+    otp_salt: { type: DataTypes.STRING(32), allowNull: true },
+    otp_code_hash: { type: DataTypes.STRING(64), allowNull: true },
+    otp_expires_at: { type: DataTypes.DATE, allowNull: true },
+    otp_verified_at: { type: DataTypes.DATE, allowNull: true },
+
+    created_at: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
+    closed_at: { type: DataTypes.DATE, allowNull: true },
   },
   {
     tableName: "ContributionSessions",
     timestamps: true,
     createdAt: "created_at",
-    updatedAt: false, // no need for updated_at unless you want it
+    updatedAt: false,
   }
 );
+
 
 // Associations
 Contributions.hasOne(ContributionSessions, {

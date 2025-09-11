@@ -15,10 +15,10 @@ export const Contracts = mainDb.define(
       allowNull: false,
       references: { model: Contributions, key: "contribution_id" },
     },
-    reference: {
-      type: DataTypes.CHAR(36),
-      allowNull: false,
-    },
+    // reference: {
+    //   type: DataTypes.CHAR(36),
+    //   allowNull: false,
+    // },
     payload: {
       type: DataTypes.JSON,
       allowNull: true, // can start empty

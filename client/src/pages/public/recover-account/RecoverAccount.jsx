@@ -10,11 +10,14 @@ const RecoverAccount = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
+  const [tokenValid, setTokenValid] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [cooldown, setCooldown] = useState(0);
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMessage, setModalMessage] = useState("");
   const [passwords, setPasswords] = useState({ password: "", confirm: "" });
+
+  
 
   const isSuccessRoute = location.pathname === "/recover/success";
   const isTokenRoute = !!token;
@@ -92,12 +95,34 @@ const RecoverAccount = () => {
     }
   };
 
+
+useEffect(() => {
+  if (!isTokenRoute) return;
+
+  (async () => {
+    try {
+      const res = await axiosClient.get(`/auth/validate-reset-token/${token}`);
+      if (res.status === 200) {
+        setTokenValid(true);
+      }
+    } catch (err) {
+      setTokenValid(false);
+      setModalMessage(err.response?.data?.message || "Invalid or expired reset link.");
+      setModalOpen(true);
+      navigate("/recover"); 
+    }
+  })();
+}, [isTokenRoute, token, navigate]);
+
+
+
+  
   const renderEmailForm = () => (
     <form
       onSubmit={handleEmailSubmit}
-      className="px-8 pt-8 pb-6 rounded-lg shadow-md shadow-gray-400 w-full max-w-xl"
+      className="px-8 pt-8 pb-6 h- rounded-lg shadow-md shadow-gray-400 w-full max-w-xl"
     >
-      <div className="mb-7 flex flex-col items-center gap-y-4">
+      <div className="mb-7 flex  flex-col items-center gap-y-4">
         <LogoHeader />
         <h1 className="text-5xl font-semibold text-center">
           Reset Your Password
@@ -106,9 +131,13 @@ const RecoverAccount = () => {
           Enter your email and we’ll send a reset link.
         </p>
       </div>
+
+
+
       <label htmlFor="email" className="block text-xl mb-2">
         Your email
       </label>
+      <div className="h-fit w-full flex flex-col gap-y-2">
       <input
         id="email"
         type="email"
@@ -117,6 +146,7 @@ const RecoverAccount = () => {
         className="w-full px-3 py-2 border border-gray-400 rounded-lg focus:ring-2"
         placeholder="email"
       />
+      
       <button
         type="submit"
         disabled={isLoading || cooldown > 0}
@@ -128,6 +158,8 @@ const RecoverAccount = () => {
           ? `Wait (${cooldown}s)`
           : "Reset Password"}
       </button>
+</div>
+
       <div className="mt-2 w-full flex justify-end">
         <NavLink to="/login">
           <span className="font-semibold text-xl hover:text-gray-600">
@@ -236,13 +268,17 @@ const RecoverAccount = () => {
           <span className="font-semibold">Home</span>
         </NavLink>
 
-        <div className="w-full flex my-auto justify-center items-center px-2">
-          {isSuccessRoute
-            ? renderSuccess()
-            : isTokenRoute
-            ? renderPasswordForm()
-            : renderEmailForm()}
-        </div>
+<div className="w-full flex my-auto justify-center items-center px-2">
+  {isSuccessRoute
+    ? renderSuccess()
+    : isTokenRoute
+    ? (tokenValid === null 
+        ? <div>Validating token...</div> 
+        : tokenValid 
+          ? renderPasswordForm() 
+          : null)
+    : renderEmailForm()}
+</div>
       </div>
     </>
   );

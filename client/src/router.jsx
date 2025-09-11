@@ -7,6 +7,9 @@ import PresenceReporter from "./components/PresenceReporter";
 
 // public pages
 
+// inquiry
+import Inquiry from "./pages/public/inquiry/Inquiry";
+
 // home
 import Home from "./pages/public/home/Home";
 
@@ -180,6 +183,9 @@ const Router = () => {
         <Route path="/recover" element={<RecoverAccount />} />
         <Route path="/recover/:token" element={<RecoverAccount />} />
         <Route path="/recover/success" element={<RecoverAccount />} />
+        <Route path="/acquisition/inquiry/:uuid" element={<Inquiry />} />
+
+
 
         <Route
           path="/complete-registration/:token"

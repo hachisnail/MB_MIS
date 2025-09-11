@@ -6,18 +6,21 @@ import PublicFooter from '@/components/footers/PublicFooter';
 const PublicLayout = () => {
   const location = useLocation();
 
-  const hiddenPaths = [
-    '/login',
-    '/login/forgot-password',
-    '/recover',
-    '/recover/success',
-    '/registration-success'
-  ];
+const hiddenPaths = [
+  '/login',
+  '/login/forgot-password',
+  '/recover',
+  '/recover/success',
+  '/registration-success',
+  /^\/recover\/[^/]+$/,
+  /^\/complete-registration\/[^/]+$/,
+  /^\/acquisition\/inquiry\/[0-9a-fA-F-]+$/,
+];
 
-const isMinimalLayout =
-  hiddenPaths.includes(location.pathname) ||
-  /^\/recover\/[^/]+$/.test(location.pathname) ||
-  /^\/complete-registration\/[^/]+$/.test(location.pathname);
+const isMinimalLayout = hiddenPaths.some((p) =>
+  p instanceof RegExp ? p.test(location.pathname) : p === location.pathname
+);
+
 
   // Define themes for overall layout
   const themeRoutes = [

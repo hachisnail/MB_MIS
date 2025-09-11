@@ -183,7 +183,7 @@ const Router = () => {
         <Route path="/recover" element={<RecoverAccount />} />
         <Route path="/recover/:token" element={<RecoverAccount />} />
         <Route path="/recover/success" element={<RecoverAccount />} />
-        <Route path="/acquisition/inquiry/:uuid" element={<Inquiry />} />
+        <Route path="/acquisition/inquiry/:token" element={<Inquiry />} />
 
 
 

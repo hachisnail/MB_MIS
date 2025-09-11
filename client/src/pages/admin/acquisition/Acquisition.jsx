@@ -211,6 +211,7 @@ const Acquisition = () => {
         params,
       });
       const data = response.data;
+      console.log()
 
       setSummaryData({
         totalCount: data.totalCount,

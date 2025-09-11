@@ -89,7 +89,9 @@ const AcquisitionViewPage = () => {
 
   useEffect(() => {
     setExtraBlockContent(
+      contributionData && (
       <DocumentTabs active={activeDocument} onChange={setActiveDocument} />
+      )
     );
 
     // Bump to step 1 only once per contribution, when user opens Document/Transaction

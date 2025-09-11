@@ -1,4 +1,6 @@
 import express from "express";
+import rateLimit from "express-rate-limit";
+
 import { requireAuth,requireRole } from "../middlewares/authMiddlewares.js";
 import {login, logout, getCurrentUser, validateToken} from '../controllers/authController.js'
 import { getFlags, getFlagsForAdmin, setFlag, setMaintenanceMode } from '../controllers/routerFlagController.js';
@@ -51,7 +53,10 @@ import {
   getContract,
   setContract,
   updateTimelineStep,
-  getContributionSession
+  
+  openContributionSessionByToken,
+  sendContributionSessionOtp,
+  verifyContributionSessionOtp,
 } from '../controllers/contributionController.js';
 
 import { upload, multerErrorHandler } from '../middlewares/multerMiddleware.js';
@@ -60,6 +65,9 @@ import { SummarizerManager } from "node-summarizer";
 
 const router = express.Router();
 
+const openLimiter = rateLimit({ windowMs: 60 * 1000, max: 60 });     // 60/min
+const otpSendLimiter = rateLimit({ windowMs: 10 * 60 * 1000, max: 5 }); // 5 per 10 min per IP
+const otpVerifyLimiter = rateLimit({ windowMs: 60 * 1000, max: 30 });   // 30/min
 
 
 
@@ -148,7 +156,15 @@ router.put("/update-step",requireAuth, updateTimelineStep);
 router.get("/contract/:contractId", getContract);
 router.post("/set-contract", requireAuth, setContract);
 
-router.get("/contributions/session/:uuid", getContributionSession);
+
+router.get("/contributions/session/open/:token", openLimiter, openContributionSessionByToken);
+router.get("/contributions/session/open", openLimiter, openContributionSessionByToken);
+router.post("/contributions/session/:sessionId/otp", otpSendLimiter, sendContributionSessionOtp);
+router.post("/contributions/session/:sessionId/otp/verify", otpVerifyLimiter, verifyContributionSessionOtp);
+
+// keep legacy for backward compatibility:
+// router.get("/auth/contributions/session/:uuid", getContributionSession);
+
 
 router.post('/contribution', createContribution); 
 router.get("/contributions/summary", requireAuth, requireRole([1, 2, 5]), getContributionsSummary);

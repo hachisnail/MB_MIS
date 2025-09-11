@@ -45,10 +45,9 @@ export const AppointmentViewPage = ({
 
     // If we're in route mode, check where we came from
     if (isRouteComponent && location.state?.cameFrom) {
-      // Show respond section for pending, forms, and schedule tabs
-      // Hide respond section only for visitorRecords (attendance/completed appointments)
+      // Show respond section for pending and schedule tabs
+      // Hide respond section for forms and visitorRecords (attendance/completed appointments)
       return location.state.cameFrom === 'pending' ||
-        location.state.cameFrom === 'forms' ||
         location.state.cameFrom === 'schedule';
     }
 
@@ -515,14 +514,15 @@ export const AppointmentViewPage = ({
         </div>
       </div>
 
-      <hr className="border-gray-400 mb-14" />
+  <hr className="border-gray-400 mb-14" />
 
-      {/* Main Content Grid - Enlarged text and spacing */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-20">
-        {/* Left Column - Contact Information */}
-        <div className="space-y-10">
-          {/* Email */}
-          <div className="flex items-start gap-6">
+  {/* Main Content Grid - Enlarged text and spacing */}
+  <div className="grid grid-cols-1 lg:grid-cols-3 gap-20">
+    {/* Left Column - Contact Information */}
+    <div className="space-y-10">
+      {/* Email */}
+      <div className="flex items-start gap-6">
+
             <div className="w-9 h-9 mt-1">
               <svg className="w-9 h-9 text-gray-700" fill="currentColor" viewBox="0 0 20 20">
                 <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
@@ -577,22 +577,23 @@ export const AppointmentViewPage = ({
           </div>
 
           {/* Bottom Section - Appointment Details */}
-          <div className="mt-14 bg-gray-100 p-10 rounded-lg space-y-8">
-            <div>
-              <div className="text-2xl font-medium text-gray-900 mb-3">Purpose of Visit:</div>
-              <div className="text-2xl text-blue-600 font-medium">{modalData.purpose || 'N/A'}</div>
-            </div>
+          <div className="mt-14 bg-gray-100 p-10 rounded-lg">
+            <div className="grid grid-cols-2 gap-8">
+              <div>
+                <div className="text-2xl font-medium text-gray-900 mb-3">Purpose of Visit:</div>
+                <div className="text-2xl text-blue-600 font-medium">{modalData.purpose || 'N/A'}</div>
+              </div>
 
-            <div>
-              <div className="text-2xl font-medium text-gray-900 mb-3">Population Count:</div>
-              <div className="text-2xl text-blue-600 font-medium">{modalData.populationCount || '0'}</div>
-            </div>
+              <div>
+                <div className="text-2xl font-medium text-gray-900 mb-3">Population Count:</div>
+                <div className="text-2xl text-blue-600 font-medium">{modalData.populationCount || '0'}</div>
+              </div>
 
-            <div className="grid grid-cols-2 gap-14">
               <div>
                 <div className="text-2xl font-medium text-gray-900 mb-3">Preferred Date:</div>
                 <div className="text-2xl text-blue-600 font-medium">{modalData.preferredDate || 'N/A'}</div>
               </div>
+
               <div>
                 <div className="text-2xl font-medium text-gray-900 mb-3">Preferred Time:</div>
                 <div className="text-2xl text-blue-600 font-medium">
@@ -608,7 +609,7 @@ export const AppointmentViewPage = ({
           </div>
         </div>
 
-        {/* Right Column - Notes and Respond Section */}
+        {/* Middle Column - Notes and Image Section */}
         <div>
           {/* Notes Section - Enlarged text */}
           {modalData.notes && (
@@ -625,7 +626,10 @@ export const AppointmentViewPage = ({
               containerHeight="h-[30rem]"
             />
           </div>
+        </div>
 
+        {/* Right Column - Respond Section */}
+        <div>
           {shouldShowRespondSection() && (
             <div>
               <h3 className="text-4xl font-bold mb-10">Respond</h3>
@@ -907,7 +911,7 @@ export const AppointmentViewPage = ({
   return (
     <>
       {/* Main Appointment View - Full tab page layout */}
-      <div className="w-full h-full bg-white p-8 overflow-y-auto">
+      <div className="w-full h-full bg-white p-8 overflow-hidden">
         {/* Close button - positioned absolutely in top right */}
         <button
           className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 transition-colors z-10"

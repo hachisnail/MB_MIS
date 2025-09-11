@@ -437,21 +437,29 @@ export const updateTimelineStep = async (req, res) => {
 };
 
 
-
 export const getContributionStats = async (req, res) => {
   try {
-    const total = await Contributions.count();
-    const pending = await Contributions.count({ where: { status: "pending" } });
-    const approved = await Contributions.count({ where: { status: "approved" } });
-    const rejected = await Contributions.count({ where: { status: "rejected" } });
-    const completed = await Contributions.count({ where: { status: "completed" } });
+    const [total, pending, approved, rejected, completed] = await Promise.all([
+      Contributions.count(),
+      Contributions.count({ where: { status: "pending" } }),
+      Contributions.count({ where: { status: "approved" } }),
+      Contributions.count({ where: { status: "rejected" } }),
+      Contributions.count({ where: { status: "completed" } }), // ✅ ONLY contributions
+    ]);
 
-    return res.json({ total, pending, approved, rejected, completed });
+    return res.json({
+      total,
+      pending,
+      approved,
+      rejected,
+      completed,
+    });
   } catch (err) {
-    console.error(err);
+    console.error("Error fetching stats:", err);
     return res.status(500).json({ message: "Server error retrieving stats" });
   }
 };
+
 
 
 export const getDonorRecords = async (req, res) => {
@@ -538,15 +546,24 @@ export const getContributionsSummary = async (req, res) => {
     }
 
     // Counts by status
-    const [totalCount, approvedCount, rejectedCount, pendingCount, donationCount, lendingCount] =
-      await Promise.all([
-        Contributions.count({ where: dateFilter }),
-        Contributions.count({ where: { ...dateFilter, status: "approved" } }),
-        Contributions.count({ where: { ...dateFilter, status: "rejected" } }),
-        Contributions.count({ where: { ...dateFilter, status: "pending" } }),
-        Contributions.count({ where: { ...dateFilter, contribution_type: "donation" } }),
-        Contributions.count({ where: { ...dateFilter, contribution_type: "lending" } }),
-      ]);
+const [
+  totalCount,
+  approvedCount,
+  rejectedCount,
+  pendingCount,
+  donationCount,
+  lendingCount,
+  completedCount
+] = await Promise.all([
+  Contributions.count({ where: dateFilter }),
+  Contributions.count({ where: { ...dateFilter, status: "approved" } }),
+  Contributions.count({ where: { ...dateFilter, status: "rejected" } }),
+  Contributions.count({ where: { ...dateFilter, status: "pending" } }),
+  Contributions.count({ where: { ...dateFilter, contribution_type: "donation" } }),  // 👈 correct slot
+  Contributions.count({ where: { ...dateFilter, contribution_type: "lending" } }),   // 👈 correct slot
+  Contributions.count({ where: { ...dateFilter, status: "completed" } }),            // 👈 moved to last
+]);
+
 
     return res.json({
       totalCount,
@@ -555,6 +572,7 @@ export const getContributionsSummary = async (req, res) => {
       pendingCount,
       donationCount,
       lendingCount,
+      completedCount,
     });
   } catch (err) {
     console.error("Error fetching contributions summary:", err);

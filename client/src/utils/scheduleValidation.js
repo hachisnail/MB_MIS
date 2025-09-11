@@ -123,7 +123,7 @@ export const validateScheduleCreation = (scheduleData, existingEvents) => {
     };
   }
   
-  // NOTE: Schedules are NOT blocked by exclusive events
+  // NOTE: Schedules are NOT blocked by exclusive events - this is the key difference from appointments
   // Only check overlapping events limit (max 5)
   const overlappingCount = countOverlappingEvents(
     existingEvents.filter(e => e.date === date),
@@ -272,9 +272,10 @@ export const checkTimeSlotAvailability = async (
  * Check if a specific date should be disabled
  * @param {Date} date - The date to check
  * @param {Object} axiosClient - Axios instance for API calls
+ * @param {string} checkType - Type of check: 'appointment' or 'schedule' (default: 'appointment')
  * @returns {boolean} - Whether the date has available slots
  */
-export const checkDateAvailability = async (date, axiosClient) => {
+export const checkDateAvailability = async (date, axiosClient, checkType = 'appointment') => {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
@@ -335,8 +336,11 @@ export const checkDateAvailability = async (date, axiosClient) => {
               const [slotStart, slotEnd] = slot.split('-');
               if (checkTimeOverlap(schedule.start_time, schedule.end_time, slotStart, slotEnd)) {
                 if (schedule.availability === 'EXCLUSIVE') {
-                  isSlotAvailable = false;
-                  break;
+                  // Only appointments are blocked by exclusive events, not schedules
+                  if (checkType === 'appointment') {
+                    isSlotAvailable = false;
+                    break;
+                  }
                 } else {
                   slotCount += 1;
                 }
@@ -371,6 +375,7 @@ export const checkDateAvailability = async (date, axiosClient) => {
  * @param {Function} setMonthlySchedules - State setter for monthly schedules
  * @param {Function} setDisabledDates - State setter for disabled dates
  * @param {Function} setIsLoadingDateAvailability - State setter for loading state
+ * @param {string} checkType - Type of check: 'appointment' or 'schedule' (default: 'appointment')
  */
 export const checkMonthlyAvailability = async (
   year,
@@ -378,7 +383,8 @@ export const checkMonthlyAvailability = async (
   axiosClient,
   setMonthlySchedules,
   setDisabledDates,
-  setIsLoadingDateAvailability
+  setIsLoadingDateAvailability,
+  checkType = 'appointment'
 ) => {
   setIsLoadingDateAvailability(true);
   const unavailableDates = [];
@@ -452,8 +458,11 @@ export const checkMonthlyAvailability = async (
                   const [slotStart, slotEnd] = slot.split('-');
                   if (checkTimeOverlap(schedule.start_time, schedule.end_time, slotStart, slotEnd)) {
                     if (schedule.availability === 'EXCLUSIVE') {
-                      isSlotAvailable = false;
-                      break;
+                      // Only appointments are blocked by exclusive events, not schedules
+                      if (checkType === 'appointment') {
+                        isSlotAvailable = false;
+                        break;
+                      }
                     } else {
                       slotCount += 1;
                     }

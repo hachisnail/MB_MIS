@@ -12,6 +12,7 @@ import MultiLineInput from "@/features/MultiLineInput";
 import Toast from "@/features/Toast";
 import StyledButton from "@/components/buttons/StyledButton";
 import { LoadingSpinner } from "@/components/commons";
+import ConfirmationModal from "@/components/modals/ConfirmationModal";
 
 // Custom multiline input component with same styling as FormInput
 const CustomMultiLineInput = ({
@@ -130,6 +131,12 @@ const AddSchedulePage = () => {
     type: "info",
     visible: false,
   });
+
+  // Confirmation modal states
+  const [showScheduleConfirm, setShowScheduleConfirm] = useState(false);
+  const [showDisableDateConfirm, setShowDisableDateConfirm] = useState(false);
+  const [pendingScheduleData, setPendingScheduleData] = useState(null);
+  const [pendingDisableDateData, setPendingDisableDateData] = useState(null);
 
   // Show toast message
   const showToast = (message, type = "info") => {
@@ -351,26 +358,54 @@ const AddSchedulePage = () => {
     );
   };
 
-  // Handle form submission for adding a new schedule (SHARED only)
-  const onNewScheduleSubmit = async (data) => {
+  // Handle form submission for adding a new schedule (SHARED only) - Show confirmation first
+  const onNewScheduleSubmit = (data) => {
     // Validate time inputs - always required for Add Schedule
     if (!newStartTime || !newEndTime) {
       showToast("Please select both start and end times", "error");
       return;
     }
 
+    const dateString = getLocalDateString(selectedDate);
+
+    // Use validateScheduleCreation function (allows creation during exclusive events)
+    const scheduleValidation = validateScheduleCreation(
+      {
+        date: dateString,
+        startTime: newStartTime,
+        endTime: newEndTime
+      },
+      dayEvents
+    );
+
+    if (!scheduleValidation.isValid) {
+      showToast(scheduleValidation.error, "error");
+      return;
+    }
+
+    // Store data for confirmation
+    setPendingScheduleData(data);
+    setShowScheduleConfirm(true);
+  };
+
+  // Actual schedule creation after confirmation
+  const handleScheduleConfirm = async () => {
+    if (!pendingScheduleData) return;
+
     setIsLoading(true);
+    setShowScheduleConfirm(false);
 
     try {
       const dateString = getLocalDateString(selectedDate);
 
       // Add Schedule is always SHARED with specific time
+      // Backend expects start_time and end_time (with underscores)
       const requestData = {
         date: dateString,
-        title: data.title,
-        description: data.description || "",
-        startTime: newStartTime,
-        endTime: newEndTime,
+        title: pendingScheduleData.title,
+        description: pendingScheduleData.description || "",
+        start_time: newStartTime, // Changed from startTime to start_time
+        end_time: newEndTime,     // Changed from endTime to end_time
         availability: "SHARED", // Always SHARED for Add Schedule
       };
 
@@ -383,12 +418,15 @@ const AddSchedulePage = () => {
         resetScheduleForm();
         setNewStartTime("");
         setNewEndTime("");
+        setPendingScheduleData(null);
 
         // Refresh data
         fetchAllData();
       }
     } catch (error) {
       console.error("Error adding schedule:", error);
+      console.error("Error response data:", error.response?.data);
+      console.error("Error status:", error.response?.status);
       showToast(
         `Failed to add schedule. ${error.response?.data?.message || "Please try again."
         }`,
@@ -399,46 +437,56 @@ const AddSchedulePage = () => {
     }
   };
 
-  // Handle form submission for closing a date (Day or Time with EXCLUSIVE)
-  const onDisableDateSubmit = async (data) => {
+  // Handle form submission for closing a date (Day or Time with EXCLUSIVE) - Show confirmation first
+  const onDisableDateSubmit = (data) => {
     // Validate time inputs if in time mode
     if (scheduleType === "time" && (!newStartTime || !newEndTime)) {
       showToast("Please select both start and end times", "error");
       return;
     }
 
+    // Store data for confirmation
+    setPendingDisableDateData(data);
+    setShowDisableDateConfirm(true);
+  };
+
+  // Actual date disabling after confirmation
+  const handleDisableDateConfirm = async () => {
+    if (!pendingDisableDateData) return;
+
     setIsLoading(true);
+    setShowDisableDateConfirm(false);
 
     try {
       const dateString = getLocalDateString(selectedDate);
       let requestData = {};
 
       if (scheduleType === "day") {
-        // For day mode, disable the entire date
+        // For day mode, create a special schedule that covers the entire day
+        // Since /auth/schedules/disable doesn't exist, we'll use the regular endpoint
+        // with a special title to indicate it's a date disable
         requestData = {
           date: dateString,
-          type: "DISABLED",
-          reason: data.reason || "Date closed",
+          title: "DATE_DISABLED", // Special title that backend recognizes
+          description: pendingDisableDateData.reason || "Date closed",
+          start_time: "00:00", // Full day coverage
+          end_time: "23:59",   // Full day coverage
+          availability: "EXCLUSIVE", // EXCLUSIVE to block everything
         };
       } else {
         // For time mode, create an EXCLUSIVE schedule
         requestData = {
           date: dateString,
-          title: data.title || "Time Slot Closed",
-          description: data.reason || "Time slot unavailable",
-          startTime: newStartTime,
-          endTime: newEndTime,
+          title: pendingDisableDateData.title || "Time Slot Closed",
+          description: pendingDisableDateData.reason || "Time slot unavailable",
+          start_time: newStartTime, // Changed from startTime to start_time
+          end_time: newEndTime,     // Changed from endTime to end_time
           availability: "EXCLUSIVE", // EXCLUSIVE for Close Date time mode
         };
       }
 
-      // Send to appropriate endpoint
-      let response;
-      if (scheduleType === "day") {
-        response = await axiosClient.post("/auth/schedules/disable", requestData);
-      } else {
-        response = await axiosClient.post("/auth/schedules", requestData);
-      }
+      // Always use the regular schedules endpoint since /disable doesn't exist
+      const response = await axiosClient.post("/auth/schedules", requestData);
 
       if (response.status === 201) {
         showToast(
@@ -452,6 +500,7 @@ const AddSchedulePage = () => {
         resetDisableDateForm();
         setNewStartTime("");
         setNewEndTime("");
+        setPendingDisableDateData(null);
 
         // Refresh data
         fetchAllData();
@@ -485,18 +534,6 @@ const AddSchedulePage = () => {
   // Handle schedule type switch
   const handleTypeSwitch = (type) => {
     setScheduleType(type);
-
-    // If switching to day mode, set title automatically
-    if (type === "day") {
-      const formattedDate = selectedDate.toLocaleDateString("en-US", {
-        month: "long",
-        day: "numeric",
-        year: "numeric",
-      });
-      setScheduleValue("title", `Make ${formattedDate} unavailable`);
-    } else {
-      setScheduleValue("title", "");
-    }
   };
 
   // Load data on component mount and when viewed date changes
@@ -532,17 +569,6 @@ const AddSchedulePage = () => {
     };
   }, [socket, fetchAllData]);
 
-  // Update title when selected date changes in day mode
-  useEffect(() => {
-    if (scheduleType === "day") {
-      const formattedDate = selectedDate.toLocaleDateString("en-US", {
-        month: "long",
-        day: "numeric",
-        year: "numeric",
-      });
-      setScheduleValue("title", `Make ${formattedDate} unavailable`);
-    }
-  }, [selectedDate, scheduleType, setScheduleValue]);
 
   return (
     <div className="add-schedule-page h-full bg-gray-50 flex flex-col overflow-hidden">
@@ -572,7 +598,7 @@ const AddSchedulePage = () => {
 
       <div className="flex-1 grid grid-cols-1 xl:grid-cols-12 gap-4 px-4 pb-4 min-h-0">
         {/* Left Column - Calendar */}
-        <div className="bg-white rounded-lg shadow-md p-4 min-w-0 min-h-0 flex flex-col xl:col-span-6">
+        <div className="bg-white rounded-lg shadow-md shadow-gray-600 p-4 min-w-0 min-h-0 flex flex-col xl:col-span-6">
           <div className="flex justify-between items-center mb-4">
             <span className="text-2xl font-semibold">
               {viewedDate.toLocaleString('default', { month: 'long' })} {viewedDate.getFullYear()}
@@ -587,6 +613,18 @@ const AddSchedulePage = () => {
               tileContent={({ date, view }) => {
                 if (view === 'month') {
                   const ds = getLocalDateString(date);
+
+                  // Check if date is disabled (has disabled schedule)
+                  const isDisabled = isDateDisabled(date);
+
+                  // Show red X for disabled dates
+                  if (isDisabled) {
+                    return (
+                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <span className="text-red-500 text-3xl font-bold disabled-date-indicator">×</span>
+                      </div>
+                    );
+                  }
 
                   const activeSchedules = calendarEvents.filter(event =>
                     event.date === ds && event.isSchedule && event.isActive
@@ -615,7 +653,7 @@ const AddSchedulePage = () => {
         {/* Middle Column - Selected Date Details */}
         <div className="flex flex-col gap-4 min-w-0 min-h-0 xl:col-span-3">
           {/* Top Card - Schedules list */}
-          <div className="bg-white rounded-xl shadow-md p-4 flex flex-col flex-1 min-h-0">
+          <div className="bg-white rounded-xl shadow-md shadow-gray-600 p-4 flex flex-col flex-1 min-h-0">
             <h2 className="text-2xl font-bold mb-1">
               {selectedDate.toLocaleDateString("en-US", {
                 month: "long",
@@ -653,7 +691,7 @@ const AddSchedulePage = () => {
           </div>
 
           {/* Bottom Card - Selected event details */}
-          <div className="bg-white rounded-xl shadow-md p-4 h-[20rem] overflow-y-auto">
+          <div className="bg-white rounded-xl shadow-md shadow-gray-600 p-4 h-[20rem] overflow-y-auto">
             {selectedSchedule ? (
               <>
                 <div className="mb-2">
@@ -681,7 +719,7 @@ const AddSchedulePage = () => {
         </div>
 
         {/* Right Column - Add Schedule / Close Date Form */}
-        <div className="bg-white rounded-lg shadow-md p-4 overflow-y-auto min-w-0 min-h-0 xl:col-span-3">
+        <div className="bg-white rounded-lg shadow-md shadow-gray-600 p-4 overflow-y-auto min-w-0 min-h-0 xl:col-span-3">
 
 
           {/* Mode Selection Buttons */}
@@ -724,7 +762,7 @@ const AddSchedulePage = () => {
                   <ul className="text-xs text-blue-700 space-y-1 list-disc pl-5">
                     <li>Schedules must be between 6:00 AM and 6:00 PM</li>
                     <li>Minimum duration is 15 minutes</li>
-                    <li>Schedules can be created during exclusive event times</li>
+                    <li><strong>Schedules can be created during exclusive event times (unlike appointments)</strong></li>
                     <li>Maximum 5 overlapping shared events allowed</li>
                   </ul>
                 </div>
@@ -829,7 +867,7 @@ const AddSchedulePage = () => {
                 </h3>
                 <div className="text-sm text-red-700 font-semibold">Warning!</div>
                 <p className="text-xs text-red-700 mt-1">
-                  Disabling this date will prevent any new appointments or schedules from being created on this date. Existing appointments and schedules will not be affected.
+                  Disabling this date will prevent any new appointments from being created on this date. Existing appointments and schedules will not be affected.
                 </p>
               </div>
               <div className="mb-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
@@ -956,6 +994,110 @@ const AddSchedulePage = () => {
         message={toastConfig.message}
         type={toastConfig.type}
         onClose={hideToast}
+      />
+
+      {/* Confirmation Modals */}
+      
+      {/* Add Schedule Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showScheduleConfirm}
+        onClose={() => {
+          setShowScheduleConfirm(false);
+          setPendingScheduleData(null);
+        }}
+        onConfirm={handleScheduleConfirm}
+        title="Confirm Schedule Creation"
+        message={
+          pendingScheduleData ? (
+            <>
+              Are you sure you want to add this schedule?
+              <br />
+              <br />
+              <strong>Title:</strong> {pendingScheduleData.title}
+              <br />
+              <strong>Date:</strong> {selectedDate.toLocaleDateString("en-US", {
+                month: "long",
+                day: "numeric",
+                year: "numeric",
+              })}
+              <br />
+              <strong>Time:</strong> {formatTimeTo12H(newStartTime)} - {formatTimeTo12H(newEndTime)}
+              <br />
+              {pendingScheduleData.description && (
+                <>
+                  <strong>Description:</strong> {pendingScheduleData.description}
+                  <br />
+                </>
+              )}
+              <strong>Availability:</strong> Shared
+            </>
+          ) : (
+            "Are you sure you want to add this schedule?"
+          )
+        }
+        type="question"
+        theme="light"
+      />
+
+      {/* Disable Date Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showDisableDateConfirm}
+        onClose={() => {
+          setShowDisableDateConfirm(false);
+          setPendingDisableDateData(null);
+        }}
+        onConfirm={handleDisableDateConfirm}
+        title={scheduleType === "day" ? "⚠️ Disable Entire Date" : "⚠️ Close Time Slot"}
+        message={
+          pendingDisableDateData ? (
+            <>
+              <div className="text-red-600 font-semibold mb-2">
+                ⚠️ WARNING: This action will prevent new appointments and schedules from being created!
+              </div>
+              Are you sure you want to {scheduleType === "day" ? "disable the entire date" : "close this time slot"}?
+              <br />
+              <br />
+              <strong>Date:</strong> {selectedDate.toLocaleDateString("en-US", {
+                month: "long",
+                day: "numeric",
+                year: "numeric",
+              })}
+              <br />
+              {scheduleType === "time" && (
+                <>
+                  <strong>Time:</strong> {formatTimeTo12H(newStartTime)} - {formatTimeTo12H(newEndTime)}
+                  <br />
+                  {pendingDisableDateData.title && (
+                    <>
+                      <strong>Title:</strong> {pendingDisableDateData.title}
+                      <br />
+                    </>
+                  )}
+                </>
+              )}
+              {scheduleType === "day" && (
+                <>
+                  <strong>Coverage:</strong> All Day (24 hours)
+                  <br />
+                </>
+              )}
+              {pendingDisableDateData.reason && (
+                <>
+                  <strong>Reason:</strong> {pendingDisableDateData.reason}
+                  <br />
+                </>
+              )}
+              <br />
+              <div className="text-sm text-gray-600">
+                Existing appointments and schedules will not be affected.
+              </div>
+            </>
+          ) : (
+            `Are you sure you want to ${scheduleType === "day" ? "disable this date" : "close this time slot"}?`
+          )
+        }
+        type="danger"
+        theme="light"
       />
     </div>
   );

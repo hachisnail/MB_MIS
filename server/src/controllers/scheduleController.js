@@ -69,26 +69,14 @@ export const createSchedule = async (req, res) => {
       return res.status(400).json({ message: 'Schedule duration must be at least 15 minutes' });
     }
 
-    // Check for existing exclusive schedules on the same date
-    const existingExclusiveSchedules = await Schedule.findAll({
-      where: {
-        date,
-        availability: 'EXCLUSIVE',
-        status: 'ACTIVE'
-      }
-    });
 
-    // Check for time conflicts with exclusive schedules
-    for (const existingSchedule of existingExclusiveSchedules) {
-      const existingStart = timeStringToMinutes(existingSchedule.start_time);
-      const existingEnd = timeStringToMinutes(existingSchedule.end_time);
-      
-      if (startMinutes < existingEnd && existingStart < endMinutes) {
-        return res.status(400).json({ 
-          message: 'Cannot schedule during an exclusive event time slot' 
-        });
-      }
-    }
+    // If adding an exclusive event, check for any existing events
+
+    // NOTE: Schedules are NOT blocked by exclusive events - only appointments are
+    // This validation has been removed to allow schedules during exclusive times
+    // Only appointments should be blocked by exclusive events, not schedules
+
+
 
     // If adding an exclusive event, check for any existing events
     if (availability === 'EXCLUSIVE') {

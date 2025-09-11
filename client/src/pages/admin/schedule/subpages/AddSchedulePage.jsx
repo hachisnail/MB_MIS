@@ -173,13 +173,15 @@ const AddSchedulePage = () => {
     } else if (activeMode === "closeDate") {
       const disableDateValues = watchedDisableDateData;
       return (
-        (disableDateValues?.title !== "" && scheduleType === "time") ||
-        disableDateValues?.reason !== "" ||
-        (scheduleType === "time" && (newStartTime !== "" || newEndTime !== ""))
+        disableDateValues.title !== "" ||
+        disableDateValues.reason !== "" ||
+        newStartTime !== "" ||
+        newEndTime !== ""
       );
     }
     return false;
-  }, [activeMode, watchedScheduleData, watchedDisableDateData, scheduleType, newStartTime, newEndTime]);
+  }, [activeMode, watchedScheduleData, watchedDisableDateData, newStartTime, newEndTime]);
+
 
   // Show toast message
   const showToast = (message, type = "info") => {
@@ -586,20 +588,13 @@ const AddSchedulePage = () => {
   const handleStartTimeChange = (time) => {
     markAsInteracted();
     setNewStartTime(time);
-    setTimeout(() => {
-      const hasChanges = checkForRealChanges();
-      setIsDirty(hasChanges);
-    }, 0);
   };
 
   const handleEndTimeChange = (time) => {
     markAsInteracted();
     setNewEndTime(time);
-    setTimeout(() => {
-      const hasChanges = checkForRealChanges();
-      setIsDirty(hasChanges);
-    }, 0);
   };
+
 
   // Handle mode switch
   const handleModeSwitch = (mode) => {
@@ -632,15 +627,7 @@ const AddSchedulePage = () => {
 
   // Watch for form changes in schedule form
   useEffect(() => {
-    let isFirstRender = true;
-
     const subscription = watchSchedule((value, { name, type }) => {
-      // Skip the initial subscription call
-      if (isFirstRender) {
-        isFirstRender = false;
-        return;
-      }
-
       // Mark as interacted when user types
       if (type === 'change' && !hasUserInteracted) {
         markAsInteracted();
@@ -658,57 +645,26 @@ const AddSchedulePage = () => {
     };
   }, [watchSchedule, hasUserInteracted, checkForRealChanges, markAsInteracted]);
 
-  // Add this useEffect to watch form changes
+  // Watch for form changes in disable date form
   useEffect(() => {
-    const subscription = scheduleRegister ? watchSchedule((value, { type }) => {
+    const subscription = watchDisableDate((value, { name, type }) => {
+      // Mark as interacted when user types
       if (type === 'change' && !hasUserInteracted) {
         markAsInteracted();
       }
+
       // Only set dirty if user has interacted and there are real changes
       if (type === 'change') {
         const hasChanges = checkForRealChanges();
         setIsDirty(hasChanges);
       }
-    }) : null;
+    });
 
     return () => {
-      if (subscription && subscription.unsubscribe) {
-        subscription.unsubscribe();
-      }
+      subscription.unsubscribe();
     };
-  }, [scheduleRegister, hasUserInteracted, checkForRealChanges, markAsInteracted, watchSchedule]);
+  }, [watchDisableDate, hasUserInteracted, checkForRealChanges, markAsInteracted]);
 
-  // Watch for form changes in disable date form
-  useEffect(() => {
-    let isFirstRender = true;
-
-    const subscription = disableDateRegister ? 
-      disableDateRegister.watch ? 
-        disableDateRegister.watch((value, { name, type }) => {
-          // Skip the initial subscription call
-          if (isFirstRender) {
-            isFirstRender = false;
-            return;
-          }
-
-          // Mark as interacted when user types
-          if (type === 'change' && !hasUserInteracted) {
-            markAsInteracted();
-          }
-
-          // Only set dirty if user has interacted and there are real changes
-          if (type === 'change') {
-            const hasChanges = checkForRealChanges();
-            setIsDirty(hasChanges);
-          }
-        }) : null : null;
-
-    return () => {
-      if (subscription && subscription.unsubscribe) {
-        subscription.unsubscribe();
-      }
-    };
-  }, [disableDateRegister, hasUserInteracted, checkForRealChanges, markAsInteracted]);
 
   // Reset isDirty when form is submitted successfully
   useEffect(() => {
@@ -1448,11 +1404,10 @@ const AddSchedulePage = () => {
 
       {/* Add Toast component */}
       <Toast config={toastConfig} onClose={() => setToastConfig(prev => ({ ...prev, visible: false }))} />
-      
-      {/* Add PromptModal */}
       {PromptModal}
-    </div>
+    </div >
   );
-};
+}
+
 
 export default AddSchedulePage;

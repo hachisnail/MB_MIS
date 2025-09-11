@@ -13,6 +13,7 @@ import Toast from "@/features/Toast";
 import StyledButton from "@/components/buttons/StyledButton";
 import { LoadingSpinner } from "@/components/commons";
 import ConfirmationModal from "@/components/modals/ConfirmationModal";
+import usePrompt from "@/hooks/usePrompt";
 
 // Custom multiline input component with same styling as FormInput
 const CustomMultiLineInput = ({
@@ -61,7 +62,7 @@ import {
   formatTimeTo12H,
   convertTo24Hour
 } from "@/utils/scheduleUtils";
-import { validateScheduleCreation } from "@/utils/scheduleValidation";
+import { validateScheduleCreation, validateDateDisabling } from "@/utils/scheduleValidation";
 import { normalizeStatus } from "../../appointments/components/statusUtils";
 
 const AddSchedulePage = () => {
@@ -116,14 +117,17 @@ const AddSchedulePage = () => {
     handleSubmit: handleDisableDateSubmit,
     formState: { errors: disableDateErrors },
     reset: resetDisableDateForm,
+    watch: watchDisableDate,
   } = useForm({
     defaultValues: {
       reason: "",
+      title: "",
     },
   });
 
   // Watch form values
   const watchedScheduleData = watchSchedule();
+  const watchedDisableDateData = watchDisableDate();
 
   // Toast state
   const [toastConfig, setToastConfig] = useState({
@@ -138,6 +142,45 @@ const AddSchedulePage = () => {
   const [pendingScheduleData, setPendingScheduleData] = useState(null);
   const [pendingDisableDateData, setPendingDisableDateData] = useState(null);
 
+  // State for tracking unsaved changes
+  const [isDirty, setIsDirty] = useState(false);
+  const [hasUserInteracted, setHasUserInteracted] = useState(false);
+
+  // Use the prompt hook to warn about unsaved changes
+  const { PromptModal } = usePrompt(
+    "You have unsaved changes. Are you sure you want to leave?",
+    isDirty && hasUserInteracted,
+    "light"
+  );
+
+  // Track if user has actually interacted with the form
+  const markAsInteracted = useCallback(() => {
+    if (!hasUserInteracted) {
+      setHasUserInteracted(true);
+    }
+  }, [hasUserInteracted]);
+
+  // Check if form has actual changes (not just initialization)
+  const checkForRealChanges = useCallback(() => {
+    if (activeMode === "addSchedule") {
+      const scheduleValues = watchedScheduleData;
+      return (
+        scheduleValues.title !== "" ||
+        scheduleValues.description !== "" ||
+        newStartTime !== "" ||
+        newEndTime !== ""
+      );
+    } else if (activeMode === "closeDate") {
+      const disableDateValues = watchedDisableDateData;
+      return (
+        (disableDateValues?.title !== "" && scheduleType === "time") ||
+        disableDateValues?.reason !== "" ||
+        (scheduleType === "time" && (newStartTime !== "" || newEndTime !== ""))
+      );
+    }
+    return false;
+  }, [activeMode, watchedScheduleData, watchedDisableDateData, scheduleType, newStartTime, newEndTime]);
+
   // Show toast message
   const showToast = (message, type = "info") => {
     setToastConfig({
@@ -151,6 +194,20 @@ const AddSchedulePage = () => {
   const hideToast = () => {
     setToastConfig((prev) => ({ ...prev, visible: false }));
   };
+
+  // Watch for form changes and update dirty state
+  useEffect(() => {
+    if (hasUserInteracted) {
+      const hasChanges = checkForRealChanges();
+      setIsDirty(hasChanges);
+    }
+  }, [watchedScheduleData, newStartTime, newEndTime, activeMode, scheduleType, hasUserInteracted, checkForRealChanges]);
+
+  // Reset dirty state when forms are successfully submitted or reset
+  const resetDirtyState = useCallback(() => {
+    setIsDirty(false);
+    setHasUserInteracted(false);
+  }, []);
 
   // Fetch monthly events for calendar display (schedules + appointments)
   const fetchMonthEvents = useCallback(async () => {
@@ -413,14 +470,7 @@ const AddSchedulePage = () => {
 
       if (response.status === 201) {
         showToast("Schedule added successfully!", "success");
-
-        // Reset form
-        resetScheduleForm();
-        setNewStartTime("");
-        setNewEndTime("");
-        setPendingScheduleData(null);
-
-        // Refresh data
+        handleScheduleSuccess();
         fetchAllData();
       }
     } catch (error) {
@@ -443,6 +493,29 @@ const AddSchedulePage = () => {
     if (scheduleType === "time" && (!newStartTime || !newEndTime)) {
       showToast("Please select both start and end times", "error");
       return;
+    }
+
+    const dateString = getLocalDateString(selectedDate);
+
+    // Use the new validateDateDisabling function
+    const disableValidation = validateDateDisabling(
+      {
+        date: dateString,
+        type: scheduleType,
+        startTime: newStartTime,
+        endTime: newEndTime
+      },
+      dayEvents
+    );
+
+    if (!disableValidation.isValid) {
+      showToast(disableValidation.error, "error");
+      return;
+    }
+
+    // Show warning if there is one
+    if (disableValidation.warning) {
+      showToast(disableValidation.warning, "warning");
     }
 
     // Store data for confirmation
@@ -490,19 +563,10 @@ const AddSchedulePage = () => {
 
       if (response.status === 201) {
         showToast(
-          scheduleType === "day"
-            ? "Date disabled successfully!"
-            : "Time slot closed successfully!",
+          scheduleType === "day" ? "Date disabled successfully!" : "Time slot closed successfully!",
           "success"
         );
-
-        // Reset form
-        resetDisableDateForm();
-        setNewStartTime("");
-        setNewEndTime("");
-        setPendingDisableDateData(null);
-
-        // Refresh data
+        handleDisableDateSuccess();
         fetchAllData();
       }
     } catch (error) {
@@ -517,29 +581,148 @@ const AddSchedulePage = () => {
     }
   };
 
+
   // Handle time picker changes
   const handleStartTimeChange = (time) => {
+    markAsInteracted();
     setNewStartTime(time);
+    setTimeout(() => {
+      const hasChanges = checkForRealChanges();
+      setIsDirty(hasChanges);
+    }, 0);
   };
 
   const handleEndTimeChange = (time) => {
+    markAsInteracted();
     setNewEndTime(time);
+    setTimeout(() => {
+      const hasChanges = checkForRealChanges();
+      setIsDirty(hasChanges);
+    }, 0);
   };
 
   // Handle mode switch
   const handleModeSwitch = (mode) => {
-    setActiveMode(mode);
+    if (isDirty && hasUserInteracted) {
+      if (window.confirm("You have unsaved changes. Are you sure you want to switch modes?")) {
+        resetForms();
+        setActiveMode(mode);
+      }
+    } else {
+      setActiveMode(mode);
+    }
   };
 
   // Handle schedule type switch
   const handleTypeSwitch = (type) => {
-    setScheduleType(type);
+    if (isDirty && hasUserInteracted) {
+      if (window.confirm("You have unsaved changes. Are you sure you want to switch types?")) {
+        resetForms();
+        setScheduleType(type);
+      }
+    } else {
+      setScheduleType(type);
+    }
   };
 
   // Load data on component mount and when viewed date changes
   useEffect(() => {
     fetchAllData();
   }, [fetchAllData]);
+
+  // Watch for form changes in schedule form
+  useEffect(() => {
+    let isFirstRender = true;
+
+    const subscription = watchSchedule((value, { name, type }) => {
+      // Skip the initial subscription call
+      if (isFirstRender) {
+        isFirstRender = false;
+        return;
+      }
+
+      // Mark as interacted when user types
+      if (type === 'change' && !hasUserInteracted) {
+        markAsInteracted();
+      }
+
+      // Only set dirty if user has interacted and there are real changes
+      if (type === 'change') {
+        const hasChanges = checkForRealChanges();
+        setIsDirty(hasChanges);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [watchSchedule, hasUserInteracted, checkForRealChanges, markAsInteracted]);
+
+  // Add this useEffect to watch form changes
+  useEffect(() => {
+    const subscription = scheduleRegister ? watchSchedule((value, { type }) => {
+      if (type === 'change' && !hasUserInteracted) {
+        markAsInteracted();
+      }
+      // Only set dirty if user has interacted and there are real changes
+      if (type === 'change') {
+        const hasChanges = checkForRealChanges();
+        setIsDirty(hasChanges);
+      }
+    }) : null;
+
+    return () => {
+      if (subscription && subscription.unsubscribe) {
+        subscription.unsubscribe();
+      }
+    };
+  }, [scheduleRegister, hasUserInteracted, checkForRealChanges, markAsInteracted, watchSchedule]);
+
+  // Watch for form changes in disable date form
+  useEffect(() => {
+    let isFirstRender = true;
+
+    const subscription = disableDateRegister ? 
+      disableDateRegister.watch ? 
+        disableDateRegister.watch((value, { name, type }) => {
+          // Skip the initial subscription call
+          if (isFirstRender) {
+            isFirstRender = false;
+            return;
+          }
+
+          // Mark as interacted when user types
+          if (type === 'change' && !hasUserInteracted) {
+            markAsInteracted();
+          }
+
+          // Only set dirty if user has interacted and there are real changes
+          if (type === 'change') {
+            const hasChanges = checkForRealChanges();
+            setIsDirty(hasChanges);
+          }
+        }) : null : null;
+
+    return () => {
+      if (subscription && subscription.unsubscribe) {
+        subscription.unsubscribe();
+      }
+    };
+  }, [disableDateRegister, hasUserInteracted, checkForRealChanges, markAsInteracted]);
+
+  // Reset isDirty when form is submitted successfully
+  useEffect(() => {
+    const handleFormSubmitted = () => {
+      setIsDirty(false);
+      setHasUserInteracted(false);
+    };
+
+    window.addEventListener('formSubmitted', handleFormSubmitted);
+
+    return () => {
+      window.removeEventListener('formSubmitted', handleFormSubmitted);
+    };
+  }, []);
 
   // Socket integration for real-time updates
   useEffect(() => {
@@ -665,25 +848,64 @@ const AddSchedulePage = () => {
 
             <div className="space-y-2 flex-1 overflow-y-auto px-1">
               {dayEvents.length > 0 ? (
-                dayEvents.map((event, index) => (
-                  <div
-                    key={event.id || index}
-                    onClick={() => setSelectedSchedule(event)}
-                    className={`bg-gray-200 hover:bg-gray-300 transition-colors cursor-pointer rounded-lg px-3 py-2 ${selectedSchedule?.id === event.id ? "ring-2 ring-inset ring-purple-500" : ""
-                      }`}
-                  >
-                    <div className="font-semibold truncate">{event.title || (event.type === "DISABLED" ? "Date Closed" : "Untitled")}</div>
-                    <div className="text-xs text-gray-600">
-                      {event.type !== "DISABLED" && event.startTime && event.endTime && !event.hasFlexibleTime
-                        ? `${formatTimeTo12H(event.startTime)} - ${formatTimeTo12H(event.endTime)}`
-                        : event.hasFlexibleTime
-                          ? "Flexible Time"
-                          : event.type === "DISABLED"
-                            ? "All Day - Unavailable"
-                            : "No time specified"}
+                dayEvents.map((event, index) => {
+                  // Determine the color scheme based on event type
+                  let colorClasses = "";
+                  let typeLabel = "";
+                  let typeColor = "";
+                  
+                  if (event.isAppointment) {
+                    colorClasses = "border-l-4 border-l-blue-500";
+                    typeLabel = "Appointment";
+                    typeColor = "text-blue-600 bg-blue-50";
+                  } else if (event.isSchedule) {
+                    if (event.availability === "EXCLUSIVE" || event.title === "DATE_DISABLED") {
+                      colorClasses = "border-l-4 border-l-red-500";
+                      typeLabel = event.title === "DATE_DISABLED" ? "Date Closed" : "Exclusive Schedule";
+                      typeColor = "text-red-600 bg-red-50";
+                    } else {
+                      colorClasses = "border-l-4 border-l-green-500";
+                      typeLabel = "Shared Schedule";
+                      typeColor = "text-green-600 bg-green-50";
+                    }
+                  } else if (event.type === "DISABLED") {
+                    colorClasses = "border-l-4 border-l-red-500";
+                    typeLabel = "Date Closed";
+                    typeColor = "text-red-600 bg-red-50";
+                  } else {
+                    // Default fallback
+                    colorClasses = "border-l-4 border-l-gray-400";
+                    typeLabel = "Schedule";
+                    typeColor = "text-gray-600 bg-gray-50";
+                  }
+
+                  return (
+                    <div
+                      key={event.id || index}
+                      onClick={() => setSelectedSchedule(event)}
+                      className={`bg-gray-200 hover:bg-gray-300 transition-colors cursor-pointer rounded-lg px-3 py-2 ${colorClasses} ${selectedSchedule?.id === event.id ? "ring-2 ring-inset ring-purple-500" : ""
+                        }`}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <div className="font-semibold truncate flex-1">
+                          {event.title || (event.type === "DISABLED" ? "Date Closed" : "Untitled")}
+                        </div>
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${typeColor} ml-2 flex-shrink-0`}>
+                          {typeLabel}
+                        </span>
+                      </div>
+                      <div className="text-xs text-gray-600">
+                        {event.type !== "DISABLED" && event.startTime && event.endTime && !event.hasFlexibleTime
+                          ? `${formatTimeTo12H(event.startTime)} - ${formatTimeTo12H(event.endTime)}`
+                          : event.hasFlexibleTime
+                            ? "Flexible Time"
+                            : event.type === "DISABLED"
+                              ? "All Day - Unavailable"
+                              : "No time specified"}
+                      </div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               ) : (
                 <div className="text-gray-500 italic">No schedules or appointments for this date</div>
               )}
@@ -706,11 +928,56 @@ const AddSchedulePage = () => {
                 </div>
 
                 <div className="text-gray-800 mb-2 font-semibold text-lg">Description</div>
-                <div className="text-sm text-gray-700 leading-relaxed">
+                <div className="text-sm text-gray-700 leading-relaxed mb-3">
                   {selectedSchedule.description
                     ? selectedSchedule.description
                     : "No description provided for this event."}
                 </div>
+
+                {/* Additional appointment details - only show for appointments */}
+                {selectedSchedule.isAppointment && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <div className="text-gray-800 mb-1 font-semibold text-sm">Organizer</div>
+                      <div className="text-sm text-gray-700 leading-relaxed">
+                        {selectedSchedule.organizer || "Unknown Visitor"}
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="text-gray-800 mb-1 font-semibold text-sm">Number of People</div>
+                      <div className="text-sm text-gray-700 leading-relaxed">
+                        {selectedSchedule.numPeople || "1 visitor"}
+                      </div>
+                    </div>
+
+                    <div className="col-span-2">
+                      <div className="text-gray-800 mb-1 font-semibold text-sm">Status</div>
+                      <div className="text-sm text-gray-700 leading-relaxed">
+                        {selectedSchedule.status ? selectedSchedule.status.charAt(0).toUpperCase() + selectedSchedule.status.slice(1).toLowerCase() : "Unknown"}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Additional schedule details - only show for schedules */}
+                {selectedSchedule.isSchedule && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <div className="text-gray-800 mb-1 font-semibold text-sm">Availability</div>
+                      <div className="text-sm text-gray-700 leading-relaxed">
+                        {selectedSchedule.availability === "EXCLUSIVE" ? "Exclusive" : "Shared"}
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="text-gray-800 mb-1 font-semibold text-sm">Status</div>
+                      <div className="text-sm text-gray-700 leading-relaxed">
+                        {selectedSchedule.status ? selectedSchedule.status.charAt(0).toUpperCase() + selectedSchedule.status.slice(1).toLowerCase() : "Active"}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </>
             ) : (
               <div className="text-gray-500 italic">Select an event from the list above to view details</div>
@@ -860,24 +1127,103 @@ const AddSchedulePage = () => {
                 </button>
               </div>
 
-              {/* Warning and Notes for Close Date (Below buttons) */}
-              <div className="mb-2 p-3 bg-red-50 border border-red-200 rounded-lg">
-                <h3 className="text-sm font-semibold text-red-800 mb-1">
-                  Make {selectedDate.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })} unavailable
-                </h3>
-                <div className="text-sm text-red-700 font-semibold">Warning!</div>
-                <p className="text-xs text-red-700 mt-1">
-                  Disabling this date will prevent any new appointments from being created on this date. Existing appointments and schedules will not be affected.
-                </p>
-              </div>
-              <div className="mb-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                <h4 className="text-sm font-semibold text-yellow-800 mb-1">Note for Date Disabling:</h4>
-                <ul className="text-xs text-gray-700 list-disc pl-5 space-y-1">
-                  <li>Date disabling covers the entire day (24 hours)</li>
-                  <li>No time restrictions apply for disabling dates</li>
-                  <li>This is different from regular schedule creation</li>
-                </ul>
-              </div>
+              {/* Current Date Status Information - Simplified */}
+              {(() => {
+                const dateString = getLocalDateString(selectedDate);
+                const dayEventsForDate = dayEvents.filter(e => e.date === dateString);
+                
+                // Check for existing disabled day
+                const existingDisabledDay = dayEventsForDate.find(event => 
+                  event.title === "DATE_DISABLED" || 
+                  (event.isSchedule && event.availability === "EXCLUSIVE" && 
+                   event.startTime === "00:00" && event.endTime === "23:59")
+                );
+                
+                // Check for existing exclusive time slots
+                const existingExclusiveTimeSlots = dayEventsForDate.filter(event => 
+                  event.isSchedule && 
+                  event.availability === "EXCLUSIVE" && 
+                  event.title !== "DATE_DISABLED" &&
+                  !(event.startTime === "00:00" && event.endTime === "23:59")
+                );
+
+                return (
+                  <>
+                    {/* Only show critical warnings */}
+                    {existingDisabledDay && scheduleType === "day" && (
+                      <div className="mb-3 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                        <h4 className="text-sm font-semibold text-orange-800 mb-1 flex items-center gap-2">
+                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                          </svg>
+                          Date Already Disabled
+                        </h4>
+                        <p className="text-xs text-orange-700">
+                          This date is already disabled. You cannot disable the same date twice.
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Show existing exclusive time slots only in time mode and if there are conflicts */}
+                    {existingExclusiveTimeSlots.length > 0 && scheduleType === "time" && (
+                      <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                        <h4 className="text-sm font-semibold text-blue-800 mb-1">
+                          Existing Exclusive Time Slots ({existingExclusiveTimeSlots.length})
+                        </h4>
+                        <div className="text-xs text-blue-700 space-y-1">
+                          {existingExclusiveTimeSlots.slice(0, 3).map((slot, index) => (
+                            <div key={index} className="flex justify-between">
+                              <span className="font-medium">{slot.title}</span>
+                              <span>{formatTimeTo12H(slot.startTime)} - {formatTimeTo12H(slot.endTime)}</span>
+                            </div>
+                          ))}
+                          {existingExclusiveTimeSlots.length > 3 && (
+                            <div className="text-xs text-blue-600 italic">
+                              +{existingExclusiveTimeSlots.length - 3} more slots
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Single consolidated warning */}
+                    <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                      <h3 className="text-sm font-semibold text-red-800 mb-1">
+                        ⚠️ {scheduleType === "day" ? "Disable Entire Date" : "Close Time Slot"}
+                      </h3>
+                      <p className="text-xs text-red-700">
+                        {scheduleType === "day" 
+                          ? "This will prevent new appointments for the entire day. Existing events remain unaffected."
+                          : "This will block new appointments during the specified time period."
+                        }
+                      </p>
+                    </div>
+                    
+                    {/* Important Notes - Restored */}
+                    <div className="mb-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                      <h4 className="text-sm font-semibold text-yellow-800 mb-1">
+                        {scheduleType === "day" ? "Note for Date Disabling:" : "Note for Exclusive Time Slots:"}
+                      </h4>
+                      <ul className="text-xs text-gray-700 list-disc pl-5 space-y-1">
+                        {scheduleType === "day" ? (
+                          <>
+                            <li>Date disabling covers the entire day (24 hours)</li>
+                            <li>Cannot disable a date that's already disabled</li>
+                            <li>Existing exclusive time slots will remain unaffected</li>
+                          </>
+                        ) : (
+                          <>
+                            <li>Exclusive time slots must be between 6:00 AM and 6:00 PM</li>
+                            <li>Cannot overlap with existing exclusive schedules</li>
+                            <li>Can be created even if the day is already disabled</li>
+                            <li>Different from disabled days - serves specific purposes</li>
+                          </>
+                        )}
+                      </ul>
+                    </div>
+                  </>
+                );
+              })()}
 
               {/* Close Date Form */}
               <form onSubmit={handleDisableDateSubmit(onDisableDateSubmit)} className="space-y-3">
@@ -1099,6 +1445,12 @@ const AddSchedulePage = () => {
         type="danger"
         theme="light"
       />
+
+      {/* Add Toast component */}
+      <Toast config={toastConfig} onClose={() => setToastConfig(prev => ({ ...prev, visible: false }))} />
+      
+      {/* Add PromptModal */}
+      {PromptModal}
     </div>
   );
 };

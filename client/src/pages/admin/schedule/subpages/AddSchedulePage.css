@@ -221,3 +221,44 @@
     font-size: 0.8em;
   }
 }
+
+/* Disabled Date Visual Indicator Styles */
+.add-schedule-page .disabled-date-indicator {
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+  z-index: 10;
+  font-weight: 900 !important;
+  line-height: 1;
+}
+
+/* Ensure disabled dates are still clickable but visually distinct */
+.add-schedule-page .react-calendar__tile:has(.disabled-date-indicator) {
+  background-color: rgba(239, 68, 68, 0.1) !important;
+  border: 1px solid rgba(239, 68, 68, 0.3) !important;
+}
+
+.add-schedule-page .react-calendar__tile:has(.disabled-date-indicator):hover {
+  background-color: rgba(239, 68, 68, 0.2) !important;
+}
+
+/* Alternative approach for browsers that don't support :has() */
+.add-schedule-page .react-calendar__tile.disabled-date-tile {
+  background-color: rgba(239, 68, 68, 0.1) !important;
+  border: 1px solid rgba(239, 68, 68, 0.3) !important;
+}
+
+.add-schedule-page .react-calendar__tile.disabled-date-tile:hover {
+  background-color: rgba(239, 68, 68, 0.2) !important;
+}
+
+/* Responsive adjustments for disabled date indicator */
+@media (max-width: 1280px) {
+  .add-schedule-page .disabled-date-indicator {
+    font-size: 2.5rem !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .add-schedule-page .disabled-date-indicator {
+    font-size: 2rem !important;
+  }
+}

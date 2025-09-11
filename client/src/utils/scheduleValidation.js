@@ -145,6 +145,133 @@ export const validateScheduleCreation = (scheduleData, existingEvents) => {
 };
 
 /**
+ * Validates if a date can be disabled (closed)
+ * @param {Object} disableData - The disable date data to validate
+ * @param {string} disableData.date - Date in YYYY-MM-DD format
+ * @param {string} disableData.type - Type: "day" or "time"
+ * @param {string} disableData.startTime - Start time in HH:MM format (for time type)
+ * @param {string} disableData.endTime - End time in HH:MM format (for time type)
+ * @param {Array} existingEvents - Array of existing schedules and appointments
+ * @returns {Object} { isValid: boolean, error: string|null, warning: string|null }
+ */
+export const validateDateDisabling = (disableData, existingEvents) => {
+  const { date, type, startTime, endTime } = disableData;
+  
+  // Filter events for the specific date
+  const dayEvents = existingEvents.filter(e => e.date === date);
+  
+  if (type === "day") {
+    // Check if there's already a disabled day (DATE_DISABLED)
+    const existingDisabledDay = dayEvents.find(event => 
+      event.title === "DATE_DISABLED" || 
+      (event.isSchedule && event.availability === "EXCLUSIVE" && 
+       event.startTime === "00:00" && event.endTime === "23:59")
+    );
+    
+    if (existingDisabledDay) {
+      return {
+        isValid: false,
+        error: 'This date is already disabled. Cannot disable the same date twice.',
+        warning: null
+      };
+    }
+    
+    // Check if there are existing exclusive time slots
+    const existingExclusiveTimeSlots = dayEvents.filter(event => 
+      event.isSchedule && 
+      event.availability === "EXCLUSIVE" && 
+      event.title !== "DATE_DISABLED" &&
+      !(event.startTime === "00:00" && event.endTime === "23:59")
+    );
+    
+    let warning = null;
+    if (existingExclusiveTimeSlots.length > 0) {
+      warning = `Note: There are ${existingExclusiveTimeSlots.length} existing exclusive time slot(s) on this date. Disabling the entire day will not affect these existing exclusive schedules, but will prevent new appointments from being created.`;
+    }
+    
+    return {
+      isValid: true,
+      error: null,
+      warning
+    };
+  } else if (type === "time") {
+    // For time-specific exclusive schedules, validate time constraints
+    const startMinutes = timeStringToMinutes(startTime);
+    const endMinutes = timeStringToMinutes(endTime);
+    const sixAM = timeStringToMinutes('06:00');
+    const sixPM = timeStringToMinutes('18:00');
+    
+    if (startMinutes < sixAM || endMinutes > sixPM) {
+      return {
+        isValid: false,
+        error: 'Exclusive time slots must be between 6:00 AM and 6:00 PM',
+        warning: null
+      };
+    }
+    
+    if (startMinutes >= endMinutes) {
+      return {
+        isValid: false,
+        error: 'Start time must be earlier than end time',
+        warning: null
+      };
+    }
+    
+    const duration = endMinutes - startMinutes;
+    if (duration < 15) {
+      return {
+        isValid: false,
+        error: 'Exclusive time slot duration must be at least 15 minutes',
+        warning: null
+      };
+    }
+    
+    // Check if there's a disabled day - this is allowed, just show a warning
+    const existingDisabledDay = dayEvents.find(event => 
+      event.title === "DATE_DISABLED" || 
+      (event.isSchedule && event.availability === "EXCLUSIVE" && 
+       event.startTime === "00:00" && event.endTime === "23:59")
+    );
+    
+    let warning = null;
+    if (existingDisabledDay) {
+      warning = 'Note: This date is already disabled for new appointments, but you can still create exclusive time slots for specific purposes.';
+    }
+    
+    // Check for overlapping exclusive schedules (excluding DATE_DISABLED)
+    const overlappingExclusive = dayEvents.find(event => {
+      if (!event.isSchedule || event.availability !== 'EXCLUSIVE') return false;
+      if (event.title === "DATE_DISABLED") return false; // Skip disabled day check
+      if (event.startTime === "00:00" && event.endTime === "23:59") return false; // Skip full day disabled
+      
+      const eventStart = timeStringToMinutes(event.startTime);
+      const eventEnd = timeStringToMinutes(event.endTime);
+      return (startMinutes < eventEnd && eventStart < endMinutes);
+    });
+    
+    if (overlappingExclusive) {
+      return {
+        isValid: false,
+        error: 'Cannot create exclusive time slot - overlaps with existing exclusive schedule',
+        warning
+      };
+    }
+    
+    return {
+      isValid: true,
+      error: null,
+      warning
+    };
+  }
+  
+  return {
+    isValid: false,
+    error: 'Invalid disable type. Must be "day" or "time".',
+    warning: null
+  };
+};
+
+/**
  * Check time slot availability for a specific date
  * @param {Date} date - The date to check
  * @param {Object} axiosClient - Axios instance for API calls

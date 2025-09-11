@@ -100,6 +100,7 @@ const Schedule = () => {
           endTime: schedule.end_time,
           availability: schedule.availability || 'SHARED',
           status: schedule.status || 'ACTIVE',
+          type: schedule.title === 'DATE_DISABLED' ? 'DISABLED' : 'SCHEDULE', // Add type property for disabled dates
           isSchedule: true,
           schedule_id: schedule.schedule_id, // Store the ID for easier access later
           isActive: schedule.status !== 'COMPLETED' // Add isActive property
@@ -624,7 +625,7 @@ const Schedule = () => {
                   background-color: #6b7280;
                 }
               `}</style>
-              <div className="w-full xl:min-w-[31rem] xl:max-w-[31rem] flex flex-col h-[29rem] bg-white rounded-xl shadow-md shadow-gray-600 p-5">
+              <div className="w-full xl:min-w-[31rem] xl:max-w-[31rem] flex flex-col h-[25.5rem] bg-white rounded-xl shadow-md shadow-gray-600 p-5">
                 <span className="text-2xl font-semibold mb-4">Today's Scheduled Tours</span>
                 <div className="w-full border-t border-gray-200 pt-4 space-y-3 sm:h-[calc(100%-10rem)] lg:h-[calc(100%-4rem)] overflow-y-auto overflow-x-hidden pr-2 custom-scrollbar">
                   {todayTours.length === 0 && (

@@ -1,12 +1,12 @@
-import { useState, useRef, useMemo, useCallback, useEffect } from "react";
-import { format } from 'date-fns';
+import { useState, useRef, useCallback, useEffect } from "react";
+import { format } from "date-fns";
 import ReCAPTCHA from "react-google-recaptcha";
 
 import axiosClient from "@/lib/axiosClient";
 import { useSocketClient } from "../../../context/authContext";
 import {
   checkTimeSlotAvailability,
-  checkMonthlyAvailability
+  checkMonthlyAvailability,
 } from "../../../utils/scheduleValidation";
 import { normalizeStatus } from "../../admin/appointments/components/statusUtils";
 
@@ -19,7 +19,7 @@ import NoticeStep from "./components/NoticeStep";
 import PersonalInfoStep from "./components/PersonalInfoStep";
 import VisitDetailsStep from "./components/VisitDetailsStep";
 import ScheduleStep from "./components/ScheduleStep";
-
+import ReviewStep from "./components/ReviewStep"; 
 
 const initialFormData = {
   firstName: "",
@@ -49,7 +49,6 @@ const Appointment = () => {
 
   const [step, setStep] = useState(0);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
-  const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
   const [apiError, setApiError] = useState(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
@@ -66,51 +65,40 @@ const Appointment = () => {
   const [calendarEvents, setCalendarEvents] = useState([]);
   const [viewedDate, setViewedDate] = useState(new Date());
 
-  const [toast, setToast] = useState({
-    type: 'info',
-    message: ''
-  });
+  const [toast, setToast] = useState({ type: "info", message: "" });
 
-  const showToast = useCallback((message, type = 'info') => {
-    setToast({
-      type,
-      message
-    });
+  const showToast = useCallback((message, type = "info") => {
+    setToast({ type, message });
   }, []);
 
   const hideToast = useCallback(() => {
-    setToast(prev => ({ ...prev, message: '' }));
+    setToast((prev) => ({ ...prev, message: "" }));
   }, []);
 
-  // Automatically hide toast after 3 seconds when message changes
+  // Auto-hide toast
   useEffect(() => {
     if (toast.message) {
       const timer = setTimeout(() => {
-        setToast(prev => ({ ...prev, message: '' }));
+        setToast((prev) => ({ ...prev, message: "" }));
       }, 3000);
       return () => clearTimeout(timer);
     }
   }, [toast.message]);
 
-  // State for tracking unsaved changes
+  // Unsaved changes
   const [isDirty, setIsDirty] = useState(false);
   const [hasUserInteracted, setHasUserInteracted] = useState(false);
 
-  // Use the prompt hook to warn about unsaved changes
   const { PromptModal } = usePrompt(
     "You have unsaved changes. Are you sure you want to leave?",
     isDirty && hasUserInteracted,
     "light"
   );
 
-  // Track if user has actually interacted with the form
   const markAsInteracted = useCallback(() => {
-    if (!hasUserInteracted) {
-      setHasUserInteracted(true);
-    }
+    if (!hasUserInteracted) setHasUserInteracted(true);
   }, [hasUserInteracted]);
 
-  // Check if form has actual changes (not just initialization)
   const checkForRealChanges = useCallback(() => {
     const keys = Object.keys(initialFormData);
     return keys.some((key) => {
@@ -120,130 +108,142 @@ const Appointment = () => {
     });
   }, [formData]);
 
-  // Watch for form changes
   useEffect(() => {
-    // Only set dirty if user has interacted and there are real changes
     if (hasUserInteracted) {
-      const hasChanges = checkForRealChanges();
-      setIsDirty(hasChanges);
+      setIsDirty(checkForRealChanges());
     }
   }, [formData, hasUserInteracted, checkForRealChanges]);
 
-  // Reset isDirty when form is submitted successfully
   useEffect(() => {
     const handleFormSubmitted = () => {
       setIsDirty(false);
       setHasUserInteracted(false);
     };
-
-    window.addEventListener('formSubmitted', handleFormSubmitted);
-
-    return () => {
-      window.removeEventListener('formSubmitted', handleFormSubmitted);
-    };
+    window.addEventListener("formSubmitted", handleFormSubmitted);
+    return () => window.removeEventListener("formSubmitted", handleFormSubmitted);
   }, []);
 
-  // Helper functions for time requirements
+  // Helpers for time requirements
   const isTimeRequired = (purpose) =>
-    purpose === 'School Field Trip' || purpose === 'Museum Group Tour';
-
+    purpose === "School Field Trip" || purpose === "Museum Group Tour";
   const shouldShowTimeOptions = (purpose) =>
-    purpose === 'School Field Trip' ||
-    purpose === 'Museum Group Tour' ||
-    purpose === 'Photography or Media Projects';
+    purpose === "School Field Trip" ||
+    purpose === "Museum Group Tour" ||
+    purpose === "Photography or Media Projects";
 
-  // Schedule availability functions
-  const checkTimeSlotAvailabilityLocal = async (date) => {
-    return checkTimeSlotAvailability(date, axiosClient, showToast, setTimeSlotCounts, setTimeSlotExclusive, setConfirmedSlots, setIsLoadingTimeSlots);
-  };
+  // Availability helpers
+  const checkTimeSlotAvailabilityLocal = useCallback(
+    async (date) => {
+      return checkTimeSlotAvailability(
+        date,
+        axiosClient,
+        showToast,
+        setTimeSlotCounts,
+        setTimeSlotExclusive,
+        setConfirmedSlots,
+        setIsLoadingTimeSlots
+      );
+    },
+    [showToast]
+  );
 
-  const checkMonthlyAvailabilityLocal = async (year, month) => {
-    return checkMonthlyAvailability(year, month, axiosClient, {}, setDisabledDates, setIsLoadingDateAvailability);
-  };
+  const checkMonthlyAvailabilityLocal = useCallback(async (year, month) => {
+    return checkMonthlyAvailability(
+      year,
+      month,
+      axiosClient,
+      {},
+      setDisabledDates,
+      setIsLoadingDateAvailability
+    );
+  }, []);
 
-  // Check time slot availability when date changes
-  useEffect(() => {
-    if (formData.selectedDate) {
-      checkTimeSlotAvailabilityLocal(formData.selectedDate);
-    }
-  }, [formData.selectedDate]);
-
-  // Helper function to get local date string
-  const getLocalDateString = (date) => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
-
-  // Fetch calendar events for the viewed month
+  // Fetch calendar events for viewed month
   const fetchMonthEvents = useCallback(async () => {
     try {
       const year = viewedDate.getFullYear();
       const month = viewedDate.getMonth();
 
       const [schedulesResponse, appointmentsResponse] = await Promise.all([
-        axiosClient.get('/auth/schedules/public/availability'),
-        axiosClient.get('/auth/appointment')
+        axiosClient.get("/auth/schedules/public/availability"),
+        axiosClient.get("/auth/appointment"),
       ]);
 
       const monthSchedules = schedulesResponse.data
-        .filter(schedule => {
+        .filter((schedule) => {
           if (!schedule.date) return false;
           const scheduleDate = new Date(schedule.date);
-          return !isNaN(scheduleDate.getTime()) &&
+          return (
+            !isNaN(scheduleDate.getTime()) &&
             scheduleDate.getMonth() === month &&
-            scheduleDate.getFullYear() === year;
+            scheduleDate.getFullYear() === year
+          );
         })
-        .map(schedule => ({
+        .map((schedule) => ({
           id: `schedule-${schedule.schedule_id}`,
-          date: schedule.date.split('T')[0],
-          isActive: schedule.status !== 'COMPLETED',
-          isSchedule: true
+          date: schedule.date.split("T")[0],
+          isActive: schedule.status !== "COMPLETED",
+          isSchedule: true,
         }));
 
       const monthAppointments = appointmentsResponse.data
-        .filter(appointment => {
+        .filter((appointment) => {
           if (!appointment.preferred_date) return false;
-          const dateStr = appointment.preferred_date.split('T')[0];
+          const dateStr = appointment.preferred_date.split("T")[0];
           const appointmentDate = new Date(dateStr);
-          return !isNaN(appointmentDate.getTime()) &&
+          return (
+            !isNaN(appointmentDate.getTime()) &&
             appointmentDate.getMonth() === month &&
-            appointmentDate.getFullYear() === year;
+            appointmentDate.getFullYear() === year
+          );
         })
-        .map(appointment => ({
+        .map((appointment) => ({
           id: `appointment-${appointment.appointment_id}`,
-          date: appointment.preferred_date.split('T')[0],
-          isActive: normalizeStatus(appointment.AppointmentStatus?.status) === 'APPROVED',
-          isAppointment: true
+          date: appointment.preferred_date.split("T")[0],
+          isActive:
+            normalizeStatus(appointment.AppointmentStatus?.status) === "APPROVED",
+          isAppointment: true,
         }));
 
-      const allEvents = [...monthSchedules, ...monthAppointments];
-      setCalendarEvents(allEvents);
+      setCalendarEvents([...monthSchedules, ...monthAppointments]);
     } catch (error) {
-      console.error('Error fetching monthly events:', error);
+      console.error("Error fetching monthly events:", error);
     }
   }, [viewedDate]);
 
-  // Fetch events when viewed date changes
+  // React to date changes
+  useEffect(() => {
+    if (formData.selectedDate) {
+      checkTimeSlotAvailabilityLocal(formData.selectedDate);
+    }
+  }, [formData.selectedDate, checkTimeSlotAvailabilityLocal]);
+
   useEffect(() => {
     fetchMonthEvents();
   }, [viewedDate, fetchMonthEvents]);
 
-  // Check monthly availability when component mounts
   useEffect(() => {
     const currentDate = new Date();
-    checkMonthlyAvailabilityLocal(currentDate.getFullYear(), currentDate.getMonth());
-  }, []);
+    checkMonthlyAvailabilityLocal(
+      currentDate.getFullYear(),
+      currentDate.getMonth()
+    );
+  }, [checkMonthlyAvailabilityLocal]);
 
-  // Create a proper callback function for availability refresh
   const handleAvailabilityRefresh = useCallback(() => {
     if (formData.selectedDate) {
       checkTimeSlotAvailabilityLocal(formData.selectedDate);
     }
     const currentDate = new Date();
-    checkMonthlyAvailabilityLocal(currentDate.getFullYear(), currentDate.getMonth());
-  }, [formData.selectedDate]);
+    checkMonthlyAvailabilityLocal(
+      currentDate.getFullYear(),
+      currentDate.getMonth()
+    );
+  }, [
+    formData.selectedDate,
+    checkTimeSlotAvailabilityLocal,
+    checkMonthlyAvailabilityLocal,
+  ]);
 
   // Socket listeners for real-time updates
   useEffect(() => {
@@ -251,12 +251,12 @@ const Appointment = () => {
 
     const handleAppointmentChange = () => {
       handleAvailabilityRefresh();
-      showToast('Appointment data updated - availability refreshed', 'info');
+      showToast("Appointment data updated - availability refreshed", "info");
     };
 
     const handleScheduleChange = () => {
       handleAvailabilityRefresh();
-      showToast('Schedule updated - availability refreshed', 'info');
+      showToast("Schedule updated - availability refreshed", "info");
     };
 
     socket.onDbChange("Appointment", "*", handleAppointmentChange);
@@ -270,37 +270,49 @@ const Appointment = () => {
     };
   }, [socket, handleAvailabilityRefresh, showToast]);
 
-  // Clear Form functions
-  const handleClear = () => setShowClearConfirm(true);
-  const cancelClear = () => setShowClearConfirm(false);
-  const confirmClear = () => {
+  // Clear Form handlers
+  const handleClear = useCallback(() => setShowClearConfirm(true), []);
+  const cancelClear = useCallback(() => setShowClearConfirm(false), []);
+  const confirmClear = useCallback(() => {
     setFormData({
       ...initialFormData,
       userLoggedIn: !!user,
     });
     setStep(0);
     setShowClearConfirm(false);
-  };
+  }, []);
 
-  const handleNext = (data) => {
+  const handleNext = useCallback(
+    (data) => {
+      markAsInteracted();
+      setFormData((prev) => ({ ...prev, ...data }));
+      setStep((prev) => prev + 1);
+    },
+    [markAsInteracted]
+  );
+
+  const handleBack = useCallback(
+    (data) => {
+      markAsInteracted();
+      setFormData((prev) => ({ ...prev, ...data }));
+      setStep((prev) => prev - 1);
+    },
+    [markAsInteracted]
+  );
+
+  const proceedToReview = useCallback(() => {
     markAsInteracted();
-    setFormData((prev) => ({ ...prev, ...data }));
     setStep((prev) => prev + 1);
-  };
+  }, [markAsInteracted]);
 
-  const handleBack = (data) => {
-    markAsInteracted();
-    setFormData((prev) => ({ ...prev, ...data }));
-    setStep((prev) => prev - 1);
-  };
-
-  const handleSubmitFinal = async () => {
+  // Submit logic
+  const handleSubmitFinal = useCallback(async () => {
     try {
-      setShowSubmitConfirm(false);
-      showToast('Submitting appointment...', 'info');
+      showToast("Submitting appointment...", "info");
 
       let captchaToken = null;
-      const hasRequestLetterFiles = formData.requestLetterUpload && formData.requestLetterUpload.length > 0;
+      const hasRequestLetterFiles =
+        formData.requestLetterUpload && formData.requestLetterUpload.length > 0;
 
       if (!formData.userLoggedIn && hasRequestLetterFiles) {
         if (!recaptchaRef.current) throw new Error("Captcha not ready");
@@ -327,16 +339,13 @@ const Appointment = () => {
       let endTimeValue = null;
 
       if (formData.selectedTime) {
-        const [startTime, endTime] = formData.selectedTime.split('-');
+        const [startTime, endTime] = formData.selectedTime.split("-");
         const convertTo24Hour = (timeStr) => {
-          const [hourStr, minuteStr] = timeStr.split(':');
+          const [hourStr, minuteStr] = timeStr.split(":");
           let hour = parseInt(hourStr, 10);
-          if (hour >= 1 && hour <= 5) {
-            hour += 12;
-          }
-          return `${hour.toString().padStart(2, '0')}:${minuteStr}:00`;
+          if (hour >= 1 && hour <= 5) hour += 12;
+          return `${hour.toString().padStart(2, "0")}:${minuteStr}:00`;
         };
-
         startTimeValue = convertTo24Hour(startTime);
         endTimeValue = convertTo24Hour(endTime);
       }
@@ -354,102 +363,123 @@ const Appointment = () => {
         purpose_of_visit: formData.purpose,
         population_count: formData.populationCount,
         preferred_date: formData.selectedDate
-          ? format(formData.selectedDate, 'yyyy-MM-dd')
+          ? format(formData.selectedDate, "yyyy-MM-dd")
           : null,
         preferred_time: formData.selectedTime,
         start_time: startTimeValue,
         end_time: endTimeValue,
         additional_notes: formData.additionalNotes,
         request_letter_files: uploadedRequestLetterFiles,
-        captchaToken: captchaToken
+        captchaToken: captchaToken,
       };
 
-      const response = await axiosClient.post('/auth/appointment', payload);
+      const response = await axiosClient.post("/auth/appointment", payload);
 
       if (response.status === 201) {
         confirmClear();
         setShowSuccessModal(true);
-        // Trigger form reset event
-        window.dispatchEvent(new Event('formSubmitted'));
+        window.dispatchEvent(new Event("formSubmitted"));
       }
     } catch (err) {
-      console.error('Request failed:', err);
+      console.error("Request failed:", err);
 
       if (err.response) {
         const status = err.response.status;
-        const message = err.response.data?.message || 'Unknown error occurred';
+        const message = err.response.data?.message || "Unknown error occurred";
 
         if (status === 400) {
           setApiError(`Validation Error: ${message}`);
         } else if (status === 409) {
-          setApiError('Time slot conflict: Please select a different time');
+          setApiError("Time slot conflict: Please select a different time");
         } else if (status === 500) {
-          setApiError('Server error: Please try again later');
+          setApiError("Server error: Please try again later");
         } else {
           setApiError(`Error ${status}: ${message}`);
         }
       } else if (err.request) {
-        setApiError('Network error: Please check your connection and try again');
+        setApiError("Network error: Please check your connection and try again");
       } else {
-        setApiError('Failed to submit appointment. Please try again.');
+        setApiError("Failed to submit appointment. Please try again.");
       }
+    }
+  }, [confirmClear, formData, showToast]);
+
+  // Only render the active step to avoid setState during render in other steps
+  const renderStep = () => {
+    switch (step) {
+      case 0:
+        return (
+          <NoticeStep
+            initialData={formData}
+            onNext={handleNext}
+            setFormData={setFormData}
+            markAsInteracted={markAsInteracted}
+          />
+        );
+      case 1:
+        return (
+          <PersonalInfoStep
+            initialData={formData}
+            onNext={handleNext}
+            onBack={handleBack}
+            setFormData={setFormData}
+            onClearForm={handleClear}
+            markAsInteracted={markAsInteracted}
+          />
+        );
+      case 2:
+        return (
+          <VisitDetailsStep
+            initialData={formData}
+            onNext={handleNext}
+            onBack={handleBack}
+            setFormData={setFormData}
+            onClearForm={handleClear}
+            markAsInteracted={markAsInteracted}
+          />
+        );
+      case 3:
+        return (
+          <ScheduleStep
+            initialData={formData}
+            onNext={proceedToReview} // pass reference, do not invoke
+            onBack={handleBack}
+            setFormData={setFormData}
+            onClearForm={handleClear}
+            shouldShowTimeOptions={shouldShowTimeOptions(formData.purpose)}
+            isTimeRequired={isTimeRequired(formData.purpose)}
+            timeSlotExclusive={timeSlotExclusive}
+            confirmedSlots={confirmedSlots}
+            isLoadingTimeSlots={isLoadingTimeSlots}
+            timeSlotCounts={timeSlotCounts}
+            disabledDates={disabledDates}
+            isLoadingDateAvailability={isLoadingDateAvailability}
+            onAvailabilityRefresh={handleAvailabilityRefresh}
+            calendarEvents={calendarEvents}
+            markAsInteracted={markAsInteracted}
+          />
+        );
+      case 4:
+        return (
+          <ReviewStep
+            formData={formData}
+            onBack={handleBack}
+            onConfirm={handleSubmitFinal}
+          />
+        );
+      default:
+        return null;
     }
   };
 
-  const steps = [
-    <NoticeStep
-      key="notice"
-      initialData={formData}
-      onNext={handleNext}
-      setFormData={setFormData}
-      markAsInteracted={markAsInteracted}
-    />,
-    <PersonalInfoStep
-      key="personal"
-      initialData={formData}
-      onNext={handleNext}
-      onBack={handleBack}
-      setFormData={setFormData}
-      onClearForm={handleClear}
-      markAsInteracted={markAsInteracted}
-    />,
-    <VisitDetailsStep
-      key="visit"
-      initialData={formData}
-      onNext={handleNext}
-      onBack={handleBack}
-      setFormData={setFormData}
-      onClearForm={handleClear}
-      markAsInteracted={markAsInteracted}
-    />,
-    <ScheduleStep
-      key="schedule"
-      initialData={formData}
-      onNext={() => setShowSubmitConfirm(true)}
-      onBack={handleBack}
-      setFormData={setFormData}
-      onClearForm={handleClear}
-      shouldShowTimeOptions={shouldShowTimeOptions(formData.purpose)}
-      isTimeRequired={isTimeRequired(formData.purpose)}
-      timeSlotExclusive={timeSlotExclusive}
-      confirmedSlots={confirmedSlots}
-      isLoadingTimeSlots={isLoadingTimeSlots}
-      timeSlotCounts={timeSlotCounts}
-      disabledDates={disabledDates}
-      isLoadingDateAvailability={isLoadingDateAvailability}
-      onAvailabilityRefresh={handleAvailabilityRefresh}
-      calendarEvents={calendarEvents}
-      markAsInteracted={markAsInteracted}
-    />
-  ];
-
   return (
     <div className="w-screen h-screen flex items-center justify-center flex-col pt-25">
-      {steps[step]}
+      {renderStep()}
 
       {/* Unsaved changes modal */}
       {PromptModal}
 
+      {/* Clear Form confirmation */}
       <ConfirmationModal
         isOpen={showClearConfirm}
         onClose={cancelClear}
@@ -460,47 +490,7 @@ const Appointment = () => {
         theme="light"
       />
 
-      <ConfirmationModal
-        isOpen={showSubmitConfirm}
-        onClose={() => setShowSubmitConfirm(false)}
-        onConfirm={handleSubmitFinal}
-        title="Confirm Appointment Submission"
-        message={
-          <div className="space-y-3">
-            <div>
-              <p>Are you sure you want to submit this appointment?</p>
-            </div>
-            <div className="bg-gray-50 p-3 rounded-md text-sm">
-              <div><strong>Name:</strong> {formData.firstName} {formData.lastName}</div>
-              <div><strong>Email:</strong> {formData.email}</div>
-              <div><strong>Phone:</strong> {formData.phone || 'Not provided'}</div>
-              <div><strong>Organization:</strong> {formData.organization || 'Not provided'}</div>
-              <div><strong>Address:</strong> {formData.street ? `${formData.street}, ` : ''}{formData.barangay}, {formData.city}, {formData.province}</div>
-              <div><strong>Purpose:</strong> {formData.purpose}</div>
-              <div><strong>Date:</strong> {formData.selectedDate ? format(formData.selectedDate, 'MMMM d, yyyy') : 'Not selected'}</div>
-              <div><strong>Time:</strong> {formData.selectedTime || 'No specific time preference'}</div>
-              <div><strong>Population:</strong> {formData.populationCount} visitor(s)</div>
-              {formData.requestLetterUpload && formData.requestLetterUpload.length > 0 && (
-                <div>
-                  <strong>Request Letter Files:</strong>
-                  <ul className="ml-4 mt-1">
-                    {formData.requestLetterUpload.map((file, index) => (
-                      <li key={index} className="text-xs">• {file.name}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              {formData.additionalNotes && (
-                <div><strong>Additional Notes:</strong> {formData.additionalNotes}</div>
-              )}
-            </div>
-            <p className="text-sm text-gray-600">Your appointment will be submitted for review. You will receive a confirmation email shortly after submission.</p>
-          </div>
-        }
-        type="question"
-        theme="light"
-      />
-
+      {/* Submit error */}
       <PopupModal
         isOpen={!!apiError}
         onClose={() => setApiError(null)}
@@ -511,6 +501,7 @@ const Appointment = () => {
         theme="light"
       />
 
+      {/* Submit success */}
       <PopupModal
         isOpen={showSuccessModal}
         onClose={() => setShowSuccessModal(false)}

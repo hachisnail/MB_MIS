@@ -1,7 +1,7 @@
-import { useEffect, useState, useRef, useMemo, useLayoutEffect } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
-import axiosClient from "@/lib/axiosClient";
 import axios from "axios";
+
 import Button from "../../../../components/buttons/artclbtn";
 import ConfirmDialog from "@/components/modals/ConfirmDialog";
 import StyledButton from "@/components/buttons/StyledButton";
@@ -14,6 +14,7 @@ import RichTextEditor from "../components/RichTextEditor";
 import { X as XIcon } from "lucide-react";
 import { STATUS, STATUS_LABELS } from "../components/articleStatus";
 import ArticlePreview from "../components/ArticlePreview";
+
 import {
   getVolumeFromYYYYMMDD,
   getYearFromYYYYMMDD,
@@ -21,21 +22,47 @@ import {
   makeDisplayLabel,
 } from "../components/archiveHelpers";
 
-import { getLocalDateString } from "../../../../utils/scheduleUtils";
+// === NEW imports (split-out files) ===
+import {
+  paths,
+  getArticle,
+  listArticles,
+  createArticle,
+  updateArticle,
+  uploadContentImage,
+} from "../components/articleApi";
+
+import {
+  getManilaTodayISO,
+  toISOZFromManila,
+  isDateDisabledForSchedule,
+  toManilaParts,
+} from "../components/articleDates";
+
+import { validateForm } from "../components/articleValidation";
+import { AUTHOR_ALLOWED } from "../components/articleConstants";
+
+import ArticleHeaderSummaryCard from "../components/ArticleHeaderSummaryCard";
+import ArticleScheduledFields from "../components/ArticleScheduledFields";
+import ArticleThumbnailInput from "../components/ArticleThumbnailInput";
+import ArticleDetailsForm from "../components/ArticleDetailsForm";
+// =====================================
 
 const ArticleEditorForm = () => {
   const BASE_URL = import.meta.env.VITE_API_BASE_URL;
   const SERVER_ORIGIN = BASE_URL.replace(/\/api$/, "");
-  const UPLOAD_PATH = `${SERVER_ORIGIN}/uploads/pictures/`;
+  const UPLOAD_PATH = paths.pictures || `${SERVER_ORIGIN}/uploads/pictures/`;
+
   const { user } = useAuth();
   const routerLocation = useLocation();
+  const navigate = useNavigate();
+  const { encoded } = useParams();
+
   const userRole = user.roleId;
   const allowedRoles = [1, 2, 5];
   const isViewer = userRole === 3;
   const isReviewer = userRole === 4;
-  const hasRun = useRef(false);
-  const AUTHOR_ALLOWED = new Set(["pending", "scheduled", "posted", "archived"]);
-  const navigate = useNavigate();
+  const isPrivileged = [1, 2, 5].includes(user.roleId);
 
   const forcedFromNav = routerLocation.state?.forceReviewMode === true;
   const queryParams = new URLSearchParams(routerLocation.search);
@@ -53,26 +80,10 @@ const ArticleEditorForm = () => {
   const [author, setAuthor] = useState("");
   const [category, setCategory] = useState("");
   const [contentType, setContentType] = useState("");
-  const [address, setAddress] = useState("");
+  const [address, setAddress] = useState(""); // kept for compat
   const [selectedDate, setSelectedDate] = useState("");
   const [thumbnail, setThumbnail] = useState(null);
   const [previewImage, setPreviewImage] = useState(null);
-
-  const Categories = ["Article", "Education", "Exhibit", "Contests", "Events", "Other"];
-  const municipalitiesWithBarangays = {
-    Basud: ["Mampili", "Matnog", "San Felipe", "San Isidro", "Tuaca"],
-    Capalonga: ["Alayao", "Bayabas", "Del Pilar", "Itok", "Old Camp"],
-    Daet: ["Alawihao", "Awitan", "Bagasbas", "Borabod", "Camambugan", "Dogongan"],
-    "San Lorenzo Ruiz": ["Daguit", "Langga", "Laniton", "Mampurog", "Matacong"],
-    "Jose Panganiban": ["Bagong Bayan", "Calero", "Larap", "Plaridel", "Osmeña"],
-    Labo: ["Baay", "Bagacay", "Bagong Silang I", "Bakiad", "Talobatib"],
-    Mercedes: ["Apuao", "Caucauayan", "Colasi", "Hinipagan", "San Roque"],
-    Paracale: ["Bagumbayan", "Batobalani", "Calaburnay", "Capacuan", "Tugos"],
-    "San Vicente": ["Asdum", "Cabanbanan", "Calabagas", "Fabrica", "Iraya Sur"],
-    "Santa Elena": ["Basiad", "Bulala", "Maulawin", "Polungguitguit", "Rizal"],
-    Talisay: ["Binanuahan", "Calintaan", "Del Rosario", "San Isidro", "Tinago"],
-    Vinzons: ["Calangcawan Norte", "Candelaria", "Manmuntay", "Pinagtigasan", "Sula"],
-  };
 
   const [status, setStatus] = useState("pending");
   const [uploadPeriodStart, setUploadPeriodStart] = useState("");
@@ -82,6 +93,7 @@ const ArticleEditorForm = () => {
   const [contentImages, setContentImages] = useState([]);
   const [caption, setCaption] = useState("");
   const [barangay, setBarangay] = useState("");
+
   const thumbnailInputRef = useRef(null);
   const [isDirty, setIsDirty] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
@@ -93,11 +105,12 @@ const ArticleEditorForm = () => {
   const [loading, setLoading] = useState(true);
   const [errMsg, setErrMsg] = useState(null);
   const [editingArticleId, setEditingArticleId] = useState(null);
-  const { encoded } = useParams();
+
   const [isGeneratingCaption, setIsGeneratingCaption] = useState(false);
   const [isSummarizing, setIsSummarizing] = useState(false);
 
   const [uploadPeriodStartTime, setUploadPeriodStartTime] = useState("");
+
   const [uploadPeriodEndTime, setUploadPeriodEndTime] = useState("");
 
   // Keep original archive bucket on edit
@@ -126,7 +139,6 @@ const ArticleEditorForm = () => {
   }
 
   const [article, setArticle] = useState(null);
-  const isPrivileged = [1, 2, 5].includes(user.roleId);
   const isOwner = article ? String(article.user_id) === String(user.id) : null;
 
   const shouldShowReviewer =
@@ -164,8 +176,29 @@ const ArticleEditorForm = () => {
   );
   useAutosave(isDirty ? draftData : null, draftKey, 1000);
 
+  // Submit to API
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // client-side validation
+    const newErrors = validateForm({
+      title,
+      selectedDate,
+      author,
+      category,
+      contentType,
+      status,
+      editorHTML,
+      uploadPeriodStart,
+      uploadPeriodEnd,
+      uploadPeriodStartTime,
+      uploadPeriodEndTime,
+    });
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+
     const formData = new FormData();
     formData.append("title", title);
     formData.append("article_category", category);
@@ -184,36 +217,19 @@ const ArticleEditorForm = () => {
     // Manila → UTC helpers
     let startDateTime = "";
     let endDateTime = "";
-    const toISOZFromManila = (datePart, timePart, fallbackHHmm = "00:00") => {
-      if (!datePart) return "";
-      const hhmm = (timePart && timePart.length ? timePart : fallbackHHmm).slice(0, 5);
-      const isoWithOffset = `${datePart}T${hhmm}:00+08:00`;
-      return new Date(isoWithOffset).toISOString();
-    };
-
     if (status === "scheduled") {
       startDateTime = toISOZFromManila(uploadPeriodStart, uploadPeriodStartTime, "08:00");
       endDateTime = toISOZFromManila(uploadPeriodEnd, uploadPeriodEndTime, "23:59");
-
-      if (!startDateTime) {
-        setErrors((e) => ({ ...e, uploadPeriodStart: "Start is required for scheduled." }));
-        return;
-      }
-      if (!endDateTime) {
-        setErrors((e) => ({ ...e, uploadPeriodEnd: "End is required for scheduled." }));
-        return;
-      }
-      if (new Date(endDateTime) <= new Date(startDateTime)) {
-        setErrors((e) => ({ ...e, uploadPeriodEnd: "End must be after Start." }));
-        return;
-      }
-
       formData.append("uploadPeriodStart", startDateTime);
       formData.append("uploadPeriodEnd", endDateTime);
     }
 
     if (thumbnail && thumbnail instanceof File) {
       formData.append("thumbnail", thumbnail);
+    }
+    if (removeThumbnail) {
+      // if your backend supports explicit removal flag, you could:
+      // formData.append("removeThumbnail", "true");
     }
 
     // === Derived archive fields (editor-computed) ===
@@ -227,37 +243,30 @@ const ArticleEditorForm = () => {
       String(origContentType || "").toLowerCase() === String(contentType || "").toLowerCase();
 
     const finalSeqNum = sameBucket ? origSeqNum || "" : computeNextSequence(articles, year, contentType) || "";
-
     if (finalVolume) formData.append("volume", String(finalVolume));
     if (finalSeqNum) formData.append("sequence_number", String(finalSeqNum));
 
     try {
-      let response;
       if (isEditing) {
-        response = await axiosClient.put(`/auth/article/${articleId}`, formData, {
-          headers: { "Content-Type": "multipart/form-data" },
-        });
-        const updated = await axiosClient.get(`/auth/articles/${articleId}`);
-        if (updated.data.images) {
+        await updateArticle(articleId, formData);
+        const updated = await getArticle(articleId);
+        if (updated?.data?.images) {
           setPreviewImage(`${UPLOAD_PATH}${updated.data.images}`);
         }
         setThumbnail(null);
         resetForm();
         navigate("/admin/article");
       } else {
-        response = await axios.post(`${BASE_URL}/auth/article`, formData, {
-          headers: { "Content-Type": "multipart/form-data" },
-          withCredentials: true,
-        });
+        await createArticle(formData);
         setThumbnail(null);
         setPreviewImage(null);
+        resetForm();
+        navigate("/admin/article");
       }
 
-      resetForm();
-      navigate("/admin/article");
       fetchArticles();
     } catch (err) {
-      console.error(`Error ${isEditing ? "updating" : "creating"} article:`, err.response?.data || err.message);
+      console.error(`Error ${isEditing ? "updating" : "creating"} article:`, err?.response?.data || err?.message);
     }
   };
 
@@ -299,7 +308,8 @@ const ArticleEditorForm = () => {
     clearDraft(draftKey);
   };
 
-  // re-run guard when id changes
+  // guard ref to avoid double-fetch on id change
+  const hasRun = useRef(false);
   useEffect(() => {
     hasRun.current = false;
   }, [articleId]);
@@ -321,7 +331,7 @@ const ArticleEditorForm = () => {
 
       if (articleId) {
         try {
-          const response = await axiosClient.get(`/auth/articles/${articleId}`);
+          const response = await getArticle(articleId);
           const data = response.data;
           setArticle(data);
           setIsEditing(true);
@@ -409,7 +419,7 @@ const ArticleEditorForm = () => {
   const fetchArticles = async () => {
     try {
       setLoading(true);
-      const response = await axiosClient.get(`/auth/articles`);
+      const response = await listArticles();
       setArticles(Array.isArray(response.data) ? response.data : []);
       setLoading(false);
     } catch (err) {
@@ -422,7 +432,19 @@ const ArticleEditorForm = () => {
 
   const handleFormSubmit = (e) => {
     e.preventDefault();
-    const newErrors = validateForm();
+    const newErrors = validateForm({
+      title,
+      selectedDate,
+      author,
+      category,
+      contentType,
+      status,
+      editorHTML,
+      uploadPeriodStart,
+      uploadPeriodEnd,
+      uploadPeriodStartTime,
+      uploadPeriodEndTime,
+    });
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
     } else {
@@ -466,14 +488,7 @@ const ArticleEditorForm = () => {
     if (!file) return;
 
     try {
-      const formData = new FormData();
-      formData.append("contentImages", file);
-
-      const response = await axios.post(`${BASE_URL}/auth/article/content-images`, formData, {
-        withCredentials: true,
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-
+      const response = await uploadContentImage(file);
       if (response.data?.images?.length > 0) {
         const uploadedFilename = response.data.images[0];
         const fullImageUrl = `${SERVER_ORIGIN}/uploads/pictures/${uploadedFilename}`;
@@ -515,31 +530,7 @@ const ArticleEditorForm = () => {
     if (e.target.files && e.target.files.length > 0) setIsDirty(true);
   };
 
-  const validateForm = () => {
-    const newErrors = {};
-
-    if (!title.trim()) newErrors.title = "Title is required";
-    if (!selectedDate) newErrors.selectedDate = "Date is required";
-    if (!author.trim()) newErrors.author = "Author is required";
-    if (!category) newErrors.category = "Category is required";
-    if (!contentType) newErrors.content_type = "Type is required";
-    if (!status) newErrors.status = "Status is required";
-
-    if (!editorHTML || editorHTML === "<p></p>") newErrors.description = "Body content is required";
-
-    if (status === "scheduled") {
-      if (!uploadPeriodStart) newErrors.uploadPeriodStart = "Start date is required for scheduled.";
-      if (!uploadPeriodEnd) newErrors.uploadPeriodEnd = "End date is required for scheduled.";
-      if (uploadPeriodStart && uploadPeriodEnd) {
-        const start = new Date(`${uploadPeriodStart}T${(uploadPeriodStartTime || "00:00").slice(0, 5)}:00+08:00`);
-        const end = new Date(`${uploadPeriodEnd}T${(uploadPeriodEndTime || "23:59").slice(0, 5)}:00+08:00`);
-        if (end <= start) newErrors.uploadPeriodEnd = "End must be after Start.";
-      }
-    }
-
-    return newErrors;
-  };
-
+  // reviewer cancel
   const handleCancel = () => {
     resetForm();
     navigate("/admin/article");
@@ -582,31 +573,11 @@ const ArticleEditorForm = () => {
 
   const seqLabelPreview = useMemo(() => makeDisplayLabel(contentType, seqPreview), [contentType, seqPreview]);
 
-  // ---- Schedule date rules (tile disabler) ----
-  const manilaTodayISO = useMemo(() => {
-    // normalize to Manila midnight, then to yyyy-mm-dd
-    const now = new Date();
-    const manilaNow = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Manila" }));
-    manilaNow.setHours(0, 0, 0, 0);
-    const y = manilaNow.getFullYear();
-    const m = String(manilaNow.getMonth() + 1).padStart(2, "0");
-    const d = String(manilaNow.getDate()).padStart(2, "0");
-    return `${y}-${m}-${d}`;
-  }, []);
-
-  const isDateDisabledForSchedule = (isoDate) => {
-    if (!isoDate) return false;
-
-    // Rule 1: disallow past dates vs Manila today
-    const selected = new Date(`${isoDate}T00:00:00+08:00`);
-    const today = new Date(`${manilaTodayISO}T00:00:00+08:00`);
-    if (selected < today) return true;
-
-    return false;
-  };
+  // ---- Schedule date rules ----
+  const manilaTodayISO = useMemo(() => getManilaTodayISO(), []);
 
   const handleStartDateChange = (val) => {
-    if (isDateDisabledForSchedule(val)) {
+    if (isDateDisabledForSchedule(val, manilaTodayISO)) {
       setErrors((e) => ({ ...e, uploadPeriodStart: "That date isn’t allowed for scheduling." }));
       return;
     }
@@ -614,7 +585,6 @@ const ArticleEditorForm = () => {
     setIsDirty(true);
     clearFieldError("uploadPeriodStart");
 
-    // If end is before new start, snap it forward
     if (uploadPeriodEnd && new Date(`${uploadPeriodEnd}T00:00:00+08:00`) < new Date(`${val}T00:00:00+08:00`)) {
       setUploadPeriodEnd(val);
       clearFieldError("uploadPeriodEnd");
@@ -622,7 +592,7 @@ const ArticleEditorForm = () => {
   };
 
   const handleEndDateChange = (val) => {
-    if (isDateDisabledForSchedule(val)) {
+    if (isDateDisabledForSchedule(val, manilaTodayISO)) {
       setErrors((e) => ({ ...e, uploadPeriodEnd: "That date isn’t allowed for scheduling." }));
       return;
     }
@@ -635,26 +605,7 @@ const ArticleEditorForm = () => {
     clearFieldError("uploadPeriodEnd");
   };
 
-  // Manila-friendly date/time parts
-  const toManilaParts = (iso) => {
-    if (!iso) return { date: "—", time: "—" };
-    const d = new Date(iso);
-    const date = d.toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "2-digit",
-      timeZone: "Asia/Manila",
-    });
-    const time = d.toLocaleTimeString("en-GB", {
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-      hour12: false,
-      timeZone: "Asia/Manila",
-    });
-    return { date, time };
-  };
-
+  // Manila-friendly created/updated
   const createdParts = useMemo(() => toManilaParts(article?.created_at), [article?.created_at]);
   const updatedParts = useMemo(() => toManilaParts(article?.updated_at), [article?.updated_at]);
 
@@ -664,16 +615,15 @@ const ArticleEditorForm = () => {
       const first = (user.fname || "").trim();
       const last = (user.lname || "").trim();
       const full = [first, last].filter(Boolean).join(" ").trim();
-
       if (full) {
-        setAuthor(full);
-        // don't mark dirty; it's an auto-fill
+        setAuthor(full); // not marking dirty; it's auto-fill
       }
     }
   }, [isEditing, author, user]);
 
   // ---------- Auto-hide Header (Summary) ----------
   const headerRef = useRef(null);
+  const [headerHidden, setHeaderHidden] = useState(false);
 
   const headerComplete = useMemo(() => {
     if (!title.trim() || !selectedDate || !author.trim() || !category || !contentType) return false;
@@ -692,8 +642,6 @@ const ArticleEditorForm = () => {
     uploadPeriodEnd,
   ]);
 
-  const [headerHidden, setHeaderHidden] = useState(false);
-
   const onHeaderBlurCapture = (e) => {
     const next = e.relatedTarget;
     const stillInside = next && headerRef.current?.contains(next);
@@ -701,69 +649,13 @@ const ArticleEditorForm = () => {
       setHeaderHidden(true);
     }
   };
-
-  function HeaderSummaryCard({
-    title,
-    selectedDate,
-    author,
-    category,
-    contentType,
-    municipality,
-    barangay,
-    status,
-    onEdit,
-  }) {
-    return (
-      <div className="rounded-xl border border-gray-200 bg-white p-4">
-        <div className="flex items-center justify-between gap-3">
-          <div className="font-semibold">Details</div>
-          <button
-            type="button"
-            onClick={onEdit}
-            className="px-3 py-1.5 text-sm border rounded-lg hover:bg-gray-50"
-          >
-            Edit details
-          </button>
-        </div>
-
-        <div className="mt-3 grid grid-cols-1 lg:grid-cols-2 gap-2 text-sm">
-          <div>
-            <span className="font-medium">Title:</span> {title || "—"}
-          </div>
-          <div>
-            <span className="font-medium">Date:</span> {selectedDate || "—"}
-          </div>
-          <div>
-            <span className="font-medium">Author:</span> {author || "—"}
-          </div>
-          <div>
-            <span className="font-medium">Category:</span> {category || "—"}
-          </div>
-          <div>
-            <span className="font-medium">Type:</span> {contentType || "—"}
-          </div>
-          {contentType === "event" && (
-            <>
-              <div>
-                <span className="font-medium">Municipality:</span> {municipality || "—"}
-              </div>
-              <div>
-                <span className="font-medium">Barangay:</span> {barangay || "—"}
-              </div>
-            </>
-          )}
-          <div>
-            <span className="font-medium">Status:</span> {STATUS_LABELS[status] ?? status ?? "—"}
-          </div>
-        </div>
-      </div>
-    );
-  }
   // -----------------------------------------------
 
   return (
     <>
+      {/* Leave-page Prompt */}
       {PromptModal}
+
       <div
         className="w-full h-full gap-4 gap-x-15 pt-5 border-t-1
         grid grid-rows-[1fr_40rem] 
@@ -774,7 +666,7 @@ const ArticleEditorForm = () => {
       >
         {/* LEFT SIDE - Editor + Form */}
         {userRole && allowedRoles.includes(userRole) && !shouldShowReviewer ? (
-          <div className="bg-white w-full p-6  rounded-lg shadow-xl relative max-h-full transition-all duration-300 ">
+          <div className="bg-white w-full p-6 rounded-lg shadow-xl relative max-h-full transition-all duration-300">
             <h2 className="text-3xl font-bold mb-2">Header</h2>
 
             {/* Archive badges preview */}
@@ -808,7 +700,7 @@ const ArticleEditorForm = () => {
             <form onSubmit={handleFormSubmit} className="space-y-6">
               {/* --- Auto-hide Header Block --- */}
               {headerHidden ? (
-                <HeaderSummaryCard
+                <ArticleHeaderSummaryCard
                   title={title}
                   selectedDate={selectedDate}
                   author={author}
@@ -817,6 +709,7 @@ const ArticleEditorForm = () => {
                   municipality={municipality}
                   barangay={barangay}
                   status={status}
+                  statusLabels={STATUS_LABELS}
                   onEdit={() => setHeaderHidden(false)}
                 />
               ) : (
@@ -837,330 +730,99 @@ const ArticleEditorForm = () => {
                     </button>
                   </div>
 
-                  <div className="p-4 space-y-6">
-                    {/* Title */}
-                    <div className="flex flex-col md:flex-row gap-4">
-                      <div className="flex-1">
-                        <label
-                          htmlFor="title"
-                          className={`font-bold ${errors.title ? "text-red-600" : ""}`}
-                        >
-                          Title {errors.title && "*"}
-                        </label>
-                        <input
-                          id="title"
-                          className={`w-full px-4 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 placeholder-gray-500 ${
-                            errors.title ? "border-red-600" : "border-black"
-                          }`}
-                          type="text"
-                          value={title}
-                          onChange={(e) => {
-                            setTitle(e.target.value);
-                            setIsDirty(true);
-                            clearFieldError("title");
-                          }}
-                          onClick={() => clearFieldError("title")}
-                          placeholder={`Title${errors.title ? " *" : ""}`}
-                        />
-                      </div>
-                    </div>
+                  {/* Details block (title, date, author, category, type, municipality/barangay, status) */}
+                  <ArticleDetailsForm
+                    errors={errors}
+                    values={{
+                      title,
+                      selectedDate,
+                      author,
+                      category,
+                      contentType,
+                      municipality,
+                      barangay,
+                      status,
+                    }}
+                    onChange={{
+                      title: (v) => {
+                        setTitle(v);
+                        setIsDirty(true);
+                        clearFieldError("title");
+                      },
+                      selectedDate: (v) => {
+                        setSelectedDate(v);
+                        setIsDirty(true);
+                        clearFieldError("selectedDate");
+                      },
+                      author: (v) => {
+                        setAuthor(v);
+                        setIsDirty(true);
+                        clearFieldError("author");
+                      },
+                      category: (v) => {
+                        setCategory(v);
+                        setIsDirty(true);
+                        clearFieldError("category");
+                      },
+                      contentType: (v) => {
+                        setContentType(v);
+                        setIsDirty(true);
+                        clearFieldError("content_type");
+                      },
+                      municipality: (v) => {
+                        setMunicipality(v);
+                        setBarangay("");
+                        setIsDirty(true);
+                      },
+                      barangay: (v) => {
+                        setBarangay(v);
+                        setIsDirty(true);
+                      },
+                      status: (v) => {
+                        setStatus(v);
+                        setIsDirty(true);
+                      },
+                    }}
+                    statusOptions={STATUS.filter((s) => AUTHOR_ALLOWED.has(s.value))}
+                    statusLabels={STATUS_LABELS}
+                  />
 
-                    {/* Date, Author */}
-                    <div className="flex flex-col md:flex-row gap-4">
-                      <div className="flex-1">
-                        <label
-                          htmlFor="selectedDate"
-                          className={`font-bold ${errors.selectedDate ? "text-red-600" : ""}`}
-                        >
-                          Date {errors.selectedDate && "*"}
-                        </label>
-                        <input
-                          id="selectedDate"
-                          className={`w-full px-4 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 ${
-                            errors.selectedDate ? "border-red-600" : "border-black"
-                          }`}
-                          type="date"
-                          value={selectedDate}
-                          onChange={(e) => {
-                            setSelectedDate(e.target.value);
-                            setIsDirty(true);
-                            clearFieldError("selectedDate");
-                          }}
-                        />
-                      </div>
-                      <div className="flex-1">
-                        <label
-                          htmlFor="author"
-                          className={`font-bold ${errors.author ? "text-red-600" : ""}`}
-                        >
-                          Author {errors.author && "*"}
-                        </label>
-                        <input
-                          id="author"
-                          className={`w-full px-4 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 placeholder-gray-500 ${
-                            errors.author ? "border-red-600" : "border-black"
-                          }`}
-                          type="text"
-                          value={author}
-                          onChange={(e) => {
-                            setAuthor(e.target.value);
-                            setIsDirty(true);
-                            clearFieldError("author");
-                          }}
-                          placeholder={`Author${errors.author ? " *" : ""}`}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Category + Type */}
-                    <div className="flex flex-col md:flex-row gap-4">
-                      <div className="flex-1">
-                        <label
-                          htmlFor="category"
-                          className={`font-bold ${errors.category ? "text-red-600" : ""}`}
-                        >
-                          Category {errors.category && "*"}
-                        </label>
-                        <select
-                          id="category"
-                          className={`w-full px-4 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 ${
-                            errors.category ? "border-red-600" : "border-black"
-                          }`}
-                          value={category}
-                          onChange={(e) => {
-                            setCategory(e.target.value);
-                            setIsDirty(true);
-                            clearFieldError("category");
-                          }}
-                        >
-                          <option value="" disabled={category !== ""}>
-                            {`Category${errors.category ? " *" : ""}`}
-                          </option>
-                          {Categories.map((cat) => (
-                            <option key={cat} value={cat}>
-                              {cat}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <div className="flex-1">
-                        <label
-                          htmlFor="contentType"
-                          className={`font-bold ${errors.content_type ? "text-red-600" : ""}`}
-                        >
-                          Type {errors.content_type && "*"}
-                        </label>
-                        <select
-                          id="contentType"
-                          className={`w-full px-4 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 ${
-                            errors.content_type ? "border-red-600" : "border-black"
-                          }`}
-                          value={contentType}
-                          onChange={(e) => {
-                            setContentType(e.target.value);
-                            setIsDirty(true);
-                          }}
-                        >
-                          <option value="" disabled={contentType !== ""}>
-                            Type
-                          </option>
-                          <option value="article">Article</option>
-                          <option value="event">Event</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    {/* Municipality/Barangay only when Event */}
-                    {contentType === "event" && (
-                      <div className="flex flex-col md:flex-row gap-4">
-                        <div className="flex-1">
-                          <label
-                            htmlFor="municipality"
-                            className={`font-bold ${errors.municipality ? "text-red-600" : ""}`}
-                          >
-                            Municipality {errors.municipality && "*"}
-                          </label>
-                          <select
-                            id="municipality"
-                            className={`w-full px-4 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 ${
-                              errors.municipality ? "border-red-600" : "border-black"
-                            }`}
-                            value={municipality}
-                            onChange={(e) => {
-                              setMunicipality(e.target.value);
-                              setBarangay("");
-                              setIsDirty(true);
-                              clearFieldError("municipality");
-                            }}
-                          >
-                            <option value="" disabled={municipality !== ""}>
-                              {`Municipality${errors.municipality ? " *" : ""}`}
-                            </option>
-                            {Object.keys(municipalitiesWithBarangays).map((mun) => (
-                              <option key={mun} value={mun}>
-                                {mun}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                        <div className="flex-1">
-                          <label htmlFor="barangay" className="font-bold">
-                            Barangay
-                          </label>
-                          <select
-                            id="barangay"
-                            className="w-full px-4 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 border-black disabled:bg-gray-100 disabled:text-gray-500"
-                            value={barangay}
-                            onChange={(e) => {
-                              setBarangay(e.target.value);
-                              setIsDirty(true);
-                            }}
-                            disabled={
-                              !municipality || (municipalitiesWithBarangays[municipality]?.length ?? 0) === 0
-                            }
-                          >
-                            <option value="" disabled>
-                              {municipality ? "Select Barangay" : "Select Municipality first"}
-                            </option>
-
-                            {(municipalitiesWithBarangays[municipality] || [])
-                              .slice()
-                              .sort((a, b) => a.localeCompare(b))
-                              .map((bgy) => (
-                                <option key={bgy} value={bgy}>
-                                  {bgy}
-                                </option>
-                              ))}
-                          </select>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Status */}
-                    <div className="flex-1">
-                      <label htmlFor="status" className="font-bold">
-                        Status
-                      </label>
-                      <select
-                        id="status"
-                        className="w-full px-4 py-3 border-2 border-black rounded-2xl text-base md:text-lg outline-none"
-                        name="status"
-                        value={status}
-                        onChange={(e) => {
-                          setStatus(e.target.value);
+                  {/* Scheduled fields */}
+                  {status === "scheduled" && (
+                    <div className="px-4 pb-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <ArticleScheduledFields
+                        errors={errors}
+                        manilaTodayISO={manilaTodayISO}
+                        uploadPeriodStart={uploadPeriodStart}
+                        uploadPeriodEnd={uploadPeriodEnd}
+                        uploadPeriodStartTime={uploadPeriodStartTime}
+                        uploadPeriodEndTime={uploadPeriodEndTime}
+                        onStartDate={handleStartDateChange}
+                        onEndDate={handleEndDateChange}
+                        onStartTime={(v) => {
+                          setUploadPeriodStartTime(v);
                           setIsDirty(true);
                         }}
-                      >
-                        {STATUS.filter((s) => AUTHOR_ALLOWED.has(s.value)).map((s) => (
-                          <option key={s.value} value={s.value}>
-                            {STATUS_LABELS[s.value] ?? s.label}
-                          </option>
-                        ))}
-                      </select>
+                        onEndTime={(v) => {
+                          setUploadPeriodEndTime(v);
+                          setIsDirty(true);
+                        }}
+                        disabled={isReviewer}
+                      />
                     </div>
+                  )}
 
-                    {/* Scheduled fields */}
-                    {status === "scheduled" && (
-                      <>
-                        <div className="flex-1">
-                          <label htmlFor="uploadPeriodStart" className="font-bold">
-                            Start Date
-                          </label>
-                          <div className="flex gap-2">
-                            <input
-                              id="uploadPeriodStart"
-                              type="date"
-                              className={`w-full px-4 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 ${
-                                errors.uploadPeriodStart ? "border-red-600" : "border-black"
-                              }`}
-                              value={uploadPeriodStart}
-                              onChange={(e) => handleStartDateChange(e.target.value)}
-                              // native guard: disable past tiles
-                              min={manilaTodayISO}
-                              aria-invalid={!!errors.uploadPeriodStart}
-                              title={errors.uploadPeriodStart || ""}
-                            />
-                            <input
-                              id="uploadPeriodStartTime"
-                              type="time"
-                              className="w-32 px-2 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 border-black"
-                              value={uploadPeriodStartTime}
-                              onChange={(e) => {
-                                setUploadPeriodStartTime(e.target.value);
-                                setIsDirty(true);
-                              }}
-                            />
-                          </div>
-                        </div>
-
-                        <div className="flex-1">
-                          <label htmlFor="uploadPeriodEnd" className="font-bold">
-                            End Date
-                          </label>
-                          <div className="flex gap-2">
-                            <input
-                              id="uploadPeriodEnd"
-                              type="date"
-                              className={`w-full px-4 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 ${
-                                errors.uploadPeriodEnd ? "border-red-600" : "border-black"
-                              }`}
-                              value={uploadPeriodEnd}
-                              onChange={(e) => handleEndDateChange(e.target.value)}
-                              // native guard: end cannot be before start and cannot be in the past
-                              min={uploadPeriodStart || manilaTodayISO}
-                              aria-invalid={!!errors.uploadPeriodEnd}
-                              title={errors.uploadPeriodEnd || ""}
-                            />
-                            <input
-                              id="uploadPeriodEndTime"
-                              type="time"
-                              className="w-32 px-2 py-3 border-2 rounded-2xl text-base md:text-lg outline-none focus:ring-0 border-black"
-                              value={uploadPeriodEndTime}
-                              onChange={(e) => {
-                                setUploadPeriodEndTime(e.target.value);
-                                setIsDirty(true);
-                              }}
-                            />
-                          </div>
-                        </div>
-                      </>
-                    )}
-
-                    {/* Thumbnail */}
-                    <div className="flex flex-col md:flex-row gap-4">
-                      <div className="relative flex-1">
-                        <label htmlFor="thumbnail" className="font-bold">
-                          Thumbnail
-                        </label>
-                        <input
-                          id="thumbnail"
-                          ref={thumbnailInputRef}
-                          className="w-full px-4 py-3 border-2 border-black rounded-2xl text-base md:text-lg outline-none file:hidden"
-                          type="file"
-                          name="thumbnail"
-                          onChange={handleCustomThumbnailChange}
-                          accept="image/*"
-                          style={{ color: "transparent" }}
-                        />
-                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-gray-700 truncate max-w-[75%]">
-                          {removeThumbnail || (!thumbnail && !previewImage)
-                            ? "No Image selected"
-                            : previewImage && typeof previewImage === "string"
-                            ? previewImage.split("/").pop()
-                            : thumbnail && thumbnail.name}
-                        </div>
-                        {previewImage && !removeThumbnail && (
-                          <button
-                            type="button"
-                            onClick={handleRemoveThumbnail}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-red-600 hover:text-red-800"
-                          >
-                            <XIcon size={15} strokeWidth={3} />
-                          </button>
-                        )}
-                      </div>
-                    </div>
+                  {/* Thumbnail */}
+                  <div className="p-4">
+                    <ArticleThumbnailInput
+                      inputRef={thumbnailInputRef}
+                      previewImage={
+                        typeof previewImage === "string" ? previewImage : (previewImage?.name || null)
+                      }
+                      removeThumbnail={removeThumbnail}
+                      onChange={handleCustomThumbnailChange}
+                      onRemove={handleRemoveThumbnail}
+                    />
                   </div>
                 </div>
               )}
@@ -1505,12 +1167,11 @@ const ArticleEditorForm = () => {
             <div className="flex justify-end gap-3">
               <button
                 onClick={async () => {
-                  // Skip
                   setShowDraftPrompt(false);
                   setDraftToLoad(null);
                   if (articleId) {
                     try {
-                      const response = await axiosClient.get(`/auth/articles/${articleId}`);
+                      const response = await getArticle(articleId);
                       const data = response.data;
                       setArticle(data);
                       setIsEditing(true);
@@ -1607,7 +1268,7 @@ const ArticleEditorForm = () => {
 
                   if (articleId) {
                     try {
-                      const response = await axiosClient.get(`/auth/articles/${articleId}`);
+                      const response = await getArticle(articleId);
                       const data = response.data;
                       setArticle(data);
                       setIsEditing(true);

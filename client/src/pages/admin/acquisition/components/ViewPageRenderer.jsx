@@ -353,12 +353,12 @@ export function ArtifactImageGallery({
   return (
     <div className="w-full h-fit flex flex-col gap-y-5">
       {/* First image */}
-      <div className="w-full h-[36rem] bg-white rounded-2xl overflow-hidden flex items-center justify-center">
+      <div className="w-full h-[34rem] bg-white rounded-2xl overflow-hidden flex items-center justify-center">
         {artifactImg.length > 0 ? (
           <img
             src={artifactImg[0].src}
             alt={artifactImg[0].label}
-            className="w-full h-full object-cover rounded-2xl"
+            className="w-full h-full  object-cover rounded-2xl"
             onError={handleImageError()}
           />
         ) : (

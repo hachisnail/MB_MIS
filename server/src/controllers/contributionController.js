@@ -480,9 +480,6 @@ export const updateTimelineStep = async (req, res) => {
   try {
     const { contribution_id, step } = req.body;
 
-    const timeline = await ContributionTimelines.findOne({ where: { contribution_id } });
-    if (!timeline) return res.status(404).json({ message: "Timeline not found" });
-
     const stepFieldMap = {
       1: "under_review_at",
       2: "approved_at",
@@ -492,11 +489,38 @@ export const updateTimelineStep = async (req, res) => {
     };
 
     const field = stepFieldMap[step];
-    if (!field) return res.status(400).json({ message: "Invalid step" });
+    if (!field) {
+      return res.status(400).json({ message: "Invalid step" });
+    }
 
+    // Try to find an existing timeline
+    let timeline = await ContributionTimelines.findOne({ where: { contribution_id } });
+
+  // If none exists, create one seeded with the contribution's submitted date
+    if (!timeline) {
+      const contribution = await Contributions.findByPk(contribution_id, {
+        attributes: ["submission_date", "created_at"],
+      });
+      if (!contribution) {
+        return res.status(404).json({ message: "Contribution not found" });
+      }
+
+      const submittedAt =
+        contribution.submission_date ||
+        contribution.created_at ||
+        new Date();
+
+      timeline = await ContributionTimelines.create({
+        contribution_id,
+        submitted_at: submittedAt,
+      });
+    }
+
+    // Set the requested step timestamp
     timeline[field] = new Date();
     await timeline.save();
 
+    // If completed, deactivate any active sessions for this contribution
     if (field === "completed_at") {
       await ContributionSessions.update(
         { is_active: false, closed_at: new Date() },
@@ -504,12 +528,13 @@ export const updateTimelineStep = async (req, res) => {
       );
     }
 
-    res.json({ success: true, timeline });
+    return res.json({ success: true, timeline });
   } catch (err) {
     console.error("Error updating timeline:", err);
-    res.status(500).json({ message: "Server error" });
+    return res.status(500).json({ message: "Server error" });
   }
 };
+
 
 export const getContributionStats = async (req, res) => {
   try {

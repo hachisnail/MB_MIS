@@ -65,7 +65,7 @@ import {
 
 const AcquisitionViewPage = () => {
   const lastBumpedIdRef = useRef(null);
-  const moaRef = useRef(null); // ⬅️ imperative handle to MoaBuilder
+  const moaRef = useRef(null);
   const location = useLocation();
   const [acquisitionType, setAcquisitionType] = useState("");
   const [activeTab, setActiveTab] = useState("left");
@@ -94,7 +94,6 @@ const AcquisitionViewPage = () => {
       )
     );
 
-    // Bump to step 1 only once per contribution, when user opens Document/Transaction
     const wantsProgressView =
       activeDocument === "Transaction" || activeDocument === "Document";
 
@@ -109,7 +108,6 @@ const AcquisitionViewPage = () => {
       lastBumpedIdRef.current = cid; 
       updateStep(cid, 1).catch((e) => {
         console.error("updateStep failed:", e);
-        // allow retry if it fails
         if (lastBumpedIdRef.current === cid) lastBumpedIdRef.current = null;
       });
     }
@@ -162,7 +160,6 @@ const AcquisitionViewPage = () => {
     }
   };
 
-  // after you fetch contributionData
   useEffect(() => {
     if (contributionData?.ContributionTimeline) {
       const stepIndex = mapTimelineStep(contributionData.ContributionTimeline);
@@ -357,12 +354,10 @@ const AcquisitionViewPage = () => {
       try {
         const status = approved ? "approved" : "rejected";
 
-        // Save contract FIRST when approving (while still pending)
         if (approved) {
           await moaRef.current?.saveContract?.();
         }
 
-        // Now flip the status
         await axiosClient.patch(
           `auth/contributions/${contributionData?.contribution_id}/status`,
           { status, responseMessage }
@@ -402,7 +397,7 @@ const AcquisitionViewPage = () => {
             {activeDocument === "Overview" && (
               <div className="w-full h-full   grid grid-cols-[1fr_43rem_47rem]">
                 {/* left */}
-                <div className="col-span-1 w-full h-full bg-[#1C1B19] rounded-l-md pt-20 pb-10 px-10 gap-y-10 flex flex-col">
+                <div className="col-span-1 w-full h-full bg-[#1C1B19] rounded-l-md pt-20 px-10 gap-y-9 flex flex-col">
                   <span className="text-white text-4xl font-semibold">About</span>
 
                   <PreviewAbout previewAbout={previewAbout} />
@@ -418,8 +413,8 @@ const AcquisitionViewPage = () => {
                 </div>
 
                 {/* mid */}
-                <div className="col-span-1 flex flex-col w-full h-full bg-[#1A0F0F] px-10 py-15 gap-y-10">
-                  <div className="w-full h-30 flex items-end justify-start overflow-hidden">
+                <div className="col-span-1 flex flex-col w-full h-full bg-[#1A0F0F] px-10 pt-20 gap-y-10">
+                  <div className="w-full h-35 pb-5 flex items-end justify-start overflow-hidden">
                     <span className="block text-5xl font-semibold text-white break-words">
                       {contributionData.ContributionArtifact.title}
                     </span>

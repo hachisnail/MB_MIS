@@ -59,7 +59,6 @@ export function flush(sync = false) {
   }
 }
 
-// ⛔ userId removed from payload
 export function trackTransition(fromId, toId) {
   track({ type: "transition", fromId, toId });
 }

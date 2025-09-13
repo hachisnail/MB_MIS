@@ -3,8 +3,8 @@ import { useParams, useLocation, Link } from "react-router-dom";
 import texture from "@/assets/Texture.png";
 import MSBLogo from "@/assets/MSBLogo.png";
 import seal from "@/assets/seal.png";
-import useEngagement from "../../../../../../server/src/hooks/useEngagement";
-import { setEngagementEndpoint, trackTransition } from "../../../../../../server/src/services/engagementTracker";
+import useEngagement from "../../../../hooks/useEngagement";
+import { setEngagementEndpoint, trackTransition } from "../../../../lib/engagementTracker";
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL;
 const SERVER_ORIGIN = BASE_URL.replace(/\/api$/, "");

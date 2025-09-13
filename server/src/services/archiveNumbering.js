@@ -1,18 +1,18 @@
 // server/services/archiveNumbering.js
-import { QueryTypes } from "sequelize";
+import { QueryTypes, Transaction } from "sequelize";
 import { mainDb as sequelize } from "../models/authModels.js";
-import Article from "../models/Article.js";
 
-// 2025 is Vol. 1
 const ARCHIVE_START_YEAR = 2025;
 
+const isValidDate = (d) => d instanceof Date && !Number.isNaN(d.getTime());
+
 export const computeVolume = (dateObj) => {
-  if (!(dateObj instanceof Date) || Number.isNaN(dateObj.getTime())) return null;
+  if (!isValidDate(dateObj)) return null;
   const y = dateObj.getFullYear();
   return y < ARCHIVE_START_YEAR ? null : (y - ARCHIVE_START_YEAR + 1);
 };
 
-// MySQL advisory lock per (content_type, year)
+// MySQL advisory lock per (content_type, year) on the SAME connection/transaction
 async function acquireBucketLock(bucketKey, t) {
   const rows = await sequelize.query("SELECT GET_LOCK(?, 10) AS got", {
     replacements: [bucketKey],
@@ -20,7 +20,7 @@ async function acquireBucketLock(bucketKey, t) {
     transaction: t,
   });
   const got = Array.isArray(rows) ? rows[0]?.got : rows?.got;
-  if (got !== 1) throw new Error("Timeout acquiring MySQL advisory lock: " + bucketKey);
+  if (Number(got) !== 1) throw new Error("Timeout acquiring MySQL advisory lock: " + bucketKey);
 
   return async () => {
     await sequelize.query("SELECT RELEASE_LOCK(?)", {
@@ -32,40 +32,40 @@ async function acquireBucketLock(bucketKey, t) {
 }
 
 /**
- * Assigns volume & next sequence_number to an article that is (now) 'posted'.
- * - Only runs if status === 'posted'
- * - Idempotent: does nothing if sequence_number already set
- * - Must be called INSIDE a transaction `t`
- * - MySQL only (uses GET_LOCK/RELEASE_LOCK)
+ * Assigns volume & sequence_number ONCE when an article becomes 'posted'.
+ * MUST be called inside a transaction `t` that uses the same connection.
  */
 export async function assignArchiveNumbers(article, t) {
-  if (article.status !== "posted") return;
-  if (article.sequence_number) return;
+  if (String(article.status).toLowerCase() !== "posted") return;
+  if (article.sequence_number && article.volume != null) return;
 
-  const postDate =
-    article.upload_date instanceof Date && !Number.isNaN(article.upload_date)
-      ? article.upload_date
-      : new Date();
+  // Prefer scheduling start (actual publish window), else explicit upload_date, else now
+  const basis =
+    (article.upload_period_start && isValidDate(new Date(article.upload_period_start)) && new Date(article.upload_period_start)) ||
+    (article.upload_date && isValidDate(new Date(article.upload_date)) && new Date(article.upload_date)) ||
+    new Date();
 
-  const year = postDate.getFullYear();
+  const year = basis.getFullYear();
   const ct = String(article.content_type || "article").toLowerCase();
   const bucketKey = `article_seq:${ct}:${year}`;
 
   const release = await acquireBucketLock(bucketKey, t);
   try {
-    // Compute next sequence within (year, content_type) bucket for already POSTED items
+    // Count both posted AND archived to prevent reusing numbers
     const rows = await sequelize.query(
-      `SELECT COALESCE(MAX(sequence_number), 0) AS maxSeq
-         FROM articles
-        WHERE status = 'posted'
-          AND content_type = ?
-          AND YEAR(upload_date) = ?`,
+      `
+        SELECT COALESCE(MAX(sequence_number), 0) AS maxSeq
+          FROM articles
+         WHERE content_type = ?
+           AND YEAR(COALESCE(upload_period_start, upload_date)) = ?
+           AND status IN ('posted','archived')
+      `,
       { replacements: [ct, year], type: QueryTypes.SELECT, transaction: t }
     );
     const maxSeq = Number(rows?.[0]?.maxSeq || 0);
     const nextSeq = maxSeq + 1;
 
-    const vol = computeVolume(postDate);
+    const vol = computeVolume(basis);
 
     await article.update(
       { volume: vol, sequence_number: nextSeq },

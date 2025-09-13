@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { track, flush } from "../services/engagementTracker";
+import { track, flush } from "../lib/engagementTracker";
 
 export default function useEngagement({ articleId, containerRef = null }) {
   const activeMsRef = useRef(0);
@@ -22,17 +22,7 @@ export default function useEngagement({ articleId, containerRef = null }) {
     };
   }, []);
 
-  // ⛔ click tracking removed
-  // useEffect(() => {
-  //   if (!containerRef?.current) return;
-  //   const onClick = () => {
-  //     track({ type: "click", articleId });
-  //   };
-  //   containerRef.current.addEventListener("click", onClick);
-  //   return () => containerRef.current?.removeEventListener("click", onClick);
-  // }, [articleId, containerRef]);
-
-  // active time ticker
+ 
   useEffect(() => {
     const TICK = 1000;
     const ACTIVE_WINDOW = 15000;

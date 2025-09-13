@@ -36,24 +36,34 @@ if (!fs.existsSync(UPLOAD_BASE_DIR)) {
 
 const app = express();
 
+// ---- CORS FIRST (multi-origin, credentials, custom headers) ----
+const parseOrigins = (raw) =>
+  (raw || "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
 
-// TRUST PROXY (Coolify/Traefik-safe)
-// 1 = Traefik only; 2 = Cloudflare → Traefik
+const ALLOWED_ORIGINS = [
+  ...parseOrigins(process.env.CLIENT_URLS),   // preferred: comma-separated
+  ...parseOrigins(process.env.CLIENT_URL),    // backward compat
+];
+console.log("CORS allowed origins:", ALLOWED_ORIGINS);
+
+const corsMw = cors({
+  origin(origin, cb) {
+    if (!origin) return cb(null, true);            // same-origin / server-to-server
+    cb(null, ALLOWED_ORIGINS.includes(origin));
+  },
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "x-browser-id", "x-requested-with"],
+});
+app.use(corsMw);
+app.options(/.*/, corsMw); 
+
 const PROXY_HOPS = Number(process.env.TRUST_PROXY_HOPS || 1);
 app.set("trust proxy", process.env.NODE_ENV === "production" ? PROXY_HOPS : false);
 
-app.use(
-  cors({
-    origin: process.env.CLIENT_URL,
-    credentials: true,
-  })
-);
-// Optional: this duplicates CORS; keep if you want explicit headers
-app.use((req, res, next) => {
-  res.header("Access-Control-Allow-Origin", process.env.CLIENT_URL);
-  res.header("Access-Control-Allow-Credentials", "true");
-  next();
-});
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -65,11 +75,11 @@ app.use(
     store: sessionStore,
     resave: false,
     saveUninitialized: false,
-     proxy: true, // honor X-Forwarded-Proto for Secure cookies behind Traefik/CF
+    proxy: true,
     cookie: {
       maxAge: 24 * 60 * 60 * 1000,
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+       secure: process.env.NODE_ENV === "production",              
       sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
     },
   })
@@ -120,44 +130,11 @@ app.get("/", (req, res) => {
 });
 
 const server = http.createServer(app);
-const io = initializeSocket(server, process.env.CLIENT_URL);
+// const io = initializeSocket(server, process.env.CLIENT_URL);
+const io = initializeSocket(server, ALLOWED_ORIGINS);
 const PORT = process.env.PORT;
 
-function copyRecursive(srcDir, destDir) {
-  if (!fs.existsSync(destDir)) fs.mkdirSync(destDir, { recursive: true });
-  for (const item of fs.readdirSync(srcDir)) {
-    const srcPath = path.join(srcDir, item);
-    const destPath = path.join(destDir, item);
-    const stat = fs.lstatSync(srcPath);
-    if (stat.isDirectory()) {
-      copyRecursive(srcPath, destPath);
-    } else if (stat.isFile()) {
-      fs.copyFileSync(srcPath, destPath);
-    }
-  }
-}
 
-function seedUploadsFolder() {
-  const seedDir = path.join(__dirname, "..", "uploads");
-  const seedFlag = path.join(UPLOAD_BASE_DIR, ".seeded");
-
-  if (fs.existsSync(seedFlag)) {
-    console.log("Uploads already seeded.");
-    return;
-  }
-  if (!fs.existsSync(seedDir)) {
-    console.warn("Seed source folder does not exist:", seedDir);
-    return;
-  }
-  console.log("Seeding uploads volume from Git-tracked /uploads...");
-  copyRecursive(seedDir, UPLOAD_BASE_DIR);
-  fs.writeFileSync(seedFlag, "seeded");
-  console.log("Seeding complete.");
-}
-
-if (process.env.NODE_ENV === "production") {
-  seedUploadsFolder();
-}
 
 (async () => {
   try {

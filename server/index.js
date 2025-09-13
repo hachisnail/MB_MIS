@@ -36,7 +36,7 @@ if (!fs.existsSync(UPLOAD_BASE_DIR)) {
 
 const app = express();
 
-  app.set("trust proxy", 1);
+  app.set("trust proxy", true);
 
 app.use(
   cors({
@@ -45,15 +45,16 @@ app.use(
   })
 );
 // Optional: this duplicates CORS; keep if you want explicit headers
-app.use((req, res, next) => {
-  res.header("Access-Control-Allow-Origin", process.env.CLIENT_URL);
-  res.header("Access-Control-Allow-Credentials", "true");
-  next();
-});
+// app.use((req, res, next) => {
+//   res.header("Access-Control-Allow-Origin", process.env.CLIENT_URL);
+//   res.header("Access-Control-Allow-Credentials", "true");
+//   next();
+// });
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser()); 
+
 
 app.use(
   session({
@@ -62,13 +63,17 @@ app.use(
     resave: false,
     saveUninitialized: false,
     cookie: {
-      maxAge: 24 * 60 * 60 * 1000,
+      maxAge: 24 * 60 * 60 * 1000, // 1 day
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: process.env.NODE_ENV === "production", // required for SameSite=None
       sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      domain: process.env.NODE_ENV === "production"
+        ? ".museobulawan.online" // share cookie across subdomains
+        : undefined,
     },
   })
 );
+
 
 PUBLIC_UPLOADS.forEach((cat) => {
   app.use(`/uploads/${cat}`, express.static(path.join(UPLOAD_BASE_DIR, cat)));

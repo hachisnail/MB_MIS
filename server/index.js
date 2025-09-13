@@ -36,26 +36,38 @@ if (!fs.existsSync(UPLOAD_BASE_DIR)) {
 
 const app = express();
 
-  app.set("trust proxy", true);
+/**
+ * Trust proxy — required for Traefik (Coolify)
+ */
+app.set("trust proxy", 1);
 
+/**
+ * CORS setup
+ */
 app.use(
   cors({
-    origin: process.env.CLIENT_URL,
+    origin: process.env.CLIENT_URL, // e.g. https://mus.museobulawan.online
     credentials: true,
   })
 );
-// Optional: this duplicates CORS; keep if you want explicit headers
-// app.use((req, res, next) => {
-//   res.header("Access-Control-Allow-Origin", process.env.CLIENT_URL);
-//   res.header("Access-Control-Allow-Credentials", "true");
-//   next();
-// });
+
+// Ensure OPTIONS requests don’t get dropped
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", process.env.CLIENT_URL);
+  res.header("Access-Control-Allow-Credentials", "true");
+  res.header("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Content-Type,Authorization");
+  if (req.method === "OPTIONS") return res.sendStatus(200);
+  next();
+});
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(cookieParser()); 
+app.use(cookieParser());
 
-
+/**
+ * Session + cookie
+ */
 app.use(
   session({
     secret: process.env.SESSION_SECRET,
@@ -65,16 +77,19 @@ app.use(
     cookie: {
       maxAge: 24 * 60 * 60 * 1000, // 1 day
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production", // required for SameSite=None
+      secure: process.env.NODE_ENV === "production", // required with SameSite=None
       sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-      domain: process.env.NODE_ENV === "production"
-        ? ".museobulawan.online" // share cookie across subdomains
-        : undefined,
+      domain:
+        process.env.NODE_ENV === "production"
+          ? ".museobulawan.online" // share cookie across subdomains
+          : undefined,
     },
   })
 );
 
-
+/**
+ * Static uploads
+ */
 PUBLIC_UPLOADS.forEach((cat) => {
   app.use(`/uploads/${cat}`, express.static(path.join(UPLOAD_BASE_DIR, cat)));
 });
@@ -97,6 +112,9 @@ app.get(/^\/uploads\/private\/(.+)$/, requireAuth, requireRole([1, 2]), (req, re
   res.sendFile(normalizedPath);
 });
 
+/**
+ * Routes
+ */
 app.use("/api", uploadRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/engagement", engagementRoutes);
@@ -119,10 +137,16 @@ app.get("/", (req, res) => {
   res.json({ status: "ok" });
 });
 
+/**
+ * Server + Socket.io
+ */
 const server = http.createServer(app);
 const io = initializeSocket(server, process.env.CLIENT_URL);
 const PORT = process.env.PORT;
 
+/**
+ * Upload seeding
+ */
 function copyRecursive(srcDir, destDir) {
   if (!fs.existsSync(destDir)) fs.mkdirSync(destDir, { recursive: true });
   for (const item of fs.readdirSync(srcDir)) {
@@ -159,6 +183,9 @@ if (process.env.NODE_ENV === "production") {
   seedUploadsFolder();
 }
 
+/**
+ * DB + scheduler + start server
+ */
 (async () => {
   try {
     await mainDb.authenticate();
@@ -167,7 +194,6 @@ if (process.env.NODE_ENV === "production") {
     await mainDb.sync();
     await logsDb.sync();
 
-    // Start the article scheduler here
     startArticleScheduler();
 
     server.listen(PORT, "0.0.0.0", () => {

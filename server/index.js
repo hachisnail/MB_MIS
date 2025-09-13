@@ -15,11 +15,7 @@ import uploadRoutes from "./src/routes/uploadRoutes.js";
 import { initializeSocket } from "./src/configs/socketServer.js";
 import { requireAuth, requireRole } from "./src/middlewares/authMiddlewares.js";
 import { startArticleScheduler } from "./src/services/scheduler.js";
-import {
-  postEvents,
-  getArticleStats,
-  getNextSuggestions,
-} from "./src/controllers/EngagementController.js";
+import { postEvents, getArticleStats, getNextSuggestions } from "./src/controllers/EngagementController.js";
 
 dotenv.config();
 
@@ -27,65 +23,37 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const PUBLIC_UPLOADS = ["pictures", "files"];
-const UPLOAD_BASE_DIR =
-  process.env.UPLOAD_BASE_DIR || path.join(process.cwd(), "..", "uploads");
+const UPLOAD_BASE_DIR = process.env.UPLOAD_BASE_DIR || path.join(process.cwd(), "..", "uploads");
 
-// Engagement routes
 const engagementRoutes = Router();
 engagementRoutes.post("/events", postEvents);
 engagementRoutes.get("/article/:id", getArticleStats);
 engagementRoutes.get("/suggest/next", getNextSuggestions);
 
-// Ensure uploads directory exists
 if (!fs.existsSync(UPLOAD_BASE_DIR)) {
   fs.mkdirSync(UPLOAD_BASE_DIR, { recursive: true });
 }
 
 const app = express();
 
-/**
- * TRUST PROXY — SAFE SETTINGS
- */
-if (process.env.NODE_ENV === "production") {
-  app.set("trust proxy", "loopback, linklocal, uniquelocal");
-} else {
-  app.set("trust proxy", false);
-}
-
-/**
- * 🔧 CORS Setup
- */
-const allowedOrigins =
-  process.env.NODE_ENV === "development"
-    ? [
-        "http://localhost:5173", // local dev frontend
-        "http://mus.museobulawan.online",
-      ]
-    : [process.env.CLIENT_URL]; // production frontend
+  app.set("trust proxy", 1);
 
 app.use(
   cors({
-    origin: allowedOrigins,
+    origin: process.env.CLIENT_URL,
     credentials: true,
   })
 );
-
+// Optional: this duplicates CORS; keep if you want explicit headers
 app.use((req, res, next) => {
-  if (allowedOrigins.includes(req.headers.origin)) {
-    res.header("Access-Control-Allow-Origin", req.headers.origin);
-  }
+  res.header("Access-Control-Allow-Origin", process.env.CLIENT_URL);
   res.header("Access-Control-Allow-Credentials", "true");
-  res.header("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
-  res.header("Access-Control-Allow-Headers", "Content-Type,Authorization");
   next();
 });
 
-/**
- * 🔧 Middleware
- */
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(cookieParser());
+app.use(cookieParser()); 
 
 app.use(
   session({
@@ -94,56 +62,41 @@ app.use(
     resave: false,
     saveUninitialized: false,
     cookie: {
-      maxAge: 24 * 60 * 60 * 1000, // 1 day
+      maxAge: 24 * 60 * 60 * 1000,
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production", // required for SameSite=None
+      secure: process.env.NODE_ENV === "production",
       sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-      domain:
-        process.env.NODE_ENV === "production"
-          ? ".museobulawan.online" // share cookie across subdomains
-          : undefined,
     },
   })
 );
 
-/**
- * Static Uploads
- */
 PUBLIC_UPLOADS.forEach((cat) => {
   app.use(`/uploads/${cat}`, express.static(path.join(UPLOAD_BASE_DIR, cat)));
 });
 
-app.get(
-  /^\/uploads\/private\/(.+)$/,
-  requireAuth,
-  requireRole([1, 2]),
-  (req, res) => {
-    const relativePath = req.params[0];
-    const filePath = path.join(UPLOAD_BASE_DIR, "private", relativePath);
+app.get(/^\/uploads\/private\/(.+)$/, requireAuth, requireRole([1, 2]), (req, res) => {
+  const relativePath = req.params[0];
+  const filePath = path.join(UPLOAD_BASE_DIR, "private", relativePath);
 
-    const normalizedPath = path.normalize(filePath);
-    const baseDir = path.join(UPLOAD_BASE_DIR, "private");
+  const normalizedPath = path.normalize(filePath);
+  const baseDir = path.join(UPLOAD_BASE_DIR, "private");
 
-    if (!normalizedPath.startsWith(baseDir)) {
-      return res.status(403).json({ message: "Access denied" });
-    }
-
-    if (!fs.existsSync(normalizedPath)) {
-      return res.status(404).json({ message: "File not found" });
-    }
-
-    res.sendFile(normalizedPath);
+  if (!normalizedPath.startsWith(baseDir)) {
+    return res.status(403).json({ message: "Access denied" });
   }
-);
 
-/**
- * Routes
- */
+  if (!fs.existsSync(normalizedPath)) {
+    return res.status(404).json({ message: "File not found" });
+  }
+
+  res.sendFile(normalizedPath);
+});
+
 app.use("/api", uploadRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/engagement", engagementRoutes);
 
-// Debugging
+// Debug (optional)
 app.use((req, res, next) => {
   console.log("req.secure:", req.secure);
   console.log("x-forwarded-proto:", req.headers["x-forwarded-proto"]);
@@ -161,16 +114,10 @@ app.get("/", (req, res) => {
   res.json({ status: "ok" });
 });
 
-/**
- * Server + Socket.io
- */
 const server = http.createServer(app);
 const io = initializeSocket(server, process.env.CLIENT_URL);
 const PORT = process.env.PORT;
 
-/**
- * Utilities for seeding uploads
- */
 function copyRecursive(srcDir, destDir) {
   if (!fs.existsSync(destDir)) fs.mkdirSync(destDir, { recursive: true });
   for (const item of fs.readdirSync(srcDir)) {
@@ -207,9 +154,6 @@ if (process.env.NODE_ENV === "production") {
   seedUploadsFolder();
 }
 
-/**
- * Start DB + Scheduler + Server
- */
 (async () => {
   try {
     await mainDb.authenticate();
@@ -218,6 +162,7 @@ if (process.env.NODE_ENV === "production") {
     await mainDb.sync();
     await logsDb.sync();
 
+    // Start the article scheduler here
     startArticleScheduler();
 
     server.listen(PORT, "0.0.0.0", () => {

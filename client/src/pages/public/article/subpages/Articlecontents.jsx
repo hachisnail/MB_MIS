@@ -1,10 +1,11 @@
-import React, { useEffect, useMemo, useState, useCallback, useRef} from "react";
+import React, { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { useParams, useLocation, Link } from "react-router-dom";
 import texture from "@/assets/Texture.png";
 import MSBLogo from "@/assets/MSBLogo.png";
 import seal from "@/assets/seal.png";
 import useEngagement from "../../../../hooks/useEngagement";
 import { setEngagementEndpoint, trackTransition } from "../../../../lib/engagementTracker";
+import { buildShareTargets } from "../components/shareTargets";
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL;
 const SERVER_ORIGIN = BASE_URL.replace(/\/api$/, "");
@@ -22,15 +23,34 @@ const decodeId = (encoded) => {
 };
 const encodeForRoute = (id, title) => btoa(`${id}::${title ?? ""}`);
 
-// --- share helpers ---
-const buildShareTargets = (url, title, text) => ({
-  facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`,
-  x: `https://twitter.com/intent/tweet?url=${encodeURIComponent(url)}&text=${encodeURIComponent(title || text || "")}`,
-  linkedin: `https://www.linkedin.com/shareArticle?mini=true&url=${encodeURIComponent(url)}&title=${encodeURIComponent(title || "")}`,
-  reddit: `https://www.reddit.com/submit?url=${encodeURIComponent(url)}&title=${encodeURIComponent(title || "")}`,
-  telegram: `https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(title || text || "")}`,
-  whatsapp: `https://api.whatsapp.com/send?text=${encodeURIComponent((title ? title + " — " : "") + url)}`,
-});
+// Inject OG/Twitter meta tags into <head> after article loads (CSR-friendly).
+const setShareMetaTags = ({ url, title, description, image }) => {
+  const ensureMeta = (selector, attr, key, content) => {
+    if (!content) return;
+    let el = document.querySelector(`${selector}[${attr}="${key}"]`);
+    if (!el) {
+      el = document.createElement("meta");
+      el.setAttribute(attr, key);
+      document.head.appendChild(el);
+    }
+    el.setAttribute("content", content);
+  };
+
+  // Open Graph
+  ensureMeta("meta", "property", "og:type", "article");
+  ensureMeta("meta", "property", "og:url", url);
+  ensureMeta("meta", "property", "og:title", title);
+  ensureMeta("meta", "property", "og:description", description);
+  ensureMeta("meta", "property", "og:image", image);
+
+  // Twitter
+  ensureMeta("meta", "name", "twitter:card", "summary_large_image");
+  ensureMeta("meta", "name", "twitter:title", title);
+  ensureMeta("meta", "name", "twitter:description", description);
+  ensureMeta("meta", "name", "twitter:image", image);
+  // optional: your handle
+  // ensureMeta("meta", "name", "twitter:site", "@YourHandle");
+};
 
 const ArticleContents = () => {
   const { id } = useParams();
@@ -42,8 +62,7 @@ const ArticleContents = () => {
   const containerRef = useRef(null);
   const { id: articleId, name: articleName } = decodeId(id);
 
-
-// set tracker endpoint once
+  // set tracker endpoint once
   useEffect(() => {
     setEngagementEndpoint(`${SERVER_ORIGIN}/api/engagement`);
   }, []);
@@ -58,7 +77,6 @@ const ArticleContents = () => {
 
   // time + clicks
   useEngagement({ articleId, userId: null, containerRef });
-
 
   // compute canonical share URL
   const shareUrl = useMemo(() => {
@@ -76,7 +94,16 @@ const ArticleContents = () => {
   );
 
   const shareTargets = useMemo(
-    () => buildShareTargets(shareUrl, titleForShare, article?.caption || ""),
+    () =>
+      buildShareTargets(
+        shareUrl,
+        titleForShare,
+        article?.caption || "",
+        {
+          x: { via: "MuseoBulawan", hashtags: ["MuseoBulawan", "CamarinesNorte"] },
+          facebook: { quote: article?.caption || titleForShare },
+        }
+      ),
     [shareUrl, titleForShare, article?.caption]
   );
 
@@ -84,7 +111,7 @@ const ArticleContents = () => {
     try {
       await navigator.clipboard.writeText(shareUrl);
       alert("Link copied to clipboard");
-    } catch (e) {
+    } catch {
       // fallback prompt
       // eslint-disable-next-line no-alert
       prompt("Copy this link:", shareUrl);
@@ -95,7 +122,7 @@ const ArticleContents = () => {
     if (navigator.share) {
       try {
         await navigator.share({ title: titleForShare, text: article?.caption || "", url: shareUrl });
-      } catch (e) {
+      } catch {
         // user cancelled / not supported
       }
     } else {
@@ -114,7 +141,7 @@ const ArticleContents = () => {
         const data = await res.json();
         setArticle(data);
         setError(null);
-      } catch (err) {
+      } catch {
         setArticle(null);
         setError("Unable to load the article.");
       } finally {
@@ -124,117 +151,119 @@ const ArticleContents = () => {
     fetchArticle();
   }, [articleId]);
 
-useEffect(() => {
-  if (!article) return;
+  // inject meta tags for share previews (CSR)
+  useEffect(() => {
+    if (!article) return;
+    const absoluteImage = (article.images || "").startsWith("http")
+      ? article.images
+      : (article.images ? `${UPLOAD_PATH}${article.images}` : `${SERVER_ORIGIN}/default-share.jpg`);
 
-  const pickUnique = (arr) => {
-    const seen = new Set();
-    const out = [];
-    for (const a of arr) {
-      const key = String(a.article_id ?? a.id);
-      if (!key || seen.has(key)) continue;
-      seen.add(key);
-      out.push(a);
-    }
-    return out;
-  };
-
-  // deterministic light shuffle so it isn’t always the same order
-  const shuffleLight = (arr, seed = String(article.article_id || "")) => {
-    let s = 0;
-    for (let i = 0; i < seed.length; i++) s = (s * 31 + seed.charCodeAt(i)) >>> 0;
-    const copy = arr.slice();
-    for (let i = copy.length - 1; i > 0; i--) {
-      s = (s * 1664525 + 1013904223) >>> 0;
-      const j = s % (i + 1);
-      [copy[i], copy[j]] = [copy[j], copy[i]];
-    }
-    return copy;
-  };
-
-  const hydrateByIds = async (ids) => {
-    const tasks = ids.map(async (aid) => {
-      try {
-        const det = await fetch(`${SERVER_ORIGIN}/api/auth/public-article/${aid}`);
-        if (!det.ok) return null;
-        return await det.json();
-      } catch {
-        return null;
-      }
+    setShareMetaTags({
+      url: (typeof window !== "undefined" ? window.location.href : shareUrl) || shareUrl,
+      title: article.title || articleName || "Museo Bulawan News",
+      description: article.caption || "",
+      image: absoluteImage,
     });
-    return (await Promise.all(tasks)).filter(Boolean);
-  };
+  }, [article, articleName, shareUrl]);
 
-  // Build a synthetic Markov-ish score from metadata when we have no transitions yet
-  const syntheticRank = (others, current) => {
-    const now = Date.now();
-    return others
-      .map((a) => {
-        let score = 0;
-        // category and location act like "co-occurrence" edges
-        if (current.article_category && a.article_category === current.article_category) score += 3;
-        if (current.address && a.address && a.address === current.address) score += 2;
+  // Related articles
+  useEffect(() => {
+    if (!article) return;
 
-        // recency weight ~ exp(-age / 30d)
-        const ageDays = (now - new Date(a.upload_date || 0).getTime()) / (1000 * 60 * 60 * 24);
-        const recency = Math.exp(-Math.max(0, ageDays) / 30); // 0..1
-        score += recency; // small smooth boost
-
-        return { a, score };
-      })
-      .sort((x, y) => y.score - x.score)
-      .map((x) => x.a);
-  };
-
-  const fetchRelated = async () => {
-    try {
-      // 1) pool of articles for fallbacks & hydration
-      const allRes = await fetch(`${SERVER_ORIGIN}/api/auth/public-articles`);
-      const allJson = await allRes.json();
-      const all = Array.isArray(allJson) ? allJson : [];
-
-      // exclude current
-      const others = all.filter((x) => String(x.article_id) !== String(article.article_id));
-
-      // 2) engagement-based suggestions
-      let suggestedDetailed = [];
-      try {
-        const sRes = await fetch(
-          `${SERVER_ORIGIN}/api/engagement/suggest/next?fromId=${encodeURIComponent(
-            article.article_id
-          )}&limit=12`
-        );
-        if (sRes.ok) {
-          const sData = await sRes.json();
-          const ids = (sData?.next || []).map((x) => x.to).filter(Boolean);
-          if (ids.length) suggestedDetailed = pickUnique(await hydrateByIds(ids));
-        }
-      } catch {
-        // ignore, we’ll fall back
+    const pickUnique = (arr) => {
+      const seen = new Set();
+      const out = [];
+      for (const a of arr) {
+        const key = String(a.article_id ?? a.id);
+        if (!key || seen.has(key)) continue;
+        seen.add(key);
+        out.push(a);
       }
+      return out;
+    };
 
-      // 3) synthetic Markov fallback (and/or filler)
-      const synthetic = syntheticRank(others, article);
+    const shuffleLight = (arr, seed = String(article.article_id || "")) => {
+      let s = 0;
+      for (let i = 0; i < seed.length; i++) s = (s * 31 + seed.charCodeAt(i)) >>> 0;
+      const copy = arr.slice();
+      for (let i = copy.length - 1; i > 0; i--) {
+        s = (s * 1664525 + 1013904223) >>> 0;
+        const j = s % (i + 1);
+        [copy[i], copy[j]] = [copy[j], copy[i]];
+      }
+      return copy;
+    };
 
-      // 4) build final set: prefer suggestions, then fill from synthetic, then any recent leftovers
-      const merged = pickUnique([
-        ...suggestedDetailed,
-        ...synthetic,
-        ...others
-          .slice()
-          .sort((a, b) => new Date(b.upload_date || 0) - new Date(a.upload_date || 0)),
-      ]);
+    const hydrateByIds = async (ids) => {
+      const tasks = ids.map(async (aid) => {
+        try {
+          const det = await fetch(`${SERVER_ORIGIN}/api/auth/public-article/${aid}`);
+          if (!det.ok) return null;
+          return await det.json();
+        } catch {
+          return null;
+        }
+      });
+      return (await Promise.all(tasks)).filter(Boolean);
+    };
 
-      const chosen = shuffleLight(merged).slice(0, 4);
-      setRelated(chosen);
-    } catch {
-      setRelated([]);
-    }
-  };
+    const syntheticRank = (others, current) => {
+      const now = Date.now();
+      return others
+        .map((a) => {
+          let score = 0;
+          if (current.article_category && a.article_category === current.article_category) score += 3;
+          if (current.address && a.address && a.address === current.address) score += 2;
+          const ageDays = (now - new Date(a.upload_date || 0).getTime()) / (1000 * 60 * 60 * 24);
+          const recency = Math.exp(-Math.max(0, ageDays) / 30);
+          score += recency;
+          return { a, score };
+        })
+        .sort((x, y) => y.score - x.score)
+        .map((x) => x.a);
+    };
 
-  fetchRelated();
-}, [article, SERVER_ORIGIN]);
+    const fetchRelated = async () => {
+      try {
+        const allRes = await fetch(`${SERVER_ORIGIN}/api/auth/public-articles`);
+        const allJson = await allRes.json();
+        const all = Array.isArray(allJson) ? allJson : [];
 
+        const others = all.filter((x) => String(x.article_id) !== String(article.article_id));
+
+        let suggestedDetailed = [];
+        try {
+          const sRes = await fetch(
+            `${SERVER_ORIGIN}/api/engagement/suggest/next?fromId=${encodeURIComponent(
+              article.article_id
+            )}&limit=12`
+          );
+          if (sRes.ok) {
+            const sData = await sRes.json();
+            const ids = (sData?.next || []).map((x) => x.to).filter(Boolean);
+            if (ids.length) suggestedDetailed = pickUnique(await hydrateByIds(ids));
+          }
+        } catch {
+          // ignore
+        }
+
+        const synthetic = syntheticRank(others, article);
+
+        const merged = pickUnique([
+          ...suggestedDetailed,
+          ...synthetic,
+          ...others.slice().sort((a, b) => new Date(b.upload_date || 0) - new Date(a.upload_date || 0)),
+        ]);
+
+        const chosen = shuffleLight(merged).slice(0, 4);
+        setRelated(chosen);
+      } catch {
+        setRelated([]);
+      }
+    };
+
+    fetchRelated();
+  }, [article]);
 
   if (loading) {
     return (
@@ -250,120 +279,150 @@ useEffect(() => {
 
   return (
     <div
-    ref={containerRef}
+      ref={containerRef}
       className="flex flex-col gap-y-4 h-auto w-screen pt-7"
       style={{ backgroundImage: `url(${texture})` }}
     >
-{/* Header band (bumped font sizes) */}
-<div className="flex w-full justify-center pt-36 mb-16 font-hina">
-  <div className="w-[120rem] min-w-[30rem] max-w-[120rem]">
-    {/* Outer top border */}
-    <div className="border-t-[3px] border-black" />
+      {/* Header band */}
+      <div className="flex w-full justify-center pt-36 mb-16 font-hina">
+        <div className="w-[120rem] min-w-[30rem] max-w-[120rem]">
+          <div className="border-t-[3px] border-black" />
+          <div className="grid grid-cols-[22.5%_55%_22.5%] items-stretch text-center">
+            {/* Left */}
+            <div className="flex flex-col items-end justify-center px-4 py-3 gap-3">
+              <div className="flex gap-2 mr-2">
+                <img src={MSBLogo} alt="MSB Logo" className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 lg:w-14 lg:h-14" />
+                <img src={seal} alt="Seal" className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 lg:w-14 lg:h-14" />
+              </div>
+              <div className="text-[11px] sm:text-sm md:text-base lg:text-lg leading-snug tracking-wide items-end text-right">
+                <div className="font-semibold">The Provincial Government of</div>
+                <div className="font-semibold">Camarines Norte</div>
+                <div>Museum, Archives and Shrine</div>
+                <div>Curation Division</div>
+              </div>
+            </div>
 
-    {/* 3-column band */}
-    <div className="grid grid-cols-[22.5%_55%_22.5%] items-stretch text-center">
+            {/* Middle */}
+            <div className="px-4 sm:px-6 py-4 border-x-[3px] border-black">
+              <div className="border-t-[2px] border-black mb-3" />
+              <div className="font-semibold text-lg sm:text-2xl md:text-3xl lg:text-4xl leading-tight">
+                Museo{" "}
+                <span
+                  className="font-bold"
+                  style={{ color: "#F8BB1F", textShadow: "0 0 1px #bfa100" }}
+                >
+                  B
+                </span>
+                ulawan News
+              </div>
+              <div className="mt-2 font-bold leading-none tracking-tight text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl">
+                <span className="break-words">{articleName || article.title}</span>
+              </div>
+              <div className="mt-3 text-base sm:text-lg md:text-xl lg:text-2xl">
+                {article.author || "N/A"}
+              </div>
+              <div className="border-b-[2px] border-black mt-3" />
+            </div>
 
-      {/* Left column */}
-      <div className="flex flex-col items-end justify-center px-4 py-3 gap-3">
-        <div className="flex gap-2 mr-2">
-          <img src={MSBLogo} alt="MSB Logo" className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 lg:w-14 lg:h-14" />
-          <img src={seal} alt="Seal" className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 lg:w-14 lg:h-14" />
-        </div>
-        <div className="text-[11px] sm:text-sm md:text-base lg:text-lg leading-snug tracking-wide items-end text-right">
-          <div className="font-semibold">The Provincial Government of</div>
-          <div className="font-semibold">Camarines Norte</div>
-          <div>Museum, Archives and Shrine</div>
-          <div>Curation Division</div>
-        </div>
-      </div>
-
-      {/* Middle column */}
-      <div className="px-4 sm:px-6 py-4 border-x-[3px] border-black">
-        {/* line above the main title */}
-        <div className="border-t-[2px] border-black mb-3" />
-
-        {/* masthead */}
-        <div className="font-semibold text-lg sm:text-2xl md:text-3xl lg:text-4xl leading-tight">
-          Museo{" "}
-          <span
-            className="font-bold"
-            style={{ color: "#F8BB1F", textShadow: "0 0 1px #bfa100" }}
-          >
-            B
-          </span>
-          ulawan News
-        </div>
-
-        {/* main title */}
-        <div className="mt-2 font-bold leading-none tracking-tight
-                        text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl">
-          <span className="break-words">{articleName || article.title}</span>
-        </div>
-
-        {/* author */}
-        <div className="mt-3 text-base sm:text-lg md:text-xl lg:text-2xl">
-          {article.author || "N/A"}
-        </div>
-
-        {/* line below the main title */}
-        <div className="border-b-[2px] border-black mt-3" />
-      </div>
-
-      {/* Right column */}
-      <div className="flex flex-col items-start justify-center px-4 py-3 gap-1 text-left">
-        <div className="font-semibold italic text-lg sm:text-xl md:text-2xl lg:text-3xl">
-          {article.upload_date
-            ? new Date(article.upload_date).toLocaleDateString("en-US", { weekday: "long" })
-            : "—"}
-        </div>
-        <div className="text-sm sm:text-base md:text-lg lg:text-xl">
-          {article.upload_date
-            ? new Date(article.upload_date).toLocaleDateString("en-US", {
-                day: "2-digit", month: "long", year: "numeric",
-              })
-            : "—"}
-        </div>
-        <div className="underline text-sm sm:text-base md:text-lg lg:text-xl">
-          {`Vol.${article?.volume ?? "—"}, ${
-            (article?.content_type || "").toLowerCase() === "article"
-              ? `No.${article?.sequence_number ?? "—"}`
-              : `No.${article?.sequence_number ?? "—"}`
-          }`}
+            {/* Right */}
+            <div className="flex flex-col items-start justify-center px-4 py-3 gap-1 text-left">
+              <div className="font-semibold italic text-lg sm:text-xl md:text-2xl lg:text-3xl">
+                {article.upload_date
+                  ? new Date(article.upload_date).toLocaleDateString("en-US", { weekday: "long" })
+                  : "—"}
+              </div>
+              <div className="text-sm sm:text-base md:text-lg lg:text-xl">
+                {article.upload_date
+                  ? new Date(article.upload_date).toLocaleDateString("en-US", {
+                      day: "2-digit", month: "long", year: "numeric",
+                    })
+                  : "—"}
+              </div>
+              <div className="underline text-sm sm:text-base md:text-lg lg:text-xl">
+                {`Vol.${article?.volume ?? "—"}, ${
+                  (article?.content_type || "").toLowerCase() === "article"
+                    ? `No.${article?.sequence_number ?? "—"}`
+                    : `No.${article?.sequence_number ?? "—"}`
+                }`}
+              </div>
+            </div>
+          </div>
+          <div className="border-b-[3px] border-black" />
         </div>
       </div>
-    </div>
-
-    {/* Outer bottom border */}
-    <div className="border-b-[3px] border-black" />
-  </div>
-</div>
-
-
-
-
 
 
       {/* Body */}
       <div className="w-screen h-auto min-h-[79rem] mx-auto font-hina">
-        <div className="max-w-[140rem] 3xl:max-w-[120rem] mx-auto text-[3rem]">
-{article.images ? (
-  <div className="flex justify-center p-[2rem]">
-    <div className="w-[48rem] max-w-[90vw] h-[28rem] border border-gray-200 rounded overflow-hidden  flex items-center justify-center">
-      <img
-        src={article.images.startsWith("http") ? article.images : `${UPLOAD_PATH}${article.images}`}
-        alt="Article Thumbnail"
-        className="w-full h-full object-contain"
-        width={768}
-        height={448}
-        loading="eager"
-      />
-    </div>
-  </div>
-) : null}
+        <div
+          className="
+            max-w-[140rem] 3xl:max-w-[120rem] mx-auto text-[3rem]
+
+            /* 🔽 Big YouTube embeds ONLY on the public article page */
+            [&_.youtube-video]:w-full
+            [&_.youtube-video]:mx-auto
+            [&_.youtube-video]:!max-w-[42rem]    /* ~672px base */
+            sm:[&_.youtube-video]:!max-w-[48rem] /* ~768px */
+            md:[&_.youtube-video]:!max-w-[56rem] /* ~896px */
+            lg:[&_.youtube-video]:!max-w-[64rem] /* ~1024px */
+            xl:[&_.youtube-video]:!max-w-[72rem] /* ~1152px */
+            2xl:[&_.youtube-video]:!max-w-[80rem]/* ~1280px */
+
+            [&_iframe[src*='youtube']]:w-full
+            [&_iframe[src*='youtube']]:h-auto
+            [&_iframe[src*='youtube']]:aspect-video
+            [&_iframe[src*='youtube']]:mx-auto
+            [&_iframe[src*='youtube']]:!max-w-[42rem]
+            sm:[&_iframe[src*='youtube']]:!max-w-[48rem]
+            md:[&_iframe[src*='youtube']]:!max-w-[56rem]
+            lg:[&_iframe[src*='youtube']]:!max-w-[64rem]
+            xl:[&_iframe[src*='youtube']]:!max-w-[72rem]
+            2xl:[&_iframe[src*='youtube']]:!max-w-[80rem]
+
+            [&_iframe[src*='youtu.be']]:w-full
+            [&_iframe[src*='youtu.be']]:h-auto
+            [&_iframe[src*='youtu.be']]:aspect-video
+            [&_iframe[src*='youtu.be']]:mx-auto
+            [&_iframe[src*='youtu.be']]:!max-w-[42rem]
+            sm:[&_iframe[src*='youtu.be']]:!max-w-[48rem]
+            md:[&_iframe[src*='youtu.be']]:!max-w-[56rem]
+            lg:[&_iframe[src*='youtu.be']]:!max-w-[64rem]
+            xl:[&_iframe[src*='youtu.be']]:!max-w-[72rem]
+            2xl:[&_iframe[src*='youtu.be']]:!max-w-[80rem]
+
+            [&_iframe[src*='youtube-nocookie']]:w-full
+            [&_iframe[src*='youtube-nocookie']]:h-auto
+            [&_iframe[src*='youtube-nocookie']]:aspect-video
+            [&_iframe[src*='youtube-nocookie']]:mx-auto
+            [&_iframe[src*='youtube-nocookie']]:!max-w-[42rem]
+            sm:[&_iframe[src*='youtube-nocookie']]:!max-w-[48rem]
+            md:[&_iframe[src*='youtube-nocookie']]:!max-w-[56rem]
+            lg:[&_iframe[src*='youtube-nocookie']]:!max-w-[64rem]
+            xl:[&_iframe[src*='youtube-nocookie']]:!max-w-[72rem]
+            2xl:[&_iframe[src*='youtube-nocookie']]:!max-w-[80rem]
+          "
+        >
+          {article.images ? (
+            <div className="flex justify-center p-[2rem]">
+              <div className="w-[48rem] max-w-[90vw] h-[28rem] border border-gray-200 rounded overflow-hidden flex items-center justify-center">
+                <img
+                  src={article.images.startsWith("http") ? article.images : `${UPLOAD_PATH}${article.images}`}
+                  alt="Article Thumbnail"
+                  className="w-full h-full object-contain"
+                  width={768}
+                  height={448}
+                  loading="eager"
+                />
+              </div>
+            </div>
+          ) : null}
 
           <div className="p-10 prose max-w-none relative break-words">
             {article.description ? (
-              <div className="editor-content-preview" dangerouslySetInnerHTML={{ __html: article.description }} />
+              <div
+                className="editor-content-preview"
+                dangerouslySetInnerHTML={{ __html: article.description }}
+              />
             ) : (
               <p className="text-gray-400 italic text-xl">No article content available.</p>
             )}
@@ -371,17 +430,38 @@ useEffect(() => {
         </div>
       </div>
 
+
       {/* Share Row */}
       <div className="w-full flex justify-center mb-6">
         <div className="flex items-center gap-3 flex-wrap px-4">
-          <button data-track-click onClick={handleNativeShare} className="px-4 py-2 rounded-2xl bg-black text-white hover:opacity-90">Share</button>
-          <a target="_blank" rel="noreferrer" href={shareTargets.facebook} className="px-4 py-2 rounded-2xl border hover:bg-gray-50">Facebook</a>
-          <a target="_blank" rel="noreferrer" href={shareTargets.x} className="px-4 py-2 rounded-2xl border hover:bg-gray-50">X</a>
-          <a target="_blank" rel="noreferrer" href={shareTargets.linkedin} className="px-4 py-2 rounded-2xl border hover:bg-gray-50">LinkedIn</a>
-          <a target="_blank" rel="noreferrer" href={shareTargets.reddit} className="px-4 py-2 rounded-2xl border hover:bg-gray-50">Reddit</a>
-          <a target="_blank" rel="noreferrer" href={shareTargets.telegram} className="px-4 py-2 rounded-2xl border hover:bg-gray-50">Telegram</a>
-          <a target="_blank" rel="noreferrer" href={shareTargets.whatsapp} className="px-4 py-2 rounded-2xl border hover:bg-gray-50">WhatsApp</a>
-          <button onClick={handleCopy} className="px-4 py-2 rounded-2xl border hover:bg-gray-50">Copy Link</button>
+          <button data-track-click onClick={handleNativeShare} className="px-4 py-2 rounded-2xl bg-black text-white hover:opacity-90">
+            Share
+          </button>
+
+          <a target="_blank" rel="noreferrer" href={shareTargets.facebook} className="px-4 py-2 rounded-2xl border hover:bg-gray-50">
+            Facebook
+          </a>
+          <a target="_blank" rel="noreferrer" href={shareTargets.x} className="px-4 py-2 rounded-2xl border hover:bg-gray-50">
+            X
+          </a>
+          <a target="_blank" rel="noreferrer" href={shareTargets.linkedin} className="px-4 py-2 rounded-2xl border hover:bg-gray-50">
+            LinkedIn
+          </a>
+          <a target="_blank" rel="noreferrer" href={shareTargets.reddit} className="px-4 py-2 rounded-2xl border hover:bg-gray-50">
+            Reddit
+          </a>
+          <a target="_blank" rel="noreferrer" href={shareTargets.telegram} className="px-4 py-2 rounded-2xl border hover:bg-gray-50">
+            Telegram
+          </a>
+          <a target="_blank" rel="noreferrer" href={shareTargets.whatsapp} className="px-4 py-2 rounded-2xl border hover:bg-gray-50">
+            WhatsApp
+          </a>
+          <button onClick={handleCopy} className="px-4 py-2 rounded-2xl border hover:bg-gray-50">
+            Copy Link
+          </button>
+          <a target="_blank" rel="noreferrer" href={shareTargets.email} className="px-4 py-2 rounded-2xl border hover:bg-gray-50">
+            Email
+          </a>
         </div>
       </div>
 
@@ -422,7 +502,6 @@ useEffect(() => {
           )}
         </div>
       </div>
-      
     </div>
   );
 };

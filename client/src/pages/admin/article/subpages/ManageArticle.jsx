@@ -202,7 +202,7 @@ const ArticleEditorForm = () => {
     const formData = new FormData();
     formData.append("title", title);
     formData.append("article_category", category);
-    formData.append("content_type", contentType); // required
+    if (contentType) formData.append("content_type", contentType); // required
     formData.append("description", editorHTML || "");
     formData.append("user_id", String(user.id));
     formData.append("author", author);
@@ -642,13 +642,15 @@ const ArticleEditorForm = () => {
     uploadPeriodEnd,
   ]);
 
-  const onHeaderBlurCapture = (e) => {
-    const next = e.relatedTarget;
-    const stillInside = next && headerRef.current?.contains(next);
-    if (!stillInside && headerComplete) {
-      setHeaderHidden(true);
-    }
-  };
+    const onHeaderBlurCapture = (e) => {
+      // Only auto-hide when header is complete AND focus moves to a real element
+      if (!headerComplete) return;
+      const next = e.relatedTarget;
+      if (!next) return; // file picker or focus lost → don't collapse
+      const stillInside = headerRef.current?.contains(next);
+      if (!stillInside) setHeaderHidden(true);
+    };
+
   // -----------------------------------------------
 
   return (
@@ -814,15 +816,13 @@ const ArticleEditorForm = () => {
 
                   {/* Thumbnail */}
                   <div className="p-4">
-                    <ArticleThumbnailInput
-                      inputRef={thumbnailInputRef}
-                      previewImage={
-                        typeof previewImage === "string" ? previewImage : (previewImage?.name || null)
-                      }
-                      removeThumbnail={removeThumbnail}
-                      onChange={handleCustomThumbnailChange}
-                      onRemove={handleRemoveThumbnail}
-                    />
+ <ArticleThumbnailInput
+   inputRef={thumbnailInputRef}
+   previewUrl={typeof previewImage === "string" ? previewImage : null}
+   removeThumbnail={removeThumbnail}
+   onChange={handleCustomThumbnailChange}
+   onRemove={handleRemoveThumbnail}
+ />
                   </div>
                 </div>
               )}

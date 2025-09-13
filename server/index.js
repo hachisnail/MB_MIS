@@ -1,4 +1,4 @@
-import express from "express";
+import express, { Router } from "express";
 import session from "express-session";
 import dotenv from "dotenv";
 import cors from "cors";
@@ -6,68 +6,81 @@ import http from "http";
 import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs";
+import cookieParser from "cookie-parser";
 
-import { mainDb } from "./src/models/authModels.js";
+import { mainDb, logsDb } from "./src/models/authModels.js";
 import sessionStore from "./src/configs/sessionStore.js";
 import authRoutes from "./src/routes/auth.js";
 import uploadRoutes from "./src/routes/uploadRoutes.js";
 import { initializeSocket } from "./src/configs/socketServer.js";
-import { requireAuth,requireRole } from "./src/middlewares/authMiddlewares.js";
+import { requireAuth, requireRole } from "./src/middlewares/authMiddlewares.js";
+import { startArticleScheduler } from "./src/services/scheduler.js";
+import { postEvents, getArticleStats, getNextSuggestions } from "./src/controllers/EngagementController.js";
 
 dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-// const UPLOAD_BASE_DIR = 
 
 const PUBLIC_UPLOADS = ["pictures", "files"];
 const UPLOAD_BASE_DIR = process.env.UPLOAD_BASE_DIR || path.join(process.cwd(), "..", "uploads");
 
-// const UPLOAD_BASE_DIR = "/uploads";
-
+const engagementRoutes = Router();
+engagementRoutes.post("/events", postEvents);
+engagementRoutes.get("/article/:id", getArticleStats);
+engagementRoutes.get("/suggest/next", getNextSuggestions);
 
 if (!fs.existsSync(UPLOAD_BASE_DIR)) {
   fs.mkdirSync(UPLOAD_BASE_DIR, { recursive: true });
 }
 
 const app = express();
-app.set('trust proxy', true);
-app.use(cors({
-  origin: process.env.CLIENT_URL,  
-  credentials: true,              
-}));
+
+
+// TRUST PROXY (Coolify/Traefik-safe)
+// 1 = Traefik only; 2 = Cloudflare → Traefik
+const PROXY_HOPS = Number(process.env.TRUST_PROXY_HOPS || 1);
+app.set("trust proxy", process.env.NODE_ENV === "production" ? PROXY_HOPS : false);
+
+app.use(
+  cors({
+    origin: process.env.CLIENT_URL,
+    credentials: true,
+  })
+);
+// Optional: this duplicates CORS; keep if you want explicit headers
 app.use((req, res, next) => {
   res.header("Access-Control-Allow-Origin", process.env.CLIENT_URL);
   res.header("Access-Control-Allow-Credentials", "true");
   next();
 });
 
-
-
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser()); 
 
-app.use(session({
-  secret: process.env.SESSION_SECRET,
-  store: sessionStore,
-  resave: false,
-  saveUninitialized: false,
-  cookie: {
-    maxAge: 24 * 60 * 60 * 1000,
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production", 
-    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax", 
-  },
-}));
-
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET,
+    store: sessionStore,
+    resave: false,
+    saveUninitialized: false,
+     proxy: true, // honor X-Forwarded-Proto for Secure cookies behind Traefik/CF
+    cookie: {
+      maxAge: 24 * 60 * 60 * 1000,
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+    },
+  })
+);
 
 PUBLIC_UPLOADS.forEach((cat) => {
   app.use(`/uploads/${cat}`, express.static(path.join(UPLOAD_BASE_DIR, cat)));
 });
 
-
 app.get(/^\/uploads\/private\/(.+)$/, requireAuth, requireRole([1, 2]), (req, res) => {
-  const relativePath = req.params[0]; 
+  const relativePath = req.params[0];
   const filePath = path.join(UPLOAD_BASE_DIR, "private", relativePath);
 
   const normalizedPath = path.normalize(filePath);
@@ -86,10 +99,12 @@ app.get(/^\/uploads\/private\/(.+)$/, requireAuth, requireRole([1, 2]), (req, re
 
 app.use("/api", uploadRoutes);
 app.use("/api/auth", authRoutes);
+app.use("/api/engagement", engagementRoutes);
 
+// Debug (optional)
 app.use((req, res, next) => {
   console.log("req.secure:", req.secure);
-  console.log("x-forwarded-proto:", req.headers['x-forwarded-proto']);
+  console.log("x-forwarded-proto:", req.headers["x-forwarded-proto"]);
   next();
 });
 
@@ -100,7 +115,7 @@ app.use((req, res, next) => {
   next();
 });
 
-app.get('/', (req, res) => {
+app.get("/", (req, res) => {
   res.json({ status: "ok" });
 });
 
@@ -110,12 +125,10 @@ const PORT = process.env.PORT;
 
 function copyRecursive(srcDir, destDir) {
   if (!fs.existsSync(destDir)) fs.mkdirSync(destDir, { recursive: true });
-
   for (const item of fs.readdirSync(srcDir)) {
     const srcPath = path.join(srcDir, item);
     const destPath = path.join(destDir, item);
     const stat = fs.lstatSync(srcPath);
-
     if (stat.isDirectory()) {
       copyRecursive(srcPath, destPath);
     } else if (stat.isFile()) {
@@ -125,40 +138,43 @@ function copyRecursive(srcDir, destDir) {
 }
 
 function seedUploadsFolder() {
-  const seedDir = path.join(__dirname, '..', 'uploads');
-  const seedFlag = path.join(UPLOAD_BASE_DIR, '.seeded');
+  const seedDir = path.join(__dirname, "..", "uploads");
+  const seedFlag = path.join(UPLOAD_BASE_DIR, ".seeded");
 
   if (fs.existsSync(seedFlag)) {
-    console.log('Uploads already seeded.');
+    console.log("Uploads already seeded.");
     return;
   }
-
   if (!fs.existsSync(seedDir)) {
-    console.warn('Seed source folder does not exist:', seedDir);
+    console.warn("Seed source folder does not exist:", seedDir);
     return;
   }
-
-  console.log('Seeding uploads volume from Git-tracked /uploads...');
+  console.log("Seeding uploads volume from Git-tracked /uploads...");
   copyRecursive(seedDir, UPLOAD_BASE_DIR);
-  fs.writeFileSync(seedFlag, 'seeded');
-  console.log('Seeding complete.');
+  fs.writeFileSync(seedFlag, "seeded");
+  console.log("Seeding complete.");
 }
 
-if (process.env.NODE_ENV === 'production') {
+if (process.env.NODE_ENV === "production") {
   seedUploadsFolder();
 }
 
 (async () => {
   try {
     await mainDb.authenticate();
+    await logsDb.authenticate();
     await sessionStore.sync();
     await mainDb.sync();
+    await logsDb.sync();
 
+    // Start the article scheduler here
+    startArticleScheduler();
 
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(`API Server running on port ${PORT}`);
-});
-
+    server.listen(PORT, "0.0.0.0", () => {
+      console.log(`API Server running on port ${PORT}`);
+      console.log(`Trust proxy: ${app.get("trust proxy")}`);
+      console.log(`NODE_ENV: ${process.env.NODE_ENV}`);
+    });
   } catch (err) {
     console.error("Unable to connect to DB:", err);
   }

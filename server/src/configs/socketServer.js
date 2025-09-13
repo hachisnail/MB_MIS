@@ -6,15 +6,35 @@ import sessionStore from "./sessionStore.js";
 
 let io;
 
-export function initializeSocket(server, corsOrigin) {
+export function initializeSocket(server, corsOrigins) {
+  const ALLOWED_ORIGINS = Array.isArray(corsOrigins)
+    ? corsOrigins
+    : String(corsOrigins || "")
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+
   io = new SocketIOServer(server, {
-    cors: { origin: corsOrigin, credentials: true },
+    path: "/socket.io",
+    transports: ["websocket", "polling"], // websocket preferred; polling still allowed
+    cors: {
+      origin: (origin, cb) => {
+        if (!origin) return cb(null, true); // same-origin / server-to-server
+        cb(null, ALLOWED_ORIGINS.includes(origin));
+      },
+      credentials: true,
+      methods: ["GET", "POST", "OPTIONS"],
+      allowedHeaders: ["x-browser-id", "authorization", "content-type"],
+    },
+    allowEIO3: false,
     connectionStateRecovery: { maxDisconnectionDuration: 60_000 },
   });
 
   io.engine.on("connection_error", (err) => {
     console.warn("[engine.io connection_error]", {
-      code: err.code, message: err.message, context: err.context,
+      code: err.code,
+      message: err.message,
+      context: err.context,
     });
   });
 
@@ -45,7 +65,10 @@ export function initializeSocket(server, corsOrigin) {
       }
 
       if (sessionId.startsWith("s:")) {
-        sessionId = signature.unsign(sessionId.slice(2), process.env.SESSION_SECRET);
+        sessionId = signature.unsign(
+          sessionId.slice(2),
+          process.env.SESSION_SECRET
+        );
       }
       if (!sessionId) {
         socket.userId = "guest";
@@ -83,14 +106,14 @@ export function initializeSocket(server, corsOrigin) {
     }
   });
 
-  // ===== Helpers =====
+  // ===== Helpers / presence / locks (unchanged from your version) =====
   function collectSocketStats() {
     const list = [];
     for (const [id, s] of io.sockets.sockets) {
       const isGuest = s.userId === "guest" || !s.user?.id;
       list.push({
         socketId: id,
-        userId: isGuest ? null : (s.user?.id ?? s.userId ?? null),
+        userId: isGuest ? null : s.user?.id ?? s.userId ?? null,
         isGuest,
         rooms: [...s.rooms],
         browserId: s.browserId ?? null,
@@ -101,7 +124,9 @@ export function initializeSocket(server, corsOrigin) {
   }
 
   function collectSocketCounts() {
-    let total = 0, guests = 0, users = 0;
+    let total = 0,
+      guests = 0,
+      users = 0;
     const browsers = new Set();
     for (const [, s] of io.sockets.sockets) {
       total++;
@@ -114,23 +139,15 @@ export function initializeSocket(server, corsOrigin) {
 
   const emitSocketStatsToAdmins = () =>
     io.to("adminRoom").emit("socketStats", collectSocketStats());
-  const broadcastCounts = () =>
-    io.emit("socketCounts", collectSocketCounts());
-
-  // ===== Presence store (per-socket, per-tab, aggregated by page) =====
-  // 1) socket.presenceTabs: Map<tabId, { page, title, meta, at }>
-  // 2) presenceIndex: Map<page, { count, viewers: Map<viewerKey, ViewerInfo>, sampleTitles:Set<string> }>
-  //
-  // viewerKey = `${uid}|${bid}|${tid}`
-  // ViewerInfo = {
-  //   userId: string|null, isGuest: boolean, browserId: string|null, tabId: string|null,
-  //   at: number, title?: string|null, meta?: any
-  // }
+  const broadcastCounts = () => io.emit("socketCounts", collectSocketCounts());
 
   const presenceIndex = new Map();
 
   function indexKeyForViewer(socket, tabId) {
-    const uid = socket.userId && socket.userId !== "guest" ? String(socket.userId) : "guest";
+    const uid =
+      socket.userId && socket.userId !== "guest"
+        ? String(socket.userId)
+        : "guest";
     const bid = socket.browserId || "noBrowser";
     const tid = tabId || socket.tabId || "noTab";
     return `${uid}|${bid}|${tid}`;
@@ -139,7 +156,7 @@ export function initializeSocket(server, corsOrigin) {
   function viewerInfo(socket, tabId, { at, title, meta } = {}) {
     const isGuest = socket.userId === "guest" || !socket.user?.id;
     return {
-      userId: isGuest ? null : (socket.user?.id ?? socket.userId ?? null),
+      userId: isGuest ? null : socket.user?.id ?? socket.userId ?? null,
       isGuest,
       browserId: socket.browserId ?? null,
       tabId: tabId || socket.tabId || null,
@@ -149,12 +166,14 @@ export function initializeSocket(server, corsOrigin) {
     };
   }
 
-  function addPresence(socket, { page, title = null, meta = null, tabId = null, at = Date.now() }) {
+  function addPresence(
+    socket,
+    { page, title = null, meta = null, tabId = null, at = Date.now() }
+  ) {
     if (!page) return;
     if (!socket.presenceTabs) socket.presenceTabs = new Map();
     const tid = tabId || socket.tabId || "noTab";
 
-    // remove previous page index for this tab
     const prev = socket.presenceTabs.get(tid);
     if (prev?.page && presenceIndex.has(prev.page)) {
       const entry = presenceIndex.get(prev.page);
@@ -164,7 +183,6 @@ export function initializeSocket(server, corsOrigin) {
       if (entry.viewers.size === 0) presenceIndex.delete(prev.page);
     }
 
-    // add/update current page
     socket.presenceTabs.set(tid, { page, title, meta, at });
 
     let entry = presenceIndex.get(page);
@@ -211,7 +229,6 @@ export function initializeSocket(server, corsOrigin) {
     socket.presenceTabs.clear();
   }
 
-  // High-level counts (for everyone)
   function aggregatedPresenceCounts() {
     const rows = [];
     for (const [page, entry] of presenceIndex) {
@@ -227,34 +244,8 @@ export function initializeSocket(server, corsOrigin) {
 
   const broadcastPresenceCounts = () => {
     io.emit("presenceCounts", aggregatedPresenceCounts());
-    // OPTIONAL: stream identities to admins live (uncomment if you want)
-    // io.to("adminRoom").emit("presenceSnapshot", presenceSnapshotForAdmins());
   };
 
-  // Detailed snapshot (admins only): include viewer identities
-  function presenceSnapshotForAdmins() {
-    const rows = [];
-    for (const [page, entry] of presenceIndex) {
-      rows.push({
-        page,
-        count: entry.count,
-        titles: Array.from(entry.sampleTitles),
-        viewers: Array.from(entry.viewers.values()).map(v => ({
-          userId: v.userId,
-          isGuest: v.isGuest,
-          browserId: v.browserId,
-          tabId: v.tabId,
-          at: v.at,
-          title: v.title ?? null,
-          meta: v.meta ?? null,
-        })),
-      });
-    }
-    rows.sort((a, b) => b.count - a.count);
-    return { at: Date.now(), rows };
-  }
-
-  // ===== Browser lock =====
   const browserLocks = new Map(); // browserId -> { socketId, lastSeen }
   const STALE_MS = 30_000;
 
@@ -284,13 +275,13 @@ export function initializeSocket(server, corsOrigin) {
 
     const stale = now - entry.lastSeen > STALE_MS || holder.disconnected;
     if (stale) {
-      console.log(`[BrowserLock] Preempting STALE old=${entry.socketId} with new=${socket.id} for browser=${key}`);
-      try { holder.disconnect(true); } catch {}
+      try {
+        holder.disconnect(true);
+      } catch {}
       browserLocks.set(key, { socketId: socket.id, lastSeen: now });
       return true;
     }
 
-    console.log(`[BrowserLock] Rejecting NEW (healthy holder) for browser=${key} (existing=${entry.socketId}, new=${socket.id}, userId=${socket.userId}, tabId=${socket.tabId})`);
     socket.disconnect(true);
     return false;
   }
@@ -302,7 +293,6 @@ export function initializeSocket(server, corsOrigin) {
     if (entry?.socketId === socket.id) browserLocks.delete(key);
   }
 
-  // ===== Downgrade a socket to guest (used by forceLogoutUser) =====
   function markAsGuest(s, { reason = "Logged out", silent = false } = {}) {
     try {
       if (s.userId && s.userId !== "guest") {
@@ -313,17 +303,19 @@ export function initializeSocket(server, corsOrigin) {
       s.user = null;
       s.session = null;
 
-      // clear presence for this socket
       removeAllPresenceForSocket(s);
       if (!silent) s.emit("forceLogout", { reason });
     } catch {}
   }
 
-  // ===== Force logout utility (exported) =====
-  function _forceLogoutUser(userId, { exceptBrowserId = null, reason = "Logged out from another session" } = {}) {
+  function _forceLogoutUser(
+    userId,
+    { exceptBrowserId = null, reason = "Logged out from another session" } = {}
+  ) {
     if (!userId) return;
     for (const [, s] of io.sockets.sockets) {
-      const isSameUser = s.userId && s.userId !== "guest" && String(s.userId) === String(userId);
+      const isSameUser =
+        s.userId && s.userId !== "guest" && String(s.userId) === String(userId);
       const isExcepted = exceptBrowserId && s.browserId === exceptBrowserId;
       if (isSameUser && !isExcepted) {
         markAsGuest(s, { reason });
@@ -334,15 +326,11 @@ export function initializeSocket(server, corsOrigin) {
     broadcastPresenceCounts();
   }
 
-  // expose for HTTP routes
   io.forceLogoutUser = _forceLogoutUser;
 
-  // ===== Main connection handler =====
   io.on("connection", (socket) => {
     if (!acquireBrowserLock(socket)) return;
     markSeen(socket);
-
-    console.log(`Socket connected: ${socket.id} | userId=${socket.userId} | browserId=${socket.browserId} | tabId=${socket.tabId}`);
 
     const isAdmin =
       socket.user?.roleId === 1 ||
@@ -353,7 +341,6 @@ export function initializeSocket(server, corsOrigin) {
 
     if (socket.userId === "guest") {
       socket.join("guestRoom");
-      console.log(`Guest socket ${socket.id} joined guestRoom`);
     } else {
       socket.join(`user:${socket.userId}`);
       if (isAdmin) {
@@ -365,30 +352,22 @@ export function initializeSocket(server, corsOrigin) {
     socket.on("joinRoom", (room) => {
       if (!socket.rooms.has(room)) {
         socket.join(room);
-        console.log(`Socket ${socket.id} joined room ${room}`);
       }
     });
 
     socket.on("leaveRoom", (room) => {
       if (socket.rooms.has(room)) {
         socket.leave(room);
-        console.log(`Socket ${socket.id} left room ${room}`);
       }
     });
 
     socket.on("registerUser", (userId) => {
       if (!userId) return;
-      if (!socket.userId || socket.userId === "guest") {
-        console.warn(`[registerUser] Guest or unauthenticated socket ${socket.id} cannot register userId`);
-        return;
-      }
+      if (!socket.userId || socket.userId === "guest") return;
       if (String(userId) === String(socket.userId)) {
         const room = `user:${userId}`;
         if (!socket.rooms.has(room)) socket.join(room);
-        console.log(`registerUser confirmed: ${socket.id} joined ${room}`);
         if (isAdmin) socket.join("adminRoom");
-      } else {
-        console.warn(`registerUser mismatch: tried ${userId}, actual ${socket.userId}`);
       }
     });
 
@@ -401,13 +380,19 @@ export function initializeSocket(server, corsOrigin) {
       socket.emit("pongCheck", Date.now());
     });
 
-    // ===== Presence events =====
+    // Presence
     socket.on("presence:update", (payload) => {
       try {
         markSeen(socket);
         const { page, title, meta, tabId, at } = payload || {};
         if (typeof page !== "string" || !page.trim()) return;
-        addPresence(socket, { page: page.trim(), title: title || null, meta: meta || null, tabId, at: at || Date.now() });
+        addPresence(socket, {
+          page: page.trim(),
+          title: title || null,
+          meta: meta || null,
+          tabId,
+          at: at || Date.now(),
+        });
         broadcastPresenceCounts();
       } catch (e) {
         console.warn("[presence:update] error", e);
@@ -424,25 +409,16 @@ export function initializeSocket(server, corsOrigin) {
       }
     });
 
-    // Admin-only detailed snapshot
     socket.on("requestPresenceSnapshot", () => {
-      if (!isAdmin) {
-        console.warn(`[PresenceSnapshot] Unauthorized request by ${socket.id}`);
-        return;
-      }
+      if (!isAdmin) return;
       socket.emit("presenceSnapshot", presenceSnapshotForAdmins());
     });
 
-    // Admin-only detailed stats
     socket.on("requestSocketStats", () => {
-      if (!isAdmin) {
-        console.warn(`[SocketStats] Unauthorized request by ${socket.id}`);
-        return;
-      }
+      if (!isAdmin) return;
       socket.emit("socketStats", collectSocketStats());
     });
 
-    // Public counts
     socket.on("requestSocketCounts", () => {
       socket.emit("socketCounts", collectSocketCounts());
     });
@@ -455,13 +431,12 @@ export function initializeSocket(server, corsOrigin) {
       broadcastPresenceCounts();
     });
 
-    // push on connect
+    // initial push
     emitSocketStatsToAdmins();
     broadcastCounts();
     broadcastPresenceCounts();
   });
 
-  // periodic pushes
   setInterval(() => {
     emitSocketStatsToAdmins();
     broadcastCounts();
@@ -476,7 +451,6 @@ export function getIO() {
   return io;
 }
 
-// exported helper for HTTP routes
 export function forceLogoutUser(userId, opts) {
   if (!io?.forceLogoutUser) return;
   io.forceLogoutUser(userId, opts);

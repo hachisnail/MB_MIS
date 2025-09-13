@@ -45,10 +45,9 @@ export const AppointmentViewPage = ({
 
     // If we're in route mode, check where we came from
     if (isRouteComponent && location.state?.cameFrom) {
-      // Show respond section for pending, forms, and schedule tabs
-      // Hide respond section only for visitorRecords (attendance/completed appointments)
+      // Show respond section for pending and schedule tabs
+      // Hide respond section for forms and visitorRecords (attendance/completed appointments)
       return location.state.cameFrom === 'pending' ||
-        location.state.cameFrom === 'forms' ||
         location.state.cameFrom === 'schedule';
     }
 
@@ -515,117 +514,123 @@ export const AppointmentViewPage = ({
         </div>
       </div>
 
-      <hr className="border-gray-400 mb-14" />
+  <hr className="border-gray-400 mb-14" />
 
-      {/* Main Content Grid - Enlarged text and spacing */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-20">
-        {/* Left Column - Contact Information */}
-        <div className="space-y-10">
-          {/* Email */}
-          <div className="flex items-start gap-6">
-            <div className="w-9 h-9 mt-1">
-              <svg className="w-9 h-9 text-gray-700" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
-                <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
-              </svg>
-            </div>
-            <div>
-              <div className="text-2xl font-medium text-gray-900 mb-2">Email</div>
-              <div className="text-2xl text-blue-600 font-medium">{modalData.email || 'N/A'}</div>
-            </div>
+  {/* Main Content Grid - Optimized layout */}
+  <div className="grid grid-cols-1 lg:grid-cols-3 gap-16">
+    {/* Left Column - Contact Information + Notes */}
+    <div className="space-y-8">
+      {/* Contact Information Section - 2x2 Grid */}
+      <div className="grid grid-cols-2 gap-4">
+        {/* Email */}
+        <div className="flex items-start gap-3">
+          <div className="w-6 h-6 mt-1">
+            <svg className="w-6 h-6 text-gray-700" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
+              <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
+            </svg>
           </div>
-
-          {/* Phone Number */}
-          <div className="flex items-start gap-6">
-            <div className="w-9 h-9 mt-1">
-              <svg className="w-9 h-9 text-gray-700" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
-              </svg>
-            </div>
-            <div>
-              <div className="text-2xl font-medium text-gray-900 mb-2">Phone Number</div>
-              <div className="text-2xl text-blue-600 font-medium">{modalData.phone || 'N/A'}</div>
-            </div>
+          <div>
+            <div className="text-2xl font-medium text-gray-900 mb-1">Email</div>
+            <div className="text-2xl text-blue-600 font-medium break-all">{modalData.email || 'N/A'}</div>
           </div>
+        </div>
 
-          {/* Address */}
-          <div className="flex items-start gap-6">
-            <div className="w-9 h-9 mt-1">
-              <svg className="w-9 h-9 text-gray-700" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <div>
-              <div className="text-2xl font-medium text-gray-900 mb-2">Address:</div>
-              <div className="text-2xl text-blue-600 font-medium">
-                {modalData.street || 'N/A'}, {modalData.barangay || 'N/A'}, {modalData.city_municipality || 'N/A'}, {modalData.province || 'N/A'}
-              </div>
-            </div>
+        {/* Phone Number */}
+        <div className="flex items-start gap-3">
+          <div className="w-6 h-6 mt-1">
+            <svg className="w-6 h-6 text-gray-700" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
+            </svg>
           </div>
-
-          {/* Organization */}
-          <div className="flex items-start gap-6">
-            <div className="w-9 h-9 mt-1">
-              <svg className="w-9 h-9 text-gray-700" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2H4zm3 5a1 1 0 011-1h4a1 1 0 110 2H8a1 1 0 01-1-1zm0 3a1 1 0 011-1h4a1 1 0 110 2H8a1 1 0 01-1-1z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <div>
-              <div className="text-2xl font-medium text-gray-900 mb-2">Organization:</div>
-              <div className="text-2xl text-blue-600 font-medium">{modalData.organization || 'N/A'}</div>
-            </div>
+          <div>
+            <div className="text-2xl font-medium text-gray-900 mb-1">Phone</div>
+            <div className="text-2xl text-blue-600 font-medium">{modalData.phone || 'N/A'}</div>
           </div>
+        </div>
 
-          {/* Bottom Section - Appointment Details */}
-          <div className="mt-14 bg-gray-100 p-10 rounded-lg space-y-8">
-            <div>
-              <div className="text-2xl font-medium text-gray-900 mb-3">Purpose of Visit:</div>
-              <div className="text-2xl text-blue-600 font-medium">{modalData.purpose || 'N/A'}</div>
-            </div>
-
-            <div>
-              <div className="text-2xl font-medium text-gray-900 mb-3">Population Count:</div>
-              <div className="text-2xl text-blue-600 font-medium">{modalData.populationCount || '0'}</div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-14">
-              <div>
-                <div className="text-2xl font-medium text-gray-900 mb-3">Preferred Date:</div>
-                <div className="text-2xl text-blue-600 font-medium">{modalData.preferredDate || 'N/A'}</div>
-              </div>
-              <div>
-                <div className="text-2xl font-medium text-gray-900 mb-3">Preferred Time:</div>
-                <div className="text-2xl text-blue-600 font-medium">
-                  {modalData.preferredTime
-                    ? formatTimeRange(modalData.preferredTime)
-                    : (modalData.start_time || modalData.end_time
-                      ? `${convertTo12HourFormat(modalData.start_time || '')}${modalData.start_time && modalData.end_time ? ' - ' : ''
-                      }${convertTo12HourFormat(modalData.end_time || '')}`
-                      : "Flexible")}
-                </div>
-              </div>
+        {/* Address */}
+        <div className="flex items-start gap-3 col-span-1">
+          <div className="w-6 h-6 mt-1">
+            <svg className="w-6 h-6 text-gray-700" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+            </svg>
+          </div>
+          <div>
+            <div className="text-2xl font-medium text-gray-900 mb-1">Address</div>
+            <div className="text-2xl text-blue-600 font-medium">
+              {modalData.street || 'N/A'}, {modalData.barangay || 'N/A'}, {modalData.city_municipality || 'N/A'}, {modalData.province || 'N/A'}
             </div>
           </div>
         </div>
 
-        {/* Right Column - Notes and Respond Section */}
-        <div>
-          {/* Notes Section - Enlarged text */}
-          {modalData.notes && (
-            <div className="bg-gray-100 p-10 rounded-lg mb-14">
-              <div className="text-2xl font-medium text-gray-900 mb-4">Notes:</div>
-              <div className="text-2xl text-blue-600 font-medium">{modalData.notes}</div>
-            </div>
-          )}
+        {/* Organization */}
+        <div className="flex items-start gap-3">
+          <div className="w-6 h-6 mt-1">
+            <svg className="w-6 h-6 text-gray-700" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2H4zm3 5a1 1 0 011-1h4a1 1 0 110 2H8a1 1 0 01-1-1zm0 3a1 1 0 011-1h4a1 1 0 110 2H8a1 1 0 01-1-1z" clipRule="evenodd" />
+            </svg>
+          </div>
+          <div>
+            <div className="text-2xl font-medium text-gray-900 mb-1">Organization</div>
+            <div className="text-2xl text-blue-600 font-medium">{modalData.organization || 'N/A'}</div>
+          </div>
+        </div>
+      </div>
 
-          {/* Request Letter Files Section */}
-          <div className="mb-14">
-            <AppointmentFileViewer
-              requestLetterFiles={modalData.request_letter_files || modalData.requestLetterFiles || []}
-              containerHeight="h-[30rem]"
-            />
+      {/* Appointment Details Section - 2x2 Grid */}
+      <div className="bg-gray-100 p-6 rounded-lg">
+        <div className="grid grid-cols-2 gap-6">
+          <div>
+            <div className="text-2xl font-medium text-gray-900 mb-2">Purpose of Visit</div>
+            <div className="text-2xl text-blue-600 font-medium">{modalData.purpose || 'N/A'}</div>
           </div>
 
+          <div>
+            <div className="text-2xl font-medium text-gray-900 mb-2">Population Count</div>
+            <div className="text-2xl text-blue-600 font-medium">{modalData.populationCount || '0'}</div>
+          </div>
+
+          <div>
+            <div className="text-2xl font-medium text-gray-900 mb-2">Preferred Date</div>
+            <div className="text-2xl text-blue-600 font-medium">{modalData.preferredDate || 'N/A'}</div>
+          </div>
+
+          <div>
+            <div className="text-2xl font-medium text-gray-900 mb-2">Preferred Time</div>
+            <div className="text-2xl text-blue-600 font-medium">
+              {modalData.preferredTime
+                ? formatTimeRange(modalData.preferredTime)
+                : (modalData.start_time || modalData.end_time
+                  ? `${convertTo12HourFormat(modalData.start_time || '')}${modalData.start_time && modalData.end_time ? ' - ' : ''
+                  }${convertTo12HourFormat(modalData.end_time || '')}`
+                  : "Flexible")}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Notes Section */}
+      {modalData.notes && (
+        <div className="bg-gray-100 p-6 rounded-lg">
+          <div className="text-2xl font-medium text-gray-900 mb-3">Notes</div>
+          <div className="text-2xl text-blue-600 font-medium">{modalData.notes}</div>
+        </div>
+      )}
+    </div>
+
+   
+    <div>
+      <AppointmentFileViewer
+        requestLetterFiles={modalData.request_letter_files || modalData.requestLetterFiles || []}
+        containerHeight="h-[40rem]"
+      />
+    </div>
+
+
+
+        {/* Right Column - Respond Section */}
+        <div>
           {shouldShowRespondSection() && (
             <div>
               <h3 className="text-4xl font-bold mb-10">Respond</h3>
@@ -907,7 +912,7 @@ export const AppointmentViewPage = ({
   return (
     <>
       {/* Main Appointment View - Full tab page layout */}
-      <div className="w-full h-full bg-white p-8 overflow-y-auto">
+      <div className="w-full h-full bg-white p-8 overflow-hidden">
         {/* Close button - positioned absolutely in top right */}
         <button
           className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 transition-colors z-10"
@@ -962,3 +967,6 @@ export const AppointmentViewPage = ({
 export default {
   AppointmentViewPage,
 };
+
+
+

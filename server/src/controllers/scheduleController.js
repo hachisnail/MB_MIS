@@ -69,79 +69,54 @@ export const createSchedule = async (req, res) => {
       return res.status(400).json({ message: 'Schedule duration must be at least 15 minutes' });
     }
 
-    // Check for existing exclusive schedules on the same date
-    const existingExclusiveSchedules = await Schedule.findAll({
-      where: {
-        date,
-        availability: 'EXCLUSIVE',
-        status: 'ACTIVE'
-      }
-    });
 
-    // Check for time conflicts with exclusive schedules
-    for (const existingSchedule of existingExclusiveSchedules) {
-      const existingStart = timeStringToMinutes(existingSchedule.start_time);
-      const existingEnd = timeStringToMinutes(existingSchedule.end_time);
-      
-      if (startMinutes < existingEnd && existingStart < endMinutes) {
-        return res.status(400).json({ 
-          message: 'Cannot schedule during an exclusive event time slot' 
-        });
-      }
-    }
-
-    // If adding an exclusive event, check for any existing events
+    // Validation logic for exclusive schedules
     if (availability === 'EXCLUSIVE') {
-      // Check existing schedules
-      const existingSchedules = await Schedule.findAll({
-        where: {
-          date,
-          status: 'ACTIVE'
-        }
-      });
-
-      // Check existing approved appointments
-      let existingAppointments = [];
-      try {
-        existingAppointments = await Appointment.findAll({
+      // Special case: Prevent duplicate DATE_DISABLED entries only
+      if (title === 'DATE_DISABLED') {
+        const existingDisabledDay = await Schedule.findOne({
           where: {
-            preferred_date: date
-          },
-          include: [{
-            model: AppointmentStatus,
-            where: {
-              status: 'APPROVED'
-            },
-            required: true
-          }]
+            date,
+            status: 'ACTIVE',
+            availability: 'EXCLUSIVE',
+            [Op.or]: [
+              { title: 'DATE_DISABLED' },
+              {
+                [Op.and]: [
+                  { start_time: '00:00' },
+                  { end_time: '23:59' }
+                ]
+              }
+            ]
+          }
         });
-      } catch (appointmentError) {
-        console.warn('Error fetching appointments for exclusive check:', appointmentError.message);
-        // Continue without appointment check if there's an association error
-        existingAppointments = [];
-      }
-
-      // Check for overlaps with existing schedules
-      for (const existingSchedule of existingSchedules) {
-        const existingStart = timeStringToMinutes(existingSchedule.start_time);
-        const existingEnd = timeStringToMinutes(existingSchedule.end_time);
         
-        if (startMinutes < existingEnd && existingStart < endMinutes) {
+        if (existingDisabledDay) {
           return res.status(400).json({ 
-            message: 'Cannot set as exclusive - time slot already has events scheduled' 
+            message: 'This date is already disabled. Cannot disable the same date twice.' 
           });
         }
-      }
+      } else {
+        // For regular exclusive time slots (not DATE_DISABLED), only check for overlaps with other EXCLUSIVE schedules
+        // Exclude DATE_DISABLED from this check since they should be allowed to coexist
+        const overlappingExclusiveSchedules = await Schedule.findAll({
+          where: {
+            date,
+            status: 'ACTIVE',
+            availability: 'EXCLUSIVE',
+            title: { [Op.ne]: 'DATE_DISABLED' } // Exclude DATE_DISABLED
+          }
+        });
 
-      // Check for overlaps with existing appointments
-      for (const appointment of existingAppointments) {
-        if (appointment.start_time && appointment.end_time) {
-          const appointmentStart = timeStringToMinutes(appointment.start_time);
-          const appointmentEnd = timeStringToMinutes(appointment.end_time);
+        // Check for time overlaps with other exclusive schedules
+        for (const existingSchedule of overlappingExclusiveSchedules) {
+          const existingStart = timeStringToMinutes(existingSchedule.start_time);
+          const existingEnd = timeStringToMinutes(existingSchedule.end_time);
           
-          if (startMinutes < appointmentEnd && appointmentStart < endMinutes) {
+          // Check if times overlap
+          if (startMinutes < existingEnd && existingStart < endMinutes) {
             return res.status(400).json({ 
-              message: 'Cannot set as exclusive - time slot already has events scheduled' 
+              message: 'Cannot create exclusive time slot - overlaps with existing exclusive schedule' 
             });
           }
         }

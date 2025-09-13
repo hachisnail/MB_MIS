@@ -59,17 +59,23 @@ const DayScheduler = ({
     console.log("- Filtered events count:", filteredEvents.length);
     console.log("- Filtered events:", filteredEvents);
 
+    // Check if this date is disabled (only affects appointments, not schedules)
+    const isDateDisabled = filteredEvents.some(event => event.title === 'DATE_DISABLED');
+    console.log("- Is date disabled:", isDateDisabled);
+
     // Our day runs from 6:00am to 6:00pm
     const dayStart = 6 * 60;
     const dayEnd = 18 * 60;
     const totalMinutes = dayEnd - dayStart;
 
-    // Convert appointments to structured data
-    const events = filteredEvents.map((apt) => {
-        const start = timeStringToMinutes(apt.startTime);
-        const end = timeStringToMinutes(apt.endTime);
-        return { ...apt, start, end };
-    });
+    // Convert appointments to structured data, but filter out DATE_DISABLED entries from display
+    const events = filteredEvents
+        .filter(apt => apt.title !== 'DATE_DISABLED')
+        .map((apt) => {
+            const start = timeStringToMinutes(apt.startTime);
+            const end = timeStringToMinutes(apt.endTime);
+            return { ...apt, start, end };
+        });
 
     // Sort events by start time
     events.sort((a, b) => a.start - b.start);
@@ -179,7 +185,25 @@ const DayScheduler = ({
     };
 
     return (
-        <div className="w-full h-full relative bg-gray-50 overflow-hidden">
+        <div className={`w-full h-full relative overflow-hidden ${
+            isDateDisabled 
+                ? 'bg-red-50 border-2 border-red-400' 
+                : 'bg-gray-50'
+        }`}>
+            {/* Date Disabled Notice - positioned at top */}
+            {isDateDisabled && (
+                <div className="absolute top-2 left-2 right-2 z-40 bg-red-100 border border-red-400 rounded-lg p-3 shadow-md">
+                    <div className="flex items-center space-x-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-red-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                        </svg>
+                        <div>
+                            <p className="text-sm font-semibold text-red-700">Date Disabled for New Appointments</p>
+                            <p className="text-xs text-red-600">Existing schedules remain visible. New appointments cannot be created.</p>
+                        </div>
+                    </div>
+                </div>
+            )}
             {/* Left timeline ruler - Clean Meter Stick Style */}
             <div
                 className="absolute left-0 top-0 bottom-0 bg-slate-800 text-white z-10 rounded-md"
@@ -277,7 +301,7 @@ const DayScheduler = ({
                 })}
 
                 {/* Empty state message when no events */}
-                {events.length === 0 && (
+                {events.length === 0 && !isDateDisabled && (
                     <div className="absolute inset-0 flex items-center justify-center">
                         <div className="text-center bg-white bg-opacity-80 rounded-lg p-6 shadow-md">
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mx-auto text-gray-400 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">

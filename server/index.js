@@ -1,4 +1,4 @@
-import express, { Router } from "express";
+import express from "express";
 import session from "express-session";
 import dotenv from "dotenv";
 import cors from "cors";
@@ -6,96 +6,68 @@ import http from "http";
 import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs";
-import cookieParser from "cookie-parser";
 
-import { mainDb, logsDb } from "./src/models/authModels.js";
+import { mainDb } from "./src/models/authModels.js";
 import sessionStore from "./src/configs/sessionStore.js";
 import authRoutes from "./src/routes/auth.js";
 import uploadRoutes from "./src/routes/uploadRoutes.js";
 import { initializeSocket } from "./src/configs/socketServer.js";
-import { requireAuth, requireRole } from "./src/middlewares/authMiddlewares.js";
-import { startArticleScheduler } from "./src/services/scheduler.js";
-import { postEvents, getArticleStats, getNextSuggestions } from "./src/controllers/EngagementController.js";
+import { requireAuth,requireRole } from "./src/middlewares/authMiddlewares.js";
 
 dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+// const UPLOAD_BASE_DIR = 
 
 const PUBLIC_UPLOADS = ["pictures", "files"];
 const UPLOAD_BASE_DIR = process.env.UPLOAD_BASE_DIR || path.join(process.cwd(), "..", "uploads");
 
-const engagementRoutes = Router();
-engagementRoutes.post("/events", postEvents);
-engagementRoutes.get("/article/:id", getArticleStats);
-engagementRoutes.get("/suggest/next", getNextSuggestions);
+// const UPLOAD_BASE_DIR = "/uploads";
+
 
 if (!fs.existsSync(UPLOAD_BASE_DIR)) {
   fs.mkdirSync(UPLOAD_BASE_DIR, { recursive: true });
 }
 
 const app = express();
-
-/**
- * Trust proxy — required for Traefik (Coolify)
- */
-app.set("trust proxy", 1);
-
-/**
- * CORS setup
- */
-app.use(
-  cors({
-    origin: process.env.CLIENT_URL, // e.g. https://mus.museobulawan.online
-    credentials: true,
-  })
-);
-
-// Ensure OPTIONS requests don’t get dropped
+app.set('trust proxy', true);
+app.use(cors({
+  origin: process.env.CLIENT_URL,  
+  credentials: true,              
+}));
 app.use((req, res, next) => {
   res.header("Access-Control-Allow-Origin", process.env.CLIENT_URL);
   res.header("Access-Control-Allow-Credentials", "true");
-  res.header("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
-  res.header("Access-Control-Allow-Headers", "Content-Type,Authorization");
-  if (req.method === "OPTIONS") return res.sendStatus(200);
   next();
 });
 
+
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(cookieParser());
 
-/**
- * Session + cookie
- */
-app.use(
-  session({
-    secret: process.env.SESSION_SECRET,
-    store: sessionStore,
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      maxAge: 24 * 60 * 60 * 1000, // 1 day
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production", // required with SameSite=None
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-      domain:
-        process.env.NODE_ENV === "production"
-          ? ".museobulawan.online" // share cookie across subdomains
-          : undefined,
-    },
-  })
-);
+app.use(session({
+  secret: process.env.SESSION_SECRET,
+  store: sessionStore,
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    maxAge: 24 * 60 * 60 * 1000,
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production", 
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax", 
+  },
+}));
 
-/**
- * Static uploads
- */
+
 PUBLIC_UPLOADS.forEach((cat) => {
   app.use(`/uploads/${cat}`, express.static(path.join(UPLOAD_BASE_DIR, cat)));
 });
 
+
 app.get(/^\/uploads\/private\/(.+)$/, requireAuth, requireRole([1, 2]), (req, res) => {
-  const relativePath = req.params[0];
+  const relativePath = req.params[0]; 
   const filePath = path.join(UPLOAD_BASE_DIR, "private", relativePath);
 
   const normalizedPath = path.normalize(filePath);
@@ -112,17 +84,12 @@ app.get(/^\/uploads\/private\/(.+)$/, requireAuth, requireRole([1, 2]), (req, re
   res.sendFile(normalizedPath);
 });
 
-/**
- * Routes
- */
 app.use("/api", uploadRoutes);
 app.use("/api/auth", authRoutes);
-app.use("/api/engagement", engagementRoutes);
 
-// Debug (optional)
 app.use((req, res, next) => {
   console.log("req.secure:", req.secure);
-  console.log("x-forwarded-proto:", req.headers["x-forwarded-proto"]);
+  console.log("x-forwarded-proto:", req.headers['x-forwarded-proto']);
   next();
 });
 
@@ -133,26 +100,22 @@ app.use((req, res, next) => {
   next();
 });
 
-app.get("/", (req, res) => {
+app.get('/', (req, res) => {
   res.json({ status: "ok" });
 });
 
-/**
- * Server + Socket.io
- */
 const server = http.createServer(app);
 const io = initializeSocket(server, process.env.CLIENT_URL);
 const PORT = process.env.PORT;
 
-/**
- * Upload seeding
- */
 function copyRecursive(srcDir, destDir) {
   if (!fs.existsSync(destDir)) fs.mkdirSync(destDir, { recursive: true });
+
   for (const item of fs.readdirSync(srcDir)) {
     const srcPath = path.join(srcDir, item);
     const destPath = path.join(destDir, item);
     const stat = fs.lstatSync(srcPath);
+
     if (stat.isDirectory()) {
       copyRecursive(srcPath, destPath);
     } else if (stat.isFile()) {
@@ -162,45 +125,40 @@ function copyRecursive(srcDir, destDir) {
 }
 
 function seedUploadsFolder() {
-  const seedDir = path.join(__dirname, "..", "uploads");
-  const seedFlag = path.join(UPLOAD_BASE_DIR, ".seeded");
+  const seedDir = path.join(__dirname, '..', 'uploads');
+  const seedFlag = path.join(UPLOAD_BASE_DIR, '.seeded');
 
   if (fs.existsSync(seedFlag)) {
-    console.log("Uploads already seeded.");
+    console.log('Uploads already seeded.');
     return;
   }
+
   if (!fs.existsSync(seedDir)) {
-    console.warn("Seed source folder does not exist:", seedDir);
+    console.warn('Seed source folder does not exist:', seedDir);
     return;
   }
-  console.log("Seeding uploads volume from Git-tracked /uploads...");
+
+  console.log('Seeding uploads volume from Git-tracked /uploads...');
   copyRecursive(seedDir, UPLOAD_BASE_DIR);
-  fs.writeFileSync(seedFlag, "seeded");
-  console.log("Seeding complete.");
+  fs.writeFileSync(seedFlag, 'seeded');
+  console.log('Seeding complete.');
 }
 
-if (process.env.NODE_ENV === "production") {
+if (process.env.NODE_ENV === 'production') {
   seedUploadsFolder();
 }
 
-/**
- * DB + scheduler + start server
- */
 (async () => {
   try {
     await mainDb.authenticate();
-    await logsDb.authenticate();
     await sessionStore.sync();
     await mainDb.sync();
-    await logsDb.sync();
 
-    startArticleScheduler();
 
-    server.listen(PORT, "0.0.0.0", () => {
-      console.log(`API Server running on port ${PORT}`);
-      console.log(`Trust proxy: ${app.get("trust proxy")}`);
-      console.log(`NODE_ENV: ${process.env.NODE_ENV}`);
-    });
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`API Server running on port ${PORT}`);
+});
+
   } catch (err) {
     console.error("Unable to connect to DB:", err);
   }

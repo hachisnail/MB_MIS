@@ -14,7 +14,7 @@ const hiddenPaths = [
   '/registration-success',
   /^\/recover\/[^/]+$/,
   /^\/complete-registration\/[^/]+$/,
-  /^\/acquisition\/inquiry\/[0-9a-fA-F-]+$/,
+  /^\/acquisition\/inquiry\/[A-Za-z0-9_-]+\/?$/,
 ];
 
 const isMinimalLayout = hiddenPaths.some((p) =>

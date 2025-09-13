@@ -64,7 +64,6 @@ app.options(/.*/, corsMw);
 const PROXY_HOPS = Number(process.env.TRUST_PROXY_HOPS || 1);
 app.set("trust proxy", process.env.NODE_ENV === "production" ? PROXY_HOPS : false);
 
-
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser()); 
@@ -79,7 +78,7 @@ app.use(
     cookie: {
       maxAge: 24 * 60 * 60 * 1000,
       httpOnly: true,
-       secure: process.env.NODE_ENV === "production",              
+      secure: process.env.NODE_ENV === "production",              
       sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
     },
   })
@@ -130,31 +129,24 @@ app.get("/", (req, res) => {
 });
 
 const server = http.createServer(app);
-// const io = initializeSocket(server, process.env.CLIENT_URL);
 const io = initializeSocket(server, ALLOWED_ORIGINS);
 const PORT = process.env.PORT;
 
+// Start HTTP server immediately so proxies can reach CORS + /socket.io
+server.listen(PORT, "0.0.0.0", () => {
+  console.log(`API Server running on port ${PORT}`);
+  console.log(`Trust proxy: ${app.get("trust proxy")}`);
+  console.log(`NODE_ENV: ${process.env.NODE_ENV}`);
+});
 
-
+// Initialize DBs in the background (log problems but don’t crash the server)
 (async () => {
-  try {
-    await mainDb.authenticate();
-    await logsDb.authenticate();
-    await sessionStore.sync();
-    await mainDb.sync();
-    await logsDb.sync();
-
-    // Start the article scheduler here
-    startArticleScheduler();
-
-    server.listen(PORT, "0.0.0.0", () => {
-      console.log(`API Server running on port ${PORT}`);
-      console.log(`Trust proxy: ${app.get("trust proxy")}`);
-      console.log(`NODE_ENV: ${process.env.NODE_ENV}`);
-    });
-  } catch (err) {
-    console.error("Unable to connect to DB:", err);
-  }
+  try { await mainDb.authenticate(); } catch (e) { console.error("DB auth (main) failed:", e); }
+  try { await logsDb.authenticate(); } catch (e) { console.error("DB auth (logs) failed:", e); }
+  try { await sessionStore.sync(); } catch (e) { console.error("Session store sync failed:", e); }
+  try { await mainDb.sync(); } catch (e) { console.error("mainDb.sync failed:", e); }
+  try { await logsDb.sync(); } catch (e) { console.error("logsDb.sync failed:", e); }
+  try { startArticleScheduler(); } catch (e) { console.error("Scheduler start failed:", e); }
 })();
 
 export { io };

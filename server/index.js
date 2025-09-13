@@ -36,30 +36,33 @@ if (!fs.existsSync(UPLOAD_BASE_DIR)) {
 
 const app = express();
 
-/**
- * TRUST PROXY — SAFE SETTINGS
- * - Dev (NODE_ENV !== 'production'): do NOT trust any proxy.
- * - Prod: trust only local/lan proxies (adjust to your infra as needed).
- */
-if (process.env.NODE_ENV === "production") {
-  // Examples: "127.0.0.1", a CIDR, or this shorthand set
-  app.set("trust proxy", "loopback, linklocal, uniquelocal");
-} else {
-  app.set("trust proxy", false);
-}
+// ---- CORS FIRST (multi-origin, credentials, custom headers) ----
+const parseOrigins = (raw) =>
+  (raw || "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
 
-app.use(
-  cors({
-    origin: process.env.CLIENT_URL,
-    credentials: true,
-  })
-);
-// Optional: this duplicates CORS; keep if you want explicit headers
-app.use((req, res, next) => {
-  res.header("Access-Control-Allow-Origin", process.env.CLIENT_URL);
-  res.header("Access-Control-Allow-Credentials", "true");
-  next();
+const ALLOWED_ORIGINS = [
+  ...parseOrigins(process.env.CLIENT_URLS),   // preferred: comma-separated
+  ...parseOrigins(process.env.CLIENT_URL),    // backward compat
+];
+console.log("CORS allowed origins:", ALLOWED_ORIGINS);
+
+const corsMw = cors({
+  origin(origin, cb) {
+    if (!origin) return cb(null, true);            // same-origin / server-to-server
+    cb(null, ALLOWED_ORIGINS.includes(origin));
+  },
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "x-browser-id", "x-requested-with"],
 });
+app.use(corsMw);
+app.options(/.*/, corsMw); 
+
+const PROXY_HOPS = Number(process.env.TRUST_PROXY_HOPS || 1);
+app.set("trust proxy", process.env.NODE_ENV === "production" ? PROXY_HOPS : false);
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -71,10 +74,11 @@ app.use(
     store: sessionStore,
     resave: false,
     saveUninitialized: false,
+    proxy: true,
     cookie: {
       maxAge: 24 * 60 * 60 * 1000,
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: process.env.NODE_ENV === "production",              
       sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
     },
   })
@@ -125,64 +129,24 @@ app.get("/", (req, res) => {
 });
 
 const server = http.createServer(app);
-const io = initializeSocket(server, process.env.CLIENT_URL);
+const io = initializeSocket(server, ALLOWED_ORIGINS);
 const PORT = process.env.PORT;
 
-function copyRecursive(srcDir, destDir) {
-  if (!fs.existsSync(destDir)) fs.mkdirSync(destDir, { recursive: true });
-  for (const item of fs.readdirSync(srcDir)) {
-    const srcPath = path.join(srcDir, item);
-    const destPath = path.join(destDir, item);
-    const stat = fs.lstatSync(srcPath);
-    if (stat.isDirectory()) {
-      copyRecursive(srcPath, destPath);
-    } else if (stat.isFile()) {
-      fs.copyFileSync(srcPath, destPath);
-    }
-  }
-}
+// Start HTTP server immediately so proxies can reach CORS + /socket.io
+server.listen(PORT, "0.0.0.0", () => {
+  console.log(`API Server running on port ${PORT}`);
+  console.log(`Trust proxy: ${app.get("trust proxy")}`);
+  console.log(`NODE_ENV: ${process.env.NODE_ENV}`);
+});
 
-function seedUploadsFolder() {
-  const seedDir = path.join(__dirname, "..", "uploads");
-  const seedFlag = path.join(UPLOAD_BASE_DIR, ".seeded");
-
-  if (fs.existsSync(seedFlag)) {
-    console.log("Uploads already seeded.");
-    return;
-  }
-  if (!fs.existsSync(seedDir)) {
-    console.warn("Seed source folder does not exist:", seedDir);
-    return;
-  }
-  console.log("Seeding uploads volume from Git-tracked /uploads...");
-  copyRecursive(seedDir, UPLOAD_BASE_DIR);
-  fs.writeFileSync(seedFlag, "seeded");
-  console.log("Seeding complete.");
-}
-
-if (process.env.NODE_ENV === "production") {
-  seedUploadsFolder();
-}
-
+// Initialize DBs in the background (log problems but don’t crash the server)
 (async () => {
-  try {
-    await mainDb.authenticate();
-    await logsDb.authenticate();
-    await sessionStore.sync();
-    await mainDb.sync();
-    await logsDb.sync();
-
-    // Start the article scheduler here
-    startArticleScheduler();
-
-    server.listen(PORT, "0.0.0.0", () => {
-      console.log(`API Server running on port ${PORT}`);
-      console.log(`Trust proxy: ${app.get("trust proxy")}`);
-      console.log(`NODE_ENV: ${process.env.NODE_ENV}`);
-    });
-  } catch (err) {
-    console.error("Unable to connect to DB:", err);
-  }
+  try { await mainDb.authenticate(); } catch (e) { console.error("DB auth (main) failed:", e); }
+  try { await logsDb.authenticate(); } catch (e) { console.error("DB auth (logs) failed:", e); }
+  try { await sessionStore.sync(); } catch (e) { console.error("Session store sync failed:", e); }
+  try { await mainDb.sync(); } catch (e) { console.error("mainDb.sync failed:", e); }
+  try { await logsDb.sync(); } catch (e) { console.error("logsDb.sync failed:", e); }
+  try { startArticleScheduler(); } catch (e) { console.error("Scheduler start failed:", e); }
 })();
 
 export { io };

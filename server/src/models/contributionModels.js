@@ -4,7 +4,7 @@ import { mainDb } from "../configs/databases.js";
 
 // Contributors Model
 export const Contributors = mainDb.define(
-  "Contributors",
+  "contributors",
   {
     contributor_id: {
       type: DataTypes.INTEGER,
@@ -26,7 +26,7 @@ export const Contributors = mainDb.define(
     updated_at: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
   },
   {
-    tableName: "Contributors",
+    tableName: "contributors",
     timestamps: true,
     createdAt: "created_at",
     updatedAt: "updated_at",
@@ -35,7 +35,7 @@ export const Contributors = mainDb.define(
 
 // Contributions Model
 export const Contributions = mainDb.define(
-  "Contributions",
+  "contributions",
   {
     contribution_id: {
       type: DataTypes.INTEGER,
@@ -60,7 +60,7 @@ export const Contributions = mainDb.define(
     updated_at: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
   },
   {
-    tableName: "Contributions",
+    tableName: "contributions",
     timestamps: true,
     createdAt: "created_at",
     updatedAt: "updated_at",
@@ -69,7 +69,7 @@ export const Contributions = mainDb.define(
 
 // LendingDetails Model
 export const LendingDetails = mainDb.define(
-  "LendingDetails",
+  "lendingdetails",
   {
     lending_id: {
       type: DataTypes.INTEGER,
@@ -91,7 +91,7 @@ export const LendingDetails = mainDb.define(
     updated_at: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
   },
   {
-    tableName: "LendingDetails",
+    tableName: "lendingdetails",
     timestamps: true,
     createdAt: "created_at",
     updatedAt: "updated_at",
@@ -100,7 +100,7 @@ export const LendingDetails = mainDb.define(
 
 // ContributionArtifacts Model
 export const ContributionArtifacts = mainDb.define(
-  "ContributionArtifacts",
+  "contributionartifacts",
   {
     artifact_id: {
       type: DataTypes.INTEGER,
@@ -152,7 +152,7 @@ export const ContributionArtifacts = mainDb.define(
     updated_at: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
   },
   {
-    tableName: "ContributionArtifacts",
+    tableName: "contributionartifacts",
     timestamps: true,
     createdAt: "created_at",
     updatedAt: "updated_at",
@@ -160,7 +160,7 @@ export const ContributionArtifacts = mainDb.define(
 );
 
 export const ContributionTimelines = mainDb.define(
-  "ContributionTimelines",
+  "contributiontimelines",
   {
     timeline_id: {
       type: DataTypes.INTEGER,
@@ -183,7 +183,7 @@ export const ContributionTimelines = mainDb.define(
     updated_at: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
   },
   {
-    tableName: "ContributionTimelines",
+    tableName: "contributiontimelines",
     timestamps: true,
     createdAt: "created_at",
     updatedAt: "updated_at",
@@ -192,7 +192,7 @@ export const ContributionTimelines = mainDb.define(
 
 
 export const ContributionSessions = mainDb.define(
-  "ContributionSessions",
+  "contributionsessions",
   {
     session_id: {
       type: DataTypes.INTEGER,
@@ -263,7 +263,7 @@ export const ContributionSessions = mainDb.define(
     closed_at: { type: DataTypes.DATE, allowNull: true },
   },
   {
-    tableName: "ContributionSessions",
+    tableName: "contributionsessions",
     timestamps: true,
     createdAt: "created_at",
     updatedAt: false,

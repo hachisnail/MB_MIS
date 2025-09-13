@@ -4,7 +4,7 @@ import { mainDb } from "../configs/databases.js";
 
 // Contributors Model
 export const Contributors = mainDb.define(
-  "contributors",
+  "Contributors",
   {
     contributor_id: {
       type: DataTypes.INTEGER,
@@ -35,7 +35,7 @@ export const Contributors = mainDb.define(
 
 // Contributions Model
 export const Contributions = mainDb.define(
-  "contributions",
+  "Contributions",
   {
     contribution_id: {
       type: DataTypes.INTEGER,
@@ -69,7 +69,7 @@ export const Contributions = mainDb.define(
 
 // LendingDetails Model
 export const LendingDetails = mainDb.define(
-  "lendingdetails",
+  "LendingDetails",
   {
     lending_id: {
       type: DataTypes.INTEGER,
@@ -100,7 +100,7 @@ export const LendingDetails = mainDb.define(
 
 // ContributionArtifacts Model
 export const ContributionArtifacts = mainDb.define(
-  "contributionartifacts",
+  "ContributionArtifacts",
   {
     artifact_id: {
       type: DataTypes.INTEGER,
@@ -160,7 +160,7 @@ export const ContributionArtifacts = mainDb.define(
 );
 
 export const ContributionTimelines = mainDb.define(
-  "contributiontimelines",
+  "ContributionTimelines",
   {
     timeline_id: {
       type: DataTypes.INTEGER,
@@ -192,7 +192,7 @@ export const ContributionTimelines = mainDb.define(
 
 
 export const ContributionSessions = mainDb.define(
-  "contributionsessions",
+  "ContributionSessions",
   {
     session_id: {
       type: DataTypes.INTEGER,

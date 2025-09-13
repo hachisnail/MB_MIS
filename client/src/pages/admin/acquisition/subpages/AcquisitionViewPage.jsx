@@ -65,6 +65,7 @@ import {
   PhoneNumber,
 } from "../components/ViewPageSvg";
 
+
 const AcquisitionViewPage = () => {
   const lastBumpedIdRef = useRef(null);
   const moaRef = useRef(null);
@@ -81,13 +82,21 @@ const AcquisitionViewPage = () => {
   const [responseMessage, setResponseMessage] = useState("");
 
   const { setExtraBlockContent } = useOutletContext();
-
   const [itemTab, setItemTab] = useState("Donor");
   const tabs = ["Donor", "Artifact Information"];
 
   const SERVER_URL = import.meta.env.VITE_SERVER_URL;
-
   const { user } = useAuth();
+
+  // --- safe references (works in local + prod) ---
+  const artifact =
+    contributionData?.ContributionArtifact || contributionData?.contributionartifact;
+  const contributor =
+    contributionData?.Contributor || contributionData?.contributor;
+  const timeline =
+    contributionData?.ContributionTimeline || contributionData?.contributiontimeline;
+  const lendingDetail =
+    contributionData?.LendingDetail || contributionData?.lendingdetail;
 
   useEffect(() => {
     setExtraBlockContent(
@@ -112,12 +121,7 @@ const AcquisitionViewPage = () => {
     }
 
     return () => setExtraBlockContent(null);
-  }, [
-    activeDocument,
-    step,
-    contributionData?.contribution_id,
-    setExtraBlockContent,
-  ]);
+  }, [activeDocument, step, contributionData?.contribution_id, setExtraBlockContent]);
 
   useEffect(() => {
     if (location.pathname.includes("lending")) {
@@ -137,9 +141,7 @@ const AcquisitionViewPage = () => {
       const segments = location.pathname.split("/");
       const encodedId = segments[segments.length - 1];
       const decoded = decodeBase64(encodedId);
-      const [id, ...titleParts] = decoded.split(" ");
-      const title = titleParts.join(" ");
-
+      const [id] = decoded.split(" ");
       const endpoint = `/auth/contributions/${id}`;
       const response = await axiosClient.get(endpoint);
       setContributionData(response.data);
@@ -153,10 +155,7 @@ const AcquisitionViewPage = () => {
 
   const updateStep = async (contribution_id, step) => {
     try {
-      await axiosClient.put("/auth/update-step", {
-        contribution_id,
-        step: step,
-      });
+      await axiosClient.put("/auth/update-step", { contribution_id, step });
       console.log("updated step " + step);
       setStep(step);
     } catch (error) {
@@ -165,187 +164,121 @@ const AcquisitionViewPage = () => {
   };
 
   useEffect(() => {
-    if (contributionData?.ContributionTimeline) {
-      const stepIndex = mapTimelineStep(contributionData.ContributionTimeline);
+    if (timeline) {
+      const stepIndex = mapTimelineStep(timeline);
       setStep(stepIndex);
     }
-  }, [contributionData]);
+  }, [timeline]);
 
-  const donatorInformation = contributionData
+  const donatorInformation = contributor
     ? [
         {
           label: "From",
-          value: `${contributionData.Contributor?.first_name} ${contributionData.Contributor?.last_name}`,
+          value: `${contributor?.first_name} ${contributor?.last_name}`,
           icon: <From />,
         },
-        {
-          label: "Email",
-          value: contributionData.Contributor?.email,
-          icon: <Email />,
-        },
+        { label: "Email", value: contributor?.email, icon: <Email /> },
         {
           label: "Phone Number",
-          value: contributionData.Contributor?.phone_number || "Not provided",
+          value: contributor?.phone_number || "Not provided",
           icon: <PhoneNumber />,
         },
         {
           label: "Address",
           value:
-            [
-              contributionData.Contributor?.street,
-              contributionData.Contributor?.barangay,
-              contributionData.Contributor?.city,
-              contributionData.Contributor?.province,
-            ]
+            [contributor?.street, contributor?.barangay, contributor?.city, contributor?.province]
               .filter(Boolean)
               .join(", ") || "Not provided",
           icon: <Address />,
         },
         {
           label: "Organization",
-          value: contributionData.Contributor?.organization || "Not provided",
+          value: contributor?.organization || "Not provided",
           icon: <Organization />,
         },
       ]
     : [];
 
-  const lendingReason = contributionData?.LendingDetail
+  const lendingReason = lendingDetail
     ? [
         {
           label: "Propose duration of the loan:",
-          value: formatDateRange(
-            contributionData.LendingDetail.duration_from,
-            contributionData.LendingDetail.duration_to
-          ),
+          value: formatDateRange(lendingDetail.duration_from, lendingDetail.duration_to),
         },
         {
-          label:
-            "Specific conditions or requirements for handling of the artifact:",
-          value:
-            contributionData.LendingDetail.lend_conditions || "Not provided",
+          label: "Specific conditions or requirements for handling of the artifact:",
+          value: lendingDetail.lend_conditions || "Not provided",
         },
         {
-          label:
-            "Specific liability concerns or requirements regarding the artifact:",
-          value:
-            contributionData.LendingDetail.lend_liabilities || "Not provided",
+          label: "Specific liability concerns or requirements regarding the artifact:",
+          value: lendingDetail.lend_liabilities || "Not provided",
         },
         {
           label: "Reason for lending:",
-          value:
-            contributionData.LendingDetail.lending_reason || "Not provided",
+          value: lendingDetail.lending_reason || "Not provided",
         },
       ]
     : [];
 
   const mapTimelineStep = (timeline) => {
-    if (timeline.completed_at) return 5; // Completed
-    if (timeline.on_delivery_at) return 4; // On Delivery
-    if (timeline.moa_settled_at) return 3; // MOA Settled
-    if (timeline.approved_at) return 2; // Approved
-    if (timeline.under_review_at) return 1; // Under Review
-    if (timeline.submitted_at) return 0; // Submitted
-    return 0; // fallback
+    if (timeline.completed_at) return 5;
+    if (timeline.on_delivery_at) return 4;
+    if (timeline.moa_settled_at) return 3;
+    if (timeline.approved_at) return 2;
+    if (timeline.under_review_at) return 1;
+    if (timeline.submitted_at) return 0;
+    return 0;
   };
 
   const steps = [
-    {
-      label: "Submitted",
-      description:
-        "Contribution has been logged in the system and queued for review.",
-    },
-    {
-      label: "Under Review",
-      description:
-        "This form is currently being evaluated and requirements are being verified.",
-    },
-    {
-      label: "Approved",
-      description:
-        "Submission has passed review and is cleared for the next process.",
-    },
-    {
-      label: "MOA Settled",
-      description: "Memorandum of Agreement has been issued and acknowledged.",
-    },
-    {
-      label: "On Delivery",
-      description: "Artifact ise in the process of being delivered.",
-    },
-    {
-      label: "Completed",
-      description:
-        "All steps have been finalized; process is officially closed.",
-    },
+    { label: "Submitted", description: "Contribution has been logged and queued for review." },
+    { label: "Under Review", description: "Currently being evaluated." },
+    { label: "Approved", description: "Submission passed review." },
+    { label: "MOA Settled", description: "MOA has been issued and acknowledged." },
+    { label: "On Delivery", description: "Artifact is in the process of delivery." },
+    { label: "Completed", description: "Process finalized." },
   ];
 
   const relatedImages =
-    contributionData?.ContributionArtifact?.related_images?.map((img, idx) => ({
+    artifact?.related_images?.map((img, idx) => ({
       key: idx.toString(),
       src: `${SERVER_URL}/uploads/private/pictures/${img}`,
-      label: `${img}`,
+      label: img,
     })) || [];
 
   const attachedFiles =
-    contributionData?.ContributionArtifact?.documents?.map((doc, idx) => ({
+    artifact?.documents?.map((doc, idx) => ({
       key: idx.toString(),
       filename: doc,
       category: "file",
       url: `${SERVER_URL}/uploads/private/files/${doc}`,
     })) || [];
 
-  const artifactInfo = contributionData?.ContributionArtifact
+  const artifactInfo = artifact
     ? [
-        {
-          label: "Title/Name of the Artifact:",
-          value: contributionData.ContributionArtifact.title || "Not provided",
-        },
-        {
-          label: "Artifact Description:",
-          value:
-            contributionData.ContributionArtifact.description || "Not provided",
-        },
-        {
-          label: "How and where was the artifact acquired:",
-          value:
-            contributionData.ContributionArtifact.acquisition_details ||
-            "Not provided",
-        },
-        {
-          label: "Additional Information:",
-          value:
-            contributionData.ContributionArtifact.additional_info ||
-            "Not provided",
-        },
-        {
-          label: "Brief narrative or story related to the artifact:",
-          value:
-            contributionData.ContributionArtifact.narrative || "Not provided",
-        },
+        { label: "Title/Name of the Artifact:", value: artifact.title || "Not provided" },
+        { label: "Artifact Description:", value: artifact.description || "Not provided" },
+        { label: "How and where was the artifact acquired:", value: artifact.acquisition_details || "Not provided" },
+        { label: "Additional Information:", value: artifact.additional_info || "Not provided" },
+        { label: "Brief narrative or story related to the artifact:", value: artifact.narrative || "Not provided" },
       ]
     : [];
 
   const transactionDescription = contributionData
     ? [
         { label: "Status", value: contributionData.status },
-        {
-          label: "Last Progress Date",
-          value: formatDate(contributionData.updated_at),
-        },
+        { label: "Last Progress Date", value: formatDate(contributionData.updated_at) },
       ]
     : [];
 
   const artifactImg =
-    contributionData?.ContributionArtifact?.images?.map((img, idx) => ({
-      src: `http://localhost:5000/uploads/private/pictures/${img}`,
+    artifact?.images?.map((img, idx) => ({
+      src: `${SERVER_URL}/uploads/private/pictures/${img}`,
       label: `Image ${idx + 1}`,
     })) || [];
 
-  const email = contributionData?.Contributor?.email || "";
-
-  const { date: submittedDate, time: submittedTime } = formatDateTime(
-    contributionData?.submission_date
-  );
+  const email = contributor?.email || "";
+  const { date: submittedDate, time: submittedTime } = formatDateTime(contributionData?.submission_date);
 
   const previewAbout = [
     { label: "Current Manager", value: user.fname + " " + user.lname },

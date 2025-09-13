@@ -27,7 +27,7 @@ export const Contracts = mainDb.define(
     updated_at: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
   },
   {
-    tableName: "Contracts",
+    tableName: "contracts",
     timestamps: true,
     createdAt: "created_at",
     updatedAt: "updated_at",

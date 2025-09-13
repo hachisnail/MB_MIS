@@ -94,28 +94,26 @@ const Acquisition = () => {
     [showToast]
   );
 
-  const filteredAcquisitions = acquisitions.filter((item) => {
-    const statusMatch =
-      statusFilter === "All Statuses" ||
-      item.status?.toLowerCase() === statusFilter.toLowerCase();
+const filteredAcquisitions = acquisitions.filter((item) => {
+  const artifact = item?.ContributionArtifact || item?.contributionartifact;
+  const contributor = item?.Contributor || item?.contributor;
 
-    const transferMatch =
-      transferFilter === "All" ||
-      item.transfer_status?.toLowerCase() === transferFilter.toLowerCase();
+  const statusMatch =
+    statusFilter === "All Statuses" ||
+    item.status?.toLowerCase() === statusFilter.toLowerCase();
 
-    const searchMatch =
-      item?.ContributionArtifact?.title
-        ?.toLowerCase()
-        .includes(searchQuery.toLowerCase()) ||
-      item?.Contributor?.first_name
-        ?.toLowerCase()
-        .includes(searchQuery.toLowerCase()) ||
-      item?.Contributor?.last_name
-        ?.toLowerCase()
-        .includes(searchQuery.toLowerCase());
+  const transferMatch =
+    transferFilter === "All" ||
+    item.transfer_status?.toLowerCase() === transferFilter.toLowerCase();
 
-    return statusMatch && transferMatch && searchMatch;
-  });
+  const searchMatch =
+    artifact?.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    contributor?.first_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    contributor?.last_name?.toLowerCase().includes(searchQuery.toLowerCase());
+
+  return statusMatch && transferMatch && searchMatch;
+});
+
 
   const headersMap = {
     form: formHeaders,

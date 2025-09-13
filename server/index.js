@@ -56,7 +56,15 @@ const corsMw = cors({
   },
   credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization", "x-browser-id", "x-requested-with"],
+    allowedHeaders: [
+    "Content-Type",
+    "Authorization",
+    "x-browser-id",
+    "x-requested-with",
+    "Cache-Control",   // 👈 add this
+    "Pragma",          // optional, some browsers use it
+    "Expires"          // optional
+  ],
 });
 app.use(corsMw);
 app.options(/.*/, corsMw); 

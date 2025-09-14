@@ -522,8 +522,11 @@ const AcquisitionViewPage = () => {
                         </div>
                       </form>
                     ) : (
-                      <div className="w-full h-full bg-neutral-300 rounded-md">
-                        {/* post-approval UI */}
+                      <div className="w-full h-full p-2 bg-white shadow-[inset_0_6px_6px_rgba(0,0,0,0.8),inset_0_-6px_6px_rgba(0,0,0,0.3)] rounded-xl">
+                        <div className="w-full h-full flex flex-col rounded-md justify-end">
+
+                          <div className="w-full h-20 border-2  shadow-[inset_0_6px_6px_rgba(0,0,0,0.4)] border-black rounded-xl"/>
+                        </div>
                       </div>
                     )}
                   </>

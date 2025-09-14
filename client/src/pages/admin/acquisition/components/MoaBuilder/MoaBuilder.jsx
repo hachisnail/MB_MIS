@@ -55,6 +55,8 @@ const MoaBuilder = forwardRef(
     const [formValues, setFormValues] = useState({});
     const [draftValues, setDraftValues] = useState({});
 
+    const [showUpdateButton, setShowUpdateButton] = useState(false);
+
     const isApproved = payload?.status === "approved";
 
     const fetchContract = async () => {
@@ -72,7 +74,7 @@ const MoaBuilder = forwardRef(
         const response = await axiosClient.post("auth/set-contract", {
           contribution_id: data.contribution_id,
           type: data.type,
-          fileName: data.fileName, // ✅ use whatever buildActivePayload decided
+          fileName: data.fileName, 
           mergedData: data.mergedData,
         });
 
@@ -317,6 +319,7 @@ const MoaBuilder = forwardRef(
           next.duration_from = next.start;
           next.duration_to = next.end;
         }
+        setShowUpdateButton(true);
         return next;
       });
 
@@ -354,6 +357,7 @@ const MoaBuilder = forwardRef(
       console.log("Active Payload:", JSON.stringify(activePayload, null, 2));
 
       setContractPayload(activePayload);
+      setShowUpdateButton(false);
     };
 
     const handleDraftChange = (key, value) => {
@@ -361,21 +365,21 @@ const MoaBuilder = forwardRef(
     };
 
     return (
-      <div>
-        <div className="w-fit h-fit bg-white flex flex-col mb-4 ">
+      <div className="relative w-fit h-fit">
+        <div className="w-fit h-fit bg-white flex flex-col ">
           <ViewPort
             title="Memorandum Of Agreement"
             width={200}
             height={490}
             sizes={{
               lg: { width: 300, height: 490 },
-              "2xl": { width: 530, height: 513 },
+              "2xl": { width: 530, height: 545 },
               "3xl": { width: 550, height: 945 },
             }}
           >
             <div className="rounded-xl h-[134.5rem] w-[81.7rem] border bg-white shadow-inner overflow-auto">
               {(error || (errors && errors.length > 0)) && (
-                <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-red-700 text-sm">
+                <div className="rounded-xl text-3xl flex flex-col items-center pt-[50rem]  border w-full h-full border-red-200 bg-red-50 p-3 text-red-700">
                   {error}
                   {errors?.length > 0 && (
                     <ul className="mt-2 list-disc pl-5">
@@ -525,26 +529,28 @@ const MoaBuilder = forwardRef(
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-2 ">
+        <div className="flex items-center justify-end gap-2 absolute top-27 right-8">
           <button
             onClick={() => setShowModal(true)}
             className="rounded-sm bg-blue-600 text-white px-4 py-2 shadow hover:shadow-md"
           >
-            Override
+            Edit
           </button>
           <button
             onClick={download}
             disabled={!blob}
             className="rounded-sm bg-black text-white px-4 py-2 shadow hover:shadow-md disabled:opacity-50"
           >
-            Download DOCX
+            Download Document
           </button>
+          {showUpdateButton && (
           <button
             onClick={logActivePayload}
             className="rounded-sm bg-gray-700 text-white px-4 py-2 shadow hover:shadow-md"
           >
-            Log JSON
+            Update
           </button>
+          )}
         </div>
       </div>
     );

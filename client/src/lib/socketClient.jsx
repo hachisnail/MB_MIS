@@ -199,7 +199,7 @@ class SocketClient {
       this._syncRooms();
     }
   }
-
+  
   joinRoom(roomName) {
     if (roomName === "guestRoom" && !this.isGuest) {
       if (this.joinedRooms.has("guestRoom")) {

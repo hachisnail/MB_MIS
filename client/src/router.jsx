@@ -103,7 +103,7 @@ import AdminSocketsPanel from "./sandbox/AdminSocketsPanel";
 import ModalsTest from "@/sandbox/ModalsTest";
 import RouteFlagToggle from "@/sandbox/RouteFlagToggle";
 import SocketMonitor from "./sandbox/SocketMonitor";
-import TableAndForms from "./sandbox/TableAndForms";
+import Sandbox from "./sandbox/sandbox";
 import ElectionResultParser from "@/pages/ElectionRParser";
 
 // Layouts
@@ -298,7 +298,7 @@ const Router = () => {
                 path="dashboard/sandbox/socket-monitor"
                 element={<SocketMonitor />}
               />
-              <Route path="dashboard/sandbox/table-forms" element={<TableAndForms />} />
+              <Route path="dashboard/sandbox/playground" element={<Sandbox />} />
             </>
           )}
 

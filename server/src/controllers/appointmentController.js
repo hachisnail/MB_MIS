@@ -44,32 +44,19 @@ export const createAppointment = async (req, res, next) => {
       });
     }
 
-    // Reuse or create the Visitor record
-    let visitor = await Visitor.findOne({
-      where: { first_name, last_name, email }
+    // Always create a new visitor (no update, even if same info exists)
+    const visitor = await Visitor.create({
+      first_name,
+      last_name,
+      email,
+      phone,
+      organization,
+      province,
+      barangay,
+      city_municipality,
+      street
     });
-    if (visitor) {
-      await visitor.update({
-        phone: phone || visitor.phone,
-        organization: organization || visitor.organization,
-        province: province || visitor.province,
-        barangay: barangay || visitor.barangay,
-        city_municipality: city_municipality || visitor.city_municipality,
-        street: street || visitor.street
-      });
-    } else {
-      visitor = await Visitor.create({
-        first_name,
-        last_name,
-        email,
-        phone,
-        organization,
-        province,
-        barangay,
-        city_municipality,
-        street
-      });
-    }
+
 
     // Insert new appointment with start_time and end_time
     const appointment = await Appointment.create({
@@ -127,7 +114,7 @@ export const updateAppointmentStatus = async (req, res) => {
 
     let beforeState = null;
     let action = 'create';
-    
+
     if (!appointmentStatus) {
       appointmentStatus = await AppointmentStatus.create({
         appointment_id: id,
@@ -138,7 +125,7 @@ export const updateAppointmentStatus = async (req, res) => {
       // Capture before state for logging
       beforeState = appointmentStatus.toJSON();
       action = 'update';
-      
+
       if (status !== undefined) {
         appointmentStatus.status = status;
       }
@@ -153,7 +140,7 @@ export const updateAppointmentStatus = async (req, res) => {
     const visitorName = `${appointment.Visitor?.first_name || ''} ${appointment.Visitor?.last_name || ''}`.trim();
     const statusText = status ? status.toLowerCase().replace('_', ' ') : 'status';
     const description = `Appointment from with an ID of #${id} and a name of ${visitorName} was ${action === 'create' ? 'created with' : 'updated to'} ${statusText}`;
-    
+
     let details = `${username} ${action === 'create' ? 'set' : 'changed'} appointment status to ${statusText}`;
     if (present_count !== undefined && status === 'COMPLETED') {
       details += ` with ${present_count} visitors present`;
@@ -320,7 +307,7 @@ export const getAllAppointments = async (req, res) => {
       // Convert to plain object and add preferred_time
       const appointmentData = appointment.toJSON();
       appointmentData.preferred_time = formatTimeDisplay(appointmentData.start_time, appointmentData.end_time);
-      
+
       const status = appointmentData.AppointmentStatus?.status?.toUpperCase() || 'PENDING';
       if (status === 'PENDING') {
         toReview.push(appointmentData);
@@ -663,10 +650,10 @@ export const getAppointmentById = async (req, res) => {
     // The ID might come as a direct number or as part of an encoded string
     const rawId = req.params.id;
     let appointmentId;
-    
+
     // Try to parse as direct number first
     appointmentId = parseInt(rawId);
-    
+
     // If that fails, try to decode and extract ID
     if (isNaN(appointmentId)) {
       try {
@@ -866,18 +853,18 @@ export const uploadAppointmentFiles = async (req, res) => {
     // Files are already saved to the correct directory by multer middleware
     // Just return the uploaded file information
     const uploadedFiles = req.files.map(file => file.filename);
-    
+
     console.log(`Successfully uploaded ${uploadedFiles.length} files to request-letter directory:`, uploadedFiles);
-    
-    return res.status(200).json({ 
-      message: "Files uploaded successfully", 
-      files: uploadedFiles 
+
+    return res.status(200).json({
+      message: "Files uploaded successfully",
+      files: uploadedFiles
     });
   } catch (err) {
     console.error('Upload error:', err);
-    return res.status(500).json({ 
-      message: "Server error uploading files", 
-      error: err.message 
+    return res.status(500).json({
+      message: "Server error uploading files",
+      error: err.message
     });
   }
 };

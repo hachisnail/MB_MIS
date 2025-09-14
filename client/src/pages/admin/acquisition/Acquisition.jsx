@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import {
   SearchBar,
   CardDropdownPicker,
@@ -81,6 +81,94 @@ const Acquisition = () => {
   ];
 
   const { toastConfig, showToast, hideToast } = useToast();
+
+  // --- Donor de-dupe helpers ---
+const norm = (s) => (s ?? "").toString().trim().toLowerCase();
+const fullName = (c) => `${c?.first_name || ""} ${c?.last_name || ""}`.trim();
+
+// birth_date ay inaasahan mula backend (ISO or YYYY-MM-DD)
+const makeDonorKey = (contributor) => {
+  const name = fullName(contributor);
+  const email = contributor?.email ?? "";
+  const bdate = contributor?.birth_date ?? ""; // fallback kung wala pa sa payload
+  return `${norm(name)}|${norm(bdate)}|${norm(email)}`;
+};
+
+const dedupeDonors = (rows) => {
+  if (!Array.isArray(rows) || !rows.length) return [];
+  const map = new Map();
+
+  for (const row of rows) {
+    // Support 3 possible data structures:
+    // 1) { Contributor: {...}, Contributions: [...] }
+    // 2) { contributor: {...}, Contributions: [...] } 
+    // 3) Top-level contributor row: { first_name, last_name, ..., Contributions: [...] }
+    const c0 = row?.Contributor ?? row?.contributor ?? row;
+    if (!c0 || (!c0.first_name && !c0.last_name && !c0.email)) continue;
+    const key = makeDonorKey(c0);
+
+    if (!map.has(key)) {
+      map.set(key, {
+        ...row,
+        // Standardize: always have .Contributor for renderer
+        Contributor: c0,
+        Contributions: Array.isArray(row?.Contributions)
+          ? [...row.Contributions]
+          : Array.isArray(row?.contributions)
+            ? [...row.contributions] 
+            : [],
+      });
+    } else {
+      const acc = map.get(key);
+      const next = Array.isArray(row?.Contributions)
+        ? row.Contributions
+        : Array.isArray(row?.contributions)
+          ? row.contributions
+          : [];
+      acc.Contributions = [...(acc.Contributions || []), ...next];
+
+      // Keep first non-empty location fields
+      if (!acc.Contributor.province && c0.province) acc.Contributor.province = c0.province;
+      if (!acc.Contributor.city && c0.city) acc.Contributor.city = c0.city;
+
+      map.set(key, acc);
+    }
+  }
+
+  for (const val of map.values()) {
+    const cs = val.Contributions || [];
+    val.total_contributions = cs.length;
+    cs.sort((a, b) => new Date(b?.submission_date || 0) - new Date(a?.submission_date || 0));
+  }
+
+  return Array.from(map.values()).sort((a, b) => {
+    const aLatest = a.Contributions?.[0]?.submission_date;
+    const bLatest = b.Contributions?.[0]?.submission_date;
+    return new Date(bLatest || 0) - new Date(aLatest || 0);
+  });
+};
+
+ const donorRecords = useMemo(() => {
+   if (activeTab !== "donator-records") return [];
+   return dedupeDonors(acquisitions);
+ }, [activeTab, acquisitions]);
+
+ const filteredDonorRecords = useMemo(() => {
+  const q = (searchQuery || "").toLowerCase();
+  if (!q) return donorRecords;
+  return donorRecords.filter((row) => {
+    const c = row?.Contributor ?? row?.contributor ?? {};
+    const name = `${c.first_name || ""} ${c.last_name || ""}`.trim().toLowerCase();
+    return (
+      name.includes(q) ||
+      (c.email || "").toLowerCase().includes(q) ||
+      (c.province || "").toLowerCase().includes(q) ||
+      (c.city || "").toLowerCase().includes(q) ||
+      (String(c.birth_date || "")).toLowerCase().includes(q)  // Safer string conversion
+    );
+  });
+}, [donorRecords, searchQuery]);
+
 
   const handleDateChange = useCallback(
     (date) => {
@@ -171,9 +259,10 @@ const filteredAcquisitions = acquisitions.filter((item) => {
         }
       });
 
-      const response = await axiosClient.get(
-        `${endpoint}?${searchParams.toString()}`
-      );
+      const qs = searchParams.toString();
+      const url = qs ? `${endpoint}?${qs}` : endpoint;
+      const response = await axiosClient.get(url);
+      
       let data = response.data || [];
 
       if (activeTab === "pendings") {
@@ -330,7 +419,7 @@ const filteredAcquisitions = acquisitions.filter((item) => {
                 error={error}
                 items={
                   activeTab === "donator-records"
-                    ? acquisitions
+                    ? filteredDonorRecords
                     : filteredAcquisitions
                 }
                 renderItem={(item, index) => {

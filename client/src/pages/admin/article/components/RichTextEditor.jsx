@@ -16,7 +16,7 @@ import Highlight from "@tiptap/extension-highlight";
 import Youtube from "@tiptap/extension-youtube";
 import Dropcursor from "@tiptap/extension-dropcursor";
 
-// Your custom extensions (adjust paths as needed)
+// Your custom extensions
 import { ColumnBlock, Column } from "../components/ColumBlock";
 import FontSize from "../components/FontSize";
 import CustomImage from "../components/CustomImage";
@@ -82,7 +82,13 @@ const RichTextEditor = forwardRef(
         TableCell,
         Placeholder.configure({ placeholder }),
         Highlight,
-        Youtube,
+        // 👇 Add a class hook to the YouTube iframe
+        Youtube.configure({
+          width: 640,      // doesn't matter; we clamp via CSS
+          height: 360,
+          allowFullscreen: true,
+          HTMLAttributes: { class: "youtube-video" },
+        }),
         Dropcursor.configure({ color: "blue", width: 2 }),
         CustomImage,
       ],
@@ -107,13 +113,11 @@ const RichTextEditor = forwardRef(
       },
     });
 
-    // Expose a small API to the parent
     useImperativeHandle(ref, () => ({
       getHTML: () => editor?.getHTML() || "",
       getText: () => editor?.state.doc.textContent || "",
       setContent: (html = "") => editor?.commands.setContent(html),
       focus: () => editor?.commands.focus(),
-      // helper to run chains from parent (for things like setImage, setFontSize, etc.)
       runChain: (fn) => {
         if (!editor) return;
         const chain = editor.chain();
@@ -121,117 +125,76 @@ const RichTextEditor = forwardRef(
       },
     }));
 
-    // --- helpers: split selected text into N columns (by character length, word-safe) ---
-const splitTextIntoNColumns = (text, n) => {
-  // normalize spacing but keep paragraph breaks if present
-  const cleaned = (text || "").trim().replace(/\s+/g, " ");
-  if (!cleaned) return Array.from({ length: n }, () => "");
-
-  const words = cleaned.split(/\s+/);
-  const totalChars = words.reduce((sum, w, i) => sum + w.length + (i === 0 ? 0 : 1), 0);
-  let target = Math.ceil(totalChars / n);
-
-  const chunks = [];
-  let current = "";
-  let curLen = 0;
-
-  for (let i = 0; i < words.length; i++) {
-    const w = words[i];
-    const add = (current ? " " : "") + w;
-    if (curLen + add.length > target && chunks.length < n - 1) {
+    // --- helpers for columns (unchanged) ---
+    const splitTextIntoNColumns = (text, n) => {
+      const cleaned = (text || "").trim().replace(/\s+/g, " ");
+      if (!cleaned) return Array.from({ length: n }, () => "");
+      const words = cleaned.split(/\s+/);
+      const totalChars = words.reduce((sum, w, i) => sum + w.length + (i === 0 ? 0 : 1), 0);
+      let target = Math.ceil(totalChars / n);
+      const chunks = [];
+      let current = "";
+      let curLen = 0;
+      for (let i = 0; i < words.length; i++) {
+        const w = words[i];
+        const add = (current ? " " : "") + w;
+        if (curLen + add.length > target && chunks.length < n - 1) {
+          chunks.push(current);
+          current = w;
+          curLen = w.length;
+          const remainingTextLen =
+            words.slice(i + 1).reduce((s, ww, j) => s + ww.length + (j === 0 ? 0 : 1), 0) + curLen;
+          const colsLeft = n - chunks.length;
+          target = Math.ceil(remainingTextLen / colsLeft);
+        } else {
+          current += add;
+          curLen += add.length;
+        }
+      }
       chunks.push(current);
-      current = w;
-      curLen = w.length;
+      while (chunks.length < n) chunks.push("");
+      if (chunks.length > n) {
+        const tail = chunks.splice(n - 1).join(" ");
+        chunks[n - 1] = (chunks[n - 1] + " " + tail).trim();
+      }
+      return chunks;
+    };
 
-      // recompute target for the remainder to balance better
-      const wordsLeft = words.length - (i + 1);
-      const remainingTextLen =
-        words.slice(i + 1).reduce((s, ww, j) => s + ww.length + (j === 0 ? 0 : 1), 0) + curLen;
-      const colsLeft = n - chunks.length;
-      target = Math.ceil(remainingTextLen / colsLeft);
-    } else {
-      current += add;
-      curLen += add.length;
-    }
-  }
-  chunks.push(current);
+    const textToParagraphNodes = (text) => {
+      const parts = (text || "")
+        .split(/\n{2,}/)
+        .map((p) => p.trim())
+        .filter(Boolean);
+      if (parts.length === 0) return [{ type: "paragraph" }];
+      return parts.map((p) => ({
+        type: "paragraph",
+        content: [{ type: "text", text: p }],
+      }));
+    };
 
-  // ensure exactly n chunks
-  while (chunks.length < n) chunks.push("");
-  if (chunks.length > n) {
-    // merge extras into the last one (shouldn't really happen, but safe)
-    const tail = chunks.splice(n - 1).join(" ");
-    chunks[n - 1] = (chunks[n - 1] + " " + tail).trim();
-  }
-
-  return chunks;
-};
-
-const textToParagraphNodes = (text) => {
-  // split by blank lines into paragraphs; fallback to single paragraph
-  const parts = (text || "")
-    .split(/\n{2,}/)
-    .map((p) => p.trim())
-    .filter(Boolean);
-
-  if (parts.length === 0) return [{ type: "paragraph" }];
-
-  return parts.map((p) => ({
-    type: "paragraph",
-    content: [{ type: "text", text: p }],
-  }));
-};
-
-/**
- * Replace current selection with a columnBlock of N columns, auto-distributing text.
- * If no selection, falls back to inserting empty columns (old behavior).
- */
-const distributeSelectionIntoColumns = (n) => {
-  if (!editor) return;
-
-  const { state } = editor;
-  const { from, to, empty } = state.selection;
-
-  // If no selection, behave like your existing "insert empty columns"
-  if (empty || from === to) {
-    const emptyColumns = Array.from({ length: n }, () => ({
-      type: "column",
-      content: [{ type: "paragraph" }],
-    }));
-    editor
-      .chain()
-      .focus()
-      .insertContent({ type: "columnBlock", content: emptyColumns })
-      .run();
-    setIsDirty?.(true);
-    return;
-  }
-
-  // Extract selected text (plain text; preserves paragraph breaks via blockSeparator)
-  const selectedText = state.doc.textBetween(from, to, "\n\n", " ");
-  const chunks = splitTextIntoNColumns(selectedText, n);
-
-  const columnNodes = chunks.map((txt) => ({
-    type: "column",
-    content: textToParagraphNodes(txt),
-  }));
-
-  const columnBlockNode = {
-    type: "columnBlock",
-    content: columnNodes,
-  };
-
-  // Replace selection with our columnBlock
-  editor
-    .chain()
-    .focus()
-    .deleteRange({ from, to })
-    .insertContent(columnBlockNode)
-    .run();
-
-  setIsDirty?.(true);
-};
-
+    const distributeSelectionIntoColumns = (n) => {
+      if (!editor) return;
+      const { state } = editor;
+      const { from, to, empty } = state.selection;
+      if (empty || from === to) {
+        const emptyColumns = Array.from({ length: n }, () => ({
+          type: "column",
+          content: [{ type: "paragraph" }],
+        }));
+        editor.chain().focus().insertContent({ type: "columnBlock", content: emptyColumns }).run();
+        setIsDirty?.(true);
+        return;
+      }
+      const selectedText = state.doc.textBetween(from, to, "\n\n", " ");
+      const chunks = splitTextIntoNColumns(selectedText, n);
+      const columnNodes = chunks.map((txt) => ({
+        type: "column",
+        content: textToParagraphNodes(txt),
+      }));
+      const columnBlockNode = { type: "columnBlock", content: columnNodes };
+      editor.chain().focus().deleteRange({ from, to }).insertContent(columnBlockNode).run();
+      setIsDirty?.(true);
+    };
 
     return (
       <div className="space-y-2">
@@ -243,16 +206,11 @@ const distributeSelectionIntoColumns = (n) => {
         <div className="flex flex-wrap items-center gap-2 p-2 bg-[#d6c2ad] rounded border border-black-400">
           {/* Headings */}
           <div className="flex gap-1">
-            {[1, 2, 3, 4, 5].map((level) => (
+            {[1,2,3,4,5].map((level) => (
               <button
                 key={level}
                 type="button"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  editor?.chain().focus().toggleHeading({ level }).run();
-                  setIsDirty?.(true);
-                }}
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); editor?.chain().focus().toggleHeading({ level }).run(); setIsDirty?.(true); }}
                 className={`text-sm px-2 py-1 border rounded-sm ${editor?.isActive("heading", { level }) ? "bg-white" : ""}`}
               >
                 H{level}
@@ -266,28 +224,17 @@ const distributeSelectionIntoColumns = (n) => {
           <div className="flex items-center gap-1">
             <TypeIcon size={16} className="text-gray-600" />
             <select
-              onChange={(e) => {
-                editor?.chain().focus().setFontSize(e.target.value).run();
-                setIsDirty?.(true);
-              }}
+              onChange={(e) => { editor?.chain().focus().setFontSize(e.target.value).run(); setIsDirty?.(true); }}
               className="px-1 py-1 border rounded text-sm"
               defaultValue="1em"
             >
               {fontSizes.map((s) => (
-                <option key={s.value} value={s.value}>
-                  {s.label}
-                </option>
+                <option key={s.value} value={s.value}>{s.label}</option>
               ))}
             </select>
-
             <button
               type="button"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                editor?.chain().focus().toggleHighlight().run();
-                setIsDirty?.(true);
-              }}
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); editor?.chain().focus().toggleHighlight().run(); setIsDirty?.(true); }}
               className={`p-1 border rounded ${editor?.isActive("highlight") ? "bg-white" : ""}`}
               title="Highlight"
             >
@@ -299,42 +246,9 @@ const distributeSelectionIntoColumns = (n) => {
 
           {/* Bold / Underline / Italic */}
           <div className="flex gap-1 ml-2">
-            <button
-              type="button"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                editor?.chain().focus().toggleBold().run();
-                setIsDirty?.(true);
-              }}
-              className={`p-1 border rounded ${editor?.isActive("bold") ? "bg-white" : ""}`}
-            >
-              <Bold size={16} />
-            </button>
-            <button
-              type="button"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                editor?.chain().focus().toggleUnderline().run();
-                setIsDirty?.(true);
-              }}
-              className={`p-1 border rounded ${editor?.isActive("underline") ? "bg-white" : ""}`}
-            >
-              <UnderlineIcon size={16} />
-            </button>
-            <button
-              type="button"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                editor?.chain().focus().toggleItalic().run();
-                setIsDirty?.(true);
-              }}
-              className={`p-1 border rounded ${editor?.isActive("italic") ? "bg-white" : ""}`}
-            >
-              <Italic size={16} />
-            </button>
+            <button type="button" onClick={(e)=>{e.preventDefault();e.stopPropagation();editor?.chain().focus().toggleBold().run();setIsDirty?.(true);}} className={`p-1 border rounded ${editor?.isActive("bold") ? "bg-white" : ""}`}><Bold size={16} /></button>
+            <button type="button" onClick={(e)=>{e.preventDefault();e.stopPropagation();editor?.chain().focus().toggleUnderline().run();setIsDirty?.(true);}} className={`p-1 border rounded ${editor?.isActive("underline") ? "bg-white" : ""}`}><UnderlineIcon size={16} /></button>
+            <button type="button" onClick={(e)=>{e.preventDefault();e.stopPropagation();editor?.chain().focus().toggleItalic().run();setIsDirty?.(true);}} className={`p-1 border rounded ${editor?.isActive("italic") ? "bg-white" : ""}`}><Italic size={16} /></button>
           </div>
 
           <div className="border-l h-6 mx-2" />
@@ -350,12 +264,7 @@ const distributeSelectionIntoColumns = (n) => {
               <button
                 key={dir}
                 type="button"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  editor?.chain().focus().setTextAlign(dir).run();
-                  setIsDirty?.(true);
-                }}
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); editor?.chain().focus().setTextAlign(dir).run(); setIsDirty?.(true); }}
                 className={`p-1 border rounded ${editor?.isActive({ textAlign: dir }) ? "bg-white" : ""}`}
               >
                 <Icon size={16} />
@@ -365,87 +274,31 @@ const distributeSelectionIntoColumns = (n) => {
 
           <div className="border-l h-6 mx-2" />
 
-{/* Columns */}
-<div className="flex gap-1">
-  {/* 2 columns, distribute selection if any */}
-  <button
-    type="button"
-    onClick={(e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      distributeSelectionIntoColumns(2);
-    }}
-    className="p-1 border rounded"
-    title="Split selection into 2 columns (or insert empty)"
-  >
-    <ColumnsIcon size={16} />
-  </button>
-
-  {/* 3 columns, distribute selection if any */}
-  <button
-    type="button"
-    onClick={(e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      distributeSelectionIntoColumns(3);
-    }}
-    className="p-1 border rounded flex items-center justify-center"
-    title="Split selection into 3 columns (or insert empty)"
-  >
-    <svg width="18" height="16" viewBox="0 0 18 16" fill="none">
-      <rect x="1" y="2" width="4" height="12" rx="1" fill="#555" />
-      <rect x="7" y="2" width="4" height="12" rx="1" fill="#555" />
-      <rect x="13" y="2" width="4" height="12" rx="1" fill="#555" />
-    </svg>
-  </button>
-</div>
-
+          {/* Columns */}
+          <div className="flex gap-1">
+            <button type="button" onClick={(e)=>{e.preventDefault();e.stopPropagation();distributeSelectionIntoColumns(2);}} className="p-1 border rounded" title="Split selection into 2 columns (or insert empty)">
+              <ColumnsIcon size={16} />
+            </button>
+            <button type="button" onClick={(e)=>{e.preventDefault();e.stopPropagation();distributeSelectionIntoColumns(3);}} className="p-1 border rounded flex items-center justify-center" title="Split selection into 3 columns (or insert empty)">
+              <svg width="18" height="16" viewBox="0 0 18 16" fill="none">
+                <rect x="1" y="2" width="4" height="12" rx="1" fill="#555" />
+                <rect x="7" y="2" width="4" height="12" rx="1" fill="#555" />
+                <rect x="13" y="2" width="4" height="12" rx="1" fill="#555" />
+              </svg>
+            </button>
+          </div>
 
           <div className="border-l h-6 mx-2" />
 
           {/* Lists */}
           <div className="flex gap-1">
-            <button
-              type="button"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                editor?.chain().focus().toggleBulletList().run();
-                setIsDirty?.(true);
-              }}
-              className={`p-1 border rounded ${editor?.isActive("bulletList") ? "bg-white" : ""}`}
-              title="Bullet List"
-            >
+            <button type="button" onClick={(e)=>{e.preventDefault();e.stopPropagation();editor?.chain().focus().toggleBulletList().run();setIsDirty?.(true);}} className={`p-1 border rounded ${editor?.isActive("bulletList") ? "bg-white" : ""}`} title="Bullet List">
               <List size={18} />
             </button>
-
-            <button
-              type="button"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                editor?.chain().focus().toggleOrderedList().run();
-                editor?.chain().focus().updateAttributes("orderedList", { class: "roman-list" }).run();
-                setIsDirty?.(true);
-              }}
-              className={`p-1 border rounded ${editor?.isActive("orderedList", { class: "roman-list" }) ? "bg-white" : ""}`}
-              title="Roman List"
-            >
+            <button type="button" onClick={(e)=>{e.preventDefault();e.stopPropagation();editor?.chain().focus().toggleOrderedList().run();editor?.chain().focus().updateAttributes("orderedList", { class: "roman-list" }).run();setIsDirty?.(true);}} className={`p-1 border rounded ${editor?.isActive("orderedList", { class: "roman-list" }) ? "bg-white" : ""}`} title="Roman List">
               <ListOrdered size={18} />
             </button>
-
-            <button
-              type="button"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                editor?.chain().focus().toggleOrderedList().run();
-                editor?.chain().focus().updateAttributes("orderedList", { class: "letter-list" }).run();
-                setIsDirty?.(true);
-              }}
-              className={`p-1 border rounded ${editor?.isActive("orderedList", { class: "letter-list" }) ? "bg-white" : ""}`}
-              title="Letter List"
-            >
+            <button type="button" onClick={(e)=>{e.preventDefault();e.stopPropagation();editor?.chain().focus().toggleOrderedList().run();editor?.chain().focus().updateAttributes("orderedList", { class: "letter-list" }).run();setIsDirty?.(true);}} className={`p-1 border rounded ${editor?.isActive("orderedList", { class: "letter-list" }) ? "bg-white" : ""}`} title="Letter List">
               <ListOrdered size={18} />
             </button>
           </div>
@@ -454,20 +307,10 @@ const distributeSelectionIntoColumns = (n) => {
 
           {/* Insert Image / YouTube */}
           <div className="flex gap-1">
-            <button
-              type="button"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                imageInputRef.current?.click();
-              }}
-              className="p-1 border rounded"
-              title="Insert Image"
-            >
+            <button type="button" onClick={(e)=>{e.preventDefault();e.stopPropagation();imageInputRef.current?.click();}} className="p-1 border rounded" title="Insert Image">
               <ImageIcon size={16} />
             </button>
             <input type="file" ref={imageInputRef} onChange={onImageUpload} accept="image/*" className="hidden" />
-
             <button
               type="button"
               onClick={(e) => {
@@ -489,14 +332,54 @@ const distributeSelectionIntoColumns = (n) => {
 
         {/* Editor area */}
         <div
-          className="border rounded p-4 min-h-[21.5rem] max-h-[21.5rem]
-                     sm:min-h-[10rem] sm:max-h-[5rem]
-                     md:min-h-[36.5rem] md:max-h-[36.5rem]
-                     lg:min-h-[36.5rem] lg:max-h-[36.5rem]
-                     xl:min-h-[36.6rem] xl:max-h-[36.6rem]
-                     2xl:min-h-[30rem] 2xl:max-h-[37rem]
-                     overflow-auto prose focus:outline-none
-                     [&_iframe[src*='youtube']]:!w-full [&_iframe[src*='youtube']]:!max-w-[400px] [&_iframe[src*='youtube']]:!mx-auto"
+          className="
+            border rounded p-4 min-h-[21.5rem] max-h-[21.5rem]
+            sm:min-h-[10rem] sm:max-h-[5rem]
+            md:min-h-[36.5rem] md:max-h-[36.5rem]
+            lg:min-h-[36.5rem] lg:max-h-[36.5rem]
+            xl:min-h-[36.6rem] xl:max-h-[36.6rem]
+            2xl:min-h-[30rem] 2xl:max-h-[37rem]
+            overflow-auto prose focus:outline-none
+
+            /* 👇 Miniature YouTube in EDITOR (responsive clamps) */
+            [&_.youtube-video]:w-full
+            [&_.youtube-video]:mx-auto
+            [&_.youtube-video]:!max-w-[18rem]
+            sm:[&_.youtube-video]:!max-w-[22rem]
+            md:[&_.youtube-video]:!max-w-[26rem]
+            lg:[&_.youtube-video]:!max-w-[30rem]
+            xl:[&_.youtube-video]:!max-w-[32rem]
+
+            [&_iframe[src*='youtube']]:w-full
+            [&_iframe[src*='youtube']]:h-auto
+            [&_iframe[src*='youtube']]:aspect-video
+            [&_iframe[src*='youtube']]:mx-auto
+            [&_iframe[src*='youtube']]:!max-w-[18rem]
+            sm:[&_iframe[src*='youtube']]:!max-w-[22rem]
+            md:[&_iframe[src*='youtube']]:!max-w-[26rem]
+            lg:[&_iframe[src*='youtube']]:!max-w-[30rem]
+            xl:[&_iframe[src*='youtube']]:!max-w-[32rem]
+
+            [&_iframe[src*='youtu.be']]:w-full
+            [&_iframe[src*='youtu.be']]:h-auto
+            [&_iframe[src*='youtu.be']]:aspect-video
+            [&_iframe[src*='youtu.be']]:mx-auto
+            [&_iframe[src*='youtu.be']]:!max-w-[18rem]
+            sm:[&_iframe[src*='youtu.be']]:!max-w-[22rem]
+            md:[&_iframe[src*='youtu.be']]:!max-w-[26rem]
+            lg:[&_iframe[src*='youtu.be']]:!max-w-[30rem]
+            xl:[&_iframe[src*='youtu.be']]:!max-w-[32rem]
+
+            [&_iframe[src*='youtube-nocookie']]:w-full
+            [&_iframe[src*='youtube-nocookie']]:h-auto
+            [&_iframe[src*='youtube-nocookie']]:aspect-video
+            [&_iframe[src*='youtube-nocookie']]:mx-auto
+            [&_iframe[src*='youtube-nocookie']]:!max-w-[18rem]
+            sm:[&_iframe[src*='youtube-nocookie']]:!max-w-[22rem]
+            md:[&_iframe[src*='youtube-nocookie']]:!max-w-[26rem]
+            lg:[&_iframe[src*='youtube-nocookie']]:!max-w-[30rem]
+            xl:[&_iframe[src*='youtube-nocookie']]:!max-w-[32rem]
+          "
           tabIndex={0}
           onClick={() => editor?.commands.focus()}
         >
@@ -506,7 +389,6 @@ const distributeSelectionIntoColumns = (n) => {
               editor={editor}
               tippyOptions={{ duration: 150, placement: "top" }}
               shouldShow={({ editor, state, from, to }) => {
-                // show only when there is a text selection and not on images/table controls
                 if (!editor?.isEditable) return false;
                 if (from === to) return false;
                 if (editor.isActive("image")) return false;
@@ -514,71 +396,34 @@ const distributeSelectionIntoColumns = (n) => {
               }}
               className="z-50"
             >
-              
               <div className="flex items-center gap-1 rounded-md border border-neutral-300 bg-white/95 backdrop-blur px-1.5 py-1 shadow-lg">
-                {/* Font Size + Highlight */}
-          <div className="flex items-center gap-1">
-            <TypeIcon size={16} className="text-gray-600" />
-            <select
-              onChange={(e) => {
-                editor?.chain().focus().setFontSize(e.target.value).run();
-                setIsDirty?.(true);
-              }}
-              className="px-1 py-1 border rounded text-sm"
-              defaultValue="1em"
-            >
-              {fontSizes.map((s) => (
-                <option key={s.value} value={s.value}>
-                  {s.label}
-                </option>
-              ))}
-            </select>
-
-            <button
-              type="button"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                editor?.chain().focus().toggleHighlight().run();
-                setIsDirty?.(true);
-              }}
-              className={`p-1 border rounded ${editor?.isActive("highlight") ? "bg-white" : ""}`}
-              title="Highlight"
-            >
-              <HighlighterIcon size={11} />
-            </button>
-          </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    editor.chain().focus().toggleBold().run();
-                    setIsDirty?.(true);
-                  }}
-                  className={`p-1 rounded border ${editor.isActive("bold") ? "bg-neutral-100" : "bg-white"}`}
-                  title="Bold"
-                >
+                <div className="flex items-center gap-1">
+                  <TypeIcon size={16} className="text-gray-600" />
+                  <select
+                    onChange={(e) => { editor?.chain().focus().setFontSize(e.target.value).run(); setIsDirty?.(true); }}
+                    className="px-1 py-1 border rounded text-sm"
+                    defaultValue="1em"
+                  >
+                    {fontSizes.map((s) => (
+                      <option key={s.value} value={s.value}>{s.label}</option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => { editor?.chain().focus().toggleHighlight().run(); setIsDirty?.(true); }}
+                    className={`p-1 border rounded ${editor?.isActive("highlight") ? "bg-white" : ""}`}
+                    title="Highlight"
+                  >
+                    <HighlighterIcon size={11} />
+                  </button>
+                </div>
+                <button type="button" onClick={()=>{editor.chain().focus().toggleBold().run();setIsDirty?.(true);}} className={`p-1 rounded border ${editor.isActive("bold") ? "bg-neutral-100" : "bg-white"}`} title="Bold">
                   <Bold size={14} />
                 </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    editor.chain().focus().toggleItalic().run();
-                    setIsDirty?.(true);
-                  }}
-                  className={`p-1 rounded border ${editor.isActive("italic") ? "bg-neutral-100" : "bg-white"}`}
-                  title="Italic"
-                >
+                <button type="button" onClick={()=>{editor.chain().focus().toggleItalic().run();setIsDirty?.(true);}} className={`p-1 rounded border ${editor.isActive("italic") ? "bg-neutral-100" : "bg-white"}`} title="Italic">
                   <Italic size={14} />
                 </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    editor.chain().focus().toggleUnderline().run();
-                    setIsDirty?.(true);
-                  }}
-                  className={`p-1 rounded border ${editor.isActive("underline") ? "bg-neutral-100" : "bg-white"}`}
-                  title="Underline"
-                >
+                <button type="button" onClick={()=>{editor.chain().focus().toggleUnderline().run();setIsDirty?.(true);}} className={`p-1 rounded border ${editor.isActive("underline") ? "bg-neutral-100" : "bg-white"}`} title="Underline">
                   <UnderlineIcon size={14} />
                 </button>
               </div>

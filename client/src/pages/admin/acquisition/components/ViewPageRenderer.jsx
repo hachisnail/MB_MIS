@@ -323,14 +323,14 @@ export function RenderRelatedDocs({
 
 export function PreviewAbout({ previewAbout = [] }) {
   return (
-    <div className="w-full h-fit gap-y-4 flex flex-wrap border-y border-[#9B9B9B] py-10">
+    <div className="w-full h-fit gap-y-4 flex flex-wrap border-y border-[#9B9B9B] py-10 ">
       {previewAbout.map(({ label, value }, idx) => (
         <div
           key={idx}
-          className={`${idx === 0 ? "w-full" : "w-1/2"} h-fit flex flex-col`}
+          className={`${idx === 0 ? "w-full" : "w-1/2"} h-fit flex flex-col `}
         >
-          <span className="text-[#666666] text-xl">{label}</span>
-          <span className="text-white capitalize text-2xl font-semibold">
+          <span className="text-[#666666] text-xl ">{label}</span>
+          <span className="text-white capitalize text-2xl font-semibold 3xl:text-3xl">
             {value}
           </span>
         </div>
@@ -353,12 +353,12 @@ export function ArtifactImageGallery({
   return (
     <div className="w-full h-fit flex flex-col gap-y-5">
       {/* First image */}
-      <div className="w-full h-[34rem] bg-white rounded-2xl overflow-hidden flex items-center justify-center">
+      <div className="w-full h-[34rem] 3xl: h-[45rem] bg-white rounded-2xl overflow-hidden flex items-center justify-center ">
         {artifactImg.length > 0 ? (
           <img
             src={artifactImg[0].src}
             alt={artifactImg[0].label}
-            className="w-full h-full  object-cover rounded-2xl"
+            className="w-full h-full  object-cover rounded-2xl "
             onError={handleImageError()}
           />
         ) : (

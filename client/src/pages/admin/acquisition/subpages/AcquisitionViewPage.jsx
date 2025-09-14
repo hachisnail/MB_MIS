@@ -337,16 +337,15 @@ const AcquisitionViewPage = () => {
               <OverviewShell
                 left={
                   <>
-                    <span className="text-white text-4xl font-semibold">
+                    <span className="text-white text-5xl font-semibold">
                       About
                     </span>
                     <PreviewAbout previewAbout={previewAbout} />
                     <DonatorInfoSection
                       donatorInformation={donatorInformation}
-                      titleClassName="text-4xl text-white font-semibold mb-5"
-                      containerClassName="w-full h-fit flex flex-col gap-y-4"
-                      labelClassName="text-xl items-end text-[#666666] font-normal gap-x-2 flex"
-                      valueClassName="text-2xl font-semibold text-white pl-20 font-normal"
+                      containerClassName="w-full h-fit flex flex-col gap-y-4 "
+                      labelClassName="text-xl items-end text-[#666666] font-normal gap-x-2 flex "
+                      valueClassName="text-2xl font-semibold text-white pl-20 font-normal 3xl:text-3xl"
                       itemClassName="w-full flex flex-col"
                     />
                   </>

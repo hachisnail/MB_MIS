@@ -9,6 +9,7 @@ import TypeStep from "./components/TypeStep";
 import DetailsStep from "./components/DetailsStep";
 import AboutStep from "./components/AboutStep";
 import FilesStep from "./components/FilesStep";
+import SummaryStep from "./components/SummaryStep";
 
 import usePrompt from "../../../../../hooks/usePrompt"; // <-- import hook
 
@@ -209,12 +210,20 @@ const ContributionForm = ({ user }) => {
       <FilesStep
         key="files"
         initialData={formData}
-        onNext={() => setShowSubmitConfirm(true)}
+        onNext={handleNext}
         onBack={handleBack}
         setFormData={setFormData}
         onClearForm={handleClear}
       />
     );
+    baseSteps.push(
+      <SummaryStep
+        key="summary"
+        initialData={formData}
+        onBack={handleBack}                // returns to Files step
+        onConfirm={() => setShowSubmitConfirm(true)}  // opens your existing confirm modal
+      />
+   );
 
     return baseSteps;
   }, [formData]);

@@ -26,7 +26,7 @@ export default function Timeline({
   }, [currentStep, steps]);
 
   return (
-    <div className="w-fit flex flex-col items-center justify-center space-y-8">
+    <div className="w-fit flex flex-col items-center justify-center space-y-8 ">
       <div ref={containerRef} className="relative w-[40rem] flex items-center">
         {/* Background line */}
         <div

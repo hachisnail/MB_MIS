@@ -45,7 +45,7 @@ export function cookieOptions(ttlMin = 120) {
     secure: process.env.NODE_ENV === "production",
     sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
     maxAge: ttlMin * 60 * 1000,
-    path: "/api", // only sent to API routes
+    path: "/api", 
   };
 }
 

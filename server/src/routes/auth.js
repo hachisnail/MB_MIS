@@ -76,6 +76,7 @@ import {
   openContributionSessionByToken,
   sendContributionSessionOtp,
   verifyContributionSessionOtp,
+  closeContributionSession
 } from "../controllers/contributionController.js";
 
 import { upload, multerErrorHandler } from "../middlewares/multerMiddleware.js";
@@ -226,6 +227,8 @@ router.get("/suggest/next", getNextSuggestions);
 router.put("/update-step", requireAuth, updateTimelineStep);
 router.get("/contract/:contractId", getContract);
 router.post("/set-contract", requireAuth, setContract);
+router.post("/contributions/session/close", closeContributionSession);
+
 
 router.get(
   "/contributions/session/open/:token",

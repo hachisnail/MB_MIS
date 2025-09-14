@@ -911,40 +911,28 @@ export const verifyContributionSessionOtp = async (req, res) => {
   }
 };
 
-// --------- legacy uuid+sig---------
-// export const getContributionSession = async (req, res) => {
-//   try {
-//     const { uuid } = req.params;
-//     const { sig } = req.query;
+export const closeContributionSession = async (req, res) => {
+  try {
+    securityHeaders(res);
 
-//     if (!uuid || !sig) return res.status(400).json({ message: "Missing uuid or signature" });
+    const gcRaw = req.cookies?.[GUEST_COOKIE_NAME];
 
-//     const valid = verifyUUIDSignature(uuid, sig);
-//     if (!valid) return res.status(403).json({ message: "Invalid or expired signature" });
+    if (!gcRaw) {
+      // console.warn("closeContributionSession: no cookie present");
+      return res.json({ ok: true });
+    }
 
-//     const session = await ContributionSessions.findOne({ where: { uuid, is_active: true } });
-//     if (!session) return res.status(404).json({ message: "Session not found or inactive" });
+    const payload = verifyGuestCookie(gcRaw);
+    if (!payload) {
+      console.warn("closeContributionSession: invalid or tampered cookie detected");
+      res.clearCookie(GUEST_COOKIE_NAME, cookieOptions());
+      return res.json({ ok: true });
+    }
 
-//     const contribution = await Contributions.findOne({
-//       where: { contribution_id: session.contribution_id },
-//       include: [
-//         { model: Contributors, attributes: ["first_name", "last_name", "email"] },
-//         { model: ContributionArtifacts, attributes: ["title", "description"] },
-//         { model: ContributionTimelines },
-//       ],
-//     });
-//     if (!contribution) return res.status(404).json({ message: "Contribution not found" });
-
-//     return res.json({
-//       session: {
-//         uuid: session.uuid,
-//         created_at: session.created_at,
-//         updated_at: session.updated_at,
-//       },
-//       contribution,
-//     });
-//   } catch (err) {
-//     console.error("Error fetching contribution session:", err);
-//     return res.status(500).json({ message: "Server error fetching contribution session" });
-//   }
-// };
+    res.clearCookie(GUEST_COOKIE_NAME, cookieOptions());
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error("closeContributionSession error:", err);
+    return res.status(500).json({ message: "Server error closing session" });
+  }
+};

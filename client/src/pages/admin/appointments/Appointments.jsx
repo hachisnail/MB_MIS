@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useSocketClient } from "@/context/authContext";
 import { useLocation, useNavigate } from "react-router-dom";
 import axiosClient from "@/lib/axiosClient";
@@ -120,6 +120,8 @@ const Appointments = () => {
     }
   };
 
+
+
   const fetchStats = async () => {
     try {
       let url = `/auth/appointment/stats`;
@@ -231,14 +233,73 @@ const Appointments = () => {
     return matchesTab && matchesSearch && matchesStatus;
   });
 
+  
+  // --- De-dupe helpers ---
+  // normalize for safe comparisons
+  const norm = (s) => (s || "").trim().toLowerCase();
+
+  // build a key using name + email
+  const makeKey = (name, email) => `${norm(name)}|${norm(email)}`;
+
+  // merge multiple visitor records that share same name+email
+  const dedupeVisitorRecords = (records, appointments) => {
+    if (!Array.isArray(records) || !records.length) return [];
+
+    // Build a map of visitorId -> email using the appointments payload
+    // Appointments include: appt.Visitor?.email (from backend)
+    const emailByVisitorId = new Map();
+    for (const appt of Array.isArray(appointments) ? appointments : []) {
+      const vid = appt?.Visitor?.visitor_id;
+      const em = appt?.Visitor?.email;
+      if (vid != null && em) emailByVisitorId.set(vid, em);
+    }
+
+    const bucket = new Map();
+    for (const rec of records) {
+      const email = emailByVisitorId.get(rec.id) || ""; // fallback if not found
+      const key = makeKey(rec.visitorName, email);
+
+      if (!bucket.has(key)) {
+        bucket.set(key, {
+          ...rec,
+          email,              // keep email for filtering/display
+          visitCount: rec.visitCount || 0,
+          details: Array.isArray(rec.details) ? [...rec.details] : []
+        });
+      } else {
+        const acc = bucket.get(key);
+        acc.visitCount = (acc.visitCount || 0) + (rec.visitCount || 0);
+        if (Array.isArray(rec.details)) {
+          acc.details = acc.details.concat(rec.details);
+        }
+      }
+    }
+
+    // (optional) sort details inside each merged row by date desc
+    for (const row of bucket.values()) {
+      row.details?.sort?.((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+    }
+
+    return Array.from(bucket.values());
+  };
+
+
   // Filter visitor records
-  const filteredVisitorRecords = visitorRecords.filter((record) => {
+
+  const dedupedVisitorRecords = useMemo(
+    () => dedupeVisitorRecords(visitorRecords, appointments),
+    [visitorRecords, appointments]
+  );
+
+  const filteredVisitorRecords = dedupedVisitorRecords.filter((record) => {
     if (!searchQuery || activeTab !== "visitorRecords") return true;
 
     const searchLower = searchQuery.toLowerCase();
     return (record.visitorName || "").toLowerCase().includes(searchLower) ||
+      (record.email || "").toLowerCase().includes(searchLower) ||
       (record.date ? record.date.toString().toLowerCase() : "").includes(searchLower);
   });
+
 
   // Sort data
   const sortData = (data, type) => {
@@ -313,6 +374,7 @@ const Appointments = () => {
   const approvedCount = appointments.filter(
     (appt) => normalizeStatus(appt.AppointmentStatus?.status) === "APPROVED"
   ).length;
+
 
   return (
     <>

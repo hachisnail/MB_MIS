@@ -66,14 +66,27 @@ export function AcquisitionItem({ item, headers }) {
 const donorColumns = [
   {
     key: "name",
-    render: (_, item) => `${item.first_name} ${item.last_name}`,
+    render: (_, item) => `${item.Contributor?.first_name || ""} ${item.Contributor?.last_name || ""}`,
   },
-  { key: "email" },
-  { key: "province" },
-  { key: "city" },
+  {
+    key: "email",
+    render: (_, item) => item.Contributor?.email || "",
+  },
+  {
+    key: "province",
+    render: (_, item) => item.Contributor?.province || "",
+  },
+  {
+    key: "city",
+    render: (_, item) => item.Contributor?.city || "",
+  },
+  // {
+  //   key: "last_contribution_date",
+  //   render: (_, item) => formatDateForDisplay(new Date(item.Contributions?.[0]?.submission_date)),
+  // },
   {
     key: "total_contributions",
-    render: (_, item) => (item.Contributions ?? []).length,
+    render: (_, item) => item.total_contributions || 0,
   },
 ];
 

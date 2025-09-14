@@ -171,22 +171,21 @@ export const createContribution = async (req, res) => {
       }
     }
 
-    let contributor = await Contributors.findOne({ where: { email } });
-    if (!contributor) {
-      contributor = await Contributors.create({
-        first_name: firstName,
-        last_name: lastName,
-        birth_date: birthDate,
-        phone_number: contact,
-        sex,
-        email,
-        organization,
-        province,
-        city,
-        barangay,
-        street,
-      });
-    }
+
+    contributor = await Contributors.create({
+      first_name: firstName,
+      last_name: lastName,
+      birth_date: birthDate,
+      phone_number: contact,
+      sex,
+      email,
+      organization,
+      province,
+      city,
+      barangay,
+      street,
+    });
+
 
     const contribution = await Contributions.create({
       contributor_id: contributor.contributor_id,
@@ -282,7 +281,7 @@ export const getAllContributions = async (req, res) => {
       include: [
         {
           model: Contributors,
-          attributes: ["first_name", "last_name", "email", "province", "city"],
+          attributes: ["first_name", "last_name", "email", "birth_date" , "province", "city"],
           where: Object.keys(contributorWhere).length ? contributorWhere : undefined,
         },
         { model: LendingDetails },
@@ -496,7 +495,7 @@ export const updateTimelineStep = async (req, res) => {
     // Try to find an existing timeline
     let timeline = await ContributionTimelines.findOne({ where: { contribution_id } });
 
-  // If none exists, create one seeded with the contribution's submitted date
+    // If none exists, create one seeded with the contribution's submitted date
     if (!timeline) {
       const contribution = await Contributions.findByPk(contribution_id, {
         attributes: ["submission_date", "created_at"],
@@ -560,7 +559,7 @@ export const getDonorRecords = async (req, res) => {
     if (fromDate && toDate) where.submission_date = { [Op.between]: [new Date(fromDate), new Date(toDate)] };
 
     const donors = await Contributors.findAll({
-      attributes: ["contributor_id", "first_name", "last_name", "email", "province", "city"],
+      attributes: ["contributor_id", "first_name", "last_name", "email","birth_date", "province", "city"],
       include: [
         {
           model: Contributions,
@@ -911,40 +910,28 @@ export const verifyContributionSessionOtp = async (req, res) => {
   }
 };
 
-// --------- legacy uuid+sig---------
-// export const getContributionSession = async (req, res) => {
-//   try {
-//     const { uuid } = req.params;
-//     const { sig } = req.query;
+export const closeContributionSession = async (req, res) => {
+  try {
+    securityHeaders(res);
 
-//     if (!uuid || !sig) return res.status(400).json({ message: "Missing uuid or signature" });
+    const gcRaw = req.cookies?.[GUEST_COOKIE_NAME];
 
-//     const valid = verifyUUIDSignature(uuid, sig);
-//     if (!valid) return res.status(403).json({ message: "Invalid or expired signature" });
+    if (!gcRaw) {
+      // console.warn("closeContributionSession: no cookie present");
+      return res.json({ ok: true });
+    }
 
-//     const session = await ContributionSessions.findOne({ where: { uuid, is_active: true } });
-//     if (!session) return res.status(404).json({ message: "Session not found or inactive" });
+    const payload = verifyGuestCookie(gcRaw);
+    if (!payload) {
+      console.warn("closeContributionSession: invalid or tampered cookie detected");
+      res.clearCookie(GUEST_COOKIE_NAME, cookieOptions());
+      return res.json({ ok: true });
+    }
 
-//     const contribution = await Contributions.findOne({
-//       where: { contribution_id: session.contribution_id },
-//       include: [
-//         { model: Contributors, attributes: ["first_name", "last_name", "email"] },
-//         { model: ContributionArtifacts, attributes: ["title", "description"] },
-//         { model: ContributionTimelines },
-//       ],
-//     });
-//     if (!contribution) return res.status(404).json({ message: "Contribution not found" });
-
-//     return res.json({
-//       session: {
-//         uuid: session.uuid,
-//         created_at: session.created_at,
-//         updated_at: session.updated_at,
-//       },
-//       contribution,
-//     });
-//   } catch (err) {
-//     console.error("Error fetching contribution session:", err);
-//     return res.status(500).json({ message: "Server error fetching contribution session" });
-//   }
-// };
+    res.clearCookie(GUEST_COOKIE_NAME, cookieOptions());
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error("closeContributionSession error:", err);
+    return res.status(500).json({ message: "Server error closing session" });
+  }
+};

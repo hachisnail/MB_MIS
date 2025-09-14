@@ -171,22 +171,21 @@ export const createContribution = async (req, res) => {
       }
     }
 
-    let contributor = await Contributors.findOne({ where: { email } });
-    if (!contributor) {
-      contributor = await Contributors.create({
-        first_name: firstName,
-        last_name: lastName,
-        birth_date: birthDate,
-        phone_number: contact,
-        sex,
-        email,
-        organization,
-        province,
-        city,
-        barangay,
-        street,
-      });
-    }
+
+    contributor = await Contributors.create({
+      first_name: firstName,
+      last_name: lastName,
+      birth_date: birthDate,
+      phone_number: contact,
+      sex,
+      email,
+      organization,
+      province,
+      city,
+      barangay,
+      street,
+    });
+
 
     const contribution = await Contributions.create({
       contributor_id: contributor.contributor_id,
@@ -282,7 +281,7 @@ export const getAllContributions = async (req, res) => {
       include: [
         {
           model: Contributors,
-          attributes: ["first_name", "last_name", "email", "province", "city"],
+          attributes: ["first_name", "last_name", "email", "birth_date" , "province", "city"],
           where: Object.keys(contributorWhere).length ? contributorWhere : undefined,
         },
         { model: LendingDetails },
@@ -496,7 +495,7 @@ export const updateTimelineStep = async (req, res) => {
     // Try to find an existing timeline
     let timeline = await ContributionTimelines.findOne({ where: { contribution_id } });
 
-  // If none exists, create one seeded with the contribution's submitted date
+    // If none exists, create one seeded with the contribution's submitted date
     if (!timeline) {
       const contribution = await Contributions.findByPk(contribution_id, {
         attributes: ["submission_date", "created_at"],
@@ -560,7 +559,7 @@ export const getDonorRecords = async (req, res) => {
     if (fromDate && toDate) where.submission_date = { [Op.between]: [new Date(fromDate), new Date(toDate)] };
 
     const donors = await Contributors.findAll({
-      attributes: ["contributor_id", "first_name", "last_name", "email", "province", "city"],
+      attributes: ["contributor_id", "first_name", "last_name", "email","birth_date", "province", "city"],
       include: [
         {
           model: Contributions,

@@ -1,7 +1,7 @@
 
 const OverviewShell = ({ left, middle, right, className = "" }) => {
   return (
-    <div className={`w-full h-full grid grid-cols-[1fr_43rem_47rem] ${className}`}>
+    <div className={`w-full h-full grid grid-cols-[1fr_43rem_47rem] 3xl:grid-cols-[1fr_60rem_55rem] 3xl:text-[7rem]${className}`}>
     {/* Left column */}
       <section className="col-span-1 w-full h-full bg-[#1C1B19] rounded-l-md pt-20 px-10 gap-y-9 flex flex-col">
         {left}

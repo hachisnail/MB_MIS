@@ -558,12 +558,12 @@ const AcquisitionViewPage = () => {
                     ) : (
                       <div className="w-full h-full p-2 bg-white shadow-[inset_0_6px_6px_rgba(0,0,0,0.8),inset_0_-6px_6px_rgba(0,0,0,0.3)] rounded-xl">
                         <div className="w-full h-full flex flex-col rounded-md">
-                          {/* Timeline area (scrollable sa loob; height nakatono para may lugar sa composer) */}
+
                           <div className="flex-1 min-h-0">
                             <ConversationTimeline items={chatItems} height="33rem" />
                           </div>
 
-                          {/* Composer (same look sa screenshot mo) */}
+
                           <form onSubmit={handleSendChat} className="mt-3">
                             <div className="relative w-full">
                               <input

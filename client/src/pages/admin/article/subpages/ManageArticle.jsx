@@ -22,7 +22,7 @@ import {
   makeDisplayLabel,
 } from "../components/archiveHelpers";
 
-// === NEW imports (split-out files) ===
+
 import {
   paths,
   getArticle,
@@ -46,7 +46,7 @@ import ArticleHeaderSummaryCard from "../components/ArticleHeaderSummaryCard";
 import ArticleScheduledFields from "../components/ArticleScheduledFields";
 import ArticleThumbnailInput from "../components/ArticleThumbnailInput";
 import ArticleDetailsForm from "../components/ArticleDetailsForm";
-// =====================================
+
 
 const ArticleEditorForm = () => {
   const BASE_URL = import.meta.env.VITE_API_BASE_URL;
@@ -700,7 +700,6 @@ const ArticleEditorForm = () => {
             )}
 
             <form onSubmit={handleFormSubmit} className="space-y-6">
-              {/* --- Auto-hide Header Block --- */}
               {headerHidden ? (
                 <ArticleHeaderSummaryCard
                   title={title}

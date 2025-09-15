@@ -6,7 +6,7 @@ import { mapAndObfuscateFlags } from "../services/obfuscateFlags.js";
 export const getFlags = async (req, res) => {
   try {
     const flags = await RouterFlag.findAll({ attributes: ['route_key', 'is_enabled', 'is_public'] });
-    console.log("Fetched Flags: ", flags); // Log fetched flags
+    // console.log("Fetched Flags: ", flags); // Log fetched flags
 
     if (!flags || flags.length === 0) {
       console.log("No flags found.");
@@ -31,7 +31,7 @@ export const getFlagsForAdmin = async (req, res) => {
       attributes: ['route_key', 'is_enabled', 'is_public']
     });
 
-    console.log("Fetched Flags for Admin: ", flags); // Log fetched flags for verification
+    // console.log("Fetched Flags for Admin: ", flags); // Log fetched flags for verification
 
     if (!flags || flags.length === 0) {
       console.log("No flags found.");

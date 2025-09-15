@@ -253,10 +253,12 @@ export default function Inquiry() {
           )}
           {showView === "timeline" && ( 
             <div className="min-w-[50rem] h-full flex flex-col items-center justify-center">  
-timeline
+            
+
+
             <div className="min-h-fit h w-full flex justify-between">
               {/* buttons */}
-              <StyledButton onClick={()=> setShowView("document")} className="h-fit">Back</StyledButton>
+            <StyledButton onClick={()=> setShowView("document")} className="h-fit">Back</StyledButton>
               <StyledButton onClick={()=> alert(`accepted`)} className="h-fit">Accept</StyledButton>
 
             </div>

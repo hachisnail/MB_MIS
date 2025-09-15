@@ -769,16 +769,15 @@ export const openContributionSessionByToken = async (req, res) => {
               { model: Contributors, attributes: ["first_name", "last_name", "email"] },
               { model: ContributionArtifacts, attributes: ["title", "description"] },
               { model: ContributionTimelines },
+              { model: Contracts }, // 👈 include contract
             ],
           });
           if (!contribution) return res.status(404).json({ message: "Contribution not found" });
 
           return res.json({ session: baseSession, contribution });
         }
-        // stale/invalid cookie → clear it and continue
         res.clearCookie(GUEST_COOKIE_NAME, cookieOptions());
       } else {
-        // invalid signature/expired → clear it and continue
         res.clearCookie(GUEST_COOKIE_NAME, cookieOptions());
       }
     }
@@ -818,13 +817,28 @@ export const openContributionSessionByToken = async (req, res) => {
     };
 
     // 🚫 Gate content until OTP is verified (and cookie set by verify endpoint)
-    return res.json({ session: baseSession, requires_otp: true, otp_resent: otp_resent === true });
+    const contribution = await Contributions.findOne({
+      where: { contribution_id: session.contribution_id },
+      include: [
+        { model: Contributors, attributes: ["first_name", "last_name", "email"] },
+        { model: ContributionArtifacts, attributes: ["title", "description"] },
+        { model: ContributionTimelines },
+        { model: Contracts }, // 👈 include contract
+      ],
+    });
+    if (!contribution) return res.status(404).json({ message: "Contribution not found" });
+
+    return res.json({
+      session: baseSession,
+      requires_otp: true,
+      otp_resent: otp_resent === true,
+      contribution,
+    });
   } catch (err) {
     console.error("openContributionSessionByToken error:", err);
     return res.status(500).json({ message: "Server error" });
   }
 };
-
 export const sendContributionSessionOtp = async (req, res) => {
   try {
     securityHeaders(res);

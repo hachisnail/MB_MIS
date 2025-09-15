@@ -17,6 +17,13 @@ import { requireAuth, requireRole } from "./src/middlewares/authMiddlewares.js";
 import { startArticleScheduler } from "./src/services/scheduler.js";
 import { postEvents, getArticleStats, getNextSuggestions } from "./src/controllers/EngagementController.js";
 
+
+import { verifyGuestCookie, GUEST_COOKIE_NAME } from "./src/services/guestCookie.js";
+import { ContributionSessions } from "./src/models/contributionModels.js";
+import { Contracts } from "./src/models/Contracts.js";
+import PizZip from "pizzip";
+import Docxtemplater from "docxtemplater";
+
 dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
@@ -92,9 +99,140 @@ app.use(
   })
 );
 
+
+// --- Guard: require OTP-verified guest session (cookie + DB) ---
+async function requireOtpVerifiedSession(req, res, next) {
+  try {
+    const { sessionId } = req.params;
+
+    // Cookie must exist
+    const raw = req.cookies?.[GUEST_COOKIE_NAME];
+    if (!raw) {
+      return res.status(401).json({ code: "NO_COOKIE", message: "Guest cookie missing" });
+    }
+
+    // Cookie must be valid and unexpired
+    const guest = verifyGuestCookie(raw); // -> { sid, cid, exp } or null
+    if (!guest) {
+      return res.status(401).json({ code: "BAD_COOKIE", message: "Guest cookie invalid/expired" });
+    }
+
+    // Cookie session must match URL session
+    if (String(guest.sid) !== String(sessionId)) {
+      return res.status(401).json({
+        code: "COOKIE_SESSION_MISMATCH",
+        message: "Cookie sid does not match URL param",
+        cookie_sid: guest.sid,
+        url_sid: sessionId,
+      });
+    }
+
+    // Session must exist, be active, not expired, and OTP-verified
+    const sess = await ContributionSessions.findOne({ where: { session_id: sessionId, is_active: true } });
+    if (!sess) return res.status(404).json({ code: "SESSION_NOT_FOUND" });
+
+    const now = new Date();
+    if (sess.link_expires_at && now > sess.link_expires_at) {
+      return res.status(401).json({ code: "LINK_EXPIRED" });
+    }
+
+    // Make sure the cookie also matches the contribution we expect
+    if (String(sess.contribution_id) !== String(guest.cid)) {
+      return res.status(401).json({ code: "COOKIE_CONTRIBUTION_MISMATCH" });
+    }
+
+    // You mark success via otp_verified_at (not write_enabled)
+    if (!sess.otp_verified_at) {
+      return res.status(403).json({ code: "OTP_REQUIRED", message: "OTP not verified yet" });
+    }
+
+    req.contributionSession = sess;
+    next();
+  } catch (err) {
+    console.error("requireOtpVerifiedSession error:", err);
+    return res.status(401).json({ code: "UNAUTHORIZED" });
+  }
+}
+
+
 PUBLIC_UPLOADS.forEach((cat) => {
   app.use(`/uploads/${cat}`, express.static(path.join(UPLOAD_BASE_DIR, cat)));
 });
+
+app.get(
+  "/api/auth/contributions/session/:sessionId/contract-preview",
+  requireOtpVerifiedSession,
+  async (req, res) => {
+    try {
+      const { sessionId } = req.params;
+      const sess = req.contributionSession; 
+
+      const contract = await Contracts.findOne({
+        where: { contribution_id: sess.contribution_id },
+        raw: true,
+      });
+      if (!contract) {
+        return res.status(404).json({ message: "Contract not found" });
+      }
+
+      const payload =
+        typeof contract.payload === "string"
+          ? JSON.parse(contract.payload)
+          : contract.payload;
+
+      const kind = payload.type?.toLowerCase();
+      const fileMap = {
+        donation: "DONATION-FORM.docx",
+        lend: "LEND-FORM.docx",
+      };
+      const templateFile = fileMap[kind];
+      if (!templateFile) {
+        return res.status(400).json({ message: "Unknown contract type" });
+      }
+
+      const filePath = path.join(
+        UPLOAD_BASE_DIR,
+        "private",
+        "templates",
+        templateFile
+      );
+      if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ message: "Template not found" });
+      }
+
+      const content = fs.readFileSync(filePath, "binary");
+      const zip = new PizZip(content);
+
+      const doc = new Docxtemplater(zip, {
+        paragraphLoop: true,
+        linebreaks: true,
+        delimiters: {
+          start: "[[",
+          end: "]]",
+        },
+      });
+
+      doc.render(payload.mergedData || {});
+      const buf = doc.getZip().generate({ type: "nodebuffer" });
+
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+      );
+      res.setHeader(
+        "Content-Disposition",
+        `inline; filename="${payload.fileName || "contract"}.docx"`
+      );
+      res.setHeader("Cache-Control", "private, no-store, max-age=0");
+
+      res.send(buf);
+    } catch (err) {
+      console.error("contract-preview error:", err);
+      res.status(500).json({ message: "Failed to render contract" });
+    }
+  }
+);
+
 
 app.get(/^\/uploads\/private\/(.+)$/, requireAuth, requireRole([1, 2]), (req, res) => {
   const relativePath = req.params[0];

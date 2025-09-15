@@ -353,7 +353,7 @@ export function ArtifactImageGallery({
   return (
     <div className="w-full h-fit flex flex-col gap-y-5">
       {/* First image */}
-      <div className="w-full h-[34rem] 3xl: h-[45rem] bg-white rounded-2xl overflow-hidden flex items-center justify-center ">
+      <div className="w-full h-[34rem] 3xl:h-[45rem] bg-white rounded-2xl overflow-hidden flex items-center justify-center ">
         {artifactImg.length > 0 ? (
           <img
             src={artifactImg[0].src}

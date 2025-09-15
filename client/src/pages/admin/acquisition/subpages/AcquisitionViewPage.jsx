@@ -32,6 +32,9 @@ import OverviewShell from "../layouts/OverviewShell";
 import DocumentShell from "../layouts/DocumentShell";
 import TransactionShell from "../layouts/TransactionShell";
 
+import ConversationTimeline from "./ConversationTimeline";
+
+
 const documentTabs = ["Overview", "Document", "Transaction"];
 
 function DocumentTabs({ active, onChange }) {
@@ -43,10 +46,9 @@ function DocumentTabs({ active, onChange }) {
           type="button"
           onClick={() => onChange(label)}
           className={`w-[12rem] h-[3rem] flex items-center justify-center rounded-md border-[3px] text-2xl font-bold cursor-pointer transition-colors
-            ${
-              active === label
-                ? "bg-black border-black text-[#CDC469]"
-                : "border-black text-black hover:bg-gray-300"
+            ${active === label
+              ? "bg-black border-black text-[#CDC469]"
+              : "border-black text-black hover:bg-gray-300"
             }`}
         >
           <span>{label}</span>
@@ -83,6 +85,11 @@ const AcquisitionViewPage = () => {
 
   const { setExtraBlockContent } = useOutletContext();
   const [itemTab, setItemTab] = useState("Donor");
+
+  // --- Chat composer state (for testing) ---
+
+  const [chatText, setChatText] = useState("");
+  const [chatItems, setChatItems] = useState([]);
   const tabs = ["Donor", "Artifact Information"];
 
   const SERVER_URL = import.meta.env.VITE_SERVER_URL;
@@ -172,52 +179,52 @@ const AcquisitionViewPage = () => {
 
   const donatorInformation = contributor
     ? [
-        {
-          label: "From",
-          value: `${contributor?.first_name} ${contributor?.last_name}`,
-          icon: <From />,
-        },
-        { label: "Email", value: contributor?.email, icon: <Email /> },
-        {
-          label: "Phone Number",
-          value: contributor?.phone_number || "Not provided",
-          icon: <PhoneNumber />,
-        },
-        {
-          label: "Address",
-          value:
-            [contributor?.street, contributor?.barangay, contributor?.city, contributor?.province]
-              .filter(Boolean)
-              .join(", ") || "Not provided",
-          icon: <Address />,
-        },
-        {
-          label: "Organization",
-          value: contributor?.organization || "Not provided",
-          icon: <Organization />,
-        },
-      ]
+      {
+        label: "From",
+        value: `${contributor?.first_name} ${contributor?.last_name}`,
+        icon: <From />,
+      },
+      { label: "Email", value: contributor?.email, icon: <Email /> },
+      {
+        label: "Phone Number",
+        value: contributor?.phone_number || "Not provided",
+        icon: <PhoneNumber />,
+      },
+      {
+        label: "Address",
+        value:
+          [contributor?.street, contributor?.barangay, contributor?.city, contributor?.province]
+            .filter(Boolean)
+            .join(", ") || "Not provided",
+        icon: <Address />,
+      },
+      {
+        label: "Organization",
+        value: contributor?.organization || "Not provided",
+        icon: <Organization />,
+      },
+    ]
     : [];
 
   const lendingReason = lendingDetail
     ? [
-        {
-          label: "Propose duration of the loan:",
-          value: formatDateRange(lendingDetail.duration_from, lendingDetail.duration_to),
-        },
-        {
-          label: "Specific conditions or requirements for handling of the artifact:",
-          value: lendingDetail.lend_conditions || "Not provided",
-        },
-        {
-          label: "Specific liability concerns or requirements regarding the artifact:",
-          value: lendingDetail.lend_liabilities || "Not provided",
-        },
-        {
-          label: "Reason for lending:",
-          value: lendingDetail.lending_reason || "Not provided",
-        },
-      ]
+      {
+        label: "Propose duration of the loan:",
+        value: formatDateRange(lendingDetail.duration_from, lendingDetail.duration_to),
+      },
+      {
+        label: "Specific conditions or requirements for handling of the artifact:",
+        value: lendingDetail.lend_conditions || "Not provided",
+      },
+      {
+        label: "Specific liability concerns or requirements regarding the artifact:",
+        value: lendingDetail.lend_liabilities || "Not provided",
+      },
+      {
+        label: "Reason for lending:",
+        value: lendingDetail.lending_reason || "Not provided",
+      },
+    ]
     : [];
 
   const mapTimelineStep = (timeline) => {
@@ -256,19 +263,19 @@ const AcquisitionViewPage = () => {
 
   const artifactInfo = artifact
     ? [
-        { label: "Title/Name of the Artifact:", value: artifact.title || "Not provided" },
-        { label: "Artifact Description:", value: artifact.description || "Not provided" },
-        { label: "How and where was the artifact acquired:", value: artifact.acquisition_details || "Not provided" },
-        { label: "Additional Information:", value: artifact.additional_info || "Not provided" },
-        { label: "Brief narrative or story related to the artifact:", value: artifact.narrative || "Not provided" },
-      ]
+      { label: "Title/Name of the Artifact:", value: artifact.title || "Not provided" },
+      { label: "Artifact Description:", value: artifact.description || "Not provided" },
+      { label: "How and where was the artifact acquired:", value: artifact.acquisition_details || "Not provided" },
+      { label: "Additional Information:", value: artifact.additional_info || "Not provided" },
+      { label: "Brief narrative or story related to the artifact:", value: artifact.narrative || "Not provided" },
+    ]
     : [];
 
   const transactionDescription = contributionData
     ? [
-        { label: "Status", value: contributionData.status },
-        { label: "Last Progress Date", value: formatDate(contributionData.updated_at) },
-      ]
+      { label: "Status", value: contributionData.status },
+      { label: "Last Progress Date", value: formatDate(contributionData.updated_at) },
+    ]
     : [];
 
   const artifactImg =
@@ -322,6 +329,34 @@ const AcquisitionViewPage = () => {
       </div>
     );
   }
+
+  const pickSize = (s) => (s.length > 140 ? "lg" : s.length > 60 ? "md" : "sm");
+
+  const handleSendChat = (e) => {
+    e.preventDefault();
+    const msg = chatText.trim();
+    if (!msg) return;
+
+    // Default behavior for testing:
+    // Donor message -> lane = "Suggestions", Admin message -> lane = "Admin"
+    // (Pwede mong palitan kung may identity ka ng current user)
+    const author = "Donor";                  // or "Admin" kung gusto mong i-test admin
+    const laneLabel = author === "Admin" ? "Admin" : "Suggestions";
+    const laneVariant = author === "Admin" ? "admin" : "suggestions";
+
+    const newItem = {
+      id: Date.now(),
+      laneLabel,
+      laneVariant,
+      message: msg,
+      author,
+      size: pickSize(msg),
+    };
+
+    setChatItems((prev) => [...prev, newItem]);
+    setChatText("");
+  };
+
 
   return (
     <>
@@ -522,11 +557,50 @@ const AcquisitionViewPage = () => {
                       </form>
                     ) : (
                       <div className="w-full h-full p-2 bg-white shadow-[inset_0_6px_6px_rgba(0,0,0,0.8),inset_0_-6px_6px_rgba(0,0,0,0.3)] rounded-xl">
-                        <div className="w-full h-full flex flex-col rounded-md justify-end">
+                        <div className="w-full h-full flex flex-col rounded-md">
+                          {/* Timeline area (scrollable sa loob; height nakatono para may lugar sa composer) */}
+                          <div className="flex-1 min-h-0">
+                            <ConversationTimeline items={chatItems} height="33rem" />
+                          </div>
 
-                          <div className="w-full h-20 border-2  shadow-[inset_0_6px_6px_rgba(0,0,0,0.4)] border-black rounded-xl"/>
+                          {/* Composer (same look sa screenshot mo) */}
+                          <form onSubmit={handleSendChat} className="mt-3">
+                            <div className="relative w-full">
+                              <input
+                                value={chatText}
+                                onChange={(e) => setChatText(e.target.value)}
+                                placeholder="Enter Text..."
+                                className="w-full h-14 rounded-xl border-2 border-black bg-white shadow-[inset_0_6px_6px_rgba(0,0,0,0.4)] pl-4 pr-28 text-lg outline-none"
+                              />
+                              <button
+                                type="submit"
+                                className="absolute right-2 top-1.5 h-11 px-4 rounded-lg bg-black text-white shadow-[0_2px_6px_rgba(0,0,0,0.35)] text-sm font-semibold active:translate-y-[1px] inline-flex items-center gap-2"
+                                title="Send"
+                                aria-label="Send"
+                              >
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  viewBox="0 0 24 24"
+                                  className="w-4 h-4"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  aria-hidden="true"
+                                >
+                                  {/* paper-plane / send icon */}
+                                  <path d="M22 2 15 22l-4-9-9-4Z" />
+                                  <path d="M22 2 11 13" />
+                                </svg>
+                                Send
+                              </button>
+
+                            </div>
+                          </form>
                         </div>
                       </div>
+
                     )}
                   </>
                 }

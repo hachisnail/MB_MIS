@@ -1,0 +1,6 @@
+/* DocxViewer.module.css */
+.wrapper .docx:last-child:empty,
+.wrapper .docx:last-child p:empty {
+  display: none !important;
+}
+

@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { renderAsync } from "docx-preview";
+import styles from "./DocxViewer.module.css";
 
 export default function DocxViewer({ url, className = "" }) {
   const containerRef = useRef(null);
@@ -34,5 +35,7 @@ export default function DocxViewer({ url, className = "" }) {
     };
   }, [url]);
 
-  return <div ref={containerRef} className={className} />;
+  return (
+    <div ref={containerRef} className={`${styles.wrapper} ${className}`} />
+  );
 }

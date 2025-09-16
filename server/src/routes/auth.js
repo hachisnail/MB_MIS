@@ -80,6 +80,13 @@ import {
   completeContributionSession
 } from "../controllers/contributionController.js";
 
+import {
+  getArtifactMetadataByContribution,
+  upsertArtifactMetadataDraft,
+  completeArtifactMetadata,
+  previewCatalogRecord,
+} from "../controllers/artifactMetadataController.js";
+
 import { upload, multerErrorHandler } from "../middlewares/multerMiddleware.js";
 import { SummarizerManager } from "node-summarizer";
 
@@ -296,5 +303,36 @@ router.patch(
   requireRole([1, 2, 5]),
   updateContributionStatus
 );
+
+
+// ---- Artifact Metadata ----
+router.get(
+  "/contributions/:id/metadata",
+  requireAuth,
+  requireRole([1, 2, 5]),
+  getArtifactMetadataByContribution
+);
+
+router.post(
+  "/contributions/:id/metadata",
+  requireAuth,
+  requireRole([1, 2, 5]),
+  upsertArtifactMetadataDraft
+);
+
+router.post(
+  "/contributions/:id/metadata/complete",
+  requireAuth,
+  requireRole([1]),
+  completeArtifactMetadata
+);
+
+// Public preview (completed only)
+router.get(
+  "/catalog/preview/:id",
+  openLimiter,
+  previewCatalogRecord
+);
+
 
 export default router;

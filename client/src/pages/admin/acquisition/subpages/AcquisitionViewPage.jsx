@@ -1,5 +1,5 @@
 import { useLocation, useOutletContext } from "react-router-dom";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import axiosClient from "@/lib/axiosClient";
 import {
   RenderRelatedDocs,
@@ -31,12 +31,16 @@ import AcquisitionDetailsSection from "../components/AcquisitionDetailsSection";
 import OverviewShell from "../layouts/OverviewShell";
 import DocumentShell from "../layouts/DocumentShell";
 import TransactionShell from "../layouts/TransactionShell";
+import ArtifactDetailsShell from "../layouts/ArtifactDetailsShell";
+
+import ArtifactMetadataForm from "../components/ArtifactMetadataForm";
+import { OptionsPanel } from "../components/ViewPageRenderer";
+import Modal from "@/components/modals/Modal";
 
 import ConversationTimeline from "./ConversationTimeline";
 import { conversationSample } from "./conversationSample";
 
-
-const documentTabs = ["Overview", "Document", "Transaction"];
+const documentTabs = ["Overview", "Document", "Transaction", "Artifact Details"];
 
 function DocumentTabs({ active, onChange }) {
   return (
@@ -47,9 +51,10 @@ function DocumentTabs({ active, onChange }) {
           type="button"
           onClick={() => onChange(label)}
           className={`w-[12rem] h-[3rem] flex items-center justify-center rounded-md border-[3px] text-2xl font-bold cursor-pointer transition-colors
-            ${active === label
-              ? "bg-black border-black text-[#CDC469]"
-              : "border-black text-black hover:bg-gray-300"
+            ${
+              active === label
+                ? "bg-black border-black text-[#CDC469]"
+                : "border-black text-black hover:bg-gray-300"
             }`}
         >
           <span>{label}</span>
@@ -67,7 +72,6 @@ import {
   Organization,
   PhoneNumber,
 } from "../components/ViewPageSvg";
-
 
 const AcquisitionViewPage = () => {
   const lastBumpedIdRef = useRef(null);
@@ -88,10 +92,39 @@ const AcquisitionViewPage = () => {
   const [itemTab, setItemTab] = useState("Donor");
 
   // --- Chat composer state (for testing) ---
-
   const [chatText, setChatText] = useState("");
   const [chatItems, setChatItems] = useState([]);
   const tabs = ["Donor", "Artifact Information"];
+
+  // --- metadata editing state (UI) ---
+  const [pendingMeta, setPendingMeta] = useState({
+    collectionNumber: "",
+    age: "",
+    culture: "",
+    provenance: "",
+    location: "",
+    discovery: "",
+    excavationSite: "",
+    acquisitionHistory: "",
+  });
+  const [curatorialDesc, setCuratorialDesc] = useState("");
+  const [feedback, setFeedback] = useState({ open: false, type: "info", title: "", message: "" });
+  const openFeedback = (type, title, message) => setFeedback({ open: true, type, title, message });
+  const closeFeedback = () => setFeedback((f) => ({ ...f, open: false }));
+
+
+
+  // track last-synced snapshot to detect unsaved changes
+  const lastSyncedRef = useRef("");
+
+  const snapshotSynced = (meta, desc) => {
+    lastSyncedRef.current = JSON.stringify({ meta, desc });
+  };
+
+  const isDirty = useMemo(() => {
+    const current = JSON.stringify({ meta: pendingMeta, desc: curatorialDesc });
+    return current !== (lastSyncedRef.current || "");
+  }, [pendingMeta, curatorialDesc]);
 
   const SERVER_URL = import.meta.env.VITE_SERVER_URL;
   const { user } = useAuth();
@@ -143,6 +176,34 @@ const AcquisitionViewPage = () => {
     fetchContribution();
   }, [location.pathname]);
 
+  // load metadata for this contribution into UI state
+  useEffect(() => {
+    const id = contributionData?.contribution_id;
+    if (!id) return;
+
+    (async () => {
+      try {
+        const { data } = await axiosClient.get(`/auth/contributions/${id}/metadata`);
+        const loaded = {
+          collectionNumber: data.collection_number ?? "",
+          age: data.date_of_creation ?? "",
+          culture: data.culture ?? "",
+          provenance: data.provenance ?? "",
+          location: data.current_location ?? "",
+          discovery: data.discovery_details ?? "",
+          excavationSite: data.excavation_site ?? "",
+          acquisitionHistory: data.acquisition_history ?? "",
+        };
+        setPendingMeta(loaded);
+        setCuratorialDesc(data.curatorial_description ?? "");
+        // snapshot after initial load
+        snapshotSynced(loaded, data.curatorial_description ?? "");
+      } catch (e) {
+        console.error("Failed to load metadata:", e);
+      }
+    })();
+  }, [contributionData?.contribution_id]);
+
   const fetchContribution = async () => {
     try {
       setLoading(true);
@@ -180,52 +241,52 @@ const AcquisitionViewPage = () => {
 
   const donatorInformation = contributor
     ? [
-      {
-        label: "From",
-        value: `${contributor?.first_name} ${contributor?.last_name}`,
-        icon: <From />,
-      },
-      { label: "Email", value: contributor?.email, icon: <Email /> },
-      {
-        label: "Phone Number",
-        value: contributor?.phone_number || "Not provided",
-        icon: <PhoneNumber />,
-      },
-      {
-        label: "Address",
-        value:
-          [contributor?.street, contributor?.barangay, contributor?.city, contributor?.province]
-            .filter(Boolean)
-            .join(", ") || "Not provided",
-        icon: <Address />,
-      },
-      {
-        label: "Organization",
-        value: contributor?.organization || "Not provided",
-        icon: <Organization />,
-      },
-    ]
+        {
+          label: "From",
+          value: `${contributor?.first_name} ${contributor?.last_name}`,
+          icon: <From />,
+        },
+        { label: "Email", value: contributor?.email, icon: <Email /> },
+        {
+          label: "Phone Number",
+          value: contributor?.phone_number || "Not provided",
+          icon: <PhoneNumber />,
+        },
+        {
+          label: "Address",
+          value:
+            [contributor?.street, contributor?.barangay, contributor?.city, contributor?.province]
+              .filter(Boolean)
+              .join(", ") || "Not provided",
+          icon: <Address />,
+        },
+        {
+          label: "Organization",
+          value: contributor?.organization || "Not provided",
+          icon: <Organization />,
+        },
+      ]
     : [];
 
   const lendingReason = lendingDetail
     ? [
-      {
-        label: "Propose duration of the loan:",
-        value: formatDateRange(lendingDetail.duration_from, lendingDetail.duration_to),
-      },
-      {
-        label: "Specific conditions or requirements for handling of the artifact:",
-        value: lendingDetail.lend_conditions || "Not provided",
-      },
-      {
-        label: "Specific liability concerns or requirements regarding the artifact:",
-        value: lendingDetail.lend_liabilities || "Not provided",
-      },
-      {
-        label: "Reason for lending:",
-        value: lendingDetail.lending_reason || "Not provided",
-      },
-    ]
+        {
+          label: "Propose duration of the loan:",
+          value: formatDateRange(lendingDetail.duration_from, lendingDetail.duration_to),
+        },
+        {
+          label: "Specific conditions or requirements for handling of the artifact:",
+          value: lendingDetail.lend_conditions || "Not provided",
+        },
+        {
+          label: "Specific liability concerns or requirements regarding the artifact:",
+          value: lendingDetail.lend_liabilities || "Not provided",
+        },
+        {
+          label: "Reason for lending:",
+          value: lendingDetail.lending_reason || "Not provided",
+        },
+      ]
     : [];
 
   const mapTimelineStep = (timeline) => {
@@ -264,19 +325,19 @@ const AcquisitionViewPage = () => {
 
   const artifactInfo = artifact
     ? [
-      { label: "Title/Name of the Artifact:", value: artifact.title || "Not provided" },
-      { label: "Artifact Description:", value: artifact.description || "Not provided" },
-      { label: "How and where was the artifact acquired:", value: artifact.acquisition_details || "Not provided" },
-      { label: "Additional Information:", value: artifact.additional_info || "Not provided" },
-      { label: "Brief narrative or story related to the artifact:", value: artifact.narrative || "Not provided" },
-    ]
+        { label: "Title/Name of the Artifact:", value: artifact.title || "Not provided" },
+        { label: "Artifact Description:", value: artifact.description || "Not provided" },
+        { label: "How and where was the artifact acquired:", value: artifact.acquisition_details || "Not provided" },
+        { label: "Additional Information:", value: artifact.additional_info || "Not provided" },
+        { label: "Brief narrative or story related to the artifact:", value: artifact.narrative || "Not provided" },
+      ]
     : [];
 
   const transactionDescription = contributionData
     ? [
-      { label: "Status", value: contributionData.status },
-      { label: "Last Progress Date", value: formatDate(contributionData.updated_at) },
-    ]
+        { label: "Status", value: contributionData.status },
+        { label: "Last Progress Date", value: formatDate(contributionData.updated_at) },
+      ]
     : [];
 
   const artifactImg =
@@ -338,10 +399,7 @@ const AcquisitionViewPage = () => {
     const msg = chatText.trim();
     if (!msg) return;
 
-    // Default behavior for testing:
-    // Donor message -> lane = "Suggestions", Admin message -> lane = "Admin"
-    // (Pwede mong palitan kung may identity ka ng current user)
-    const author = "Donor";                  // or "Admin" kung gusto mong i-test admin
+    const author = "Donor"; // or "Admin" to test
     const laneLabel = author === "Admin" ? "Admin" : "Suggestions";
     const laneVariant = author === "Admin" ? "admin" : "suggestions";
 
@@ -357,7 +415,6 @@ const AcquisitionViewPage = () => {
     setChatItems((prev) => [...prev, newItem]);
     setChatText("");
   };
-
 
   return (
     <>
@@ -559,17 +616,15 @@ const AcquisitionViewPage = () => {
                     ) : (
                       <div className="w-full h-full p-2 bg-white shadow-[inset_0_6px_6px_rgba(0,0,0,0.8),inset_0_-6px_6px_rgba(0,0,0,0.3)] rounded-xl">
                         <div className="w-full h-full flex flex-col rounded-md">
-                          {/* Timeline area (scrollable sa loob; height nakatono para may lugar sa composer) */}
                           <div className="flex-1 min-h-0">
                             <ConversationTimeline items={chatItems} height="33rem" />
                           </div>
 
-                          {/* Composer (same look sa screenshot mo) */}
                           <form onSubmit={handleSendChat} className="mt-3">
                             <div className="relative w-full">
                               <input
                                 value={chatText}
-                                onChange={(e) => setChatText(e.target.value) }
+                                onChange={(e) => setChatText(e.target.value)}
                                 placeholder="Enter Text..."
                                 className="w-full h-14 rounded-xl border-2 border-black bg-white shadow-[inset_0_6px_6px_rgba(0,0,0,0.4)] pl-4 pr-28 text-lg outline-none"
                               />
@@ -590,21 +645,182 @@ const AcquisitionViewPage = () => {
                                   strokeLinejoin="round"
                                   aria-hidden="true"
                                 >
-                                  {/* paper-plane / send icon */}
                                   <path d="M22 2 15 22l-4-9-9-4Z" />
                                   <path d="M22 2 11 13" />
                                 </svg>
                                 Send
                               </button>
-
                             </div>
                           </form>
                         </div>
                       </div>
-
                     )}
                   </>
                 }
+              />
+            )}
+
+            {/* Artifact Details */}
+            {activeDocument === "Artifact Details" && (
+              <ArtifactDetailsShell
+                left={
+                  <>
+                    <div className="absolute left-0 -top-[12rem] w-full h-[12rem] bg-black flex items-start justify-end pl-10 pb-5 pt-4 overflow-hidden flex-col">
+                      <span className="text-white text-3xl font-bold text-left break-words line-clamp-3 max-w-[38rem]">
+                        {contributionData.ContributionArtifact.title}
+                      </span>
+                      <Breadcrumb hideTitle={true} overrideTheme="text-white" />
+                    </div>
+
+                    <RenderArtifactImageAndDonatorInfo
+                      donatorInformation={donatorInformation}
+                      artifactImg={artifactImg}
+                    />
+
+                    <div className="absolute left-0 -bottom-[1.2rem] w-full h-[1.2rem] bg-black" />
+                  </>
+                }
+                middle={
+                  <ArtifactMetadataForm
+                    value={pendingMeta}
+                    onChange={setPendingMeta}
+                  />
+                }
+                right={
+                  <div className="w-full h-full flex flex-col gap-4 pr-6">
+                    <div className="flex-1 min-h-0 rounded-lg border border-gray-300 p-6 flex flex-col">
+                      <span className="text-4xl font-bold">Curatorial Description</span>
+                      <div className="mt-3 flex-1 min-h-0">
+                        <MultiLineInputField
+                          placeholder="Enter staff-facing curatorial description…"
+                          mode="hard"
+                          value={curatorialDesc}
+                          onChange={setCuratorialDesc}
+                          heightClass="h-full"
+                          maxChars={8000}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex-1 min-h-0 flex gap-4">
+                      <div className="flex-1 min-h-0 min-w-0">
+                        <RenderRelatedDocs
+                          relatedImages={relatedImages}
+                          attachedFiles={attachedFiles}
+                          containerHeight="h-full"
+                          imageBoxWidth="w-[29rem]"
+                          fileBoxWidth="w-[17rem]"
+                          imgHeight="h-52"
+                        />
+                      </div>
+
+                      <OptionsPanel
+                        // EDIT — just show a confirmation (handled inside OptionsPanel) then give a friendly toast modal
+                        onEdit={() => {
+                          openFeedback("info", "Edit enabled", "You can now modify the metadata fields.");
+                        }}
+
+                        // SAVE — writes to artifact_metadata only; no browser prompt, feedback modal on success/error
+                        onSave={async () => {
+                          try {
+                            const id = contributionData?.contribution_id;
+                            const payload = {
+                              date_of_creation: pendingMeta?.age ?? null,
+                              culture: pendingMeta?.culture ?? null,
+                              provenance: pendingMeta?.provenance ?? null,
+                              current_location: pendingMeta?.location ?? null,
+                              discovery_details: pendingMeta?.discovery ?? null,
+                              excavation_site: pendingMeta?.excavationSite ?? null,
+                              acquisition_history: pendingMeta?.acquisitionHistory ?? null,
+                              curatorial_description: curatorialDesc ?? null,
+                            };
+
+                            await axiosClient.post(`/auth/contributions/${id}/metadata`, payload, {
+                              headers: { "Content-Type": "application/json" },
+                            });
+
+                            // refresh local copy
+                            const { data } = await axiosClient.get(`/auth/contributions/${id}/metadata`);
+                            setPendingMeta({
+                              collectionNumber: data.collection_number ?? "",
+                              age: data.date_of_creation ?? "",
+                              culture: data.culture ?? "",
+                              provenance: data.provenance ?? "",
+                              location: data.current_location ?? "",
+                              discovery: data.discovery_details ?? "",
+                              excavationSite: data.excavation_site ?? "",
+                              acquisitionHistory: data.acquisition_history ?? "",
+                            });
+                            setCuratorialDesc(data.curatorial_description ?? "");
+
+                            openFeedback("info", "Saved", "Your metadata changes were saved as a draft.");
+                          } catch (e) {
+                            const status = e?.response?.status;
+                            const msg = e?.response?.data?.message || e?.message || "Unknown error";
+                            console.error("[Options] Save Changes failed:", e);
+                            openFeedback("danger", "Save failed", `(${status || "error"}) ${msg}`);
+                          }
+                        }}
+
+                        onComplete={async () => {
+                          try {
+                            const id = contributionData?.contribution_id;
+                            await axiosClient.post(`/auth/contributions/${id}/metadata/complete`);
+
+                            // refresh
+                            const { data } = await axiosClient.get(`/auth/contributions/${id}/metadata`);
+                            setPendingMeta({
+                              collectionNumber: data.collection_number ?? "",
+                              age: data.date_of_creation ?? "",
+                              culture: data.culture ?? "",
+                              provenance: data.provenance ?? "",
+                              location: data.current_location ?? "",
+                              discovery: data.discovery_details ?? "",
+                              excavationSite: data.excavation_site ?? "",
+                              acquisitionHistory: data.acquisition_history ?? "",
+                            });
+                            setCuratorialDesc(data.curatorial_description ?? "");
+
+                            openFeedback(
+                              "info",
+                              "Metadata finalized",
+                              "Saved to inventory. The collection number will appear once the contribution is marked “completed”."
+                            );
+                          } catch (e) {
+                            const status = e?.response?.status;
+                            const msg = e?.response?.data?.message || e?.message || "Unknown error";
+                            console.error("[Options] Complete failed:", e);
+                            if (status === 403) {
+                              openFeedback("warning", "Not authorized", "You need admin privileges to finalize metadata.");
+                            } else {
+                              openFeedback("danger", "Finalize failed", `(${status || "error"}) ${msg}`);
+                            }
+                          }
+                        }}
+                      />
+                    </div>
+
+                    {/* Single reusable feedback modal (replaces browser alerts) */}
+                    <Modal
+                      isOpen={feedback.open}
+                      onClose={closeFeedback}
+                      title={feedback.title}
+                      type={feedback.type}      // "info" | "warning" | "danger" | "question"
+                      theme="light"
+                    >
+                      <p className="text-lg">{feedback.message}</p>
+                      <div className="mt-6 flex justify-end">
+                        <button
+                          onClick={closeFeedback}
+                          className="px-4 py-2 bg-gray-900 text-white rounded-sm hover:brightness-110"
+                        >
+                          OK
+                        </button>
+                      </div>
+                    </Modal>
+                  </div>
+                }
+
               />
             )}
           </>

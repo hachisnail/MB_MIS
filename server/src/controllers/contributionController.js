@@ -30,6 +30,9 @@ import {
   verifyOtpCode,
 } from "../services/magicLink.js";
 
+import { upsertCatalogArtifact } from "../services/catalogSyncService.js";
+
+
 // ---------------- config ----------------
 const READ_WRITE_TTL_MIN = parseInt(process.env.GUEST_READ_WRITE_TTL_MIN || "120", 10); // 2h
 const OTP_TTL_MIN = parseInt(process.env.GUEST_OTP_TTL_MIN || "10", 10); // 10m
@@ -967,11 +970,14 @@ export const completeContributionSession = async (req, res) => {
     timeline.completed_at = new Date();
     await timeline.save();
 
-    // 6. Update contribution status
+    // 6. Update contribution status -> triggers afterUpdate hook to ensure collection_number
     await contribution.update({
       status: "completed",
       updated_at: new Date(),
     });
+
+    // 7. Sync catalog so the collection_number is now reflected
+    await upsertCatalogArtifact(id);
 
     return res.json({
       success: true,
@@ -986,6 +992,7 @@ export const completeContributionSession = async (req, res) => {
       .json({ message: "Server error completing contribution session" });
   }
 };
+
 
 
 export const closeContributionSession = async (req, res) => {

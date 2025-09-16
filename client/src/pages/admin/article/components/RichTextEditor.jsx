@@ -39,17 +39,6 @@ import {
   Video as VideoIcon,
 } from "lucide-react";
 
-/**
- * Props:
- * - errors: { description?: string }
- * - setIsDirty: (bool) => void
- * - fontSizes: [{label, value}]
- * - onImageUpload: (event) => Promise<void> | void
- * - editable: boolean
- * - placeholder: string
- * - initialHTML?: string
- * - onUpdate?: ({ html, text }) => void
- */
 const RichTextEditor = forwardRef(
   (
     {
@@ -203,7 +192,7 @@ const RichTextEditor = forwardRef(
         </label>
 
         {/* Toolbar */}
-        <div className="flex flex-wrap items-center gap-2 p-2 bg-[#d6c2ad] rounded border border-black-400">
+        <div className="flex flex-wrap items-center gap-2 p-2 bg-[#f5f5f7] rounded border border-black-400">
           {/* Headings */}
           <div className="flex gap-1">
             {[1,2,3,4,5].map((level) => (

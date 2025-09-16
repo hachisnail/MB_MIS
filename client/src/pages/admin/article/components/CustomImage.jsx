@@ -1,95 +1,98 @@
 // src/components/tiptap/CustomImage.jsx
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { ReactNodeViewRenderer, NodeViewWrapper } from "@tiptap/react";
 import { Image } from "@tiptap/extension-image";
 
-const HANDLE = { size: 12, inset: 2 }; // tweak if you want a bigger handle
+const HANDLE = { size: 12, inset: 2 };
 
 const ResizableImageComponent = ({ node, updateAttributes, selected }) => {
   const { src, widthPct, alt = "" } = node.attrs;
 
   const wrapperRef = useRef(null);
-  const boxRef = useRef(null);  // <-- new: we size this during drag
+  const boxRef = useRef(null);
   const imgRef = useRef(null);
-  const lastPctRef = useRef(null);
-  const lastCommitTsRef = useRef(0);
+  const startXRef = useRef(0);
+  const startWidthPxRef = useRef(0);
+  const containerWidthPxRef = useRef(1);
+  const isDraggingRef = useRef(false);
 
   const [isResizing, setIsResizing] = useState(false);
 
-  // Throttle attribute commits so preview updates live without spamming transactions
-  const commitThrottled = (pct) => {
-    const now = performance.now();
-    if (now - lastCommitTsRef.current > 80) { // ~12 commits/sec
-      lastCommitTsRef.current = now;
-      updateAttributes({ widthPct: pct });
+  // Keep DOM width in sync with current attr
+  useEffect(() => {
+    const box = boxRef.current;
+    const img = imgRef.current;
+    if (!box || !img) return;
+
+    if (Number.isFinite(+widthPct)) {
+      box.style.width = `${+widthPct}%`;
+      img.style.width = "100%";
+    } else {
+      box.style.width = "";
+      img.style.width = "auto";
     }
-  };
+  }, [widthPct]);
 
   const startResize = (e) => {
     e.preventDefault();
     e.stopPropagation();
 
+    const isTouch = e.type === "touchstart";
+    const point = isTouch ? e.touches?.[0] : e;
+    if (!point) return;
+
+    const wrapper = wrapperRef.current;
+    const box = boxRef.current;
+    const img = imgRef.current;
+    if (!wrapper || !box || !img) return;
+
+    const container = wrapper.parentElement || wrapper;
+    const crect = container.getBoundingClientRect();
+
+    containerWidthPxRef.current = Math.max(1, crect.width);
+    startWidthPxRef.current = box.getBoundingClientRect().width;
+    startXRef.current = point.clientX;
+    isDraggingRef.current = true;
     setIsResizing(true);
 
-    const isTouch = e.type === "touchstart";
-    const moveEvt = isTouch ? "touchmove" : "mousemove";
-    const endEvt = isTouch ? "touchend" : "mouseup";
-    const getClientX = (ev) =>
-      isTouch ? ev.touches?.[0]?.clientX ?? 0 : ev.clientX;
-
-    // set initial live styles so the handle tracks the image corner immediately
-    if (boxRef.current && Number.isFinite(+widthPct)) {
-      boxRef.current.style.width = `${widthPct}%`;
-    }
-    if (imgRef.current && Number.isFinite(+widthPct)) {
-      imgRef.current.style.width = "100%";
-    }
+    img.style.width = "100%";
 
     const onMove = (ev) => {
-      const wrapper = wrapperRef.current;
-      const box = boxRef.current;
-      if (!wrapper || !box) return;
+      if (!isDraggingRef.current) return;
+      const p = isTouch ? ev.touches?.[0] : ev;
+      if (!p) return;
 
-      const container = wrapper.parentElement || wrapper;
-      const containerRect = container.getBoundingClientRect();
-      const boxRect = box.getBoundingClientRect();
-      const clientX = getClientX(ev);
+      const dx = p.clientX - startXRef.current;
+      const nextPx = Math.max(1, startWidthPxRef.current + dx);
+      let pct = (nextPx / containerWidthPxRef.current) * 100;
+      pct = Math.max(5, Math.min(100, pct)); // clamp 5–100
 
-      const containerWidth = Math.max(1, containerRect.width);
-      const dx = clientX - boxRect.left; // how far from the left edge of the box
-      let pct = (dx / containerWidth) * 100;
-
-      // clamp 5–100 and round to 2 decimals for stability
-      pct = Math.min(100, Math.max(5, pct));
-      pct = Math.round(pct * 100) / 100;
-      lastPctRef.current = pct;
-
-      // Live DOM sizing (smooth, no flicker)
+      // Pure DOM update during drag: no transactions → no flicker
       box.style.width = `${pct}%`;
-      if (imgRef.current) imgRef.current.style.width = "100%";
-
-      // Throttled attribute update → TipTap onUpdate fires → your preview updates live
-      commitThrottled(pct);
     };
 
     const onEnd = () => {
-      // Final commit (ensures the very last value is saved even if throttle skipped it)
-      const finalPct = lastPctRef.current ?? (Number.isFinite(+widthPct) ? +widthPct : 100);
-      updateAttributes({ widthPct: finalPct });
+      if (!isDraggingRef.current) return;
+      isDraggingRef.current = false;
 
-      // Cleanup temporary styles
-      if (boxRef.current) boxRef.current.style.width = "";
-      if (imgRef.current) imgRef.current.style.width = "";
+      // Commit exactly once
+      const box = boxRef.current;
+      if (box) {
+        const rect = box.getBoundingClientRect();
+        const pct = Math.max(
+          5,
+          Math.min(100, (rect.width / containerWidthPxRef.current) * 100)
+        );
+        updateAttributes({ widthPct: Math.round(pct * 100) / 100 });
+      }
 
-      lastPctRef.current = null;
       setIsResizing(false);
-
-      document.removeEventListener(moveEvt, onMove);
-      document.removeEventListener(endEvt, onEnd);
+      window.removeEventListener(isTouch ? "touchmove" : "mousemove", onMove);
+      window.removeEventListener(isTouch ? "touchend" : "mouseup", onEnd);
     };
 
-    document.addEventListener(moveEvt, onMove);
-    document.addEventListener(endEvt, onEnd);
+    window.addEventListener(isTouch ? "touchmove" : "mousemove", onMove, { passive: false });
+    window.addEventListener(isTouch ? "touchend" : "mouseup", onEnd, { passive: true });
   };
 
   return (
@@ -104,7 +107,6 @@ const ResizableImageComponent = ({ node, updateAttributes, selected }) => {
       }}
       data-drag-handle
     >
-      {/* Box we size live; handle is positioned inside this box */}
       <div
         ref={boxRef}
         style={{
@@ -112,7 +114,8 @@ const ResizableImageComponent = ({ node, updateAttributes, selected }) => {
           position: "relative",
           lineHeight: 0,
           maxWidth: "100%",
-          width: Number.isFinite(+widthPct) ? `${+widthPct}%` : undefined, // initial width (so handle is correct before drag)
+          minWidth: 1,
+          // width managed via useEffect / drag
         }}
       >
         <img
@@ -120,7 +123,7 @@ const ResizableImageComponent = ({ node, updateAttributes, selected }) => {
           src={src}
           alt={alt}
           style={{
-            width: Number.isFinite(+widthPct) ? "100%" : "auto", // fill the box if widthPct set
+            width: Number.isFinite(+widthPct) ? "100%" : "auto",
             height: "auto",
             maxWidth: "100%",
             display: "block",
@@ -147,7 +150,6 @@ const ResizableImageComponent = ({ node, updateAttributes, selected }) => {
               cursor: "se-resize",
               boxShadow: "0 0 0 1px #fff",
               touchAction: "none",
-              // no transform here — we keep it INSIDE the image
             }}
             title="Drag to resize"
           />
@@ -158,18 +160,29 @@ const ResizableImageComponent = ({ node, updateAttributes, selected }) => {
 };
 
 const CustomImage = Image.extend({
-  inline() {
-    return true;
-  },
-  group() {
-    return "inline";
-  },
+  inline() { return true; },
+  group() { return "inline"; },
   draggable: true,
+  priority: 1000, // prefer our nodeview if others exist
 
+  // Minimal + reliable attrs (explicit src is the key)
   addAttributes() {
     return {
-      // keep base attrs (includes `src`)
-      ...this.parent?.(),
+      src: {
+        default: null,
+        parseHTML: (el) => el.getAttribute("src") || null,
+        renderHTML: (attrs) => ({ src: attrs.src }),
+      },
+      alt: {
+        default: "",
+        parseHTML: (el) => el.getAttribute("alt") || "",
+        renderHTML: (attrs) => (attrs.alt ? { alt: attrs.alt } : {}),
+      },
+      title: {
+        default: null,
+        parseHTML: (el) => el.getAttribute("title") || null,
+        renderHTML: (attrs) => (attrs.title ? { title: attrs.title } : {}),
+      },
       widthPct: {
         default: null,
         parseHTML: (element) => {
@@ -184,9 +197,7 @@ const CustomImage = Image.extend({
         renderHTML: (attrs) => {
           if (!attrs.widthPct) return {};
           const n = parseFloat(attrs.widthPct);
-          const safe = Number.isFinite(n)
-            ? Math.min(100, Math.max(5, n))
-            : null;
+          const safe = Number.isFinite(n) ? Math.max(5, Math.min(100, n)) : null;
           if (safe == null) return {};
           return {
             style: `width:${safe}%; height:auto; max-width:100%;`,
@@ -195,7 +206,6 @@ const CustomImage = Image.extend({
           };
         },
       },
-      alt: { default: "" },
     };
   },
 

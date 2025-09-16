@@ -1,4 +1,3 @@
-// src/features/ContentDrafting.jsx
 import { useEffect, useRef } from "react";
 
 export const stableStringify = (obj) =>
@@ -28,7 +27,6 @@ export const saveDraft = (key, data) => {
     };
 
     localStorage.setItem(key, JSON.stringify(payload));
-    // console.log("Draft saved:", key, payload.hash, payload._savedAt);
     return true;
   } catch (error) {
     console.error("Failed to save draft to local storage:", error);
@@ -78,7 +76,6 @@ export const clearDraft = (key) => {
   try {
     localStorage.removeItem(key);
     localStorage.removeItem(dismissedKey(key));
-    // console.log(`Draft cleared for key: ${key}`);
     return true;
   } catch (error) {
     console.error("Failed to clear draft from local storage:", error);
@@ -105,7 +102,6 @@ export const getDraftAge = (key) => {
   }
   return null;
 };
-
 
 export const setDismissedDraftHash = (key, hash) => {
   try {
@@ -134,7 +130,6 @@ export const clearDismissedDraftHash = (key) => {
     console.error("Failed to clear dismissed draft hash:", e);
   }
 };
-
 
 export const shouldPromptForDraft = ({ draft, baseHash, dismissedHash }) => {
   if (!draft?.hash) return false;
@@ -176,7 +171,6 @@ const useAutosave = (data, key, debounceDelay = 1000, enabled = true) => {
       }
     };
   }, [data, key, debounceDelay, enabled]);
-
 
   useEffect(() => {
     return () => {

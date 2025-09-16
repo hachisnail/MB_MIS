@@ -269,3 +269,12 @@ export default function Inquiry() {
     </div>
   );
 }
+
+// qr hadnler usage
+// import QRHandler from "./components/QRHandler";
+
+//       <QRHandler
+//         sessionId={sessionId}
+//         contributionId={sessionData?.contribution?.contribution_id}
+//         triggerGenerate={true} 
+//       />

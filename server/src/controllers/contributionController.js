@@ -924,6 +924,70 @@ export const verifyContributionSessionOtp = async (req, res) => {
   }
 };
 
+export const completeContributionSession = async (req, res) => {
+  try {
+    const { id } = req.params; // contribution_id
+    const { sessionId } = req.body;
+
+    // 1. Require admin login
+    if (!req.session?.user || req.session.user.roleId !== 1) {
+      return res.status(403).json({ message: "Admin login required" });
+    }
+
+    // 2. Validate contribution
+    const contribution = await Contributions.findByPk(id, {
+      include: [{ model: ContributionTimelines }],
+    });
+    if (!contribution) {
+      return res.status(404).json({ message: "Contribution not found" });
+    }
+
+    // 3. Validate session
+    const session = await ContributionSessions.findOne({
+      where: { session_id: sessionId, contribution_id: id, is_active: true },
+    });
+    if (!session) {
+      return res.status(404).json({ message: "Active session not found" });
+    }
+
+    // 4. Mark session inactive
+    await session.update({
+      is_active: false,
+      closed_at: new Date(),
+    });
+
+    // 5. Mark timeline complete
+    let timeline = contribution.ContributionTimeline;
+    if (!timeline) {
+      timeline = await ContributionTimelines.create({
+        contribution_id: id,
+        submitted_at: contribution.submission_date,
+      });
+    }
+    timeline.completed_at = new Date();
+    await timeline.save();
+
+    // 6. Update contribution status
+    await contribution.update({
+      status: "completed",
+      updated_at: new Date(),
+    });
+
+    return res.json({
+      success: true,
+      message: "Contribution session completed successfully",
+      contribution_id: id,
+      session_id: sessionId,
+    });
+  } catch (err) {
+    console.error("completeContributionSession error:", err);
+    return res
+      .status(500)
+      .json({ message: "Server error completing contribution session" });
+  }
+};
+
+
 export const closeContributionSession = async (req, res) => {
   try {
     securityHeaders(res);

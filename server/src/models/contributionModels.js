@@ -170,12 +170,13 @@ export const ContributionTimelines = mainDb.define(
     contribution_id: {
       type: DataTypes.INTEGER,
       allowNull: false,
-      unique: true, // <-- ensure 1:1 with Contributions
+      unique: true,
       references: { model: Contributions, key: "contribution_id" },
     },
     submitted_at: { type: DataTypes.DATE, allowNull: true },
     under_review_at: { type: DataTypes.DATE, allowNull: true },
     approved_at: { type: DataTypes.DATE, allowNull: true },
+    pending_at: { type: DataTypes.DATE, allowNull: true }, // New column added
     moa_settled_at: { type: DataTypes.DATE, allowNull: true },
     on_delivery_at: { type: DataTypes.DATE, allowNull: true },
     completed_at: { type: DataTypes.DATE, allowNull: true },

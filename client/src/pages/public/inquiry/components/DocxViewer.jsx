@@ -1,9 +1,10 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { renderAsync } from "docx-preview";
 import styles from "./DocxViewer.module.css";
 
 export default function DocxViewer({ url, className = "" }) {
   const containerRef = useRef(null);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (!url) return;
@@ -11,6 +12,7 @@ export default function DocxViewer({ url, className = "" }) {
 
     (async () => {
       try {
+        setLoading(true); // show spinner
         const res = await fetch(url, { credentials: "include" });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const buf = await res.arrayBuffer();
@@ -26,6 +28,8 @@ export default function DocxViewer({ url, className = "" }) {
         if (!cancelled && containerRef.current) {
           containerRef.current.innerHTML = `Failed to render DOCX (${e.message}).`;
         }
+      } finally {
+        if (!cancelled) setLoading(false); // hide spinner
       }
     })();
 
@@ -36,6 +40,13 @@ export default function DocxViewer({ url, className = "" }) {
   }, [url]);
 
   return (
-    <div ref={containerRef} className={`${styles.wrapper} ${className}`} />
+    <div className={`${styles.wrapper} ${className}`}>
+      {loading && (
+        <div className="flex items-center justify-center h-full w-full absolute top-0 left-0 bg-white bg-opacity-70 z-10">
+          <div className="w-10 h-10 border-4 border-gray-300 border-t-black rounded-full animate-spin"></div>
+        </div>
+      )}
+      <div ref={containerRef} />
+    </div>
   );
 }

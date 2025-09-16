@@ -47,17 +47,17 @@ export default function Inquiry() {
   };
 
   // Close session on tab close
-  useEffect(() => {
-    const handleUnload = () => {
-      const url = `${axiosClient.defaults.baseURL}/auth/contributions/session/close`;
-      const blob = new Blob([JSON.stringify({ reason: "tab_closed" })], {
-        type: "application/json",
-      });
-      navigator.sendBeacon(url, blob);
-    };
-    window.addEventListener("beforeunload", handleUnload);
-    return () => window.removeEventListener("beforeunload", handleUnload);
-  }, []);
+  // useEffect(() => {
+  //   const handleUnload = () => {
+  //     const url = `${axiosClient.defaults.baseURL}/auth/contributions/session/close`;
+  //     const blob = new Blob([JSON.stringify({ reason: "tab_closed" })], {
+  //       type: "application/json",
+  //     });
+  //     navigator.sendBeacon(url, blob);
+  //   };
+  //   window.addEventListener("beforeunload", handleUnload);
+  //   return () => window.removeEventListener("beforeunload", handleUnload);
+  // }, []);
 
   useEffect(() => {
     fetchSession();

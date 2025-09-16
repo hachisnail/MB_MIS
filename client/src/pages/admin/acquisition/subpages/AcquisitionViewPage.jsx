@@ -33,6 +33,7 @@ import DocumentShell from "../layouts/DocumentShell";
 import TransactionShell from "../layouts/TransactionShell";
 
 import ConversationTimeline from "./ConversationTimeline";
+import { conversationSample } from "./conversationSample";
 
 
 const documentTabs = ["Overview", "Document", "Transaction"];
@@ -568,7 +569,7 @@ const AcquisitionViewPage = () => {
                             <div className="relative w-full">
                               <input
                                 value={chatText}
-                                onChange={(e) => setChatText(e.target.value)}
+                                onChange={(e) => setChatText(e.target.value) }
                                 placeholder="Enter Text..."
                                 className="w-full h-14 rounded-xl border-2 border-black bg-white shadow-[inset_0_6px_6px_rgba(0,0,0,0.4)] pl-4 pr-28 text-lg outline-none"
                               />

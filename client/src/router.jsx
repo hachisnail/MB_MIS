@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate, Outlet } from "react-router-dom";
+import { Routes, Route, Navigate, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/authContext";
 import Unauthorized from "@/pages/Unauthorized";
 import ServerDown from "@/pages/ServerDown";
@@ -81,6 +81,8 @@ import UserView from "./pages/admin/user/subpages/ViewUser";
 
 
 // system
+import AdminScan from "./pages/admin/AdminScan";
+
 import FilePreviewer from "@/features/FilePreviewer";
 
 import NoMatch from "@/pages/NoMatch";
@@ -96,9 +98,8 @@ import MaintenanceMode from "@/pages/MaintenanceMode";
 // sandbox
 import FileUploadDownload from "@/sandbox/FileUploadDownload";
 import AdminSocketsPanel from "./sandbox/AdminSocketsPanel";
-
-
-
+import QrGenerator from "./sandbox/QrGenerator";
+import QrScannerComponent from "./sandbox/QrScannerComponent";
 
 import ModalsTest from "@/sandbox/ModalsTest";
 import RouteFlagToggle from "@/sandbox/RouteFlagToggle";
@@ -112,7 +113,18 @@ import PublicLayout from "@/components/layout/PublicLayout";
 
 const RequireAuth = () => {
   const { user } = useAuth();
-  return user ? <Outlet /> : <Navigate to="/login" replace />;
+  const location = useLocation();
+
+  if (!user) {
+    return (
+      <Navigate
+        to={`/login?redirect=${encodeURIComponent(location.pathname + location.search)}`}
+        replace
+      />
+    );
+  }
+
+  return <Outlet />;
 };
 
 const Router = () => {
@@ -199,6 +211,7 @@ const Router = () => {
 
       {/* Protected routes */}
       <Route path="/admin" element={<RequireAuth />}>
+      <Route path="/admin/scan" element={<AdminScan />} />
         <Route element={<AdminLayout />}>
           <Route index element={<Navigate to="dashboard" replace />} />
 
@@ -286,6 +299,8 @@ const Router = () => {
           {/* sandbox for testing */}
           {flags["sandbox"] && (
             <>
+
+
               <Route path="dashboard/sandbox/scokets-panel" element={<AdminSocketsPanel />} />
               <Route path="dashboard/sandbox" element={<FileUploadDownload />} />
               <Route
@@ -323,7 +338,8 @@ const Router = () => {
           <Route path="unauthorized" element={<Unauthorized />} />
         </Route>
       </Route>
-
+              <Route path="qr-generate" element={<QrGenerator />} />
+              <Route path="qr-scanner" element={<QrScannerComponent />} />
       {/* Catch-all & unauthorized */}
       {flags["down"] && <Route path="*" element={<ServerDown />} />}
 

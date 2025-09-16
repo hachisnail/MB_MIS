@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate, NavLink } from "react-router-dom";
+import { useNavigate, NavLink, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/context/authContext";
 import Logo from "@/assets/LOGO.png";
 import PopupModal from "@/components/modals/PopupModal";
@@ -13,6 +13,8 @@ const Login = () => {
   const [error, setError] = useState("");
   const [apiError, setApiError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [searchParams] = useSearchParams();
+const redirectParam = searchParams.get("redirect");
 
   const navigate = useNavigate();
   const { user, login, forcedLogoutReason, resetForcedLogoutReason, socketReady } = useAuth(); 
@@ -23,11 +25,11 @@ const Login = () => {
     }
   }, [forcedLogoutReason]);
 
-  useEffect(() => {
-    if (user && socketReady) {
-      navigate("/admin/dashboard", { replace: true });
-    }
-  }, [user, socketReady]);
+useEffect(() => {
+  if (user && socketReady) {
+    navigate(redirectParam || "/admin/dashboard", { replace: true });
+  }
+}, [user, socketReady, redirectParam]);
 
   const handleChange = (e) => {
     setCredentials({

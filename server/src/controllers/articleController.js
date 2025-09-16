@@ -5,7 +5,9 @@ import Article from '../models/Article.js';
 import User from '../models/Users.js';
 import { assignArchiveNumbers } from '../services/archiveNumbering.js';
 
-// Upload content images
+/**
+ * Upload content images (inline editor uploads)
+ */
 export const uploadContentImages = async (req, res) => {
   try {
     const images = (req.files || []).map((file) => file.filename);
@@ -16,7 +18,11 @@ export const uploadContentImages = async (req, res) => {
   }
 };
 
-// CREATE (numbers assigned if created as 'posted')
+/**
+ * CREATE
+ * - If created as "scheduled": set upload window from payload
+ * - If created as "posted": set start now and assign archive numbers
+ */
 export const createArticle = async (req, res) => {
   let t;
   try {
@@ -61,16 +67,18 @@ export const createArticle = async (req, res) => {
       sequence_number: null,
     };
 
-    if (status === 'scheduled') {
+    if (String(status).toLowerCase() === 'scheduled') {
       articleData.upload_period_start = uploadPeriodStart ? new Date(uploadPeriodStart) : null;
       articleData.upload_period_end   = uploadPeriodEnd   ? new Date(uploadPeriodEnd)   : null;
-    } else if (status === 'posted') {
+    } else if (String(status).toLowerCase() === 'posted') {
+      // first posted time
       articleData.upload_period_start = new Date();
       articleData.upload_period_end   = null;
     }
 
     const article = await Article.create(articleData, { transaction: t });
 
+    // Assign numbers exactly once if created directly as posted
     if (String(status).toLowerCase() === 'posted') {
       await assignArchiveNumbers(article, t);
     }
@@ -92,7 +100,9 @@ export const createArticle = async (req, res) => {
   }
 };
 
-// ADMIN list
+/**
+ * ADMIN list
+ */
 export const getAllArticles = async (req, res) => {
   try {
     const articles = await Article.findAll({ order: [['created_at', 'DESC']] });
@@ -103,7 +113,9 @@ export const getAllArticles = async (req, res) => {
   }
 };
 
-// PUBLIC list
+/**
+ * PUBLIC list (only posted)
+ */
 export const getPublicArticles = async (req, res) => {
   try {
     const articles = await Article.findAll({
@@ -113,7 +125,7 @@ export const getPublicArticles = async (req, res) => {
         'volume', 'sequence_number',
       ],
       where: { status: 'posted' },
-      order: [['created_at', 'DESC']], // <-- fixed: removed the extra ']'
+      order: [['created_at', 'DESC']],
     });
 
     const baseUrl = `${req.protocol}://${req.get('host')}`;
@@ -128,7 +140,9 @@ export const getPublicArticles = async (req, res) => {
   }
 };
 
-// PUBLIC single
+/**
+ * PUBLIC single
+ */
 export const getPublicArticle = async (req, res) => {
   try {
     const { id } = req.params;
@@ -161,7 +175,12 @@ export const getPublicArticle = async (req, res) => {
   }
 };
 
-// UPDATE (assign numbers once when becoming 'posted')
+/**
+ * UPDATE
+ * - Only modify upload window when allowed
+ * - Only set upload_period_start once on first transition to 'posted'
+ * - Assign archive numbers only on first transition to 'posted'
+ */
 export const updateArticle = async (req, res) => {
   let t;
   try {
@@ -174,13 +193,12 @@ export const updateArticle = async (req, res) => {
       return res.status(404).json({ message: 'Article not found' });
     }
 
-    // Build a minimal & safe set of fields to update
+    // Build whitelist fields
     const fieldsToSet = {};
     const allowKeys = [
       'title','article_category','description','user_id','author',
       'address','barangay','caption','status','reviewer_notes'
     ];
-
     for (const k of allowKeys) {
       if (Object.prototype.hasOwnProperty.call(req.body, k)) {
         fieldsToSet[k] = req.body[k];
@@ -189,26 +207,38 @@ export const updateArticle = async (req, res) => {
 
     // Map selectedDate -> upload_date if provided
     if (Object.prototype.hasOwnProperty.call(req.body, 'selectedDate')) {
-      fieldsToSet.upload_date = req.body.selectedDate
-        ? new Date(req.body.selectedDate)
-        : null;
+      fieldsToSet.upload_date = req.body.selectedDate ? new Date(req.body.selectedDate) : null;
     }
     // Or allow direct upload_date if sent
     if (Object.prototype.hasOwnProperty.call(req.body, 'upload_date')) {
-      fieldsToSet.upload_date = req.body.upload_date
-        ? new Date(req.body.upload_date)
-        : null;
+      fieldsToSet.upload_date = req.body.upload_date ? new Date(req.body.upload_date) : null;
     }
 
-    // Only update content_type if provided AND non-empty; normalize to lowercase
+    // content_type (normalize, optional)
     if (Object.prototype.hasOwnProperty.call(req.body, 'content_type')) {
       const ct = (req.body.content_type ?? '').trim();
       if (ct) fieldsToSet.content_type = ct.toLowerCase();
-      // empty => skip to avoid ENUM validation error
     }
 
-    // status-driven window updates
-    if (req.body.status === 'scheduled') {
+    // Thumbnail
+    if (req.file) {
+      fieldsToSet.images = req.file.filename;
+    }
+
+    // ---- schedule/posted window rules ----
+    const alreadyNumbered = current.volume != null && current.sequence_number != null;
+    const wasPosted       = String(current.status).toLowerCase() === 'posted';
+    const willBePosted    = String(req.body.status || current.status).toLowerCase() === 'posted';
+    const becomingPosted  = !wasPosted && willBePosted;
+
+    if (String(req.body.status).toLowerCase() === 'scheduled') {
+      if (alreadyNumbered) {
+        await t.rollback();
+        return res.status(400).json({
+          message: 'Validation error',
+          error: 'Cannot change upload period after numbering.',
+        });
+      }
       if (Object.prototype.hasOwnProperty.call(req.body, 'uploadPeriodStart')) {
         fieldsToSet.upload_period_start = req.body.uploadPeriodStart
           ? new Date(req.body.uploadPeriodStart)
@@ -219,16 +249,14 @@ export const updateArticle = async (req, res) => {
           ? new Date(req.body.uploadPeriodEnd)
           : null;
       }
-    } else if (req.body.status === 'posted') {
-      fieldsToSet.upload_period_start = current.upload_period_start || new Date();
-      fieldsToSet.upload_period_end   = current.upload_period_end ?? null;
+    } else if (willBePosted) {
+      // Set start only once on first transition to posted if not set yet
+      if (becomingPosted && !current.upload_period_start) {
+        fieldsToSet.upload_period_start = new Date();
+      }
+      // Never touch upload_period_end here
     }
-    // other statuses -> preserve existing window
-
-    // File (thumbnail) — only set when provided
-    if (req.file) {
-      fieldsToSet.images = req.file.filename;
-    }
+    // For other statuses, leave upload period untouched
 
     // Instance update (avoids beforeBulkUpdate hook)
     await current.update(fieldsToSet, {
@@ -237,11 +265,8 @@ export const updateArticle = async (req, res) => {
       userId: req.session?.user?.id, // used by afterUpdate log
     });
 
-    // Assign archive numbers exactly once when first becoming 'posted'
-    if (
-      String(current.status).toLowerCase() === 'posted' &&
-      !(current.volume != null && current.sequence_number != null)
-    ) {
+    // Numbering: only on first transition to posted
+    if (becomingPosted && !(current.volume != null && current.sequence_number != null)) {
       await assignArchiveNumbers(current, t);
     }
 
@@ -262,7 +287,9 @@ export const updateArticle = async (req, res) => {
   }
 };
 
-// BY ID
+/**
+ * BY ID
+ */
 export const getArticleById = async (req, res) => {
   try {
     const { id } = req.params;

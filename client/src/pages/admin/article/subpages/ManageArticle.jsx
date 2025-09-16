@@ -5,13 +5,21 @@ import axios from "axios";
 import Button from "../../../../components/buttons/artclbtn";
 import ConfirmDialog from "@/components/modals/ConfirmDialog";
 import StyledButton from "@/components/buttons/StyledButton";
+import PopupModal from "@/components/modals/PopupModal";
 import { useAuth } from "@/context/authContext";
-import useAutosave, { loadDraft, clearDraft } from "@/features/ContentDrafting.jsx";
+
+import useAutosave, {
+  loadDraft,
+  clearDraft,
+  getDismissedDraftHash,
+  setDismissedDraftHash,
+  shouldPromptForDraft,
+} from "@/features/ContentDrafting.jsx";
+
 import usePrompt from "@/hooks/usePrompt";
 import ViewPort from "../../../../features/Viewport";
 import { handleGenerateCaption, handleSummarizeCaption } from "../components/CaptionGenerator";
 import RichTextEditor from "../components/RichTextEditor";
-import { X as XIcon } from "lucide-react";
 import { STATUS, STATUS_LABELS } from "../components/articleStatus";
 import ArticlePreview from "../components/ArticlePreview";
 
@@ -21,7 +29,6 @@ import {
   computeNextSequence,
   makeDisplayLabel,
 } from "../components/archiveHelpers";
-
 
 import {
   paths,
@@ -47,6 +54,7 @@ import ArticleScheduledFields from "../components/ArticleScheduledFields";
 import ArticleThumbnailInput from "../components/ArticleThumbnailInput";
 import ArticleDetailsForm from "../components/ArticleDetailsForm";
 
+const SUPPRESS_DRAFT_FLAG = "suppressDraftPromptOnce";
 
 const ArticleEditorForm = () => {
   const BASE_URL = import.meta.env.VITE_API_BASE_URL;
@@ -110,7 +118,6 @@ const ArticleEditorForm = () => {
   const [isSummarizing, setIsSummarizing] = useState(false);
 
   const [uploadPeriodStartTime, setUploadPeriodStartTime] = useState("");
-
   const [uploadPeriodEndTime, setUploadPeriodEndTime] = useState("");
 
   // Keep original archive bucket on edit
@@ -121,6 +128,15 @@ const ArticleEditorForm = () => {
   // Draft prompt
   const [showDraftPrompt, setShowDraftPrompt] = useState(false);
   const [draftToLoad, setDraftToLoad] = useState(null);
+
+  // PopupModal state
+  const [showCannotSchedule, setShowCannotSchedule] = useState(false);
+  const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
+  const confirmActionRef = useRef(null);
+  const openArchiveConfirm = (actionFn) => {
+    confirmActionRef.current = actionFn;
+    setShowArchiveConfirm(true);
+  };
 
   const { PromptModal } = usePrompt(
     "You have unsaved changes. Are you sure you want to leave?",
@@ -174,13 +190,47 @@ const ArticleEditorForm = () => {
       editorHTML,
     ]
   );
-  useAutosave(isDirty ? draftData : null, draftKey, 1000);
+
+  // ✅ Only autosave in EDIT mode
+  useAutosave(isDirty ? draftData : null, draftKey, 1000, forceEditorMode);
+
+  // Live archive preview
+  const volumePreview = useMemo(() => getVolumeFromYYYYMMDD(selectedDate), [selectedDate]);
+  const seqPreview = useMemo(() => {
+    const year = getYearFromYYYYMMDD(selectedDate);
+    const sameBucket =
+      isEditing &&
+      origVolume &&
+      origContentType &&
+      Number(origVolume) === Number(volumePreview) &&
+      String(origContentType || "").toLowerCase() === String(contentType || "").toLowerCase();
+
+    if (sameBucket && origSeqNum) return origSeqNum;
+    return computeNextSequence(articles, year, contentType);
+  }, [articles, selectedDate, contentType, isEditing, origVolume, origContentType, origSeqNum, volumePreview]);
+  const seqLabelPreview = useMemo(() => makeDisplayLabel(contentType, seqPreview), [contentType, seqPreview]);
+
+  const isNumbered = useMemo(
+    () => article?.volume != null && article?.sequence_number != null,
+    [article?.volume, article?.sequence_number]
+  );
+  const wasPosted = useMemo(
+    () => String(article?.status || "").toLowerCase() === "posted",
+    [article?.status]
+  );
+  const willBePosted = useMemo(
+    () => String(status || "").toLowerCase() === "posted",
+    [status]
+  );
+  const becomingPosted = useMemo(
+    () => !wasPosted && willBePosted,
+    [wasPosted, willBePosted]
+  );
 
   // Submit to API
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // client-side validation
     const newErrors = validateForm({
       title,
       selectedDate,
@@ -202,7 +252,7 @@ const ArticleEditorForm = () => {
     const formData = new FormData();
     formData.append("title", title);
     formData.append("article_category", category);
-    if (contentType) formData.append("content_type", contentType); // required
+    if (contentType) formData.append("content_type", contentType);
     formData.append("description", editorHTML || "");
     formData.append("user_id", String(user.id));
     formData.append("author", author);
@@ -214,12 +264,9 @@ const ArticleEditorForm = () => {
     formData.append("reviewer_notes", reviewerNotes || "");
     formData.append("status", status);
 
-    // Manila → UTC helpers
-    let startDateTime = "";
-    let endDateTime = "";
     if (status === "scheduled") {
-      startDateTime = toISOZFromManila(uploadPeriodStart, uploadPeriodStartTime, "08:00");
-      endDateTime = toISOZFromManila(uploadPeriodEnd, uploadPeriodEndTime, "23:59");
+      const startDateTime = toISOZFromManila(uploadPeriodStart, uploadPeriodStartTime, "08:00");
+      const endDateTime = toISOZFromManila(uploadPeriodEnd, uploadPeriodEndTime, "23:59");
       formData.append("uploadPeriodStart", startDateTime);
       formData.append("uploadPeriodEnd", endDateTime);
     }
@@ -227,12 +274,7 @@ const ArticleEditorForm = () => {
     if (thumbnail && thumbnail instanceof File) {
       formData.append("thumbnail", thumbnail);
     }
-    if (removeThumbnail) {
-      // if your backend supports explicit removal flag, you could:
-      // formData.append("removeThumbnail", "true");
-    }
 
-    // === Derived archive fields (editor-computed) ===
     const finalVolume = getVolumeFromYYYYMMDD(selectedDate) || "";
     const year = getYearFromYYYYMMDD(selectedDate);
     const sameBucket =
@@ -249,26 +291,51 @@ const ArticleEditorForm = () => {
     try {
       if (isEditing) {
         await updateArticle(articleId, formData);
-        const updated = await getArticle(articleId);
-        if (updated?.data?.images) {
-          setPreviewImage(`${UPLOAD_PATH}${updated.data.images}`);
-        }
-        setThumbnail(null);
-        resetForm();
-        navigate("/admin/article");
       } else {
         await createArticle(formData);
-        setThumbnail(null);
-        setPreviewImage(null);
-        resetForm();
-        navigate("/admin/article");
       }
 
+      // ✅ suppress draft modal on next mount, tidy up, navigate
+      sessionStorage.setItem(SUPPRESS_DRAFT_FLAG, "1");
+      setShowDraftPrompt(false);
+      setDraftToLoad(null);
+      clearDraft(draftKey);
+      clearDraft("new-article-draft");
+
+      resetForm();
+      navigate("/admin/article", { replace: true });
       fetchArticles();
     } catch (err) {
       console.error(`Error ${isEditing ? "updating" : "creating"} article:`, err?.response?.data || err?.message);
     }
   };
+
+    // Replace your current guardedHandleSubmit with this:
+    const guardedHandleSubmit = (e) => {
+      e.preventDefault();
+
+      // Can't switch to scheduled once numbered
+      if (isNumbered && status === "scheduled") {
+        setShowCannotSchedule(true);
+        return;
+      }
+
+      // First-time move to Posted -> confirm, then SUBMIT
+      if (!isNumbered && becomingPosted) {
+        openArchiveConfirm(() => {
+          // set status, then actually submit on next tick
+          setStatus("posted");
+          setTimeout(() => {
+            handleSubmit({ preventDefault: () => {} });
+          }, 0);
+        });
+        return;
+      }
+
+      // Normal flow: just show your generic "Save/Submit" confirm
+      setShowSubmitConfirm(true);
+    };
+
 
   const handleThumbnailChange = (e) => {
     const file = e.target.files[0];
@@ -317,87 +384,107 @@ const ArticleEditorForm = () => {
   // initial load / draft load
   useEffect(() => {
     if (hasRun.current) return;
+    hasRun.current = true;
 
-    const fetchArticleAndLoadDraft = async () => {
-      hasRun.current = true;
+    const fetchAndHydrate = async () => {
+      if (!articleId) return;
+      try {
+        const response = await getArticle(articleId);
+        const data = response.data;
 
-      const draft = loadDraft(draftKey);
-      if (draft?.data && (draft.data.title || draft.data.description || draft.data.author)) {
-        const draftAge = draft._savedAt ? Math.floor((new Date() - new Date(draft._savedAt)) / (1000 * 60)) : null;
-        setDraftToLoad({ draft, draftAge });
-        setShowDraftPrompt(true);
-        return;
-      }
+        setArticle(data);
+        setIsEditing(true);
+        setEditingArticleId(data.article_id);
 
-      if (articleId) {
-        try {
-          const response = await getArticle(articleId);
-          const data = response.data;
-          setArticle(data);
-          setIsEditing(true);
-          setEditingArticleId(data.article_id);
+        setTitle(data.title || "");
+        setAuthor(data.author || "");
+        setCategory(data.article_category || "");
+        setContentType((data.content_type || "").toLowerCase() || "");
+        setMunicipality(data.address || "");
+        setBarangay(data.barangay || "");
+        setStatus(data.status || "pending");
+        setUploadPeriodStart(data.upload_period_start || "");
+        setUploadPeriodEnd(data.upload_period_end || "");
+        setReviewerNotes(data.reviewer_notes || "");
+        setCaption(data.caption || "");
+        editorRef.current?.setContent(data.description || "");
+        setEditorHTML(data.description || "");
+        setEditorText(editorRef.current?.getText() || "");
 
-          setTitle(data.title || "");
-          setAuthor(data.author || "");
-          setCategory(data.article_category || "");
-          setContentType((data.content_type || "").toLowerCase() || "");
-          setMunicipality(data.address || "");
-          setBarangay(data.barangay || "");
-          setStatus(data.status || "pending");
-          setUploadPeriodStart(data.upload_period_start || "");
-          setUploadPeriodEnd(data.upload_period_end || "");
-          setReviewerNotes(data.reviewer_notes || "");
-          setCaption(data.caption || "");
-          editorRef.current?.setContent(data.description || "");
-          setEditorHTML(data.description || "");
-          setEditorText(editorRef.current?.getText() || "");
+        setOrigVolume(data.volume ?? null);
+        setOrigSeqNum(data.sequence_number ?? null);
+        setOrigContentType((data.content_type || "").toLowerCase() || null);
 
-          setOrigVolume(data.volume ?? null);
-          setOrigSeqNum(data.sequence_number ?? null);
-          setOrigContentType((data.content_type || "").toLowerCase() || null);
-
-          if (data.upload_date) {
-            const formattedDate = new Date(data.upload_date).toISOString().split("T")[0];
-            setSelectedDate(formattedDate);
-          } else {
-            setSelectedDate("");
-          }
-
-          if (data.images) setPreviewImage(`${UPLOAD_PATH}${data.images}`);
-          else setPreviewImage(null);
-          setThumbnail(null);
-
-          setUploadPeriodStart(data.upload_period_start ? data.upload_period_start.split("T")[0] : "");
-          setUploadPeriodEnd(data.upload_period_end ? data.upload_period_end.split("T")[0] : "");
-
-          setUploadPeriodStartTime(
-            data.upload_period_start
-              ? new Date(data.upload_period_start).toLocaleTimeString("en-GB", {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                  hour12: false,
-                  timeZone: "Asia/Manila",
-                })
-              : ""
-          );
-          setUploadPeriodEndTime(
-            data.upload_period_end
-              ? new Date(data.upload_period_end).toLocaleTimeString("en-GB", {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                  hour12: false,
-                  timeZone: "Asia/Manila",
-                })
-              : ""
-          );
-        } catch (err) {
-          console.error("Failed to fetch article:", err);
+        if (data.upload_date) {
+          const formattedDate = new Date(data.upload_date).toISOString().split("T")[0];
+          setSelectedDate(formattedDate);
+        } else {
+          setSelectedDate("");
         }
+
+        if (data.images) setPreviewImage(`${UPLOAD_PATH}${data.images}`);
+        else setPreviewImage(null);
+        setThumbnail(null);
+
+        setUploadPeriodStart(data.upload_period_start ? data.upload_period_start.split("T")[0] : "");
+        setUploadPeriodEnd(data.upload_period_end ? data.upload_period_end.split("T")[0] : "");
+
+        setUploadPeriodStartTime(
+          data.upload_period_start
+            ? new Date(data.upload_period_start).toLocaleTimeString("en-GB", {
+                hour: "2-digit",
+                minute: "2-digit",
+                hour12: false,
+                timeZone: "Asia/Manila",
+              })
+            : ""
+        );
+        setUploadPeriodEndTime(
+          data.upload_period_end
+            ? new Date(data.upload_period_end).toLocaleTimeString("en-GB", {
+                hour: "2-digit",
+                minute: "2-digit",
+                hour12: false,
+                timeZone: "Asia/Manila",
+              })
+            : ""
+        );
+      } catch (err) {
+        console.error("Failed to fetch article:", err);
       }
     };
 
-    fetchArticleAndLoadDraft();
-  }, [articleId, draftKey]);
+    // 🔒 REVIEWER VIEW: ignore drafts completely, just fetch server data
+    if (!forceEditorMode) {
+      setShowDraftPrompt(false);
+      setDraftToLoad(null);
+      fetchAndHydrate();
+      return;
+    }
+
+    // ✍️ EDITOR VIEW: honor suppress flag first
+    if (sessionStorage.getItem(SUPPRESS_DRAFT_FLAG) === "1") {
+      sessionStorage.removeItem(SUPPRESS_DRAFT_FLAG);
+      fetchAndHydrate();
+      return;
+    }
+
+    const draft = loadDraft(draftKey);
+    const dismissedHash = getDismissedDraftHash(draftKey);
+    const hasDraftContent =
+      !!draft?.data && (draft.data.title || draft.data.description || draft.data.author);
+
+    if (hasDraftContent && shouldPromptForDraft({ draft, baseHash: "", dismissedHash })) {
+      const draftAge = draft._savedAt
+        ? Math.floor((new Date() - new Date(draft._savedAt)) / (1000 * 60))
+        : null;
+      setDraftToLoad({ draft, draftAge });
+      setShowDraftPrompt(true);
+      return;
+    }
+
+    fetchAndHydrate();
+  }, [articleId, draftKey, forceEditorMode, UPLOAD_PATH]);
 
   // hydrate switching review -> edit
   useEffect(() => {
@@ -406,7 +493,7 @@ const ArticleEditorForm = () => {
       if (!current || current === "<p></p>") {
         editorRef.current.setContent(article.description);
         setEditorHTML(article.description);
-        setEditorText(editorRef.current.getText?.() || "");
+        setEditorText(editorRef.current?.getText() || "");
       }
     }
   }, [forceEditorMode, article]);
@@ -480,7 +567,6 @@ const ArticleEditorForm = () => {
     { label: "2XL", value: "2em" },
   ];
 
-  // inline image upload from editor
   const handleImageUpload = async (e) => {
     if (e?.preventDefault) e.preventDefault();
     const fileList = e?.target?.files || e?.dataTransfer?.files;
@@ -555,27 +641,8 @@ const ArticleEditorForm = () => {
 
   const showBackToReview = isPrivileged && forcedFromNav && !!articleId && forceEditorMode;
 
-  // --- Live archive preview ---
-  const volumePreview = useMemo(() => getVolumeFromYYYYMMDD(selectedDate), [selectedDate]);
-
-  const seqPreview = useMemo(() => {
-    const year = getYearFromYYYYMMDD(selectedDate);
-    const sameBucket =
-      isEditing &&
-      origVolume &&
-      origContentType &&
-      Number(origVolume) === Number(volumePreview) &&
-      String(origContentType || "").toLowerCase() === String(contentType || "").toLowerCase();
-
-    if (sameBucket && origSeqNum) return origSeqNum;
-    return computeNextSequence(articles, year, contentType);
-  }, [articles, selectedDate, contentType, isEditing, origVolume, origContentType, origSeqNum, volumePreview]);
-
-  const seqLabelPreview = useMemo(() => makeDisplayLabel(contentType, seqPreview), [contentType, seqPreview]);
-
   // ---- Schedule date rules ----
   const manilaTodayISO = useMemo(() => getManilaTodayISO(), []);
-
   const handleStartDateChange = (val) => {
     if (isDateDisabledForSchedule(val, manilaTodayISO)) {
       setErrors((e) => ({ ...e, uploadPeriodStart: "That date isn’t allowed for scheduling." }));
@@ -590,7 +657,6 @@ const ArticleEditorForm = () => {
       clearFieldError("uploadPeriodEnd");
     }
   };
-
   const handleEndDateChange = (val) => {
     if (isDateDisabledForSchedule(val, manilaTodayISO)) {
       setErrors((e) => ({ ...e, uploadPeriodEnd: "That date isn’t allowed for scheduling." }));
@@ -616,7 +682,7 @@ const ArticleEditorForm = () => {
       const last = (user.lname || "").trim();
       const full = [first, last].filter(Boolean).join(" ").trim();
       if (full) {
-        setAuthor(full); // not marking dirty; it's auto-fill
+        setAuthor(full);
       }
     }
   }, [isEditing, author, user]);
@@ -642,16 +708,21 @@ const ArticleEditorForm = () => {
     uploadPeriodEnd,
   ]);
 
-    const onHeaderBlurCapture = (e) => {
-      // Only auto-hide when header is complete AND focus moves to a real element
-      if (!headerComplete) return;
-      const next = e.relatedTarget;
-      if (!next) return; // file picker or focus lost → don't collapse
-      const stillInside = headerRef.current?.contains(next);
-      if (!stillInside) setHeaderHidden(true);
-    };
+  const onHeaderBlurCapture = (e) => {
+    if (!headerComplete) return;
+    const next = e.relatedTarget;
+    if (!next) return;
+    const stillInside = headerRef.current?.contains(next);
+    if (!stillInside) setHeaderHidden(true);
+  };
 
-  // -----------------------------------------------
+  // Hide draft overlay entirely in reviewer view, if ever set
+  useEffect(() => {
+    if (shouldShowReviewer && showDraftPrompt) {
+      setShowDraftPrompt(false);
+      setDraftToLoad(null);
+    }
+  }, [shouldShowReviewer, showDraftPrompt]);
 
   return (
     <>
@@ -699,7 +770,7 @@ const ArticleEditorForm = () => {
               </div>
             )}
 
-            <form onSubmit={handleFormSubmit} className="space-y-6">
+            <form onSubmit={guardedHandleSubmit} className="space-y-6">
               {headerHidden ? (
                 <ArticleHeaderSummaryCard
                   title={title}
@@ -731,7 +802,7 @@ const ArticleEditorForm = () => {
                     </button>
                   </div>
 
-                  {/* Details block (title, date, author, category, type, municipality/barangay, status) */}
+                  {/* Details block */}
                   <ArticleDetailsForm
                     errors={errors}
                     values={{
@@ -815,17 +886,16 @@ const ArticleEditorForm = () => {
 
                   {/* Thumbnail */}
                   <div className="p-4">
- <ArticleThumbnailInput
-   inputRef={thumbnailInputRef}
-   previewUrl={typeof previewImage === "string" ? previewImage : null}
-   removeThumbnail={removeThumbnail}
-   onChange={handleCustomThumbnailChange}
-   onRemove={handleRemoveThumbnail}
- />
+                    <ArticleThumbnailInput
+                      inputRef={thumbnailInputRef}
+                      previewUrl={typeof previewImage === "string" ? previewImage : null}
+                      removeThumbnail={removeThumbnail}
+                      onChange={handleCustomThumbnailChange}
+                      onRemove={handleRemoveThumbnail}
+                    />
                   </div>
                 </div>
               )}
-              {/* --- End Auto-hide Header Block --- */}
 
               {/* Rich Text Editor */}
               <RichTextEditor
@@ -861,9 +931,7 @@ const ArticleEditorForm = () => {
                     </button>
                     <button
                       type="button"
-                      onClick={() =>
-                        handleSummarizeCaption(editorText, setCaption, setIsSummarizing, BASE_URL)
-                      }
+                      onClick={() => handleSummarizeCaption(editorText, setCaption, setIsSummarizing, BASE_URL)}
                       disabled={isSummarizing || !editorText.trim()}
                       className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
                     >
@@ -906,11 +974,10 @@ const ArticleEditorForm = () => {
           </div>
         ) : (
           // Reviewer view
-          <div className="bg-white w-full 2xl:w-1/2 p-6 rounded-lg shadow-xl">
+          <div className="bg-white w-full 2xl:w-1/2 p-6 rounded-lg shadow-xl relative z-10">
             <div className="flex justify-between items-start mb-6 gap-4">
               <div className="flex-1">
                 <h2 className="text-3xl font-bold leading-tight">Review Article</h2>
-                {/* Title + Author */}
                 <div className="mt-3">
                   <p className="text-sm font-semibold text-neutral-600">Title</p>
                   <p className="text-xl font-medium text-neutral-900">{title || "N/A"}</p>
@@ -939,7 +1006,7 @@ const ArticleEditorForm = () => {
               )}
             </div>
 
-            {/* Meta: Created / Updated */}
+            {/* Meta */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
               <div className="rounded-xl border border-neutral-200 p-4">
                 <p className="text-sm font-semibold text-neutral-600">Date Created (PH)</p>
@@ -957,6 +1024,15 @@ const ArticleEditorForm = () => {
               </div>
             </div>
 
+            {/* Inline banner when numbered */}
+            {isNumbered && (
+              <div className="mb-4 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                This article already has archive numbers (Vol. {article?.volume}, No. {article?.sequence_number}).
+                Scheduling and archive numbers are now locked. You can still change status to <b>Posted</b>,{" "}
+                <b>Rejected</b>, or <b>Archived</b>, but you cannot switch to <b>Scheduled</b> or alter the schedule window.
+              </div>
+            )}
+
             {/* Reviewer Notes */}
             <div className="space-y-2">
               <label htmlFor="reviewerNotes" className="text-lg font-bold">
@@ -973,7 +1049,7 @@ const ArticleEditorForm = () => {
             </div>
 
             {/* Change Status */}
-            <form onSubmit={handleFormSubmit} className="mt-6 space-y-6">
+            <form onSubmit={guardedHandleSubmit} className="mt-6 space-y-6">
               <div className="flex items-center gap-4">
                 <label htmlFor="reviewerStatus" className="font-bold whitespace-nowrap">
                   Change Status:
@@ -982,7 +1058,23 @@ const ArticleEditorForm = () => {
                   id="reviewerStatus"
                   className="flex-1 px-4 py-3 border-2 border-black rounded-2xl text-base md:text-lg outline-none"
                   value={status}
-                  onChange={(e) => setStatus(e.target.value)}
+                  onChange={(e) => {
+                    const next = e.target.value;
+
+                    if (isNumbered && next === "scheduled") {
+                      setShowCannotSchedule(true);
+                      return;
+                    }
+
+                    if (!isNumbered && String(next).toLowerCase() === "posted" && !wasPosted) {
+                      openArchiveConfirm(() => {
+                        setStatus("posted");
+                      });
+                      return;
+                    }
+
+                    setStatus(next);
+                  }}
                   disabled={isViewer}
                 >
                   {STATUS.map((s) => (
@@ -993,8 +1085,8 @@ const ArticleEditorForm = () => {
                 </select>
               </div>
 
-              {/* Scheduled block */}
-              {status === "scheduled" && (
+              {/* Scheduled block — only if not numbered */}
+              {status === "scheduled" && !isNumbered && (
                 <div className="flex flex-col gap-4">
                   <div className="flex flex-col md:flex-row gap-2">
                     <div className="flex-1">
@@ -1097,29 +1189,31 @@ const ArticleEditorForm = () => {
         )}
 
         {/* RIGHT SIDE - Article Preview */}
-        <ViewPort
-          sizes={{
-            lg: { width: 500, height: 545 },
-            xl: { width: 675, height: 545 },
-            "2xl": { width: 1000, height: 545 },
-            "3xl": { width: 1100, height: 700 },
-          }}
-        >
-          <ArticlePreview
-            contentType={contentType}
-            volume={volumePreview || null}
-            sequenceNumber={seqPreview || null}
-            title={title}
-            selectedDate={selectedDate}
-            author={author}
-            municipality={municipality}
-            barangay={barangay}
-            category={category}
-            previewImage={previewImage}
-            removeThumbnail={removeThumbnail}
-            editorHTML={editorHTML}
-          />
-        </ViewPort>
+        <div className="relative z-0">
+          <ViewPort
+            sizes={{
+              lg: { width: 500, height: 545 },
+              xl: { width: 675, height: 545 },
+              "2xl": { width: 1000, height: 545 },
+              "3xl": { width: 1100, height: 700 },
+            }}
+          >
+            <ArticlePreview
+              contentType={contentType}
+              volume={volumePreview || null}
+              sequenceNumber={seqPreview || null}
+              title={title}
+              selectedDate={selectedDate}
+              author={author}
+              municipality={municipality}
+              barangay={barangay}
+              category={category}
+              previewImage={previewImage}
+              removeThumbnail={removeThumbnail}
+              editorHTML={editorHTML}
+            />
+          </ViewPort>
+        </div>
       </div>
 
       {/* Cancel Confirmation Dialog */}
@@ -1137,7 +1231,7 @@ const ArticleEditorForm = () => {
         onCancel={() => setShowCancelConfirm(false)}
       />
 
-      {/* Submit Confirmation Dialog */}
+      {/* Submit Confirmation Dialog (regular flow) */}
       <ConfirmDialog
         visible={showSubmitConfirm}
         title={isEditing ? "Save Changes?" : "Submit Article?"}
@@ -1153,8 +1247,8 @@ const ArticleEditorForm = () => {
         onCancel={() => setShowSubmitConfirm(false)}
       />
 
-      {/* Draft Prompt Modal */}
-      {showDraftPrompt && draftToLoad && (
+      {/* Draft Prompt Modal (never in reviewer view) */}
+      {showDraftPrompt && draftToLoad && !shouldShowReviewer && (
         <div className="fixed inset-0 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl border-2 border-gray-300">
             <h3 className="text-lg font-semibold mb-4">Draft Found</h3>
@@ -1167,7 +1261,10 @@ const ArticleEditorForm = () => {
               <button
                 onClick={async () => {
                   setShowDraftPrompt(false);
+                  // remember user skipped this specific draft hash
+                  setDismissedDraftHash(draftKey, draftToLoad?.draft?.hash || "");
                   setDraftToLoad(null);
+
                   if (articleId) {
                     try {
                       const response = await getArticle(articleId);
@@ -1243,7 +1340,6 @@ const ArticleEditorForm = () => {
               </button>
               <button
                 onClick={async () => {
-                  // Load
                   const { draft } = draftToLoad;
                   setTitle(draft.data.title || "");
                   setAuthor(draft.data.author || "");
@@ -1317,6 +1413,30 @@ const ArticleEditorForm = () => {
           </div>
         </div>
       )}
+
+      {/* ====== POPUPS ====== */}
+      <PopupModal
+        isOpen={showCannotSchedule}
+        onClose={() => setShowCannotSchedule(false)}
+        title="Scheduling is locked"
+        message="This article already has archive numbers. Scheduling can’t be changed anymore."
+        buttonText="Okay"
+        type="warning"
+      />
+
+      <PopupModal
+        isOpen={showArchiveConfirm}
+        onClose={() => {
+          const action = confirmActionRef.current;
+          setShowArchiveConfirm(false);
+          confirmActionRef.current = null;
+          if (typeof action === "function") action();
+        }}
+        title="Assign archive numbers?"
+        message="Setting status to Posted will permanently assign archive numbers (Vol./No.). After that, content type and scheduling window can no longer be changed. Continue?"
+        buttonText="Continue"
+        type="info"
+      />
     </>
   );
 };

@@ -127,6 +127,7 @@ export const ContributionTimelines = mainDb.define(
     submitted_at: { type: DataTypes.DATE, allowNull: true },
     under_review_at: { type: DataTypes.DATE, allowNull: true },
     approved_at: { type: DataTypes.DATE, allowNull: true },
+    pending_at: { type: DataTypes.DATE, allowNull: true }, // New column added
     moa_settled_at: { type: DataTypes.DATE, allowNull: true },
     on_delivery_at: { type: DataTypes.DATE, allowNull: true },
     completed_at: { type: DataTypes.DATE, allowNull: true },

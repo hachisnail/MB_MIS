@@ -172,8 +172,9 @@ export const createContribution = async (req, res) => {
     }
 
 
-    contributor = await Contributors.create({
+    const contributor = await Contributors.create({
       first_name: firstName,
+
       last_name: lastName,
       birth_date: birthDate,
       phone_number: contact,
@@ -281,7 +282,7 @@ export const getAllContributions = async (req, res) => {
       include: [
         {
           model: Contributors,
-          attributes: ["first_name", "last_name", "email", "birth_date" , "province", "city"],
+          attributes: ["first_name", "last_name", "email", "birth_date", "province", "city"],
           where: Object.keys(contributorWhere).length ? contributorWhere : undefined,
         },
         { model: LendingDetails },
@@ -559,7 +560,7 @@ export const getDonorRecords = async (req, res) => {
     if (fromDate && toDate) where.submission_date = { [Op.between]: [new Date(fromDate), new Date(toDate)] };
 
     const donors = await Contributors.findAll({
-      attributes: ["contributor_id", "first_name", "last_name", "email","birth_date", "province", "city"],
+      attributes: ["contributor_id", "first_name", "last_name", "email", "birth_date", "province", "city"],
       include: [
         {
           model: Contributions,

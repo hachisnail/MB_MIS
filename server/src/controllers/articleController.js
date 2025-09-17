@@ -155,9 +155,12 @@ export const getPublicArticle = async (req, res) => {
         'editImages', 'caption', 'article_category', 'content_type',
         'description', 'author', 'address', 'barangay',
         'status', 'upload_period_start', 'upload_period_end',
-        'created_at', 'updated_at', 'reviewer_notes',
+        'created_at', 'updated_at', 'reviewer_notes', 'reviewer_id',
         'volume', 'sequence_number',
       ],
+      include: [
+        { model: User, as: 'Reviewer', attributes: ['id', 'name'], required: false, where: { id: sequelize.col('Article.reviewer_id') } }
+      ]
     });
 
     if (!article) return res.status(404).json({ message: 'Article not found.' });
@@ -196,13 +199,20 @@ export const updateArticle = async (req, res) => {
     // Build whitelist fields
     const fieldsToSet = {};
     const allowKeys = [
-      'title','article_category','description','user_id','author',
-      'address','barangay','caption','status','reviewer_notes'
+      'title','article_category','description','author',
+      'address','barangay','caption','status','reviewer_notes','reviewer_id'
     ];
     for (const k of allowKeys) {
       if (Object.prototype.hasOwnProperty.call(req.body, k)) {
+        // Prevent user_id overwrite
+        if (k === 'user_id') continue;
         fieldsToSet[k] = req.body[k];
       }
+    }
+
+    // When a reviewer (admin) is updating, set reviewer_id
+    if ([1,2,4,5].includes(req.session?.user?.roleId)) {
+      fieldsToSet.reviewer_id = req.session.user.id;
     }
 
     // Map selectedDate -> upload_date if provided

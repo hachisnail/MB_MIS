@@ -80,6 +80,15 @@ import {
   completeContributionSession
 } from "../controllers/contributionController.js";
 
+import {
+  getArtifactMetadataByContribution,
+  upsertArtifactMetadataDraft,
+  completeArtifactMetadata,
+  previewCatalogRecord,
+  listPublicCatalogArtifacts,
+  
+} from "../controllers/artifactMetadataController.js";
+
 import ConversationController from "../controllers/conversationController.js";
 
 import { upload, multerErrorHandler } from "../middlewares/multerMiddleware.js";
@@ -338,5 +347,37 @@ router.patch(
   requireRole([1, 2, 5]),
   updateContributionStatus
 );
+
+
+// ---- Artifact Metadata ----
+router.get(
+  "/contributions/:id/metadata",
+  requireAuth,
+  requireRole([1, 2, 5]),
+  getArtifactMetadataByContribution
+);
+
+router.post(
+  "/contributions/:id/metadata",
+  requireAuth,
+  requireRole([1, 2, 5]),
+  upsertArtifactMetadataDraft
+);
+
+router.post(
+  "/contributions/:id/metadata/complete",
+  requireAuth,
+  requireRole([1]),
+  completeArtifactMetadata
+);
+
+// Public preview (completed only)
+router.get(
+  "/catalog/preview/:id",
+  openLimiter,
+  previewCatalogRecord
+);
+router.get("/public-artifacts", listPublicCatalogArtifacts);
+
 
 export default router;

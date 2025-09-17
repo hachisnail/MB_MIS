@@ -15,6 +15,8 @@ import Home from "./pages/public/home/Home";
 
 // catalogue
 import Catalogue from "./pages/public/catalogue/Catalogue";
+import CatalogArtifactContents from "./pages/public/catalogue/subpages/CatalogArtifactContents";
+
 
 // login
 import Login from "./pages/public/login/Login";
@@ -26,6 +28,8 @@ import Appointment from "./pages/public/appointments/Appointment";
 // article
 import Articles from "./pages/public/article/Articles";
 import Articlecontents from "./pages/public/article/subpages/Articlecontents"
+
+
 
 // about
 import About from "./pages/public/about/About";
@@ -62,6 +66,8 @@ import WalkInsPage from "./pages/admin/appointments/subpages/WalkInsPage";
 // articles
 import Article from "@/pages/admin/article/Article";
 import ManageArticle from "./pages/admin/article/subpages/ManageArticle";
+
+
 
 // schedules
 import Schedule from "./pages/admin/schedule/Schedule";
@@ -157,8 +163,12 @@ const Router = () => {
         )}
 
         {flags["catalogs_public"] && (
-          <Route path="/catalogs" element={<Catalogue />} />
-        )}
+            <>
+              <Route path="/catalogs" element={<Catalogue />} />
+              {/* NEW: single artifact view (expects base64 id in :id) */}
+              <Route path="/catalog/:id" element={<CatalogArtifactContents />} />
+            </>
+          )}
 
         {flags["home"] && (
           <>

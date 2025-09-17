@@ -30,6 +30,9 @@ import {
   verifyOtpCode,
 } from "../services/magicLink.js";
 
+import { upsertCatalogArtifact } from "../services/catalogSyncService.js";
+
+
 // ---------------- config ----------------
 const READ_WRITE_TTL_MIN = parseInt(process.env.GUEST_READ_WRITE_TTL_MIN || "120", 10); // 2h
 const OTP_TTL_MIN = parseInt(process.env.GUEST_OTP_TTL_MIN || "10", 10); // 10m
@@ -172,8 +175,9 @@ export const createContribution = async (req, res) => {
     }
 
 
-    contributor = await Contributors.create({
+    const contributor = await Contributors.create({
       first_name: firstName,
+
       last_name: lastName,
       birth_date: birthDate,
       phone_number: contact,
@@ -281,7 +285,7 @@ export const getAllContributions = async (req, res) => {
       include: [
         {
           model: Contributors,
-          attributes: ["first_name", "last_name", "email", "birth_date" , "province", "city"],
+          attributes: ["first_name", "last_name", "email", "birth_date", "province", "city"],
           where: Object.keys(contributorWhere).length ? contributorWhere : undefined,
         },
         { model: LendingDetails },
@@ -559,7 +563,7 @@ export const getDonorRecords = async (req, res) => {
     if (fromDate && toDate) where.submission_date = { [Op.between]: [new Date(fromDate), new Date(toDate)] };
 
     const donors = await Contributors.findAll({
-      attributes: ["contributor_id", "first_name", "last_name", "email","birth_date", "province", "city"],
+      attributes: ["contributor_id", "first_name", "last_name", "email", "birth_date", "province", "city"],
       include: [
         {
           model: Contributions,
@@ -967,11 +971,14 @@ export const completeContributionSession = async (req, res) => {
     timeline.completed_at = new Date();
     await timeline.save();
 
-    // 6. Update contribution status
+    // 6. Update contribution status -> triggers afterUpdate hook to ensure collection_number
     await contribution.update({
       status: "completed",
       updated_at: new Date(),
     });
+
+    // 7. Sync catalog so the collection_number is now reflected
+    await upsertCatalogArtifact(id);
 
     return res.json({
       success: true,
@@ -986,6 +993,7 @@ export const completeContributionSession = async (req, res) => {
       .json({ message: "Server error completing contribution session" });
   }
 };
+
 
 
 export const closeContributionSession = async (req, res) => {

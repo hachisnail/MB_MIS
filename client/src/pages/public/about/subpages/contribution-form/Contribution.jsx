@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo } from "react";
+import { useState, useRef, useMemo, useCallback } from "react";
 import ReCAPTCHA from "react-google-recaptcha";
 import axiosClient from "../../../../../lib/axiosClient";
 import ConfirmationModal from "../../../../../components/modals/ConfirmationModal";
@@ -10,8 +10,7 @@ import DetailsStep from "./components/DetailsStep";
 import AboutStep from "./components/AboutStep";
 import FilesStep from "./components/FilesStep";
 import SummaryStep from "./components/SummaryStep";
-
-import usePrompt from "../../../../../hooks/usePrompt"; // <-- import hook
+import usePrompt from "../../../../../hooks/usePrompt";
 
 const initialFormData = {
   firstName: "",
@@ -51,10 +50,9 @@ const ContributionForm = ({ user }) => {
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
   const [apiError, setApiError] = useState(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
-
   const recaptchaRef = useRef(null);
 
-  // Determine if form has unsaved changes
+  // Unsaved changes guard
   const hasUnsavedChanges = useMemo(() => {
     const keys = Object.keys(initialFormData);
     return keys.some((key) => {
@@ -64,36 +62,35 @@ const ContributionForm = ({ user }) => {
     });
   }, [formData]);
 
-  // Integrate usePrompt hook
   const { PromptModal } = usePrompt(
     "You have unsaved changes. Are you sure you want to leave?",
     hasUnsavedChanges,
     "light"
   );
 
-  // Clear Form functions
-  const handleClear = () => setShowClearConfirm(true);
-  const cancelClear = () => setShowClearConfirm(false);
-  const confirmClear = () => {
+  // ===== Stable handlers =====
+  const handleClear = useCallback(() => setShowClearConfirm(true), []);
+  const cancelClear = useCallback(() => setShowClearConfirm(false), []);
+  const confirmClear = useCallback(() => {
     setFormData({
       ...initialFormData,
       userLoggedIn: !!user,
     });
     setStep(0);
     setShowClearConfirm(false);
-  };
+  }, [user]);
 
-  const handleNext = (data) => {
+  const handleNext = useCallback((data) => {
     setFormData((prev) => ({ ...prev, ...data }));
     setStep((prev) => prev + 1);
-  };
+  }, []);
 
-  const handleBack = (data) => {
+  const handleBack = useCallback((data) => {
     setFormData((prev) => ({ ...prev, ...data }));
     setStep((prev) => prev - 1);
-  };
+  }, []);
 
-  const handleSubmitFinal = async () => {
+  const handleSubmitFinal = useCallback(async () => {
     try {
       let captchaToken = null;
       const hasPrivateFiles =
@@ -114,14 +111,14 @@ const ContributionForm = ({ user }) => {
       formData.artifactRelatedImages.files.forEach((f) =>
         form.append("files", f)
       );
-      formData.artifactDocuments.files.forEach((f) => form.append("files", f));
+      formData.artifactDocuments.files.forEach((f) =>
+        form.append("files", f)
+      );
 
       const uploadRes = await axiosClient.post(
         "/auth/contribution/files",
         form,
-        {
-          headers: { "Content-Type": "multipart/form-data" },
-        }
+        { headers: { "Content-Type": "multipart/form-data" } }
       );
 
       const uploadedFiles = uploadRes.data.files;
@@ -155,7 +152,49 @@ const ContributionForm = ({ user }) => {
       setApiError(err.response?.data?.message || err.message);
       setShowSubmitConfirm(false);
     }
-  };
+  }, [formData, confirmClear]);
+
+  // Only pass the fields DonorsStep actually uses (stable identity)
+  const donorsInitial = useMemo(() => {
+    const {
+      firstName,
+      lastName,
+      birthDate,
+      sex,
+      contact,
+      email,
+      organization,
+      province,
+      city,
+      barangay,
+      street,
+    } = formData;
+    return {
+      firstName,
+      lastName,
+      birthDate,
+      sex,
+      contact,
+      email,
+      organization,
+      province,
+      city,
+      barangay,
+      street,
+    };
+  }, [
+    formData.firstName,
+    formData.lastName,
+    formData.birthDate,
+    formData.sex,
+    formData.contact,
+    formData.email,
+    formData.organization,
+    formData.province,
+    formData.city,
+    formData.barangay,
+    formData.street,
+  ]);
 
   const steps = useMemo(() => {
     const baseSteps = [
@@ -167,7 +206,7 @@ const ContributionForm = ({ user }) => {
       />,
       <DonorsStep
         key="donors"
-        initialData={formData}
+        initialData={donorsInitial}
         onNext={handleNext}
         onBack={handleBack}
         setFormData={setFormData}
@@ -220,13 +259,13 @@ const ContributionForm = ({ user }) => {
       <SummaryStep
         key="summary"
         initialData={formData}
-        onBack={handleBack}                // returns to Files step
-        onConfirm={() => setShowSubmitConfirm(true)}  // opens your existing confirm modal
+        onBack={handleBack}
+        onConfirm={() => setShowSubmitConfirm(true)}
       />
-   );
+    );
 
     return baseSteps;
-  }, [formData]);
+  }, [formData, donorsInitial, handleNext, handleBack, handleClear]);
 
   return (
     <div className="w-screen h-screen flex items-center justify-center flex-col pt-25">
@@ -238,7 +277,6 @@ const ContributionForm = ({ user }) => {
         ref={recaptchaRef}
       />
 
-      {/* Unsaved changes modal */}
       {PromptModal}
 
       <ConfirmationModal

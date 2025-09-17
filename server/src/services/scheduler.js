@@ -9,7 +9,7 @@ export const startArticleScheduler = () => {
   cron.schedule(
     "* * * * *",
     async () => {
-      // ---- scheduled -> posted (with numbering) ----
+      const startTime = Date.now();
       let postedCount = 0;
       const t = await sequelize.transaction();
       try {
@@ -28,21 +28,21 @@ export const startArticleScheduler = () => {
           lock: t.LOCK.UPDATE,
         });
 
-        for (const art of candidates) {
-          // Promote to posted
-          await art.update(
-            {
-              status: "posted",
-              upload_period_start: art.upload_period_start ?? new Date(),
-              upload_period_end: art.upload_period_end ?? null,
-            },
-            { transaction: t }
-          );
-
-          // Assign volume & sequence (MySQL advisory lock inside)
-          await assignArchiveNumbers(art, t);
-          postedCount++;
-        }
+        // Process articles in parallel
+        await Promise.all(
+          candidates.map(async (art) => {
+            await art.update(
+              {
+                status: "posted",
+                upload_period_start: art.upload_period_start ?? new Date(),
+                upload_period_end: art.upload_period_end ?? null,
+              },
+              { transaction: t }
+            );
+            await assignArchiveNumbers(art, t);
+            postedCount++;
+          })
+        );
 
         await t.commit();
       } catch (e) {
@@ -62,8 +62,14 @@ export const startArticleScheduler = () => {
           }
         );
 
+        const endTime = Date.now();
+        const execTime = endTime - startTime;
+        // Format timestamp in Asia/Manila and label as Philippine Standard Time
+        const phTime = new Date().toLocaleString('en-US', { timeZone: 'Asia/Manila' });
         if (postedCount || toArchived) {
-          console.log("[Scheduler] posted:", postedCount, "| archived:", toArchived || 0);
+          console.log(
+            `[Scheduler] [${phTime} Philippine Standard Time] posted: ${postedCount} | archived: ${toArchived || 0} | execTime: ${execTime}ms`
+          );
         }
       } catch (e) {
         console.error("[Scheduler] Error posted->archived:", e);

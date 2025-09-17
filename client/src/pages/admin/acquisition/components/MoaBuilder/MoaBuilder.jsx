@@ -374,7 +374,7 @@ const MoaBuilder = forwardRef(
             sizes={{
               lg: { width: 300, height: 490 },
               "2xl": { width: 530, height: 545 },
-              "3xl": { width: 550, height: 945 },
+              "3xl": { width: 550, height: 695 },
             }}
           >
             <div className="rounded-xl h-[134.5rem] w-[81.7rem] border bg-white shadow-inner overflow-auto">

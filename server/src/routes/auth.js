@@ -89,6 +89,8 @@ import {
   
 } from "../controllers/artifactMetadataController.js";
 
+import ConversationController from "../controllers/conversationController.js";
+
 import { upload, multerErrorHandler } from "../middlewares/multerMiddleware.js";
 import { SummarizerManager } from "node-summarizer";
 
@@ -238,6 +240,46 @@ router.get("/article/:id", getArticleStats);
 router.get("/suggest/next", getNextSuggestions);
 
 // ---- Contributions ----
+
+// ---- Conversations ----
+router.get(
+  "/conversations/by-contribution/:contributionId",
+  ConversationController.getOrCreateConversation
+);
+
+router.get(
+  "/conversations/:id/messages",
+  ConversationController.getMessages
+);
+
+router.post(
+  "/conversations/:id/messages",
+  requireAuth, // keep this if only authenticated users can send messages
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { text } = req.body;
+
+      if (!text || typeof text !== "string") {
+        return res.status(400).json({ error: "Message text is required" });
+      }
+
+      const saved = await ConversationController.createMessage({
+        conversationId: id,
+        senderUserId: req.user?.id || null,
+        senderGuestId: req.session?.guest_identity?.guest_id || null,
+        text,
+      });
+
+      res.json(saved);
+    } catch (err) {
+      console.error("[Route] /conversations/:id/messages error:", err);
+      res.status(500).json({ error: "Failed to send message" });
+    }
+  }
+);
+
+
 router.put("/update-step", requireAuth, updateTimelineStep);
 router.get("/contract/:contractId", getContract);
 router.post("/set-contract", requireAuth, setContract);

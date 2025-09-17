@@ -3,6 +3,7 @@ import { Server as SocketIOServer } from "socket.io";
 import cookie from "cookie";
 import signature from "cookie-signature";
 import sessionStore from "./sessionStore.js";
+import ConversationController from "../controllers/conversationController.js";
 
 let io;
 
@@ -97,6 +98,9 @@ export function initializeSocket(server, corsOrigins) {
 
         socket.session = session;
         socket.userId = session.userId;
+
+        socket.guestId = session?.guest_identity?.guest_id || null;
+
         socket.user = { id: session.userId, roleId, ...(session.user || {}) };
         next();
       });
@@ -349,11 +353,70 @@ export function initializeSocket(server, corsOrigins) {
       }
     }
 
-    socket.on("joinRoom", (room) => {
-      if (!socket.rooms.has(room)) {
+socket.on("joinRoom", async (room) => {
+    try {
+      if (!room.startsWith("conversation:")) {
+        if (!socket.rooms.has(room)) socket.join(room);
+        return;
+      }
+
+      const convId = room.replace("conversation:", "");
+
+      // ----- Guest joining -----
+      if (socket.userId === "guest") {
+        // Find conversation in DB
+        const convo = await ConversationController.getById(convId);
+        if (!convo) {
+          console.warn(`[Socket] Guest denied: conversation ${convId} not found`);
+          return;
+        }
+
+        // Guest’s allowed contribution_id
+        const allowedContributionId =
+          socket.session?.contribution?.contribution_id ||
+          socket.session?.contributionId ||
+          null;
+
+        if (
+          allowedContributionId &&
+          String(convo.contribution_id) === String(allowedContributionId)
+        ) {
+          socket.join(room);
+          console.log(
+            `[Socket] Guest ${socket.guestId} joined conversation:${convId}`
+          );
+        } else {
+          console.warn(
+            `[Socket] Guest denied joining ${room} (allowed=${allowedContributionId}, convo.contribution_id=${convo.contribution_id})`
+          );
+        }
+      }
+
+      // ----- Admin joining -----
+      else if (isAdmin) {
+        const tabPresence = [...(socket.presenceTabs?.values() ?? [])];
+        const onAcquisition = tabPresence.some((p) =>
+          p.page?.includes("acquisition")
+        );
+
+        if (onAcquisition) {
+          socket.join(room);
+          console.log(`[Socket] Admin ${socket.userId} joined ${room}`);
+        } else {
+          console.warn(
+            `[Socket] Admin ${socket.userId} denied joining ${room} (not on acquisition page)`
+          );
+        }
+      }
+
+      // ----- Normal user fallback -----
+      else {
         socket.join(room);
       }
-    });
+    } catch (err) {
+      console.error("[Socket] joinRoom error:", err);
+    }
+  });
 
     socket.on("leaveRoom", (room) => {
       if (socket.rooms.has(room)) {
@@ -371,8 +434,52 @@ export function initializeSocket(server, corsOrigins) {
       }
     });
 
-    socket.on("message", ({ room, message }) => {
-      socket.to(room).emit("message", message);
+    // socket.on("message", ({ room, message }) => {
+    //   socket.to(room).emit("message", message);
+    // });
+
+    socket.on("message", async (payload) => {
+      try {
+        const { room } = payload;
+        const conversationId = room.replace("conversation:", "");
+
+        // 🔑 Normalize text regardless of shape
+        const text =
+          typeof payload.message === "object" && payload.message?.text
+            ? payload.message.text
+            : payload.text || "";
+
+        if (!text.trim()) return; // ignore empty
+
+        // persist to DB
+        const saved = await ConversationController.createMessage({
+          conversationId,
+          senderUserId: socket.userId !== "guest" ? socket.userId : null,
+          senderGuestId: socket.userId === "guest" ? socket.guestId : null,
+          text,
+        });
+
+        // normalized payload for clients
+        const out = {
+          id: saved.message_id,
+          conversationId: saved.conversation_id,
+          text: saved.message,
+          sender: {
+            userId: saved.sender_user_id || null,
+            guestId: saved.sender_guest_id || null,
+          },
+          status: saved.status || "sent",
+          createdAt: saved.created_at,
+        };
+
+        io.to(room).emit("message", out);
+      } catch (err) {
+        console.error("[Socket] message persistence error:", err);
+        socket.emit("message:error", {
+          room: payload.room,
+          error: "Failed to persist message",
+        });
+      }
     });
 
     socket.on("pingCheck", () => {

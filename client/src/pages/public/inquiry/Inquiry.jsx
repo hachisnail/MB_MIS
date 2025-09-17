@@ -8,6 +8,10 @@ import StyledButton from "../../../components/buttons/StyledButton";
 import DocxViewer from "./components/DocxViewer";
 import DonorTimeline from "./components/DonorTimeline";
 import ContractIcon from "../../../assets/contract.svg";
+import { getSocketClient } from "../../../lib/socketSingleton";
+import ConversationTimeline from "../../admin/acquisition/subpages/ConversationTimeline";
+
+
 
 export default function Inquiry() {
   const { token: tokenFromPath } = useParams();
@@ -37,17 +41,67 @@ export default function Inquiry() {
   const [reason, setReason] = useState("");
   const [suggestion, setSuggestion] = useState("");
 
-  const fetchSession = async () => {
+  const socket = getSocketClient();
+const [conversationId, setConversationId] = useState(null);
+const [messages, setMessages] = useState([]);
+
+const setupConversation = async (session) => {
+    try {
+      const cid = session.contribution.contribution_id;
+
+      // 1. Ensure conversation exists
+      const { data: convo } = await axiosClient.get(
+        `/auth/conversations/by-contribution/${cid}`
+      );
+      setConversationId(convo.conversation_id);
+
+      // 2. Fetch history
+      const { data: history } = await axiosClient.get(
+        `/auth/conversations/${convo.conversation_id}/messages`
+      );
+      setMessages(history);
+
+      // 3. Join socket room
+      const guestId = session.session.guest_identity.guest_id;
+socket.onReady(() => {
+  socket.joinRoom(`conversation:${convo.conversation_id}`, {
+    guestId: sessionData.session.guest_identity.guest_id,
+    contributionId: sessionData.contribution.contribution_id, // 👈 extra
+  });
+});
+
+      const handler = (msg) => setMessages((prev) => [...prev, msg]);
+      socket.onMessage(handler);
+
+      return () => {
+        socket.leaveRoom(`conversation:${convo.conversation_id}`);
+        socket.offMessage(handler);
+      };
+    } catch (err) {
+      console.error("Guest socket setup failed:", err);
+    }
+  };
+ const fetchSession = async () => {
     try {
       if (!token) throw new Error("Missing token");
       setLoading(true);
+
       const res = await axiosClient.get(`/auth/contributions/session/open`, {
         params: { token },
       });
+
       setSessionData(res.data);
       setRequiresOtp(!!res.data?.requires_otp);
       setWriteEnabled(!!res.data?.session?.write_enabled);
       setError(null);
+
+      // 🚀 trigger conversation/socket setup once we have guest_id + contribution_id
+      if (
+        res.data?.contribution?.contribution_id &&
+        res.data?.session?.guest_identity?.guest_id
+      ) {
+        setupConversation(res.data);
+      }
     } catch (err) {
       console.error(err);
       setError("Invalid or expired interaction link.");
@@ -55,6 +109,8 @@ export default function Inquiry() {
       setLoading(false);
     }
   };
+
+
 
   // // Close session on tab close
   // useEffect(() => {
@@ -108,6 +164,33 @@ export default function Inquiry() {
     }
   };
 
+  const sendGuestMessage = (text) => {
+    if (!conversationId || !text.trim()) return;
+
+    const guestId = sessionData?.session?.guest_identity?.guest_id;
+
+    const newMessage = {
+      message_id: Date.now(),
+      conversation_id: conversationId,
+      sender_user_id: null,
+      sender_guest_id: guestId,
+      message: text.trim(),
+      status: "sent",
+      created_at: new Date().toISOString(),
+    };
+
+    setMessages((prev) => [...prev, newMessage]);
+
+    socket.emit("message", {
+      room: `conversation:${conversationId}`,
+      text: text.trim(),
+      senderUserId: null,
+      senderGuestId: guestId,
+    });
+  };
+
+// console.log("messages:", sessionData.guest_identity?.guest_id);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -123,6 +206,23 @@ export default function Inquiry() {
       </div>
     );
   }
+  const mapMessagesToTimelineItems = (msgs, currentGuestId) => {
+  return msgs.map((msg) => {
+    const isGuest =
+      msg.sender_guest_id === currentGuestId ||
+      (!!msg.sender_guest_id && !msg.sender_user_id);
+
+    return {
+      id: msg.message_id,
+      laneLabel: isGuest ? "Donor" : "Admin",
+      laneVariant: isGuest ? "donor" : "admin",
+      // badge: dayjs(msg.created_at).format("MMM D, h:mm A"), // timestamp as badge
+      message: msg.message,
+      author: isGuest ? "Donor" : `Admin #${msg.sender_user_id ?? "?"}`,
+    };
+  });
+};
+
 
   const PinHeader = () => (
     <div className="w-fit h-fit flex flex-col items-center justify-center mb-10">
@@ -446,12 +546,75 @@ export default function Inquiry() {
                 {/* Bottom buttons */}
                 <div className="min-h-fit w-full flex justify-between">
                   <StyledButton onClick={() => setShowView("document")} className="h-fit">Back</StyledButton>
-                  <StyledButton onClick={() => alert(`accepted`)} className="h-fit">Accept</StyledButton>
+                          <StyledButton
+          onClick={() => {
+            // if (q1Answer === "no" || q2Answer === "yes") {
+            //   // send reason/suggestion
+            //   sendGuestMessage(
+            //     `Reason: ${reason || "None"} | Suggestion: ${suggestion || "None"}`
+            //   );
+            // } else {
+            //   sendGuestMessage("I have accepted the MOA without changes.");
+            // }
+
+            // After sending, show the conversation timeline
+            setShowView("conversation");
+          }}
+          className="h-fit"
+        >
+          Accept
+        </StyledButton>
                 </div>
               </div>
               {/* === END: timeline content === */}
             </div>
           )}
+{showView === "conversation" && (
+  <div className="w-full max-w-4xl h-full flex flex-col">
+    {/* Timeline */}
+    <div className="flex-1 bg-white rounded-md shadow p-4 overflow-y-auto">
+<ConversationTimeline
+  items={mapMessagesToTimelineItems(
+    messages,
+    sessionData?.session?.guest_identity?.guest_id
+  )}
+/>
+
+    </div>
+
+    {/* Input Box */}
+    <div className="flex mt-2">
+      <input
+        className="flex-1 border rounded-l px-3 py-2"
+        value={suggestion}
+        onChange={(e) => setSuggestion(e.target.value)}
+        placeholder="Type your message..."
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            if (suggestion.trim()) {
+              sendGuestMessage(suggestion.trim());
+              setSuggestion("");
+            }
+          }
+        }}
+      />
+      <StyledButton
+        className="rounded-l-none"
+        onClick={() => {
+          if (suggestion.trim()) {
+            sendGuestMessage(suggestion.trim());
+            setSuggestion("");
+          }
+        }}
+      >
+        Send
+      </StyledButton>
+    </div>
+  </div>
+)}
+
+
 
         </>
       )}

@@ -1,131 +1,214 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo, forwardRef, useImperativeHandle } from "react";
 import axios from "axios";
 
 /**
- * Enhanced TypedDropdown component for searchable dropdown selection
+ * AddressDropdownSystem.jsx
  *
- * Features:
- * - Search functionality with fuzzy matching
- * - Keyboard navigation (Arrow keys, Enter, Escape)
- * - Loading states and error handling
- * - Customizable styling and behavior
- * - Clear selection functionality
- * - Disabled state support
- * - Maximum suggestions limit
- * - Custom filter functions
+ * Improvements over previous version:
+ * - Persistent caching (localStorage + in-memory) w/ TTL & versioning
+ * - Resilient fetching with retries, timeouts, and stale-while-revalidate
+ * - Auto-match & auto-advance: typing an exact match auto-selects and focuses next field
+ * - Keyboard navigation + Enter-to-accept top match
+ * - Better loading/error UX; offline fallback if cached data exists
+ * - Fixed effect bug that prevented auto-matching from running
+ *
+ * Exports: { TypedDropdown, useAddressLogic, AddressSelector } (default AddressSelector)
  */
-function TypedDropdown({
-  placeholder = "Type to search...",
-  options = [],
-  selectedItem = null,
-  onChange = () => {},
-  disabled = false,
-  isLoading = false,
-  error = null,
-  filterFunction = null,
-  onInputChange = null,
-  showSuggestions = true,
-  maxSuggestions = 8,
-  className = "",
-  inputStyle = {},
-  dropdownStyle = {},
-  showClearButton = true,
-  loadingText = "Loading...",
-  noResultsText = "No results found",
-  startTypingText = "Start typing to search...",
-  variant = "default", // "default", "rounded", "minimal"
-  size = "medium", // "small", "medium", "large"
-}) {
+
+/******************** Networking & Cache Utilities ********************/
+const API_BASE = "https://psgc.cloud/api";
+const CACHE_VERSION = "v2"; // bump to invalidate old cache
+const TTL_MS = 1000 * 60 * 60 * 24 * 7; // 7 days
+
+const memCache = {
+  provinces: null,
+  cities: new Map(),
+  barangays: new Map(),
+};
+
+const axiosClient = axios.create({
+  baseURL: API_BASE,
+  timeout: 12000,
+});
+
+async function fetchWithRetry(url, { retries = 3, delay = 500, signal } = {}) {
+  let attempt = 0;
+  while (true) {
+    try {
+      const res = await axiosClient.get(url, { signal });
+      return res.data;
+    } catch (err) {
+      attempt++;
+      const retriable = !err.response || err.code === "ECONNABORTED" || (err.response && err.response.status >= 500);
+      if (!retriable || attempt > retries) throw err;
+      await new Promise((r) => setTimeout(r, delay * Math.pow(2, attempt - 1)));
+    }
+  }
+}
+
+function lsKey(key) {
+  return `AddressDS:${CACHE_VERSION}:${key}`;
+}
+
+function writeCache(key, value) {
+  try {
+    localStorage.setItem(
+      lsKey(key),
+      JSON.stringify({ t: Date.now(), v: value })
+    );
+  } catch { }
+}
+
+function readCache(key) {
+  try {
+    const raw = localStorage.getItem(lsKey(key));
+    if (!raw) return null;
+    const { t, v } = JSON.parse(raw);
+    if (Date.now() - t > TTL_MS) return null; // expired
+    return v;
+  } catch {
+    return null;
+  }
+}
+
+async function loadWithCache({ key, memGet, memSet, url }) {
+  // 1) Try in-memory
+  const mem = memGet();
+  if (mem && (Array.isArray(mem) ? mem.length : mem.size)) return { data: mem, fresh: false };
+
+  // 2) Try localStorage
+  const cached = readCache(key);
+  if (cached) {
+    memSet(cached);
+    // SWR: refresh in background but don't block UI
+    refreshInBackground();
+    return { data: cached, fresh: false };
+  }
+
+  // 3) Fetch network
+  const controller = new AbortController();
+  const data = await fetchWithRetry(url, { signal: controller.signal });
+  memSet(data);
+  writeCache(key, data);
+  return { data, fresh: true };
+
+  async function refreshInBackground() {
+    try {
+      const fresh = await fetchWithRetry(url);
+      memSet(fresh);
+      writeCache(key, fresh);
+    } catch {
+      // ignore background failures
+    }
+  }
+}
+
+/******************** Fuzzy Matching Helpers ********************/
+function fuzzyMatchScore(searchTerm, targetString) {
+  if (!searchTerm || !targetString) return 0;
+  const search = searchTerm.toLowerCase().trim();
+  const target = targetString.toLowerCase();
+
+  if (target === search) return 4; // exact full equality
+  if (target.includes(search)) return 3; // substring
+
+  // in-order char match
+  let si = 0;
+  for (let i = 0; i < target.length && si < search.length; i++) {
+    if (target[i] === search[si]) si++;
+  }
+  if (si === search.length) return 2;
+
+  // word boundary
+  const words = target.split(/\s+/);
+  if (words.some((w) => w.startsWith(search))) return 1;
+
+  return 0;
+}
+
+function rankByRelevance(items, searchTerm) {
+  if (!searchTerm) return items;
+  return items
+    .map((it) => ({ ...it, relevance: fuzzyMatchScore(searchTerm, it.name) }))
+    .filter((it) => it.relevance > 0)
+    .sort((a, b) => (b.relevance !== a.relevance ? b.relevance - a.relevance : a.name.localeCompare(b.name)));
+}
+
+/******************** TypedDropdown (searchable + auto-advance) ********************/
+const TypedDropdown = forwardRef(function TypedDropdown(
+  {
+    placeholder = "Type to search...",
+    options = [],
+    selectedItem = null,
+    onChange = () => { },
+    disabled = false,
+    isLoading = false,
+    error = null,
+    filterFunction = null,
+    showSuggestions = true,
+    maxSuggestions = 8,
+    className = "",
+    variant = "default", // default | rounded | minimal
+    size = "medium", // small | medium | large
+    showClearButton = true,
+    autoSelectOnExactMatch = true,
+    onAutoSelect = null, // called after auto selection
+  },
+  ref
+) {
+  const inputRef = useRef(null);
+  useImperativeHandle(ref, () => ({ focus: () => inputRef.current?.focus(), blur: () => inputRef.current?.blur(), input: inputRef.current }));
+
   const [inputText, setInputText] = useState(selectedItem?.name || "");
   const [showDropdown, setShowDropdown] = useState(false);
-  const [filteredOptions, setFilteredOptions] = useState(options);
+  const [filtered, setFiltered] = useState(options);
   const [focusedIndex, setFocusedIndex] = useState(-1);
 
-  const wrapperRef = useRef(null);
-  const inputRef = useRef(null);
-  const dropdownRef = useRef(null);
-
-  // Update input text when selectedItem changes
+  // Keep input in sync with external selection
   useEffect(() => {
     setInputText(selectedItem?.name || "");
   }, [selectedItem]);
 
-  // Filter options based on input text
+  // Filter whenever input or options change
   useEffect(() => {
-    if (filterFunction && typeof filterFunction === "function") {
-      const filtered = filterFunction(inputText);
-      setFilteredOptions(filtered.slice(0, maxSuggestions));
-    } else {
-      const filtered = options.filter((option) =>
-        option.name.toLowerCase().includes(inputText.toLowerCase())
-      );
-      setFilteredOptions(filtered.slice(0, maxSuggestions));
-    }
-    setFocusedIndex(-1); // Reset focus when options change
-  }, [options, inputText, filterFunction, maxSuggestions]);
+    const f = (filterFunction ? filterFunction(inputText) : options.filter((o) => o.name.toLowerCase().includes((inputText || "").toLowerCase())));
+    const next = f.slice(0, maxSuggestions);
+    setFiltered(next);
+    setFocusedIndex(-1);
 
-  // Handle clicks outside component
-  useEffect(() => {
-    function handleClickOutside(e) {
-      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
+    // Auto-select on exact match (case-insensitive full equality)
+    if (!disabled && autoSelectOnExactMatch && inputText && options.length) {
+      const exact = options.find((o) => o.name.toLowerCase() === inputText.toLowerCase());
+      if (exact && (!selectedItem || exact.code !== selectedItem.code)) {
+        onChange(exact);
         setShowDropdown(false);
         setFocusedIndex(-1);
+        onAutoSelect && onAutoSelect(exact);
       }
     }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  }, [inputText, options, filterFunction, maxSuggestions, disabled]);
 
-  // Style variants
   const getVariantStyles = () => {
-    const baseStyles = "flex items-center border transition-colors";
-
+    const base = "flex items-center border transition-colors";
     switch (variant) {
       case "rounded":
-        return `${baseStyles} rounded-2xl px-4 py-2`;
+        return `${base} rounded-2xl px-4 py-2`;
       case "minimal":
-        return `${baseStyles} border-0 border-b-2 px-2 py-1 rounded-none`;
+        return `${base} border-0 border-b-2 px-2 py-1 rounded-none`;
       default:
-        return `${baseStyles} rounded-lg px-3 py-1`;
+        return `${base} rounded-lg px-3 py-1`;
     }
   };
 
-  const getSizeStyles = () => {
-    switch (size) {
-      case "small":
-        return "text-sm h-6";
-      case "large":
-        return "text-lg h-10";
-      default:
-        return "text-md h-8";
-    }
-  };
-
-  const getInputStyles = () => {
-    const baseStyles =
-      "outline-none flex-grow placeholder-gray-400 bg-transparent py-0 leading-tight appearance-none";
-    const variantStyles = getSizeStyles();
-
-    return `${baseStyles} ${variantStyles}`;
-  };
+  const getSizeStyles = () => (size === "small" ? "text-sm h-6" : size === "large" ? "text-lg h-10" : "text-md h-8");
 
   const handleInputChange = (e) => {
+    if (disabled) return;
     const value = e.target.value;
     setInputText(value);
-
-    if (!disabled) {
-      setShowDropdown(true);
-      setFocusedIndex(-1);
-
-      if (onInputChange) {
-        onInputChange(value);
-      }
-
-      // Clear selection if input doesn't match selected item
-      if (selectedItem && value !== selectedItem.name) {
-        onChange(null);
-      }
-    }
+    setShowDropdown(true);
+    setFocusedIndex(-1);
+    if (selectedItem && value !== selectedItem.name) onChange(null);
   };
 
   const handleSelect = (item) => {
@@ -133,7 +216,6 @@ function TypedDropdown({
     onChange(item);
     setShowDropdown(false);
     setFocusedIndex(-1);
-    inputRef.current?.blur();
   };
 
   const handleClear = () => {
@@ -146,47 +228,32 @@ function TypedDropdown({
 
   const handleKeyDown = (e) => {
     if (disabled) return;
-
     switch (e.key) {
       case "Escape":
         setShowDropdown(false);
         setFocusedIndex(-1);
         inputRef.current?.blur();
         break;
-
       case "Enter":
         e.preventDefault();
-        if (
-          showDropdown &&
-          focusedIndex >= 0 &&
-          filteredOptions[focusedIndex]
-        ) {
-          handleSelect(filteredOptions[focusedIndex]);
-        } else if (filteredOptions.length > 0 && showDropdown) {
-          handleSelect(filteredOptions[0]);
+        if (showDropdown && focusedIndex >= 0 && filtered[focusedIndex]) {
+          handleSelect(filtered[focusedIndex]);
+          onAutoSelect && onAutoSelect(filtered[focusedIndex]);
+        } else if (filtered.length > 0 && showDropdown) {
+          handleSelect(filtered[0]);
+          onAutoSelect && onAutoSelect(filtered[0]);
         }
         break;
-
       case "ArrowDown":
         e.preventDefault();
-        if (!showDropdown) {
-          setShowDropdown(true);
-        } else {
-          setFocusedIndex((prev) =>
-            prev < filteredOptions.length - 1 ? prev + 1 : 0
-          );
-        }
+        setShowDropdown(true);
+        setFocusedIndex((p) => (filtered.length ? (p + 1) % filtered.length : -1));
         break;
-
       case "ArrowUp":
         e.preventDefault();
-        if (showDropdown) {
-          setFocusedIndex((prev) =>
-            prev > 0 ? prev - 1 : filteredOptions.length - 1
-          );
-        }
+        setShowDropdown(true);
+        setFocusedIndex((p) => (filtered.length ? (p - 1 + filtered.length) % filtered.length : -1));
         break;
-
       case "Tab":
         setShowDropdown(false);
         setFocusedIndex(-1);
@@ -194,42 +261,18 @@ function TypedDropdown({
     }
   };
 
-  // Scroll focused item into view
-  useEffect(() => {
-    if (focusedIndex >= 0 && dropdownRef.current) {
-      const focusedElement = dropdownRef.current.children[focusedIndex];
-      if (focusedElement) {
-        focusedElement.scrollIntoView({
-          block: "nearest",
-          behavior: "smooth",
-        });
-      }
-    }
-  }, [focusedIndex]);
-
   const containerStyles = getVariantStyles();
-  const inputStyles = getInputStyles();
 
   return (
-    <div ref={wrapperRef} className={`relative w-full ${className}`}>
+    <div className={`relative w-full ${className}`}>
       <div
-        className={`${containerStyles} ${
-          disabled
-            ? "bg-gray-100 cursor-not-allowed border-gray-300"
-            : error
-            ? "bg-white border-red-500 focus-within:ring-2 focus-within:ring-gray-300"
-            : "bg-white border-black focus-within:ring-2 focus-within:ring-gray-300"
-        }`}
-        style={{
-          boxShadow: "inset 0 1px 1px rgba(1, 1, 1, 0.50)",
-        }}
+        className={`${containerStyles} ${disabled ? "bg-gray-100 cursor-not-allowed border-gray-300" : error ? "bg-white border-red-500 focus-within:ring-2 focus-within:ring-gray-300" : "bg-white border-black focus-within:ring-2 focus-within:ring-gray-300"}`}
+        style={{ boxShadow: "inset 0 1px 1px rgba(1,1,1,0.5)" }}
       >
         <input
           ref={inputRef}
-          className={inputStyles}
-          placeholder={
-            disabled ? "Please select previous field first" : placeholder
-          }
+          className={`outline-none flex-grow placeholder-gray-400 bg-transparent py-0 leading-tight appearance-none ${getSizeStyles()}`}
+          placeholder={disabled ? "Please select previous field first" : placeholder}
           value={inputText}
           disabled={disabled}
           onChange={handleInputChange}
@@ -251,402 +294,192 @@ function TypedDropdown({
         {selectedItem && !disabled && !isLoading && showClearButton && (
           <button
             type="button"
-            className={`ml-2 text-gray-500 hover:text-gray-700 transition-colors p-1 ${
-              variant === "rounded" ? "rounded" : "rounded"
-            }`}
+            className="ml-2 text-gray-500 hover:text-gray-700 transition-colors p-1 rounded"
             onClick={handleClear}
             title="Clear selection"
             aria-label="Clear selection"
           >
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
-              />
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         )}
       </div>
 
       {error && (
-        <p className="mt-1 text-sm text-red-600" role="alert">
-          {error}
-        </p>
+        <p className="mt-1 text-sm text-red-600" role="alert">{error}</p>
       )}
 
       {showDropdown && !disabled && showSuggestions && (
         <div
-          ref={dropdownRef}
-          className={`absolute z-20 mt-1 w-full max-h-60 overflow-auto bg-white border border-gray-300 shadow-lg ${
-            variant === "rounded" ? "rounded" : "rounded-md"
-          }`}
-          style={dropdownStyle}
+          className={`absolute z-20 mt-1 w-full max-h-60 overflow-auto bg-white border border-gray-300 shadow-lg ${variant === "rounded" ? "rounded" : "rounded-md"}`}
           role="listbox"
         >
           {isLoading ? (
             <div className="px-3 py-4 text-center text-gray-500">
               <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-[#524433] mx-auto mb-2"></div>
-              {loadingText}
+              Loading...
             </div>
-          ) : filteredOptions.length > 0 ? (
+          ) : filtered.length > 0 ? (
             <>
-              {filteredOptions.map((option, index) => (
+              {filtered.map((option, index) => (
                 <div
                   key={option.code || index}
-                  className={`px-3 py-2 cursor-pointer transition-colors ${
-                    index === focusedIndex ? "bg-gray-50" : "hover:bg-gray-100"
-                  } ${index === 0 ? "bg-gray-50" : ""}`}
-                  onClick={() => handleSelect(option)}
+                  className={`px-3 py-2 cursor-pointer transition-colors ${index === focusedIndex ? "bg-gray-50" : "hover:bg-gray-100"} ${index === 0 ? "bg-gray-50" : ""}`}
+                  onClick={() => { handleSelect(option); onAutoSelect && onAutoSelect(option); }}
                   role="option"
                   aria-selected={selectedItem?.code === option.code}
                 >
                   <div className="font-medium">{option.name}</div>
-                  {option.relevance && (
+                  {typeof option.relevance === "number" && (
                     <div className="text-xs text-gray-500">
-                      {option.relevance === 3
-                        ? "Exact match"
-                        : option.relevance === 2
-                        ? "Contains all letters"
-                        : "Partial match"}
+                      {option.relevance >= 4 ? "Exact" : option.relevance === 3 ? "Contains" : option.relevance === 2 ? "In-order" : "Prefix"}
                     </div>
                   )}
                 </div>
               ))}
-              {inputText && filteredOptions.length < options.length && (
-                <div className="px-3 py-2 text-xs text-gray-500 border-t">
-                  Showing top {filteredOptions.length} results. Type more to
-                  refine search.
-                </div>
-              )}
+              <div className="px-3 py-2 text-xs text-gray-500 border-t">Showing top {filtered.length} results. Type more to refine.</div>
             </>
-          ) : inputText ? (
-            <div className="px-3 py-4 text-center text-gray-500">
-              <div className="mb-2">
-                {noResultsText} for "{inputText}"
-              </div>
-              <div className="text-xs">
-                Try typing a different name or check spelling
-              </div>
-            </div>
           ) : (
-            <div className="px-3 py-4 text-center text-gray-500">
-              {startTypingText}
-            </div>
+            <div className="px-3 py-4 text-center text-gray-500">No results</div>
           )}
         </div>
       )}
     </div>
   );
-}
+});
 
-// Helper function for fuzzy string matching
-const fuzzyMatch = (searchTerm, targetString) => {
-  if (!searchTerm || !targetString) return false;
-
-  const search = searchTerm.toLowerCase().trim();
-  const target = targetString.toLowerCase();
-
-  // Exact match gets highest priority
-  if (target.includes(search)) return 3;
-
-  // Check if all characters of search term exist in order
-  let searchIndex = 0;
-  for (let i = 0; i < target.length && searchIndex < search.length; i++) {
-    if (target[i] === search[searchIndex]) {
-      searchIndex++;
-    }
-  }
-  if (searchIndex === search.length) return 2;
-
-  // Check if search term matches word boundaries
-  const words = target.split(/\s+/);
-  for (const word of words) {
-    if (word.startsWith(search)) return 1;
-  }
-
-  return 0;
-};
-
-// Helper function to sort results by relevance
-const sortByRelevance = (items, searchTerm) => {
-  if (!searchTerm) return items;
-
-  return items
-    .map((item) => ({
-      ...item,
-      relevance: fuzzyMatch(searchTerm, item.name),
-    }))
-    .filter((item) => item.relevance > 0)
-    .sort((a, b) => {
-      // First sort by relevance score
-      if (b.relevance !== a.relevance) {
-        return b.relevance - a.relevance;
-      }
-      // Then by alphabetical order
-      return a.name.localeCompare(b.name);
-    });
-};
-
-// Cache for API responses to reduce redundant calls
-const cache = {
-  provinces: null,
-  cities: new Map(),
-  barangays: new Map(),
-};
-
-/**
- * Enhanced custom hook for Province → City → Barangay logic with improved search functionality.
- *
- * Features:
- * 1. Loads the list of provinces from psgc.cloud on mount with caching.
- * 2. Smart search with fuzzy matching and multiple search strategies.
- * 3. Auto-complete suggestions with ranking based on relevance.
- * 4. Loading states and error handling for better UX.
- * 5. Debounced search to reduce API calls.
- * 6. Support for common abbreviations and alternative names.
- */
-function useAddressLogic() {
-  // Data arrays for each level
+/******************** useAddressLogic Hook ********************/
+function useAddressLogic({ forceRefresh = false } = {}) {
   const [provinces, setProvinces] = useState([]);
   const [cities, setCities] = useState([]);
   const [barangays, setBarangays] = useState([]);
 
-  // Loading states
   const [isLoadingProvinces, setIsLoadingProvinces] = useState(false);
   const [isLoadingCities, setIsLoadingCities] = useState(false);
   const [isLoadingBarangays, setIsLoadingBarangays] = useState(false);
 
-  // Error states
   const [provincesError, setProvincesError] = useState(null);
   const [citiesError, setCitiesError] = useState(null);
   const [barangaysError, setBarangaysError] = useState(null);
 
-  // The user's current selections
   const [selectedProvince, setSelectedProvince] = useState(null);
   const [selectedCity, setSelectedCity] = useState(null);
   const [selectedBarangay, setSelectedBarangay] = useState(null);
 
-  // Search functionality with enhanced filtering
-  const getFilteredProvinces = useMemo(() => {
-    return (searchTerm = "") => {
-      if (!searchTerm.trim()) return provinces;
-      return sortByRelevance(provinces, searchTerm);
-    };
-  }, [provinces]);
-
-  const getFilteredCities = useMemo(() => {
-    return (searchTerm = "") => {
-      if (!searchTerm.trim()) return cities;
-      return sortByRelevance(cities, searchTerm);
-    };
-  }, [cities]);
-
-  const getFilteredBarangays = useMemo(() => {
-    return (searchTerm = "") => {
-      if (!searchTerm.trim()) return barangays;
-      return sortByRelevance(barangays, searchTerm);
-    };
-  }, [barangays]);
-
-  // Load provinces on mount with caching
+  // Load provinces (SWR + persistent cache)
   useEffect(() => {
-    const loadProvinces = async () => {
-      if (cache.provinces) {
-        setProvinces(cache.provinces);
-        return;
-      }
-
+    let cancelled = false;
+    (async () => {
       setIsLoadingProvinces(true);
       setProvincesError(null);
-
       try {
-        const response = await axios.get("https://psgc.cloud/api/provinces");
-        const sortedProvinces = response.data.sort((a, b) =>
-          a.name.localeCompare(b.name)
-        );
-
-        cache.provinces = sortedProvinces;
-        setProvinces(sortedProvinces);
-      } catch (error) {
-        console.error("Error fetching provinces:", error);
-        setProvincesError("Failed to load provinces. Please try again.");
+        const key = "provinces";
+        if (forceRefresh) localStorage.removeItem(lsKey(key));
+        const { data } = await loadWithCache({
+          key,
+          memGet: () => memCache.provinces,
+          memSet: (v) => (memCache.provinces = Array.isArray(v) ? v.slice().sort((a, b) => a.name.localeCompare(b.name)) : v),
+          url: "/provinces",
+        });
+        if (!cancelled) setProvinces(memCache.provinces || []);
+      } catch (e) {
+        if (!cancelled) setProvincesError("Failed to load provinces.");
       } finally {
-        setIsLoadingProvinces(false);
+        if (!cancelled) setIsLoadingProvinces(false);
       }
+    })();
+    return () => {
+      cancelled = true;
     };
+  }, [forceRefresh]);
 
-    loadProvinces();
-  }, []);
-
-  // Enhanced province selection handler
-  const handleProvinceSelect = (province) => {
-    setSelectedProvince(province);
-    // Clear dependent selections
-    setSelectedCity(null);
-    setSelectedBarangay(null);
-    setCities([]);
-    setBarangays([]);
-    setCitiesError(null);
-    setBarangaysError(null);
-  };
-
-  // Enhanced city selection handler
-  const handleCitySelect = (city) => {
-    setSelectedCity(city);
-    // Clear dependent selections
-    setSelectedBarangay(null);
-    setBarangays([]);
-    setBarangaysError(null);
-  };
-
-  // Load cities when province changes with caching
+  // When province changes, load cities
   useEffect(() => {
-    const loadCities = async () => {
-      if (!selectedProvince) {
-        setCities([]);
-        return;
-      }
-
-      const cacheKey = selectedProvince.code;
-      if (cache.cities.has(cacheKey)) {
-        setCities(cache.cities.get(cacheKey));
-        return;
-      }
-
-      setIsLoadingCities(true);
+    let cancelled = false;
+    (async () => {
+      setCities([]);
+      setSelectedCity(null);
+      setBarangays([]);
+      setSelectedBarangay(null);
       setCitiesError(null);
 
+      if (!selectedProvince) return;
+
+      setIsLoadingCities(true);
       try {
-        const response = await axios.get(
-          `https://psgc.cloud/api/provinces/${selectedProvince.code}/cities-municipalities`
-        );
-        const sortedCities = response.data.sort((a, b) =>
-          a.name.localeCompare(b.name)
-        );
-
-        cache.cities.set(cacheKey, sortedCities);
-        setCities(sortedCities);
-      } catch (error) {
-        console.error("Error fetching cities:", error);
-        setCitiesError("Failed to load cities. Please try again.");
+        const key = `cities:${selectedProvince.code}`;
+        const cachedMap = memCache.cities.get(selectedProvince.code);
+        if (forceRefresh) localStorage.removeItem(lsKey(key));
+        const { data } = await loadWithCache({
+          key,
+          memGet: () => cachedMap,
+          memSet: (v) => memCache.cities.set(selectedProvince.code, Array.isArray(v) ? v.slice().sort((a, b) => a.name.localeCompare(b.name)) : v),
+          url: `/provinces/${selectedProvince.code}/cities-municipalities`,
+        });
+        if (!cancelled) setCities(memCache.cities.get(selectedProvince.code) || []);
+      } catch (e) {
+        if (!cancelled) setCitiesError("Failed to load cities.");
       } finally {
-        setIsLoadingCities(false);
+        if (!cancelled) setIsLoadingCities(false);
       }
-    };
+    })();
+    return () => { cancelled = true; };
+  }, [selectedProvince, forceRefresh]);
 
-    loadCities();
-  }, [selectedProvince]);
-
-  // Load barangays when city changes with caching
+  // When city changes, load barangays
   useEffect(() => {
-    const loadBarangays = async () => {
-      if (!selectedCity) {
-        setBarangays([]);
-        return;
-      }
-
-      const cacheKey = selectedCity.code;
-      if (cache.barangays.has(cacheKey)) {
-        setBarangays(cache.barangays.get(cacheKey));
-        return;
-      }
-
-      setIsLoadingBarangays(true);
+    let cancelled = false;
+    (async () => {
+      setBarangays([]);
+      setSelectedBarangay(null);
       setBarangaysError(null);
 
+      if (!selectedCity) return;
+
+      setIsLoadingBarangays(true);
       try {
-        const response = await axios.get(
-          `https://psgc.cloud/api/cities-municipalities/${selectedCity.code}/barangays`
-        );
-        const sortedBarangays = response.data.sort((a, b) =>
-          a.name.localeCompare(b.name)
-        );
-
-        cache.barangays.set(cacheKey, sortedBarangays);
-        setBarangays(sortedBarangays);
-      } catch (error) {
-        console.error("Error fetching barangays:", error);
-        setBarangaysError("Failed to load barangays. Please try again.");
+        const key = `barangays:${selectedCity.code}`;
+        const cachedMap = memCache.barangays.get(selectedCity.code);
+        if (forceRefresh) localStorage.removeItem(lsKey(key));
+        const { data } = await loadWithCache({
+          key,
+          memGet: () => cachedMap,
+          memSet: (v) => memCache.barangays.set(selectedCity.code, Array.isArray(v) ? v.slice().sort((a, b) => a.name.localeCompare(b.name)) : v),
+          url: `/cities-municipalities/${selectedCity.code}/barangays`,
+        });
+        if (!cancelled) setBarangays(memCache.barangays.get(selectedCity.code) || []);
+      } catch (e) {
+        if (!cancelled) setBarangaysError("Failed to load barangays.");
       } finally {
-        setIsLoadingBarangays(false);
+        if (!cancelled) setIsLoadingBarangays(false);
       }
-    };
+    })();
+    return () => { cancelled = true; };
+  }, [selectedCity, forceRefresh]);
 
-    loadBarangays();
-  }, [selectedCity]);
-
-  // Helper function to find item by partial name match
-  const findByPartialMatch = (items, searchTerm) => {
-    if (!searchTerm || !items.length) return null;
-
-    const filtered = sortByRelevance(items, searchTerm);
-    return filtered.length > 0 ? filtered[0] : null;
-  };
-
-  // Auto-suggest functionality
-  const getSuggestions = (type, searchTerm, limit = 5) => {
-    let items = [];
-
-    switch (type) {
-      case "province":
-        items = getFilteredProvinces(searchTerm);
-        break;
-      case "city":
-        items = getFilteredCities(searchTerm);
-        break;
-      case "barangay":
-        items = getFilteredBarangays(searchTerm);
-        break;
-      default:
-        return [];
-    }
-
-    return items.slice(0, limit);
-  };
+  // Filtering hooks (memoized)
+  const getFilteredProvinces = useMemo(() => (term = "") => (term.trim() ? rankByRelevance(provinces, term) : provinces), [provinces]);
+  const getFilteredCities = useMemo(() => (term = "") => (term.trim() ? rankByRelevance(cities, term) : cities), [cities]);
+  const getFilteredBarangays = useMemo(() => (term = "") => (term.trim() ? rankByRelevance(barangays, term) : barangays), [barangays]);
 
   return {
-    // Data arrays
-    provinces,
-    cities,
-    barangays,
+    // data
+    provinces, cities, barangays,
 
-    // Enhanced filtering functions
-    getFilteredProvinces,
-    getFilteredCities,
-    getFilteredBarangays,
+    // selections
+    selectedProvince, setSelectedProvince,
+    selectedCity, setSelectedCity,
+    selectedBarangay, setSelectedBarangay,
 
-    // Current selections
-    selectedProvince,
-    selectedCity,
-    selectedBarangay,
+    // loading & errors
+    isLoadingProvinces, isLoadingCities, isLoadingBarangays,
+    provincesError, citiesError, barangaysError,
 
-    // Enhanced selection handlers
-    setSelectedProvince: handleProvinceSelect,
-    setSelectedCity: handleCitySelect,
-    setSelectedBarangay,
+    // filters
+    getFilteredProvinces, getFilteredCities, getFilteredBarangays,
 
-    // Loading states
-    isLoadingProvinces,
-    isLoadingCities,
-    isLoadingBarangays,
-
-    // Error states
-    provincesError,
-    citiesError,
-    barangaysError,
-
-    // Helper functions
-    findByPartialMatch,
-    getSuggestions,
-
-    // Utility functions
+    // utils
     clearAll: () => {
       setSelectedProvince(null);
       setSelectedCity(null);
@@ -655,115 +488,77 @@ function useAddressLogic() {
       setBarangays([]);
     },
 
-    // Validation helpers
-    isProvinceValid: selectedProvince !== null,
-    isCityValid: selectedCity !== null,
-    isBarangayValid: selectedBarangay !== null,
-    isAddressComplete: selectedProvince && selectedCity && selectedBarangay,
+    isProvinceValid: !!selectedProvince,
+    isCityValid: !!selectedCity,
+    isBarangayValid: !!selectedBarangay,
+    isAddressComplete: !!(selectedProvince && selectedCity && selectedBarangay),
   };
 }
 
-/**
- * Complete Address Selection Component
- *
- * This component combines the TypedDropdown with the address logic
- * to provide a complete address selection interface with search functionality.
- */
+/******************** AddressSelector (auto-advance through fields) ********************/
 function AddressSelector({
-  onAddressChange = () => {},
+  onAddressChange = () => { },
   initialValues = {},
-  variant = "rounded", // matches the original style
+  variant = "rounded",
   size = "medium",
   className = "",
   showLabels = true,
-  labelStyle = "side", // "top", "side"
+  labelStyle = "side", // "top" | "side"
   required = true,
   errors = {},
+  autoProceed = true, // if true, proceeds to next field on selection or exact match
+  forceRefresh = false,
 }) {
   const {
-    provinces,
-    cities,
-    barangays,
-    selectedProvince,
-    selectedCity,
-    selectedBarangay,
-    setSelectedProvince,
-    setSelectedCity,
-    setSelectedBarangay,
-    getFilteredProvinces,
-    getFilteredCities,
-    getFilteredBarangays,
-    isLoadingProvinces,
-    isLoadingCities,
-    isLoadingBarangays,
-    provincesError,
-    citiesError,
-    barangaysError,
-    clearAll,
-    isAddressComplete,
-  } = useAddressLogic();
+    provinces, cities, barangays,
+    selectedProvince, setSelectedProvince,
+    selectedCity, setSelectedCity,
+    selectedBarangay, setSelectedBarangay,
+    getFilteredProvinces, getFilteredCities, getFilteredBarangays,
+    isLoadingProvinces, isLoadingCities, isLoadingBarangays,
+    provincesError, citiesError, barangaysError,
+    clearAll, isAddressComplete,
+  } = useAddressLogic({ forceRefresh });
 
-  // Notify parent component of address changes
+  // Refs for auto-advance focus
+  const provinceRef = useRef(null);
+  const cityRef = useRef(null);
+  const barangayRef = useRef(null);
+
+  // Notify parent of changes
   useEffect(() => {
-    onAddressChange({
-      province: selectedProvince,
-      city: selectedCity,
-      barangay: selectedBarangay,
-      isComplete: isAddressComplete,
-    });
-  }, [
-    selectedProvince,
-    selectedCity,
-    selectedBarangay,
-    isAddressComplete,
-    onAddressChange,
-  ]);
+    onAddressChange({ province: selectedProvince, city: selectedCity, barangay: selectedBarangay, isComplete: isAddressComplete });
+  }, [selectedProvince, selectedCity, selectedBarangay, isAddressComplete]);
 
-  // Set initial values if provided
+  // Initialize from provided values
   useEffect(() => {
-    if (initialValues.province && !selectedProvince) {
-      setSelectedProvince(initialValues.province);
-    }
-    if (initialValues.city && !selectedCity) {
-      setSelectedCity(initialValues.city);
-    }
-    if (initialValues.barangay && !selectedBarangay) {
-      setSelectedBarangay(initialValues.barangay);
-    }
-  }, [initialValues]);
+    if (initialValues.province) setSelectedProvince(initialValues.province);
+    if (initialValues.city) setSelectedCity(initialValues.city);
+    if (initialValues.barangay) setSelectedBarangay(initialValues.barangay);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  const getLabelComponent = (label, isRequired) => {
-    if (!showLabels) return null;
+  const labelEl = (label, isReq) => (
+    !showLabels ? null : (
+      <span className="text-md font-medium">{label}{isReq && <span className="text-red-500 ml-1">*</span>}</span>
+    )
+  );
 
-    return (
-      <span className="text-md font-medium">
-        {label}
-        {isRequired && <span className="text-red-500 ml-1">*</span>}
-      </span>
-    );
-  };
+  const rowClass = labelStyle === "top" ? "flex flex-col gap-y-2" : "flex w-full items-center justify-between";
+  const ddWidth = labelStyle === "top" ? "w-full" : "w-60";
 
-  const getLayoutClasses = () => {
-    if (labelStyle === "top") {
-      return "flex flex-col gap-y-2";
-    }
-    return "flex w-full items-center justify-between";
-  };
-
-  const getDropdownWidth = () => {
-    if (labelStyle === "top") {
-      return "w-full";
-    }
-    return "w-60";
-  };
+  // Auto-advance handlers
+  const handleProvinceAutoSelect = () => { if (autoProceed) cityRef.current?.focus(); };
+  const handleCityAutoSelect = () => { if (autoProceed) barangayRef.current?.focus(); };
 
   return (
     <div className={`w-full flex flex-col gap-y-5 ${className}`}>
-      {/* Province Selection */}
-      <div className={getLayoutClasses()}>
-        {getLabelComponent("Province", required)}
-        <div className={getDropdownWidth()}>
+      {/* Province */}
+      <div className={rowClass}>
+        {labelEl("Province", required)}
+        <div className={ddWidth}>
           <TypedDropdown
+            ref={provinceRef}
             placeholder="Type to search provinces..."
             options={provinces}
             selectedItem={selectedProvince}
@@ -771,23 +566,21 @@ function AddressSelector({
             isLoading={isLoadingProvinces}
             error={errors.province || provincesError}
             filterFunction={getFilteredProvinces}
-            maxSuggestions={10}
+            maxSuggestions={12}
             variant={variant}
             size={size}
+            onAutoSelect={handleProvinceAutoSelect}
           />
         </div>
       </div>
 
-      {/* City Selection */}
-      <div className={getLayoutClasses()}>
-        {getLabelComponent("City/Municipality", required)}
-        <div className={getDropdownWidth()}>
+      {/* City/Municipality */}
+      <div className={rowClass}>
+        {labelEl("City/Municipality", required)}
+        <div className={ddWidth}>
           <TypedDropdown
-            placeholder={
-              selectedProvince
-                ? "Type to search cities..."
-                : "Select province first"
-            }
+            ref={cityRef}
+            placeholder={selectedProvince ? "Type to search cities..." : "Select province first"}
             options={cities}
             selectedItem={selectedCity}
             onChange={setSelectedCity}
@@ -795,21 +588,21 @@ function AddressSelector({
             isLoading={isLoadingCities}
             error={errors.city || citiesError}
             filterFunction={getFilteredCities}
-            maxSuggestions={10}
+            maxSuggestions={12}
             variant={variant}
             size={size}
+            onAutoSelect={handleCityAutoSelect}
           />
         </div>
       </div>
 
-      {/* Barangay Selection */}
-      <div className={getLayoutClasses()}>
-        {getLabelComponent("Barangay", required)}
-        <div className={getDropdownWidth()}>
+      {/* Barangay */}
+      <div className={rowClass}>
+        {labelEl("Barangay", required)}
+        <div className={ddWidth}>
           <TypedDropdown
-            placeholder={
-              selectedCity ? "Type to search barangays..." : "Select city first"
-            }
+            ref={barangayRef}
+            placeholder={selectedCity ? "Type to search barangays..." : "Select city first"}
             options={barangays}
             selectedItem={selectedBarangay}
             onChange={setSelectedBarangay}
@@ -817,29 +610,22 @@ function AddressSelector({
             isLoading={isLoadingBarangays}
             error={errors.barangay || barangaysError}
             filterFunction={getFilteredBarangays}
-            maxSuggestions={12}
+            maxSuggestions={16}
             variant={variant}
             size={size}
+            onAutoSelect={() => { /* final field */ }}
           />
         </div>
       </div>
 
-      {/* Clear All Button */}
       {(selectedProvince || selectedCity || selectedBarangay) && (
         <div className="flex justify-end">
-          <button
-            type="button"
-            onClick={clearAll}
-            className="text-sm text-gray-600 hover:text-gray-800 underline"
-          >
-            Clear All Selections
-          </button>
+          <button type="button" onClick={clearAll} className="text-sm text-gray-600 hover:text-gray-800 underline">Clear All Selections</button>
         </div>
       )}
     </div>
   );
 }
 
-// Export both the individual components and the complete system
 export { TypedDropdown, useAddressLogic, AddressSelector };
 export default AddressSelector;

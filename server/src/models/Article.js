@@ -94,6 +94,13 @@ const Article = sequelize.define('Article', {
     type: DataTypes.TEXT,
     allowNull: true,
   },
+  reviewer_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: { model: 'users', key: 'id' },
+    onDelete: 'SET NULL',
+    onUpdate: 'CASCADE',
+  },
 }, {
   tableName: 'articles',
   timestamps: false,

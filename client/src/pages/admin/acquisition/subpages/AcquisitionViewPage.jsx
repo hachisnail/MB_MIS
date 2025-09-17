@@ -176,7 +176,7 @@ const AcquisitionViewPage = () => {
     step,
     contributionData?.contribution_id,
     setExtraBlockContent,
-    showArtifactDetails, // keep in sync when step flips to 5
+    showArtifactDetails, 
   ]);
 
   // Guard: if user somehow lands on "Artifact Details" before completion, send back to Overview

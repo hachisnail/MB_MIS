@@ -175,7 +175,7 @@ export const createContribution = async (req, res) => {
     }
 
 
-    contributor = await Contributors.create({
+    const contributor = await Contributors.create({
       first_name: firstName,
       last_name: lastName,
       birth_date: birthDate,

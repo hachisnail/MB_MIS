@@ -1194,9 +1194,9 @@ const ArticleEditorForm = () => {
         <div className="relative z-0">
           <ViewPort
             sizes={{
-              lg: { width: 500, height: 545 },
+              lg: { width: 600, height: 545 },
               xl: { width: 675, height: 545 },
-              "2xl": { width: 1000, height: 545 },
+              "2xl": { width: 600, height: 570 },
               "3xl": { width: 1100, height: 700 },
             }}
           >

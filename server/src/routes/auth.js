@@ -92,6 +92,10 @@ import {
 import { upload, multerErrorHandler } from "../middlewares/multerMiddleware.js";
 import { SummarizerManager } from "node-summarizer";
 
+import { getInventoryList } from "../controllers/inventoryController.js";
+
+
+
 const router = express.Router();
 
 const clientIp = (req) =>
@@ -336,6 +340,6 @@ router.get(
   previewCatalogRecord
 );
 router.get("/public-artifacts", listPublicCatalogArtifacts);
-
+router.get("/api/inventory", getInventoryList);
 
 export default router;

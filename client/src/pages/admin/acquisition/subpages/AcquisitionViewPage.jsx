@@ -1,5 +1,5 @@
 import { useLocation, useOutletContext } from "react-router-dom";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import axiosClient from "@/lib/axiosClient";
 import {
   RenderRelatedDocs,
@@ -112,6 +112,9 @@ const AcquisitionViewPage = () => {
   });
   const [curatorialDesc, setCuratorialDesc] = useState("");
 
+  // ---- saved metadata % (from artifact_metadata table) ----
+  const [metadataPercent, setMetadataPercent] = useState(0);
+
   const SERVER_URL = import.meta.env.VITE_SERVER_URL;
   const { user } = useAuth();
 
@@ -141,6 +144,30 @@ const AcquisitionViewPage = () => {
   const tabsToShow = showArtifactDetails
     ? ALL_TABS
     : ["Overview", "Document", "Transaction"];
+
+  /* ---------------- helpers ---------------- */
+
+  // Compute % from saved metadata row (server truth)
+  function computeSavedMetadataPercent(data) {
+    if (!data || typeof data !== "object") return 0;
+    const fields = [
+      "date_of_creation",
+      "culture",
+      "provenance",
+      "current_location",
+      "discovery_details",
+      "excavation_site",
+      "acquisition_history",
+      "curatorial_description",
+    ];
+    const total = fields.length;
+    let filled = 0;
+    for (const k of fields) {
+      const v = (data?.[k] ?? "").toString().trim();
+      if (v) filled += 1;
+    }
+    return Math.round((filled / Math.max(1, total)) * 100);
+  }
 
   /* ---------------- Effects ---------------- */
 
@@ -176,7 +203,7 @@ const AcquisitionViewPage = () => {
     step,
     contributionData?.contribution_id,
     setExtraBlockContent,
-    showArtifactDetails, 
+    showArtifactDetails,
   ]);
 
   // Guard: if user somehow lands on "Artifact Details" before completion, send back to Overview
@@ -217,6 +244,8 @@ const AcquisitionViewPage = () => {
           acquisitionHistory: data.acquisition_history ?? "",
         });
         setCuratorialDesc(data.curatorial_description ?? "");
+        // percent strictly from saved server state
+        setMetadataPercent(computeSavedMetadataPercent(data));
       } catch (e) {
         console.error("Failed to load metadata:", e);
       }
@@ -474,7 +503,7 @@ const AcquisitionViewPage = () => {
                     <div className="w-full h-fit flex flex-col gap-y-10">
                       <div className="flex justify-between w-full h-fit items-center">
                         <span className="text-4xl font-bold text-white">
-                          Timeline
+                          {step === 5 ? "Artifact Data Status" : "Timeline"}
                         </span>
                         <button
                           onClick={() => setActiveDocument("Transaction")}
@@ -483,7 +512,17 @@ const AcquisitionViewPage = () => {
                           Click For Full View
                         </button>
                       </div>
-                      <Timeline currentStep={step} steps={steps} />
+                      {step === 5 ? (
+                        <Timeline
+                          variant="percent"
+                          percent={metadataPercent}
+                          label="Artifact metadata completion"
+                          widthClass="w-[40rem] 3xl:w-[49rem]"
+                          barHeight={168}   
+                        />
+                      ) : (
+                        <Timeline currentStep={step} steps={steps} />
+                      )}
                     </div>
                   </>
                 }
@@ -551,7 +590,7 @@ const AcquisitionViewPage = () => {
               />
             )}
 
-            {/* Transaction */}
+             {/* Transaction */}
             {activeDocument === "Transaction" && (
               <TransactionShell
                 left={
@@ -756,6 +795,7 @@ const AcquisitionViewPage = () => {
                               acquisitionHistory: data.acquisition_history ?? "",
                             });
                             setCuratorialDesc(data.curatorial_description ?? "");
+                            setMetadataPercent(computeSavedMetadataPercent(data));
                           } catch (e) {
                             console.error("[Options] Save Changes failed:", e);
                             alert("Failed to save metadata. Check console for details.");
@@ -779,6 +819,7 @@ const AcquisitionViewPage = () => {
                               acquisitionHistory: data.acquisition_history ?? "",
                             });
                             setCuratorialDesc(data.curatorial_description ?? "");
+                            setMetadataPercent(computeSavedMetadataPercent(data));
 
                             alert("Metadata finalized. Collection number will appear when the contribution is completed.");
                           } catch (e) {

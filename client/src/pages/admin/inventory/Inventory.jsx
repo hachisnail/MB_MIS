@@ -25,6 +25,7 @@ const Inventory = () => {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
   const [rows, setRows] = useState([]);
+  const [artifacts, setArtifacts] = useState([]);
 
   useEffect(() => {
     switch (initialFilter) {
@@ -62,6 +63,23 @@ const Inventory = () => {
       }
     })();
     return () => { abort = true; };
+  }, []);
+
+  useEffect(() => {
+    axios.get("/api/inventory")
+      .then(res => {
+        // Map API data to expected fields
+        const mapped = res.data.map(item => ({
+          ...item,
+          donor_name: `${item.first_name} ${item.last_name}`,
+          contract_expires_at: item.contract_expiration, // match expected key
+        }));
+        setArtifacts(mapped);
+      })
+      .catch(err => {
+        setArtifacts([]);
+        // handle error
+      });
   }, []);
 
   const { toastConfig, showToast, hideToast } = useToast();

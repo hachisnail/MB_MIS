@@ -1,5 +1,5 @@
 import { useLocation, useOutletContext } from "react-router-dom";
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef } from "react";
 import axiosClient from "@/lib/axiosClient";
 import {
   RenderRelatedDocs,
@@ -35,17 +35,27 @@ import ArtifactDetailsShell from "../layouts/ArtifactDetailsShell";
 
 import ArtifactMetadataForm from "../components/ArtifactMetadataForm";
 import { OptionsPanel } from "../components/ViewPageRenderer";
-import Modal from "@/components/modals/Modal";
 
 import ConversationTimeline from "./ConversationTimeline";
 import { conversationSample } from "./conversationSample";
 
-const documentTabs = ["Overview", "Document", "Transaction", "Artifact Details"];
+import { LoadingSpinner } from "../../../../components/commons";
+import {
+  Address,
+  Email,
+  From,
+  Organization,
+  PhoneNumber,
+} from "../components/ViewPageSvg";
 
-function DocumentTabs({ active, onChange }) {
+/* ---------------- Tabs (with gating support) ---------------- */
+
+const ALL_TABS = ["Overview", "Document", "Transaction", "Artifact Details"];
+
+function DocumentTabs({ labels = ALL_TABS, active, onChange }) {
   return (
     <div className="w-full h-full items-end justify-end flex gap-3">
-      {documentTabs.map((label) => (
+      {labels.map((label) => (
         <button
           key={label}
           type="button"
@@ -64,14 +74,7 @@ function DocumentTabs({ active, onChange }) {
   );
 }
 
-import { LoadingSpinner } from "../../../../components/commons";
-import {
-  Address,
-  Email,
-  From,
-  Organization,
-  PhoneNumber,
-} from "../components/ViewPageSvg";
+/* ========================================================= */
 
 const AcquisitionViewPage = () => {
   const lastBumpedIdRef = useRef(null);
@@ -108,23 +111,6 @@ const AcquisitionViewPage = () => {
     acquisitionHistory: "",
   });
   const [curatorialDesc, setCuratorialDesc] = useState("");
-  const [feedback, setFeedback] = useState({ open: false, type: "info", title: "", message: "" });
-  const openFeedback = (type, title, message) => setFeedback({ open: true, type, title, message });
-  const closeFeedback = () => setFeedback((f) => ({ ...f, open: false }));
-
-
-
-  // track last-synced snapshot to detect unsaved changes
-  const lastSyncedRef = useRef("");
-
-  const snapshotSynced = (meta, desc) => {
-    lastSyncedRef.current = JSON.stringify({ meta, desc });
-  };
-
-  const isDirty = useMemo(() => {
-    const current = JSON.stringify({ meta: pendingMeta, desc: curatorialDesc });
-    return current !== (lastSyncedRef.current || "");
-  }, [pendingMeta, curatorialDesc]);
 
   const SERVER_URL = import.meta.env.VITE_SERVER_URL;
   const { user } = useAuth();
@@ -139,10 +125,33 @@ const AcquisitionViewPage = () => {
   const lendingDetail =
     contributionData?.LendingDetail || contributionData?.lendingdetail;
 
+  /* ---------------- timeline → step mapping ---------------- */
+  const mapTimelineStep = (timeline) => {
+    if (timeline?.completed_at) return 5;
+    if (timeline?.on_delivery_at) return 4;
+    if (timeline?.moa_settled_at) return 3;
+    if (timeline?.approved_at) return 2;
+    if (timeline?.under_review_at) return 1;
+    if (timeline?.submitted_at) return 0;
+    return 0;
+  };
+
+  // derive gating for Artifact Details tab
+  const showArtifactDetails = step === 5; // completed
+  const tabsToShow = showArtifactDetails
+    ? ALL_TABS
+    : ["Overview", "Document", "Transaction"];
+
+  /* ---------------- Effects ---------------- */
+
   useEffect(() => {
     setExtraBlockContent(
       contributionData && (
-        <DocumentTabs active={activeDocument} onChange={setActiveDocument} />
+        <DocumentTabs
+          labels={tabsToShow}
+          active={activeDocument}
+          onChange={setActiveDocument}
+        />
       )
     );
 
@@ -162,7 +171,20 @@ const AcquisitionViewPage = () => {
     }
 
     return () => setExtraBlockContent(null);
-  }, [activeDocument, step, contributionData?.contribution_id, setExtraBlockContent]);
+  }, [
+    activeDocument,
+    step,
+    contributionData?.contribution_id,
+    setExtraBlockContent,
+    showArtifactDetails, // keep in sync when step flips to 5
+  ]);
+
+  // Guard: if user somehow lands on "Artifact Details" before completion, send back to Overview
+  useEffect(() => {
+    if (activeDocument === "Artifact Details" && !showArtifactDetails) {
+      setActiveDocument("Overview");
+    }
+  }, [activeDocument, showArtifactDetails]);
 
   useEffect(() => {
     if (location.pathname.includes("lending")) {
@@ -184,7 +206,7 @@ const AcquisitionViewPage = () => {
     (async () => {
       try {
         const { data } = await axiosClient.get(`/auth/contributions/${id}/metadata`);
-        const loaded = {
+        setPendingMeta({
           collectionNumber: data.collection_number ?? "",
           age: data.date_of_creation ?? "",
           culture: data.culture ?? "",
@@ -193,11 +215,8 @@ const AcquisitionViewPage = () => {
           discovery: data.discovery_details ?? "",
           excavationSite: data.excavation_site ?? "",
           acquisitionHistory: data.acquisition_history ?? "",
-        };
-        setPendingMeta(loaded);
+        });
         setCuratorialDesc(data.curatorial_description ?? "");
-        // snapshot after initial load
-        snapshotSynced(loaded, data.curatorial_description ?? "");
       } catch (e) {
         console.error("Failed to load metadata:", e);
       }
@@ -288,16 +307,6 @@ const AcquisitionViewPage = () => {
         },
       ]
     : [];
-
-  const mapTimelineStep = (timeline) => {
-    if (timeline.completed_at) return 5;
-    if (timeline.on_delivery_at) return 4;
-    if (timeline.moa_settled_at) return 3;
-    if (timeline.approved_at) return 2;
-    if (timeline.under_review_at) return 1;
-    if (timeline.submitted_at) return 0;
-    return 0;
-  };
 
   const steps = [
     { label: "Submitted", description: "Contribution has been logged and queued for review." },
@@ -418,7 +427,7 @@ const AcquisitionViewPage = () => {
 
   return (
     <>
-      <div className="flex flex-col justify-center gap-y-3 w-full h-full items-center">
+      <div className="flex flex-col justify-center gap-y-3 w/full h-full items-center">
         {!contributionData ? (
           <div className="w-full h-full flex items-center justify-center text-2xl text-gray-500">
             <span>No contribution data found or invalid ID.</span>
@@ -660,8 +669,8 @@ const AcquisitionViewPage = () => {
               />
             )}
 
-            {/* Artifact Details */}
-            {activeDocument === "Artifact Details" && (
+            {/* Artifact Details (only reachable when step === 5 due to gating) */}
+            {activeDocument === "Artifact Details" && showArtifactDetails && (
               <ArtifactDetailsShell
                 left={
                   <>
@@ -715,12 +724,9 @@ const AcquisitionViewPage = () => {
                       </div>
 
                       <OptionsPanel
-                        // EDIT — just show a confirmation (handled inside OptionsPanel) then give a friendly toast modal
                         onEdit={() => {
-                          openFeedback("info", "Edit enabled", "You can now modify the metadata fields.");
+                          // optional: toggle edit mode
                         }}
-
-                        // SAVE — writes to artifact_metadata only; no browser prompt, feedback modal on success/error
                         onSave={async () => {
                           try {
                             const id = contributionData?.contribution_id;
@@ -734,12 +740,10 @@ const AcquisitionViewPage = () => {
                               acquisition_history: pendingMeta?.acquisitionHistory ?? null,
                               curatorial_description: curatorialDesc ?? null,
                             };
-
                             await axiosClient.post(`/auth/contributions/${id}/metadata`, payload, {
                               headers: { "Content-Type": "application/json" },
                             });
 
-                            // refresh local copy
                             const { data } = await axiosClient.get(`/auth/contributions/${id}/metadata`);
                             setPendingMeta({
                               collectionNumber: data.collection_number ?? "",
@@ -752,22 +756,17 @@ const AcquisitionViewPage = () => {
                               acquisitionHistory: data.acquisition_history ?? "",
                             });
                             setCuratorialDesc(data.curatorial_description ?? "");
-
-                            openFeedback("info", "Saved", "Your metadata changes were saved as a draft.");
                           } catch (e) {
-                            const status = e?.response?.status;
-                            const msg = e?.response?.data?.message || e?.message || "Unknown error";
                             console.error("[Options] Save Changes failed:", e);
-                            openFeedback("danger", "Save failed", `(${status || "error"}) ${msg}`);
+                            alert("Failed to save metadata. Check console for details.");
                           }
                         }}
-
                         onComplete={async () => {
                           try {
                             const id = contributionData?.contribution_id;
                             await axiosClient.post(`/auth/contributions/${id}/metadata/complete`);
 
-                            // refresh
+                            // Refresh local copy
                             const { data } = await axiosClient.get(`/auth/contributions/${id}/metadata`);
                             setPendingMeta({
                               collectionNumber: data.collection_number ?? "",
@@ -781,46 +780,24 @@ const AcquisitionViewPage = () => {
                             });
                             setCuratorialDesc(data.curatorial_description ?? "");
 
-                            openFeedback(
-                              "info",
-                              "Metadata finalized",
-                              "Saved to inventory. The collection number will appear once the contribution is marked “completed”."
-                            );
+                            alert("Metadata finalized. Collection number will appear when the contribution is completed.");
                           } catch (e) {
                             const status = e?.response?.status;
                             const msg = e?.response?.data?.message || e?.message || "Unknown error";
-                            console.error("[Options] Complete failed:", e);
                             if (status === 403) {
-                              openFeedback("warning", "Not authorized", "You need admin privileges to finalize metadata.");
+                              alert("You need admin privileges to finalize metadata.");
+                            } else if (status === 404) {
+                              alert(`Finalize failed: ${msg}`);
                             } else {
-                              openFeedback("danger", "Finalize failed", `(${status || "error"}) ${msg}`);
+                              alert(`Finalize failed (${status || "error"}): ${msg}`);
                             }
+                            console.error("[Options] Complete failed:", e);
                           }
                         }}
                       />
                     </div>
-
-                    {/* Single reusable feedback modal (replaces browser alerts) */}
-                    <Modal
-                      isOpen={feedback.open}
-                      onClose={closeFeedback}
-                      title={feedback.title}
-                      type={feedback.type}      // "info" | "warning" | "danger" | "question"
-                      theme="light"
-                    >
-                      <p className="text-lg">{feedback.message}</p>
-                      <div className="mt-6 flex justify-end">
-                        <button
-                          onClick={closeFeedback}
-                          className="px-4 py-2 bg-gray-900 text-white rounded-sm hover:brightness-110"
-                        >
-                          OK
-                        </button>
-                      </div>
-                    </Modal>
                   </div>
                 }
-
               />
             )}
           </>

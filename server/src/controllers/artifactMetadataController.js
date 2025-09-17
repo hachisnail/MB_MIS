@@ -1,4 +1,5 @@
 // controllers/artifactMetadataController.js
+import { Op } from "sequelize";
 import { mainDb } from "../configs/databases.js";
 import {
   Contributions,
@@ -39,6 +40,83 @@ function normalizeMetadataPayload(body = {}) {
     if (normalized[k] === undefined) delete normalized[k];
   }
   return normalized;
+}
+
+/**
+ * GET /api/catalog/public-artifacts
+ * Public list of catalog artifacts (for homepage catalogue grid).
+ * Optional query params:
+ *   q            - keyword over title/desc/provenance/curatorial/display
+ *   culture      - exact/like filter for culture
+ *   location     - like filter for current_location
+ *   hasImages    - "1" to require at least one image (images/image_urls/related)
+ *   limit, offset
+ */
+export async function listPublicCatalogArtifacts(req, res) {
+  try {
+    const {
+      q,
+      culture,
+      location: loc,
+      hasImages,
+      limit = 200,
+      offset = 0,
+    } = req.query;
+
+    const where = {};
+
+    if (q && String(q).trim() !== "") {
+      const kw = `%${String(q).trim()}%`;
+      where[Op.or] = [
+        { title: { [Op.like]: kw } },
+        { donor_description: { [Op.like]: kw } },
+        { display_description: { [Op.like]: kw } },
+        { curatorial_description: { [Op.like]: kw } },
+        { provenance: { [Op.like]: kw } },
+      ];
+    }
+
+    if (culture && String(culture).trim() !== "") {
+      where.culture = { [Op.like]: `%${String(culture).trim()}%` };
+    }
+
+    if (loc && String(loc).trim() !== "") {
+      where.current_location = { [Op.like]: `%${String(loc).trim()}%` };
+    }
+
+    // Base query
+    const findOptions = {
+      where,
+      order: [["updated_at", "DESC"]],
+      limit: Math.min(Number(limit) || 200, 500),
+      offset: Number(offset) || 0,
+    };
+
+    let rows = await CatalogArtifact.findAll(findOptions);
+
+    // In-memory filter for hasImages (covers arrays/strings/urls)
+    if (hasImages === "1") {
+      rows = rows.filter((r) => {
+        const row = r?.toJSON?.() || r;
+        const anyUrl =
+          (Array.isArray(row.image_urls) && row.image_urls.length > 0) ||
+          (Array.isArray(row.related_image_urls) &&
+            row.related_image_urls.length > 0);
+        const anyFile =
+          (Array.isArray(row.images) && row.images.length > 0) ||
+          (Array.isArray(row.related_images) &&
+            row.related_images.length > 0) ||
+          (!!row.images && typeof row.images === "string") ||
+          (!!row.related_images && typeof row.related_images === "string");
+        return anyUrl || anyFile;
+      });
+    }
+
+    return res.json(rows);
+  } catch (err) {
+    console.error("listPublicCatalogArtifacts error:", err);
+    return res.status(500).json({ message: "Server error loading catalog" });
+  }
 }
 
 /**
@@ -222,7 +300,7 @@ export async function completeArtifactMetadata(req, res) {
 }
 
 /**
- * GET /catalog/preview/:id
+ * GET /api/catalog/preview/:id
  * Public preview for completed contributions — reads from catalog_artifacts.
  */
 export async function previewCatalogRecord(req, res) {

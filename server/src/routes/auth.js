@@ -85,6 +85,8 @@ import {
   upsertArtifactMetadataDraft,
   completeArtifactMetadata,
   previewCatalogRecord,
+  listPublicCatalogArtifacts,
+  
 } from "../controllers/artifactMetadataController.js";
 
 import { upload, multerErrorHandler } from "../middlewares/multerMiddleware.js";
@@ -333,6 +335,7 @@ router.get(
   openLimiter,
   previewCatalogRecord
 );
+router.get("/public-artifacts", listPublicCatalogArtifacts);
 
 
 export default router;

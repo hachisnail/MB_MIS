@@ -28,8 +28,9 @@ const ResizableImageComponent = ({ node, updateAttributes, selected }) => {
       box.style.width = `${+widthPct}%`;
       img.style.width = "100%";
     } else {
-      box.style.width = "";
-      img.style.width = "auto";
+      // If attr missing, ensure we still render at a sane width
+      box.style.width = "100%";
+      img.style.width = "100%";
     }
   }, [widthPct]);
 
@@ -115,7 +116,8 @@ const ResizableImageComponent = ({ node, updateAttributes, selected }) => {
           lineHeight: 0,
           maxWidth: "100%",
           minWidth: 1,
-          // width managed via useEffect / drag
+          // ✅ Ensure non-zero width on first paint
+          width: Number.isFinite(+widthPct) ? `${+widthPct}%` : "100%",
         }}
       >
         <img
@@ -123,7 +125,8 @@ const ResizableImageComponent = ({ node, updateAttributes, selected }) => {
           src={src}
           alt={alt}
           style={{
-            width: Number.isFinite(+widthPct) ? "100%" : "auto",
+            // ✅ Always fill the box; the box dictates percent width
+            width: "100%",
             height: "auto",
             maxWidth: "100%",
             display: "block",
@@ -160,12 +163,15 @@ const ResizableImageComponent = ({ node, updateAttributes, selected }) => {
 };
 
 const CustomImage = Image.extend({
-  inline() { return true; },
-  group() { return "inline"; },
+  inline() {
+    return true;
+  },
+  group() {
+    return "inline";
+  },
   draggable: true,
-  priority: 1000, // prefer our nodeview if others exist
+  priority: 1000,
 
-  // Minimal + reliable attrs (explicit src is the key)
   addAttributes() {
     return {
       src: {
@@ -184,7 +190,7 @@ const CustomImage = Image.extend({
         renderHTML: (attrs) => (attrs.title ? { title: attrs.title } : {}),
       },
       widthPct: {
-        default: null,
+        default: 100, // Fill parent container by default
         parseHTML: (element) => {
           const styleW = element.style?.width || "";
           const dataPct = element.getAttribute("data-width-pct") || "";

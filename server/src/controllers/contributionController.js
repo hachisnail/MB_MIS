@@ -30,6 +30,9 @@ import {
   verifyOtpCode,
 } from "../services/magicLink.js";
 
+import { upsertCatalogArtifact } from "../services/catalogSyncService.js";
+
+
 // ---------------- config ----------------
 const READ_WRITE_TTL_MIN = parseInt(process.env.GUEST_READ_WRITE_TTL_MIN || "120", 10); // 2h
 const OTP_TTL_MIN = parseInt(process.env.GUEST_OTP_TTL_MIN || "10", 10); // 10m
@@ -740,7 +743,7 @@ export const openContributionSessionByToken = async (req, res) => {
     // 1) Try cookie first — if valid, return content immediately (no OTP)
     const gcRaw = req.cookies?.[GUEST_COOKIE_NAME];
     if (gcRaw) {
-      const payload = verifyGuestCookie(gcRaw); // { sid, cid, exp } or null
+      const payload = verifyGuestCookie(gcRaw);
       if (payload) {
         const session = await ContributionSessions.findOne({
           where: { session_id: payload.sid, contribution_id: payload.cid, is_active: true },
@@ -756,8 +759,8 @@ export const openContributionSessionByToken = async (req, res) => {
           const baseSession = {
             session_id: session.session_id,
             read_enabled: true,
-            write_enabled: true, // cookie means the user already passed OTP
-            guest_identity: gi,  // include real email
+            write_enabled: true,
+            guest_identity: gi,
             link_expires_at: session.link_expires_at,
             otp_verified_at: session.otp_verified_at,
             created_at: session.created_at,
@@ -770,7 +773,7 @@ export const openContributionSessionByToken = async (req, res) => {
               { model: Contributors, attributes: ["first_name", "last_name", "email"] },
               { model: ContributionArtifacts, attributes: ["title", "description"] },
               { model: ContributionTimelines },
-              { model: Contracts }, // 👈 include contract
+              { model: Contracts },
             ],
           });
           if (!contribution) return res.status(404).json({ message: "Contribution not found" });
@@ -783,7 +786,7 @@ export const openContributionSessionByToken = async (req, res) => {
       }
     }
 
-    // 2) Fall back to magic link token. If there's *no* cookie, we *auto (re)trigger* OTP.
+    // 2) Fall back to magic link token
     const token = req.params.token || req.query.token;
     if (!token) return res.status(400).json({ message: "Missing token or cookie" });
 
@@ -800,8 +803,8 @@ export const openContributionSessionByToken = async (req, res) => {
       magic_link_used_at: session.magic_link_used_at || now,
     });
 
-    // Auto (re)send OTP if none active
-    const { sent: otp_resent } = await ensureOtpActiveAndMaybeSend(session, now);
+    // ❌ removed ensureOtpActiveAndMaybeSend
+    // OTP must now be requested explicitly by the client
 
     const gi = asJson(session.guest_identity) || {};
     const baseSession = {
@@ -817,14 +820,13 @@ export const openContributionSessionByToken = async (req, res) => {
       ttl_minutes: READ_WRITE_TTL_MIN,
     };
 
-    // 🚫 Gate content until OTP is verified (and cookie set by verify endpoint)
     const contribution = await Contributions.findOne({
       where: { contribution_id: session.contribution_id },
       include: [
         { model: Contributors, attributes: ["first_name", "last_name", "email"] },
         { model: ContributionArtifacts, attributes: ["title", "description"] },
         { model: ContributionTimelines },
-        { model: Contracts }, // 👈 include contract
+        { model: Contracts },
       ],
     });
     if (!contribution) return res.status(404).json({ message: "Contribution not found" });
@@ -832,7 +834,6 @@ export const openContributionSessionByToken = async (req, res) => {
     return res.json({
       session: baseSession,
       requires_otp: true,
-      otp_resent: otp_resent === true,
       contribution,
     });
   } catch (err) {
@@ -840,6 +841,8 @@ export const openContributionSessionByToken = async (req, res) => {
     return res.status(500).json({ message: "Server error" });
   }
 };
+
+
 export const sendContributionSessionOtp = async (req, res) => {
   try {
     securityHeaders(res);
@@ -968,11 +971,14 @@ export const completeContributionSession = async (req, res) => {
     timeline.completed_at = new Date();
     await timeline.save();
 
-    // 6. Update contribution status
+    // 6. Update contribution status -> triggers afterUpdate hook to ensure collection_number
     await contribution.update({
       status: "completed",
       updated_at: new Date(),
     });
+
+    // 7. Sync catalog so the collection_number is now reflected
+    await upsertCatalogArtifact(id);
 
     return res.json({
       success: true,
@@ -987,6 +993,7 @@ export const completeContributionSession = async (req, res) => {
       .json({ message: "Server error completing contribution session" });
   }
 };
+
 
 
 export const closeContributionSession = async (req, res) => {

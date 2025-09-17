@@ -8,6 +8,8 @@ import ImageViewerModal from "../../../../features/ImageViewerModal";
 import { InfoModal } from "../../../../features/InfoModal";
 import NoImagePlaceholder from "../../../../features/Utilities";
 import { handleImageError } from "../../../../features/Utilities";
+import ConfirmationModal from "@/components/modals/ConfirmationModal";
+
 
 const SERVER_URL = import.meta.env.VITE_SERVER_URL;
 
@@ -159,8 +161,6 @@ export const InfoSection = ({
   );
 };
 
-
-
 export function RenderRelatedDocs({
   relatedImages = [],
   attachedFiles = [],
@@ -221,7 +221,7 @@ export function RenderRelatedDocs({
                     src={img.src}
                     alt={img.label || "Related image"}
                     className="w-full h-full object-cover rounded-xl"
-                    onError={(handleImageError())}
+                    onError={handleImageError()}
                   />
                 ) : (
                   <div className="flex items-center justify-center w-full h-full bg-gray-200 rounded-xl">
@@ -469,3 +469,226 @@ export function TransactionDescription({
     </div>
   );
 }
+
+
+const OptionButton = ({ icon, label, onClick, disabled = false, title }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    disabled={disabled}
+    title={title}
+    className={`w-full h-[10rem] rounded-xl bg-black text-white shadow-[0_2px_6px_rgba(0,0,0,0.35)] hover:brightness-110 active:translate-y-[1px] transition inline-flex items-center gap-3 px-4 text-left ${
+      disabled ? "opacity-60 cursor-not-allowed" : ""
+    }`}
+  >
+    <div className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center">
+      {icon}
+    </div>
+    <span className="font-semibold text-base leading-tight whitespace-pre-line">
+      {label}
+    </span>
+  </button>
+);
+
+
+export function OptionsPanel({
+  onEdit,
+  onSave,
+  onComplete,
+  disabled = false,
+  saving = false,
+  saveDisabled = false,
+  completeDisabled = false,
+
+  confirmOnEdit = true,
+  confirmOnSave = true,
+  confirmOnComplete = true,
+
+  confirmTheme = "light",
+
+  editConfirmTitle = "Enable editing?",
+  editConfirmMessage = "Switch to edit mode so you can modify metadata fields.",
+
+  saveConfirmTitle = "Save changes?",
+  saveConfirmMessage = "This will write your changes as a draft to Artifact Metadata.",
+
+  completeConfirmTitle = "Finalize metadata?",
+  completeConfirmMessage =
+    "Mark metadata as complete and save to inventory?\nThis will generate/lock the collection number (if not set) and finalize the record.",
+}) {
+  const [askEdit, setAskEdit] = useState(false);
+  const [askSave, setAskSave] = useState(false);
+  const [askComplete, setAskComplete] = useState(false);
+
+  const callEdit = () => {
+    try {
+      if (onEdit) onEdit();
+      else console.log("[OptionsPanel] Edit Data clicked");
+    } catch (e) {
+      console.error("[OptionsPanel] Edit handler error:", e);
+    }
+  };
+
+  const callSave = () => {
+    try {
+      if (onSave) onSave();
+      else console.log("[OptionsPanel] Save Changes clicked");
+    } catch (e) {
+      console.error("[OptionsPanel] Save handler error:", e);
+    }
+  };
+
+  const callComplete = () => {
+    try {
+      if (onComplete) onComplete();
+      else console.log("[OptionsPanel] Data Complete → Save to Inventory clicked");
+    } catch (e) {
+      console.error("[OptionsPanel] Complete handler error:", e);
+    }
+  };
+
+  const handleEditClick = () => {
+    if (disabled) return;
+    if (confirmOnEdit) {
+      setAskEdit(true);
+    } else {
+      callEdit();
+    }
+  };
+
+  const handleSaveClick = () => {
+    if (disabled || saving || saveDisabled) return;
+    if (confirmOnSave) {
+      setAskSave(true);
+    } else {
+      callSave();
+    }
+  };
+
+  const handleCompleteClick = () => {
+    if (disabled || completeDisabled) return;
+    if (confirmOnComplete) {
+      setAskComplete(true);
+    } else {
+      callComplete();
+    }
+  };
+
+  return (
+    <>
+      <div className="w-[12rem] flex-none h-full rounded-xl bg-[#1D1911] p-3 flex flex-col gap-3">
+        <span className="block text-white text-lg font-bold text-center">
+          Options
+        </span>
+
+        <div className="flex-1 min-h-0 flex flex-col gap-3">
+          {/* Edit */}
+          <OptionButton
+            onClick={handleEditClick}
+            disabled={disabled}
+            label={"Edit Data"}
+            icon={
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="w-5 h-5 text-white"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <path d="M12 20h9" />
+                <path d="M16.5 3.5a2 2 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5Z" />
+              </svg>
+            }
+          />
+
+          {/* Save */}
+          <OptionButton
+            onClick={handleSaveClick}
+            disabled={disabled || saving || saveDisabled}
+            title={saveDisabled ? "Nothing to save" : undefined}
+            label={saving ? "Saving…" : "Save Changes"}
+            icon={
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="w-5 h-5 text-white"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <path d="M17 3H7a2 2 0 0 0-2 2v14l4-2 4 2 4-2 4 2V7l-4-4Z" />
+                <path d="M8 7h8v4H8z" />
+              </svg>
+            }
+          />
+
+          {/* Complete */}
+          <OptionButton
+            onClick={handleCompleteClick}
+            disabled={disabled || completeDisabled}
+            title={completeDisabled ? "Save changes first" : undefined}
+            label={"Data Complete\nSave to Inventory"}
+            icon={
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="w-5 h-5 text-white"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <path d="M3 7h18M3 12h18M3 17h18" />
+                <path d="M7 7v14M17 7v14" />
+              </svg>
+            }
+          />
+        </div>
+      </div>
+
+      {/* Confirm: Edit */}
+      <ConfirmationModal
+        isOpen={askEdit}
+        onClose={() => setAskEdit(false)}
+        onConfirm={() => {
+          setAskEdit(false);
+          callEdit();
+        }}
+        title={editConfirmTitle}
+        message={editConfirmMessage}
+        type="question"
+        theme={confirmTheme}
+      />
+
+      {/* Confirm: Save */}
+      <ConfirmationModal
+        isOpen={askSave}
+        onClose={() => setAskSave(false)}
+        onConfirm={() => {
+          setAskSave(false);
+          callSave();
+        }}
+        title={saveConfirmTitle}
+        message={saveConfirmMessage}
+        type="question"
+        theme={confirmTheme}
+      />
+
+      {/* Confirm: Complete */}
+      <ConfirmationModal
+        isOpen={askComplete}
+        onClose={() => setAskComplete(false)}
+        onConfirm={() => {
+          setAskComplete(false);
+          // guard again in case state changed while modal open
+          if (!completeDisabled) callComplete();
+        }}
+        title={completeConfirmTitle}
+        message={completeConfirmMessage}
+        type="question"
+        theme={confirmTheme}
+      />
+    </>
+  );
+}
+

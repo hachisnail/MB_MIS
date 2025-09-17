@@ -1,5 +1,6 @@
 import Modal from "@/components/modals/Modal";
 
+
 export default function ConfirmationModal({
   isOpen,
   onClose,

@@ -116,24 +116,26 @@ function createProxiedSocketClient(serverUrl) {
       this._syncRooms();
     },
 
-    joinRoom(room) {
-      // Guards so followers can’t reintroduce guestRoom or wrong user rooms
-      if (room === "guestRoom" && !this.isGuest) {
-        if (this.joinedRooms.has("guestRoom")) {
-          this.joinedRooms.delete("guestRoom");
-          emitViaLeader("leaveRoom", "guestRoom");
-        }
-        return;
-      }
-      if (room.startsWith("user:")) {
-        if (this.isGuest) return;
-        if (!this.userId || room !== `user:${this.userId}`) return;
-      }
+joinRoom(room, payload = {}) {
+  if (room === "guestRoom" && !this.isGuest) {
+    if (this.joinedRooms.has("guestRoom")) {
+      this.joinedRooms.delete("guestRoom");
+      emitViaLeader("leaveRoom", "guestRoom");
+    }
+    return;
+  }
+  if (room.startsWith("user:")) {
+    if (this.isGuest) return;
+    if (!this.userId || room !== `user:${this.userId}`) return;
+  }
 
-      if (this.joinedRooms.has(room)) return;
-      this.joinedRooms.add(room);
-      emitViaLeader("joinRoom", room);
-    },
+  if (this.joinedRooms.has(room)) return;
+  this.joinedRooms.add(room);
+
+  // 👇 forward payload to leader
+  emitViaLeader("joinRoom", { room, payload });
+},
+
     leaveRoom(room) {
       if (!this.joinedRooms.has(room)) return;
       this.joinedRooms.delete(room);
@@ -399,10 +401,19 @@ function createProxiedSocketClient(serverUrl) {
       leaderHeartbeat = Date.now();
     } else if (msg.t === "heartbeat") {
       leaderHeartbeat = msg.ts;
-    } else if (msg.t === "emit") {
-      if (isLeader && proxy.socket?.connected)
-        proxy.socket.emit(msg.event, msg.payload);
-    } else if (msg.t === "srv") {
+    } 
+    
+else if (msg.t === "emit") {
+  if (isLeader && proxy.socket?.connected) {
+    if (msg.event === "joinRoom" && msg.payload?.room) {
+      proxy.socket.emit("joinRoom", msg.payload.room, msg.payload.payload);
+    } else {
+      proxy.socket.emit(msg.event, msg.payload);
+    }
+  }
+}
+
+    else if (msg.t === "srv") {
       if (msg.ev === "dbChange") dispatchDbChange(msg.data);
       else if (msg.ev === "message") dispatchMessage(msg.data);
       else if (msg.ev === "forceLogout") dispatchForceLogout(msg.data);

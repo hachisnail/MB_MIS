@@ -250,6 +250,38 @@ export function initializeSocket(server, corsOrigins) {
     io.emit("presenceCounts", aggregatedPresenceCounts());
   };
 
+ function presenceSnapshotForAdmins() {
+    const rows = [];
+
+    for (const [page, entry] of presenceIndex) {
+      // entry.viewers is Map<key, viewerInfo>
+      const viewers = Array.from(entry.viewers.values()).map((v) => ({
+        userId: v.userId,           // null for guests
+        isGuest: v.isGuest === true,
+        browserId: v.browserId || null,
+        tabId: v.tabId || null,
+        at: v.at || Date.now(),     // last activity timestamp
+        title: v.title || null,     // last reported document.title
+        meta: v.meta || null,       // any extra metadata you sent
+      }));
+
+      // optional: newest first
+      viewers.sort((a, b) => (b.at || 0) - (a.at || 0));
+
+      rows.push({
+        page,
+        count: entry.count,
+        titles: Array.from(entry.sampleTitles),
+        viewers,
+      });
+    }
+
+    // show busiest pages first
+    rows.sort((a, b) => b.count - a.count);
+
+    return { at: Date.now(), rows };
+  }
+
   const browserLocks = new Map(); // browserId -> { socketId, lastSeen }
   const STALE_MS = 30_000;
 
@@ -353,70 +385,52 @@ export function initializeSocket(server, corsOrigins) {
       }
     }
 
-socket.on("joinRoom", async (room) => {
-    try {
-      if (!room.startsWith("conversation:")) {
-        if (!socket.rooms.has(room)) socket.join(room);
+socket.on("joinRoom", async (roomOrObj, payload) => {
+  try {
+    let room;
+    let meta = payload || {};
+
+    // Support both old (string) and new (object) formats
+    if (typeof roomOrObj === "string") {
+      room = roomOrObj;
+    } else if (roomOrObj && typeof roomOrObj === "object") {
+      room = roomOrObj.room;
+      meta = roomOrObj.payload || {};
+    }
+
+    if (!room) return;
+
+    if (room.startsWith("conversation:")) {
+      const convId = room.replace("conversation:", "");
+      const convo = await ConversationController.getById(convId);
+      if (!convo) {
+        console.warn(`[Socket] Conversation ${convId} not found`);
         return;
       }
 
-      const convId = room.replace("conversation:", "");
-
-      // ----- Guest joining -----
       if (socket.userId === "guest") {
-        // Find conversation in DB
-        const convo = await ConversationController.getById(convId);
-        if (!convo) {
-          console.warn(`[Socket] Guest denied: conversation ${convId} not found`);
-          return;
-        }
-
-        // Guest’s allowed contribution_id
-        const allowedContributionId =
-          socket.session?.contribution?.contribution_id ||
-          socket.session?.contributionId ||
-          null;
-
-        if (
-          allowedContributionId &&
-          String(convo.contribution_id) === String(allowedContributionId)
-        ) {
+        if (String(convo.contribution_id) === String(meta.contributionId)) {
+          socket.guestId = meta.guestId;
           socket.join(room);
-          console.log(
-            `[Socket] Guest ${socket.guestId} joined conversation:${convId}`
-          );
+          console.log(`[Socket] Guest ${socket.guestId} joined ${room}`);
         } else {
-          console.warn(
-            `[Socket] Guest denied joining ${room} (allowed=${allowedContributionId}, convo.contribution_id=${convo.contribution_id})`
-          );
+          console.warn(`[Socket] Guest denied joining ${room}`);
         }
+        return;
       }
 
-      // ----- Admin joining -----
-      else if (isAdmin) {
-        const tabPresence = [...(socket.presenceTabs?.values() ?? [])];
-        const onAcquisition = tabPresence.some((p) =>
-          p.page?.includes("acquisition")
-        );
-
-        if (onAcquisition) {
-          socket.join(room);
-          console.log(`[Socket] Admin ${socket.userId} joined ${room}`);
-        } else {
-          console.warn(
-            `[Socket] Admin ${socket.userId} denied joining ${room} (not on acquisition page)`
-          );
-        }
-      }
-
-      // ----- Normal user fallback -----
-      else {
-        socket.join(room);
-      }
-    } catch (err) {
-      console.error("[Socket] joinRoom error:", err);
+      socket.join(room);
+      return;
     }
-  });
+
+    socket.join(room);
+  } catch (err) {
+    console.error("[Socket] joinRoom error:", err);
+  }
+});
+
+
+
 
     socket.on("leaveRoom", (room) => {
       if (socket.rooms.has(room)) {
@@ -439,6 +453,10 @@ socket.on("joinRoom", async (room) => {
     // });
 
     socket.on("message", async (payload) => {
+        if (socket.userId === "guest" && !socket.guestId) {
+    console.warn("Blocked guest message without OTP verification");
+    return;
+  }
       try {
         const { room } = payload;
         const conversationId = room.replace("conversation:", "");

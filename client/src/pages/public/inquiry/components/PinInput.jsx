@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 
 export default function PinInput({ length = 6, onComplete, className = "" }) {
   const [values, setValues] = useState(Array(length).fill(""));
@@ -28,6 +28,22 @@ export default function PinInput({ length = 6, onComplete, className = "" }) {
     }
   };
 
+  // 🔑 Listen for number keys globally
+  useEffect(() => {
+    const handleGlobalKeyDown = (e) => {
+      if (e.key >= "0" && e.key <= "9") {
+        const nextIndex = values.findIndex((v) => v === "");
+        if (nextIndex !== -1) {
+          handleChange(e.key, nextIndex);
+          inputsRef.current[nextIndex].focus();
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleGlobalKeyDown);
+    return () => window.removeEventListener("keydown", handleGlobalKeyDown);
+  }, [values]); // re-run when values change
+
   return (
     <div className={`flex gap-3 ${className}`}>
       {values.map((val, idx) => (
@@ -40,7 +56,7 @@ export default function PinInput({ length = 6, onComplete, className = "" }) {
           onChange={(e) => handleChange(e.target.value, idx)}
           onKeyDown={(e) => handleKeyDown(e, idx)}
           ref={(el) => (inputsRef.current[idx] = el)}
-          className="w-12 h-12 text-center text-xl border-2 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-12 h-12 text-center text-xl border-2 shadow-md shadow-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
       ))}
     </div>

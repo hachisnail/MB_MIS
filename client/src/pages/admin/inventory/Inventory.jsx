@@ -1,53 +1,181 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
+import axios from "axios";
 import TimelineDatePicker from "@/features/TimelineDatePicker";
-import useToast from "../../../components/commons";
+import { SearchBar } from "@/features/Utilities";
 import Toast from "@/features/Toast";
-import { SearchBar, CardDropdownPicker } from "@/features/Utilities";
-import { formatDateForDisplay } from "../../../components/commons";
-import { useLocation, useNavigate } from "react-router-dom";
+import useToast from "../../../components/commons";
+import { useLocation } from "react-router-dom";
+
+import { TableHeaderContainer } from "@/features/Utilities";
+import ListRenderer from "@/components/tables/ListRenderer";
+import InventortyList from "./components/Inventorylist";
+
+const BASE_URL = import.meta.env.VITE_API_BASE_URL;
+const SERVER_ORIGIN = BASE_URL?.replace(/\/api$/, "");
 
 const Inventory = () => {
-  const navigate = useNavigate();
   const location = useLocation();
-
   const initialFilter = location.state?.filter || "artifacts";
 
   const [activeTab, setActiveTab] = useState("artifacts");
-  const [artifactFilter, setArtifactFilter] = useState(null); // <-- secondary filter
+  const [artifactFilter, setArtifactFilter] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedDate, setSelectedDate] = useState(null);
 
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState("");
+  const [rows, setRows] = useState([]);
+  const [artifacts, setArtifacts] = useState([]);
+
   useEffect(() => {
     switch (initialFilter) {
-      case "artifacts":
+      case "displayed":
         setActiveTab("artifacts");
-        setArtifactFilter(null);
+        setArtifactFilter("displayed");
         break;
       case "acquired":
-        setActiveTab("acquired");
-        break;
       case "borrowing":
-        setActiveTab("borrowing");
-        break;
-      case "displayed":
-        setActiveTab("artifacts");      // tab stays artifacts
-        setArtifactFilter("displayed"); // filter applied
-        console.log("displayed filter")
-        break;
+      case "artifacts":
       default:
-        setActiveTab("artifacts");
+        setActiveTab(initialFilter);
         setArtifactFilter(null);
     }
   }, [initialFilter]);
 
-  const inventorySuammary = [
-    { label: "Total Artifacts", Value: "0" },
-    { label: "Acquired", Value: "0" },
-    { label: "Borrowing", Value: "0" },
-    { label: "Under Maintenance", Value: "0" },
-    { label: "On Display", Value: "0" },
-    { label: "In Storage", Value: "0" },
+  useEffect(() => {
+    let abort = false;
+    (async () => {
+      try {
+        setLoading(true);
+        setErr("");
+        const { data } = await axios.get(`${SERVER_ORIGIN}/api/auth/public-artifacts`, {
+          withCredentials: true,
+        });
+        if (!abort) setRows(Array.isArray(data) ? data : []);
+      } catch (e) {
+        if (!abort) {
+          console.error("Failed to load catalog artifacts:", e);
+          setErr("Failed to load inventory.");
+          setRows([]);
+        }
+      } finally {
+        if (!abort) setLoading(false);
+      }
+    })();
+    return () => { abort = true; };
+  }, []);
+
+  useEffect(() => {
+    axios.get("/api/inventory")
+      .then(res => {
+        // Map API data to expected fields
+        const mapped = res.data.map(item => ({
+          ...item,
+          donor_name: `${item.first_name} ${item.last_name}`,
+          contract_expires_at: item.contract_expiration, // match expected key
+        }));
+        setArtifacts(mapped);
+      })
+      .catch(err => {
+        setArtifacts([]);
+        // handle error
+      });
+  }, []);
+
+  const { toastConfig, showToast, hideToast } = useToast();
+
+  const handleDateChange = useCallback((date) => {
+    setSelectedDate(date);
+    showToast(date ? `Filtering data for ${date.toLocaleDateString()}` : "Showing all dates", "info");
+  }, [showToast]);
+
+  // headers (Articles-style widths)
+  const artifactsHeaders = [
+    { label: "Title", width: "1fr" },
+    { label: "Donator Name", width: "1fr" },
+    { label: "Origin", width: 20 },                // 20rem
+    { label: "Acquisition Date", width: 12 },      // 12rem
+    { label: "Type", width: 10 },
+    { label: "Display Status", width: 14 },
+    { label: "Last Maintenance", width: 14 },
+    { label: "Contract Expiration", width: 16 },
   ];
+  const acquiredHeaders = [
+    { label: "Title", width: "1fr" },
+    { label: "Donator Name", width: "1fr" },
+    { label: "Origin", width: 20 },
+    { label: "Acquisition Date", width: 12 },
+    { label: "Display Status", width: 14 },
+    { label: "Last Maintenance", width: 14 },
+  ];
+  const borrowingHeaders = [
+    { label: "Title", width: "1fr" },
+    { label: "Donator Name", width: "1fr" },
+    { label: "Origin", width: 20 },
+    { label: "Acquisition Date", width: 12 },
+    { label: "Display Status", width: 14 },
+    { label: "Last Maintenance", width: 14 },
+    { label: "Contract Information", width: 16 },
+  ];
+  const headersMap = {
+    artifacts: artifactsHeaders,
+    acquired: acquiredHeaders,
+    borrowing: borrowingHeaders,
+  };
+
+  const sameDay = (a, b) => {
+    try {
+      const da = new Date(a);
+      return (
+        da.getFullYear() === b.getFullYear() &&
+        da.getMonth() === b.getMonth() &&
+        da.getDate() === b.getDate()
+      );
+    } catch {
+      return false;
+    }
+  };
+
+  const filtered = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    const list = rows.filter((r) => {
+      const matchQ =
+        !q ||
+        (r.title && r.title.toLowerCase().includes(q)) ||
+        (r.collection_number && String(r.collection_number).toLowerCase().includes(q)) ||
+        (r.provenance && r.provenance.toLowerCase().includes(q)) ||
+        (r.current_location && r.current_location.toLowerCase().includes(q)) ||
+        (r.display_description && r.display_description.toLowerCase().includes(q)) ||
+        (r.curatorial_description && r.curatorial_description.toLowerCase().includes(q)) ||
+        (r.donor_description && r.donor_description.toLowerCase().includes(q));
+      if (!matchQ) return false;
+
+      if (selectedDate) {
+        const dd =
+          r.acquisition_date || r.metadata_updated_at || r.updated_at || r.created_at || r.date_of_creation;
+        if (!dd || !sameDay(dd, selectedDate)) return false;
+      }
+
+      if (artifactFilter === "displayed") {
+        const status = (r.display_status || "").toLowerCase();
+        const onDisp = r.on_display || status.includes("display");
+        if (!onDisp) return false;
+      }
+      return true;
+    });
+
+    let tabbed = list;
+    if (activeTab === "acquired") {
+      tabbed = list.filter((r) => r.contribution_type !== "lending");
+    } else if (activeTab === "borrowing") {
+      tabbed = list.filter((r) => r.contribution_type === "lending");
+    }
+
+    tabbed.sort(
+      (a, b) => new Date(b.metadata_updated_at || b.updated_at || 0) - new Date(a.metadata_updated_at || a.updated_at || 0)
+    );
+    return tabbed;
+  }, [rows, searchQuery, selectedDate, activeTab, artifactFilter]);
 
   const tabs = [
     { key: "artifacts", label: "Artifacts" },
@@ -55,64 +183,33 @@ const Inventory = () => {
     { key: "borrowing", label: "Borrowing" },
   ];
 
-  const artifactsHeaders = [
-    { label: "Title", width: "" },
-    { label: "Donator Name", width: "" },
-    { label: "Origin", width: "w-80" },
-    { label: "Acquisition Date", width: "" },
-    { label: "Type", width: "w-50" },
-    { label: "Display Status", width: "" },
-    { label: "Last Maintenance", width: "" },
-    { label: "Contract Expiration", width: "" },
-  ];
+  const summary = useMemo(() => {
+    const total = rows.length;
+    const acquired = rows.filter((r) => r.contribution_type !== "lending").length;
+    const borrowing = rows.filter((r) => r.contribution_type === "lending").length;
+    const onDisplay = rows.filter((r) => r.on_display || (r.display_status || "").toLowerCase().includes("display")).length;
+    const inStorage = rows.filter((r) => (r.current_location || "").toLowerCase().includes("storage")).length;
+    const underMaint = rows.filter((r) => (r.maintenance_status || "").toLowerCase().includes("maintenance")).length;
 
-  const acquiredHeaders = [
-    { label: "Title", width: "" },
-    { label: "Donator Name", width: "" },
-    { label: "Origin", width: "w-80" },
-    { label: "Acquisition Date", width: "" },
-    { label: "Display Status", width: "" },
-    { label: "Last Maintenance", width: "" },
-  ];
-
-  const borrowingHeaders = [
-    { label: "Title", width: "" },
-    { label: "Donator Name", width: "" },
-    { label: "Origin", width: "w-80" },
-    { label: "Acquisition Date", width: "" },
-    { label: "Display Status", width: "" },
-    { label: "Last Maintenance", width: "" },
-    { label: "Contract Information", width: "" },
-  ];
-
-  const headersMap = {
-    artifacts: artifactsHeaders,
-    acquired: acquiredHeaders,
-    borrowing: borrowingHeaders,
-  };
-
-  const { toastConfig, showToast, hideToast } = useToast();
-
-  const handleDateChange = useCallback(
-    (date) => {
-      setSelectedDate(date);
-      if (date) {
-        showToast(`Filtering data for ${formatDateForDisplay(date)}`, "info");
-      } else {
-        showToast("Showing all dates", "info");
-      }
-    },
-    [showToast]
-  );
+    return [
+      { label: "Total Artifacts", Value: String(total) },
+      { label: "Acquired", Value: String(acquired) },
+      { label: "Borrowing", Value: String(borrowing) },
+      { label: "Under Maintenance", Value: String(underMaint) },
+      { label: "On Display", Value: String(onDisplay) },
+      { label: "In Storage", Value: String(inStorage) },
+    ];
+  }, [rows]);
 
   return (
     <>
       <div className="w-full h-full items-center flex flex-col overflow-scroll gap-y-10">
+        {/* summary */}
         <div className="w-fit flex-wrap flex gap-7 items-center justify-center">
-          {inventorySuammary.map(({ label, Value }) => (
+          {summary.map(({ label, Value }) => (
             <div
               key={label}
-              className="w-70 rounded-xl h-25 text-white bg-black font-semibold  flex flex-col items-center justify-center"
+              className="w-70 rounded-xl h-25 text-white bg-black font-semibold flex flex-col items-center justify-center"
             >
               <span className="text-sm">{label}</span>
               <span className="text-5xl">{Value}</span>
@@ -121,16 +218,14 @@ const Inventory = () => {
         </div>
 
         <div className="w-full h-full flex flex-col gap-y-7 overflow-auto">
-          {/* header + table utilities */}
+          {/* utilities */}
           <div className="min-w-[100rem] min-h-[3.2rem] gap-x-5 flex ">
-            <div className="min-w-[34rem] max-w-[34rem]  min-h-[3.2rem] flex items-start gap-x-2">
+            <div className="min-w-[34rem] max-w-[34rem] min-h-[3.2rem] flex items-start gap-x-2">
               {tabs.map(({ key, label }) => (
                 <button
                   key={key}
                   className={`w-fit cursor-pointer h-full px-4 rounded-lg border-1 text-2xl font-semibold  ${
-                    activeTab === key
-                      ? "bg-black text-white border-black"
-                      : "border-gray-500"
+                    activeTab === key ? "bg-black text-white border-black" : "border-gray-500"
                   }`}
                   onClick={() => {
                     setActiveTab(key);
@@ -143,80 +238,45 @@ const Inventory = () => {
             </div>
 
             <TimelineDatePicker
-              defaultValue={
-                selectedDate ? selectedDate.toISOString().split("T")[0] : ""
-              }
-              onDateChange={(dateString) =>
-                handleDateChange(dateString ? new Date(dateString) : null)
-              }
+              defaultValue={selectedDate ? selectedDate.toISOString().split("T")[0] : ""}
+              onDateChange={(ds) => handleDateChange(ds ? new Date(ds) : null)}
               theme="light"
             />
 
             <div className="[&_input]:text-black [&_input]:placeholder-gray-500">
               <SearchBar
                 theme="light"
+                value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search History"
+                placeholder="Search artifacts"
               />
             </div>
           </div>
 
-          {/* table data */}
-          <div className="w-full h-[52rem] flex flex-col">
-            {/* table */}
-            <div
-              className={`grid ${
-                (activeTab === "artifacts" &&
-                  "grid-cols-[1fr_1fr_auto_auto_auto_auto_auto_auto]") ||
-                (activeTab === "acquired" &&
-                  "grid-cols-[1fr_1fr_auto_auto_auto_auto]") ||
-                (activeTab === "borrowing" &&
-                  "grid-cols-[1fr_1fr_auto_auto_auto_auto_auto]")
-              } py-4 gap-y-5 h-fit`}
-            >
-              {(headersMap[activeTab] || []).map(({ label, width }) => (
-                <div
-                  key={label}
-                  className={`${width} text-[#727272] font-semibold flex px-3 py-2 text-2xl`}
-                >
-                  <span>{label}</span>
-                </div>
-              ))}
-            </div>
-
-            <div className="w-full h-[43.7rem] border-y border-gray-400">
-              {activeTab === "artifacts" && (
-                <>
-                  <div
-                  onClick={() => navigate(`artifact1`)}
-                   className="text-2xl font-semibold py-2 flex justify-center border-gray-400 border-b-1">
-                    {artifactFilter === "displayed" ? (
-                      <span>Showing only displayed artifacts</span>
-                    ) : (
-                      <span>All artifacts</span>
-                    )}
-                  </div>
-                </>
-              )}
-              {activeTab === "acquired" && (
-                <div className="text-2xl font-semibold py-2 flex justify-center border-gray-400 border-b-1">
-                  <span>acquired artifacts</span>
-                </div>
-              )}
-              {activeTab === "borrowing" && (
-                <div className="text-2xl font-semibold py-2 flex justify-center border-gray-400 border-b-1">
-                  <span>borrowing artifacts</span>
-                </div>
-              )}
+          {/* table */}
+          <div className="w-full h-full flex flex-col">
+            <TableHeaderContainer headers={headersMap[activeTab]} />
+            <div className="w-full h-[52rem] 3xl:h-[67rem] overflow-y-auto border-y border-gray-400">
+              <ListRenderer
+                isLoading={loading}
+                error={err}
+                items={filtered}
+                emptyMessage="No artifacts found"
+                renderItem={(item) => (
+                  <InventortyList
+                    key={item.catalog_id ?? `${item.contribution_id}-${item.artifact_id}`}
+                    item={item}
+                    headers={headersMap[activeTab]}
+                    variant={activeTab}
+                  />
+                )}
+              />
             </div>
           </div>
         </div>
       </div>
-      <Toast
-        message={toastConfig.message}
-        type={toastConfig.type}
-        onClose={hideToast}
-      />
+
+      <Toast message={toastConfig.message} type={toastConfig.type} onClose={hideToast} />
     </>
   );
 };

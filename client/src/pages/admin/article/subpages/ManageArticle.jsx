@@ -567,36 +567,38 @@ const ArticleEditorForm = () => {
     { label: "2XL", value: "2em" },
   ];
 
-  const handleImageUpload = async (e) => {
-    if (e?.preventDefault) e.preventDefault();
-    const fileList = e?.target?.files || e?.dataTransfer?.files;
-    const file = fileList?.[0];
-    if (!file) return;
+ const handleImageUpload = async (e) => {
+  if (e?.preventDefault) e.preventDefault();
+  const fileList = e?.target?.files || e?.dataTransfer?.files;
+  const file = fileList?.[0];
+  if (!file) return;
 
-    try {
-      const response = await uploadContentImage(file);
-      if (response.data?.images?.length > 0) {
-        const uploadedFilename = response.data.images[0];
-        const fullImageUrl = `${SERVER_ORIGIN}/uploads/pictures/${uploadedFilename}`;
+  try {
+    const response = await uploadContentImage(file);
+    if (response.data?.images?.length > 0) {
+      const uploadedFilename = response.data.images[0];
+      const fullImageUrl = `${SERVER_ORIGIN}/uploads/pictures/${uploadedFilename}`;
 
-        editorRef.current?.runChain((chain) =>
-          chain
-            .focus()
-            .insertContent({
-              type: "image",
-              attrs: { src: fullImageUrl, alt: file.name },
-            })
-            .run()
-        );
+      editorRef.current?.runChain((chain) =>
+        chain
+          .focus()
+          .insertContent({
+            type: "image",
+            // ✅ ensure initial width so it won't appear as a dot
+            attrs: { src: fullImageUrl, alt: file.name, widthPct: 100 },
+          })
+          .run()
+      );
 
-        setContentImages((prev) => [...prev, uploadedFilename]);
-        setIsDirty(true);
-      }
-    } catch (err) {
-      console.error("Error uploading content image:", err);
-      alert("Failed to upload image");
+      setContentImages((prev) => [...prev, uploadedFilename]);
+      setIsDirty(true);
     }
-  };
+  } catch (err) {
+    console.error("Error uploading content image:", err);
+    alert("Failed to upload image");
+  }
+};
+
 
   const handleRemoveThumbnail = (e) => {
     e.preventDefault();
@@ -1192,9 +1194,9 @@ const ArticleEditorForm = () => {
         <div className="relative z-0">
           <ViewPort
             sizes={{
-              lg: { width: 500, height: 545 },
+              lg: { width: 600, height: 545 },
               xl: { width: 675, height: 545 },
-              "2xl": { width: 1000, height: 545 },
+              "2xl": { width: 600, height: 570 },
               "3xl": { width: 1100, height: 700 },
             }}
           >

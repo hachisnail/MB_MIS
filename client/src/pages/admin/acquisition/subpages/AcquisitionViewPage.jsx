@@ -1,5 +1,5 @@
 import { useLocation, useOutletContext } from "react-router-dom";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import axiosClient from "@/lib/axiosClient";
 import {
   RenderRelatedDocs,
@@ -39,6 +39,9 @@ import { OptionsPanel } from "../components/ViewPageRenderer";
 import ConversationTimeline from "./ConversationTimeline";
 import { conversationSample } from "./conversationSample";
 
+
+import { getSocketClient } from "../../../../lib/socketSingleton";
+import { mapMessageToLane } from "../../../../utils/messageUtils";
 import { LoadingSpinner } from "../../../../components/commons";
 import {
   Address,
@@ -87,6 +90,9 @@ const AcquisitionViewPage = () => {
   const [activeDocument, setActiveDocument] = useState("Overview");
   const [step, setStep] = useState(0);
 
+  const [conversationId, setConversationId] = useState(null);
+
+
   // form_states
   const [approved, setApproved] = useState(null);
   const [responseMessage, setResponseMessage] = useState("");
@@ -94,7 +100,8 @@ const AcquisitionViewPage = () => {
   const { setExtraBlockContent } = useOutletContext();
   const [itemTab, setItemTab] = useState("Donor");
 
-  // --- Chat composer state (for testing) ---
+    const [messages, setMessages] = useState([]);
+  const socket = getSocketClient();
   const [chatText, setChatText] = useState("");
   const [chatItems, setChatItems] = useState([]);
   const tabs = ["Donor", "Artifact Information"];
@@ -111,6 +118,9 @@ const AcquisitionViewPage = () => {
     acquisitionHistory: "",
   });
   const [curatorialDesc, setCuratorialDesc] = useState("");
+
+  // ---- saved metadata % (from artifact_metadata table) ----
+  const [metadataPercent, setMetadataPercent] = useState(0);
 
   const SERVER_URL = import.meta.env.VITE_SERVER_URL;
   const { user } = useAuth();
@@ -141,6 +151,30 @@ const AcquisitionViewPage = () => {
   const tabsToShow = showArtifactDetails
     ? ALL_TABS
     : ["Overview", "Document", "Transaction"];
+
+  /* ---------------- helpers ---------------- */
+
+  // Compute % from saved metadata row (server truth)
+  function computeSavedMetadataPercent(data) {
+    if (!data || typeof data !== "object") return 0;
+    const fields = [
+      "date_of_creation",
+      "culture",
+      "provenance",
+      "current_location",
+      "discovery_details",
+      "excavation_site",
+      "acquisition_history",
+      "curatorial_description",
+    ];
+    const total = fields.length;
+    let filled = 0;
+    for (const k of fields) {
+      const v = (data?.[k] ?? "").toString().trim();
+      if (v) filled += 1;
+    }
+    return Math.round((filled / Math.max(1, total)) * 100);
+  }
 
   /* ---------------- Effects ---------------- */
 
@@ -176,7 +210,7 @@ const AcquisitionViewPage = () => {
     step,
     contributionData?.contribution_id,
     setExtraBlockContent,
-    showArtifactDetails, // keep in sync when step flips to 5
+    showArtifactDetails,
   ]);
 
   // Guard: if user somehow lands on "Artifact Details" before completion, send back to Overview
@@ -196,7 +230,7 @@ const AcquisitionViewPage = () => {
 
   useEffect(() => {
     fetchContribution();
-  }, [location.pathname]);
+  }, [location.pathname]);  
 
   // load metadata for this contribution into UI state
   useEffect(() => {
@@ -217,11 +251,91 @@ const AcquisitionViewPage = () => {
           acquisitionHistory: data.acquisition_history ?? "",
         });
         setCuratorialDesc(data.curatorial_description ?? "");
+        // percent strictly from saved server state
+        setMetadataPercent(computeSavedMetadataPercent(data));
       } catch (e) {
         console.error("Failed to load metadata:", e);
       }
     })();
   }, [contributionData?.contribution_id]);
+  
+  
+useEffect(() => {
+  async function setup() {
+    if (!contributionData?.contribution_id) return;
+
+    const cid = contributionData.contribution_id;
+
+    // 1. Ensure conversation exists
+    const { data: convo } = await axiosClient.get(
+      `/auth/conversations/by-contribution/${cid}`
+    );
+    setConversationId(convo.conversation_id);
+
+    // 2. Fetch history
+    const { data: history } = await axiosClient.get(
+      `/auth/conversations/${convo.conversation_id}/messages`
+    );
+    setMessages(history);
+
+    // 3. Join + listen
+    socket.onReady(() => {
+      socket.joinRoom(`conversation:${convo.conversation_id}`);
+    });
+
+    const handler = (msg) => setMessages((prev) => [...prev, msg]);
+    socket.onMessage(handler);
+
+    return () => {
+      socket.leaveRoom(`conversation:${convo.conversation_id}`);
+      socket.offMessage(handler);
+    };
+  }
+
+  setup();
+}, [contributionData?.contribution_id]);
+
+const sendMessage = (text) => {
+  if (!conversationId || !text.trim()) return;
+
+  socket.emit("message", {
+    room: `conversation:${conversationId}`,
+    text: text.trim(),
+    senderUserId: user?.id || null,   // << force include from useAuth
+    senderGuestId: !user ? "guest" : null,
+  });
+};
+
+
+  
+  
+  
+  const handleSubmit = async () => {
+    if (responseMessage !== "" && approved !== null) {
+      try {
+        const status = approved ? "approved" : "rejected";
+
+        if (approved) {
+          await moaRef.current?.saveContract?.();
+        }
+
+        await axiosClient.patch(
+          `auth/contributions/${contributionData?.contribution_id}/status`,
+          { status, responseMessage }
+        );
+
+        await fetchContribution();
+        setActiveDocument("Transaction");
+
+        setResponseMessage("");
+        setApproved(null);
+      } catch (error) {
+        console.error("Error in handleSubmit:", error);
+      }
+    } else {
+      alert("Response message and approve decision is required!");
+    }
+  };
 
   const fetchContribution = async () => {
     try {
@@ -366,32 +480,7 @@ const AcquisitionViewPage = () => {
     { label: "Time", value: submittedTime || "Not Provided" },
   ];
 
-  const handleSubmit = async () => {
-    if (responseMessage !== "" && approved !== null) {
-      try {
-        const status = approved ? "approved" : "rejected";
 
-        if (approved) {
-          await moaRef.current?.saveContract?.();
-        }
-
-        await axiosClient.patch(
-          `auth/contributions/${contributionData?.contribution_id}/status`,
-          { status, responseMessage }
-        );
-
-        await fetchContribution();
-        setActiveDocument("Transaction");
-
-        setResponseMessage("");
-        setApproved(null);
-      } catch (error) {
-        console.error("Error in handleSubmit:", error);
-      }
-    } else {
-      alert("Response message and approve decision is required!");
-    }
-  };
 
   if (loading) {
     return (
@@ -403,27 +492,33 @@ const AcquisitionViewPage = () => {
 
   const pickSize = (s) => (s.length > 140 ? "lg" : s.length > 60 ? "md" : "sm");
 
-  const handleSendChat = (e) => {
-    e.preventDefault();
-    const msg = chatText.trim();
-    if (!msg) return;
+  // const handleSendChat = (e) => {
+  //   e.preventDefault();
+  //   const msg = chatText.trim();
+  //   if (!msg) return;
 
-    const author = "Donor"; // or "Admin" to test
-    const laneLabel = author === "Admin" ? "Admin" : "Suggestions";
-    const laneVariant = author === "Admin" ? "admin" : "suggestions";
+  //   // Default behavior for testing:
+  //   // Donor message -> lane = "Suggestions", Admin message -> lane = "Admin"
+  //   // (Pwede mong palitan kung may identity ka ng current user)
+  //   const author = "Donor";                  // or "Admin" kung gusto mong i-test admin
+  //   const laneLabel = author === "Admin" ? "Admin" : "Suggestions";
+  //   const laneVariant = author === "Admin" ? "admin" : "suggestions";
 
-    const newItem = {
-      id: Date.now(),
-      laneLabel,
-      laneVariant,
-      message: msg,
-      author,
-      size: pickSize(msg),
-    };
+  //   const newItem = {
+  //     id: Date.now(),
+  //     laneLabel,
+  //     laneVariant,
+  //     message: msg,
+  //     author,
+  //     size: pickSize(msg),
+  //   };
 
-    setChatItems((prev) => [...prev, newItem]);
-    setChatText("");
-  };
+  //   setChatItems((prev) => [...prev, newItem]);
+  //   setChatText("");
+  // };
+
+
+
 
   return (
     <>
@@ -474,7 +569,7 @@ const AcquisitionViewPage = () => {
                     <div className="w-full h-fit flex flex-col gap-y-10">
                       <div className="flex justify-between w-full h-fit items-center">
                         <span className="text-4xl font-bold text-white">
-                          Timeline
+                          {step === 5 ? "Artifact Data Status" : "Timeline"}
                         </span>
                         <button
                           onClick={() => setActiveDocument("Transaction")}
@@ -483,7 +578,17 @@ const AcquisitionViewPage = () => {
                           Click For Full View
                         </button>
                       </div>
-                      <Timeline currentStep={step} steps={steps} />
+                      {step === 5 ? (
+                        <Timeline
+                          variant="percent"
+                          percent={metadataPercent}
+                          label="Artifact metadata completion"
+                          widthClass="w-[40rem] 3xl:w-[49rem]"
+                          barHeight={168}   
+                        />
+                      ) : (
+                        <Timeline currentStep={step} steps={steps} />
+                      )}
                     </div>
                   </>
                 }
@@ -551,122 +656,132 @@ const AcquisitionViewPage = () => {
               />
             )}
 
-            {/* Transaction */}
+             {/* Transaction */}
             {activeDocument === "Transaction" && (
-              <TransactionShell
-                left={
-                  <>
-                    <MoaBuilder ref={moaRef} payload={contributionData} />
-                    {contributionData.status === "pending" && (
-                      <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/80 rounded-md">
-                        <span className="text-white text-2xl">
-                          Contract will be accesible when the form is Accepted
-                        </span>
-                      </div>
-                    )}
-                  </>
+<TransactionShell
+  left={
+    <>
+      <MoaBuilder ref={moaRef} payload={contributionData} />
+      {contributionData.status === "pending" && (
+        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/80 rounded-md">
+          <span className="text-white text-2xl">
+            Contract will be accesible when the form is Accepted
+          </span>
+        </div>
+      )}
+    </>
+  }
+  right={
+    <>
+      <div className="w-full px-20 min-h-[21rem] rounded-md gap-y-8 bg-[#1D1911] flex flex-col justify-center items-center">
+        <span className="text-4xl font-bold text-white">Timeline</span>
+        <Timeline currentStep={step} steps={steps} />
+      </div>
+
+      {contributionData.status === "pending" ? (
+        // --- Pending contract form ---
+        <form className="w-full h-full rounded-lg bg-gray-200 flex flex-col px-10 pt-15 pb-5">
+          <span className="text-4xl font-semibold">Respond</span>
+          <div className="px-5 pt-5 pb-2 flex flex-col gap-5">
+            <span className="text-2xl font-semibold w-40">Approve?</span>
+
+            <ButtonSelector
+              options={[
+                {
+                  value: true,
+                  label: "Yes",
+                  activeStyle: "bg-green-500 hover:bg-green-600 text-white",
+                },
+                {
+                  value: false,
+                  label: "No",
+                  activeStyle: "bg-red-500 hover:bg-red-600 text-white",
+                },
+              ]}
+              onChange={(val) => setApproved(val)}
+            />
+
+            <MultiLineInputField
+              placeholder="Send a response to the donor…"
+              mode="hard"
+              value={responseMessage}
+              onChange={setResponseMessage}
+              heightClass="h-75"
+              helperText={`Reply will be sent to ${email}`}
+              maxChars={2500}
+            />
+          </div>
+
+          <div className="px-5 w-full h-fit flex justify-end pl-5">
+            <StyledButton
+              className="w-50 mt-5"
+              buttonColor="bg-[#6F3FFF]"
+              onClick={handleSubmit}
+            >
+              Done
+            </StyledButton>
+          </div>
+        </form>
+      ) : (
+        // --- Conversation timeline + input ---
+        <div className="w-full h-full p-2 bg-white shadow-[inset_0_6px_6px_rgba(0,0,0,0.8),inset_0_-6px_6px_rgba(0,0,0,0.3)] rounded-xl flex flex-col">
+          <ConversationTimeline
+            items={messages.map((m) => mapMessageToLane(m, user))}
+            height="33rem"
+          />
+
+          <div className="mt-3 relative w-full">
+            <input
+              type="text"
+              value={chatText}
+              onChange={(e) => setChatText(e.target.value)}
+              placeholder="Type a message..."
+              className="w-full h-14 rounded-xl border-2 border-black bg-white shadow-[inset_0_6px_6px_rgba(0,0,0,0.4)] pl-4 pr-28 text-lg outline-none"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  if (chatText.trim()) {
+                    sendMessage(chatText.trim());
+                    setChatText("");
+                  }
                 }
-                right={
-                  <>
-                    <div className="w-full px-20 min-h-[21rem] rounded-md gap-y-8 bg-[#1D1911] flex flex-col justify-center items-center">
-                      <span className="text-4xl font-bold text-white">
-                        Timeline
-                      </span>
-                      <Timeline currentStep={step} steps={steps} />
-                    </div>
-
-                    {contributionData.status === "pending" ? (
-                      <form className="w-full h-full rounded-lg bg-gray-200 flex flex-col px-10 pt-15 pb-5">
-                        <span className="text-4xl font-semibold">Respond</span>
-                        <div className="px-5 pt-5 pb-2 flex flex-col gap-5">
-                          <span className="text-2xl font-semibold w-40">
-                            Approve?
-                          </span>
-
-                          <ButtonSelector
-                            options={[
-                              {
-                                value: true,
-                                label: "Yes",
-                                activeStyle:
-                                  "bg-green-500 hover:bg-green-600 text-white",
-                              },
-                              {
-                                value: false,
-                                label: "No",
-                                activeStyle:
-                                  "bg-red-500 hover:bg-red-600 text-white",
-                              },
-                            ]}
-                            onChange={(val) => setApproved(val)}
-                          />
-
-                          <MultiLineInputField
-                            placeholder="Send a response to the donor…"
-                            mode="hard"
-                            value={responseMessage}
-                            onChange={setResponseMessage}
-                            heightClass="h-75"
-                            helperText={`Reply will be sent to ${email}`}
-                            maxChars={2500}
-                          />
-                        </div>
-
-                        <div className="px-5 w-full h-fit flex justify-end pl-5">
-                          <StyledButton
-                            className="w-50 mt-5"
-                            buttonColor="bg-[#6F3FFF]"
-                            onClick={handleSubmit}
-                          >
-                            Done
-                          </StyledButton>
-                        </div>
-                      </form>
-                    ) : (
-                      <div className="w-full h-full p-2 bg-white shadow-[inset_0_6px_6px_rgba(0,0,0,0.8),inset_0_-6px_6px_rgba(0,0,0,0.3)] rounded-xl">
-                        <div className="w-full h-full flex flex-col rounded-md">
-                          <div className="flex-1 min-h-0">
-                            <ConversationTimeline items={chatItems} height="33rem" />
-                          </div>
-
-                          <form onSubmit={handleSendChat} className="mt-3">
-                            <div className="relative w-full">
-                              <input
-                                value={chatText}
-                                onChange={(e) => setChatText(e.target.value)}
-                                placeholder="Enter Text..."
-                                className="w-full h-14 rounded-xl border-2 border-black bg-white shadow-[inset_0_6px_6px_rgba(0,0,0,0.4)] pl-4 pr-28 text-lg outline-none"
-                              />
-                              <button
-                                type="submit"
-                                className="absolute right-2 top-1.5 h-11 px-4 rounded-lg bg-black text-white shadow-[0_2px_6px_rgba(0,0,0,0.35)] text-sm font-semibold active:translate-y-[1px] inline-flex items-center gap-2"
-                                title="Send"
-                                aria-label="Send"
-                              >
-                                <svg
-                                  xmlns="http://www.w3.org/2000/svg"
-                                  viewBox="0 0 24 24"
-                                  className="w-4 h-4"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  strokeWidth="2"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  aria-hidden="true"
-                                >
-                                  <path d="M22 2 15 22l-4-9-9-4Z" />
-                                  <path d="M22 2 11 13" />
-                                </svg>
-                                Send
-                              </button>
-                            </div>
-                          </form>
-                        </div>
-                      </div>
-                    )}
-                  </>
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => {
+                if (chatText.trim()) {
+                  sendMessage(chatText.trim());
+                  setChatText("");
                 }
-              />
+              }}
+              className="absolute right-2 top-1.5 h-11 px-4 rounded-lg bg-black text-white shadow-[0_2px_6px_rgba(0,0,0,0.35)] text-sm font-semibold active:translate-y-[1px] inline-flex items-center gap-2"
+              title="Send"
+              aria-label="Send"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M22 2 15 22l-4-9-9-4Z" />
+                <path d="M22 2 11 13" />
+              </svg>
+              Send
+            </button>
+          </div>
+        </div>
+      )}
+    </>
+  }
+/>
+
             )}
 
             {/* Artifact Details (only reachable when step === 5 due to gating) */}
@@ -756,6 +871,7 @@ const AcquisitionViewPage = () => {
                               acquisitionHistory: data.acquisition_history ?? "",
                             });
                             setCuratorialDesc(data.curatorial_description ?? "");
+                            setMetadataPercent(computeSavedMetadataPercent(data));
                           } catch (e) {
                             console.error("[Options] Save Changes failed:", e);
                             alert("Failed to save metadata. Check console for details.");
@@ -779,6 +895,7 @@ const AcquisitionViewPage = () => {
                               acquisitionHistory: data.acquisition_history ?? "",
                             });
                             setCuratorialDesc(data.curatorial_description ?? "");
+                            setMetadataPercent(computeSavedMetadataPercent(data));
 
                             alert("Metadata finalized. Collection number will appear when the contribution is completed.");
                           } catch (e) {

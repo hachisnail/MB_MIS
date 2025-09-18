@@ -194,8 +194,8 @@ const Articles = () => {
             <div className="text-center text-red-500 text-xl">{error}</div>
           )}
           {!loading && !error && filteredArticles.length === 0 && (
-            <div className="text-center text-gray-600 text-xl">
-              No articles found matching your criteria.
+            <div className="text-center h-[20rem]   flex items-center justify-center">
+              <span className="text-gray-600 text-x">No articles found matching your criteria.</span>
             </div>
           )}
           {!loading && !error && filteredArticles.length > 0 && (

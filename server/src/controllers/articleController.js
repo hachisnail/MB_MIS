@@ -1,65 +1,58 @@
 // server/controllers/articleController.js
-import { Transaction } from 'sequelize';
+import { Transaction, fn, col, where as sqlWhere } from 'sequelize';
 import { mainDb as sequelize } from '../models/authModels.js';
 import Article from '../models/Article.js';
 import User from '../models/Users.js';
 import { assignArchiveNumbers } from '../services/archiveNumbering.js';
 
-/**
- * Upload content images (inline editor uploads)
- */
+/* --------------------------- helpers --------------------------- */
+const toDateOrNull = (v) => (v ? new Date(v) : null);
+const toLower = (v) => (typeof v === 'string' ? v.toLowerCase() : v);
+const baseUrlOf = (req) => `${req.protocol}://${req.get('host')}`;
+const safeParseJSON = (maybeJSON) => {
+  if (Array.isArray(maybeJSON)) return maybeJSON;
+  if (typeof maybeJSON !== 'string') return [];
+  try { const p = JSON.parse(maybeJSON); return Array.isArray(p) ? p : []; } catch { return []; }
+};
+
+/* ---------------- upload content images (inline) ---------------- */
 export const uploadContentImages = async (req, res) => {
   try {
-    const images = (req.files || []).map((file) => file.filename);
+    const images = (req.files || []).map((f) => f.filename);
     return res.status(200).json({ message: 'Content images uploaded successfully', images });
   } catch (error) {
-    console.error('Error uploading content images:', error.message);
+    console.error('Error uploading content images:', error);
     return res.status(500).json({ message: 'Server Error', error: error.message });
   }
 };
 
-/**
- * CREATE
- * - If created as "scheduled": set upload window from payload
- * - If created as "posted": set start now and assign archive numbers
- */
+/* ------------------------------- CREATE ------------------------------- */
 export const createArticle = async (req, res) => {
   let t;
   try {
     t = await sequelize.transaction({ isolationLevel: Transaction.ISOLATION_LEVELS.READ_COMMITTED });
 
     const {
-      title,
-      article_category,
-      content_type,
-      description,
-      user_id,
-      author,
-      address,
-      selectedDate,
-      editImages,
-      caption,
-      status,
-      uploadPeriodStart,
-      uploadPeriodEnd,
-      barangay,
-      reviewer_notes,
+      title, article_category, content_type, description, user_id, author, address,
+      selectedDate, editImages, caption, status, uploadPeriodStart, uploadPeriodEnd,
+      barangay, reviewer_notes,
     } = req.body;
 
+    const normalizedStatus = toLower(status);
     const articleData = {
       title,
       article_category,
-      content_type: content_type || null, // 'article' | 'event'
+      content_type: content_type ? toLower(content_type) : null,
       description,
       user_id,
       author,
       address,
       barangay,
-      upload_date: selectedDate ? new Date(selectedDate) : null,
+      upload_date: toDateOrNull(selectedDate),
       images: req.file ? req.file.filename : null,
       editImages,
       caption,
-      status,
+      status: normalizedStatus,
       reviewer_notes,
       upload_period_start: null,
       upload_period_end: null,
@@ -67,19 +60,17 @@ export const createArticle = async (req, res) => {
       sequence_number: null,
     };
 
-    if (String(status).toLowerCase() === 'scheduled') {
-      articleData.upload_period_start = uploadPeriodStart ? new Date(uploadPeriodStart) : null;
-      articleData.upload_period_end   = uploadPeriodEnd   ? new Date(uploadPeriodEnd)   : null;
-    } else if (String(status).toLowerCase() === 'posted') {
-      // first posted time
+    if (normalizedStatus === 'scheduled') {
+      articleData.upload_period_start = toDateOrNull(uploadPeriodStart);
+      articleData.upload_period_end   = toDateOrNull(uploadPeriodEnd);
+    } else if (normalizedStatus === 'posted') {
       articleData.upload_period_start = new Date();
       articleData.upload_period_end   = null;
     }
 
     const article = await Article.create(articleData, { transaction: t });
 
-    // Assign numbers exactly once if created directly as posted
-    if (String(status).toLowerCase() === 'posted') {
+    if (normalizedStatus === 'posted') {
       await assignArchiveNumbers(article, t);
     }
 
@@ -91,21 +82,18 @@ export const createArticle = async (req, res) => {
     if (error.name === 'SequelizeValidationError') {
       return res.status(400).json({
         message: 'Validation error',
-        errors: (error.errors || []).map(e => ({
-          path: e.path, message: e.message, value: e.value
-        })),
+        errors: (error.errors || []).map(e => ({ path: e.path, message: e.message, value: e.value })),
       });
     }
     return res.status(500).json({ message: 'Server error creating article.' });
   }
 };
 
-/**
- * ADMIN list
- */
+/* ------------------------------ ADMIN list ------------------------------ */
 export const getAllArticles = async (req, res) => {
   try {
-    const articles = await Article.findAll({ order: [['created_at', 'DESC']] });
+    // ✅ your DB column is created_at (snake_case)
+    const articles = await Article.findAll({ order: [[col('created_at'), 'DESC']] });
     return res.json(articles);
   } catch (error) {
     console.error('Error fetching articles:', error);
@@ -113,23 +101,22 @@ export const getAllArticles = async (req, res) => {
   }
 };
 
-/**
- * PUBLIC list (only posted)
- */
+/* -------------------------- PUBLIC list (posted) ------------------------- */
 export const getPublicArticles = async (req, res) => {
   try {
     const articles = await Article.findAll({
       attributes: [
-        'article_id', 'images', 'title', 'article_category', 'content_type',
-        'upload_date', 'status', 'description', 'caption',
-        'volume', 'sequence_number',
+        'article_id','images','title','article_category','content_type',
+        'upload_date','status','description','caption','volume','sequence_number',
       ],
-      where: { status: 'posted' },
-      order: [['created_at', 'DESC']],
+      // case-insensitive status check
+      where: sqlWhere(fn('lower', col('status')), 'posted'),
+      // ✅ order by physical column created_at, not createdAt
+      order: [[col('created_at'), 'DESC']],
     });
 
-    const baseUrl = `${req.protocol}://${req.get('host')}`;
-    const formatted = articles.map((a) => ({
+    const baseUrl = baseUrlOf(req);
+    const formatted = articles.map(a => ({
       ...a.dataValues,
       images: a.images ? `${baseUrl}/uploads/pictures/${a.images}` : null,
     }));
@@ -140,34 +127,40 @@ export const getPublicArticles = async (req, res) => {
   }
 };
 
-/**
- * PUBLIC single
- */
+/* --------------------------- PUBLIC single (robust) --------------------------- */
 export const getPublicArticle = async (req, res) => {
   try {
-    const { id } = req.params;
-    if (!id) return res.status(400).json({ message: 'Article ID is required.' });
+    const idNum = Number.parseInt(req.params.id, 10);
+    if (!Number.isFinite(idNum)) return res.status(400).json({ message: 'Article ID is required.' });
 
-    const article = await Article.findOne({
-      where: { article_id: id },
+    const article = await Article.findByPk(idNum, {
       attributes: [
-        'article_id', 'title', 'user_id', 'upload_date', 'images',
-        'editImages', 'caption', 'article_category', 'content_type',
-        'description', 'author', 'address', 'barangay',
-        'status', 'upload_period_start', 'upload_period_end',
-        'created_at', 'updated_at', 'reviewer_notes',
-        'volume', 'sequence_number',
+        'article_id','title','user_id','upload_date','images','editImages','caption',
+        'article_category','content_type','description','author','address','barangay',
+        'status','upload_period_start','upload_period_end',
+        'created_at','updated_at','reviewer_notes','reviewer_id',
+        'volume','sequence_number',
       ],
     });
-
     if (!article) return res.status(404).json({ message: 'Article not found.' });
 
-    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    // Optional reviewer lookup (kept safe so it never crashes the route)
+    let reviewer = null;
+    if (article.reviewer_id) {
+      try {
+        reviewer = await User.findByPk(article.reviewer_id, { attributes: ['id','name'] });
+      } catch (e) {
+        console.warn('[public-article] reviewer lookup failed:', e.message);
+      }
+    }
+
+    const baseUrl = baseUrlOf(req);
     const formatted = {
       ...article.dataValues,
       images: article.images ? `${baseUrl}/uploads/pictures/${article.images}` : null,
+      editImages: safeParseJSON(article.editImages),
+      Reviewer: reviewer ? reviewer.toJSON() : null,
     };
-
     return res.json(formatted);
   } catch (error) {
     console.error('Error fetching public article:', error);
@@ -175,63 +168,60 @@ export const getPublicArticle = async (req, res) => {
   }
 };
 
-/**
- * UPDATE
- * - Only modify upload window when allowed
- * - Only set upload_period_start once on first transition to 'posted'
- * - Assign archive numbers only on first transition to 'posted'
- */
+/* --------------------------------- UPDATE --------------------------------- */
 export const updateArticle = async (req, res) => {
   let t;
   try {
     t = await sequelize.transaction({ isolationLevel: Transaction.ISOLATION_LEVELS.READ_COMMITTED });
 
-    const { id } = req.params;
-    const current = await Article.findByPk(id, { transaction: t });
+    const idNum = Number.parseInt(req.params.id, 10);
+    if (!Number.isFinite(idNum)) {
+      await t.rollback();
+      return res.status(400).json({ message: 'Invalid article id' });
+    }
+
+    const current = await Article.findByPk(idNum, { transaction: t });
     if (!current) {
       await t.rollback();
       return res.status(404).json({ message: 'Article not found' });
     }
 
-    // Build whitelist fields
     const fieldsToSet = {};
     const allowKeys = [
-      'title','article_category','description','user_id','author',
-      'address','barangay','caption','status','reviewer_notes'
+      'title','article_category','description','author','address','barangay',
+      'caption','status','reviewer_notes','reviewer_id',
     ];
     for (const k of allowKeys) {
       if (Object.prototype.hasOwnProperty.call(req.body, k)) {
-        fieldsToSet[k] = req.body[k];
+        fieldsToSet[k] = k === 'status' ? toLower(req.body[k]) : req.body[k];
       }
     }
 
-    // Map selectedDate -> upload_date if provided
-    if (Object.prototype.hasOwnProperty.call(req.body, 'selectedDate')) {
-      fieldsToSet.upload_date = req.body.selectedDate ? new Date(req.body.selectedDate) : null;
-    }
-    // Or allow direct upload_date if sent
-    if (Object.prototype.hasOwnProperty.call(req.body, 'upload_date')) {
-      fieldsToSet.upload_date = req.body.upload_date ? new Date(req.body.upload_date) : null;
+    // Stamp reviewer if session says privileged
+    if ([1,2,4,5].includes(req.session?.user?.roleId)) {
+      fieldsToSet.reviewer_id = req.session.user.id;
     }
 
-    // content_type (normalize, optional)
-    if (Object.prototype.hasOwnProperty.call(req.body, 'content_type')) {
+    // Map dates
+    if ('selectedDate' in req.body) fieldsToSet.upload_date = toDateOrNull(req.body.selectedDate);
+    if ('upload_date' in req.body) fieldsToSet.upload_date = toDateOrNull(req.body.upload_date);
+
+    // Normalize content_type
+    if ('content_type' in req.body) {
       const ct = (req.body.content_type ?? '').trim();
-      if (ct) fieldsToSet.content_type = ct.toLowerCase();
+      if (ct) fieldsToSet.content_type = toLower(ct);
     }
 
     // Thumbnail
-    if (req.file) {
-      fieldsToSet.images = req.file.filename;
-    }
+    if (req.file) fieldsToSet.images = req.file.filename;
 
-    // ---- schedule/posted window rules ----
+    // Schedule/posted rules
     const alreadyNumbered = current.volume != null && current.sequence_number != null;
-    const wasPosted       = String(current.status).toLowerCase() === 'posted';
-    const willBePosted    = String(req.body.status || current.status).toLowerCase() === 'posted';
-    const becomingPosted  = !wasPosted && willBePosted;
+    const wasPosted      = toLower(current.status) === 'posted';
+    const willBePosted   = toLower(req.body.status || current.status) === 'posted';
+    const becomingPosted = !wasPosted && willBePosted;
 
-    if (String(req.body.status).toLowerCase() === 'scheduled') {
+    if (toLower(req.body.status) === 'scheduled') {
       if (alreadyNumbered) {
         await t.rollback();
         return res.status(400).json({
@@ -239,33 +229,24 @@ export const updateArticle = async (req, res) => {
           error: 'Cannot change upload period after numbering.',
         });
       }
-      if (Object.prototype.hasOwnProperty.call(req.body, 'uploadPeriodStart')) {
-        fieldsToSet.upload_period_start = req.body.uploadPeriodStart
-          ? new Date(req.body.uploadPeriodStart)
-          : null;
+      if ('uploadPeriodStart' in req.body) {
+        fieldsToSet.upload_period_start = toDateOrNull(req.body.uploadPeriodStart);
       }
-      if (Object.prototype.hasOwnProperty.call(req.body, 'uploadPeriodEnd')) {
-        fieldsToSet.upload_period_end = req.body.uploadPeriodEnd
-          ? new Date(req.body.uploadPeriodEnd)
-          : null;
+      if ('uploadPeriodEnd' in req.body) {
+        fieldsToSet.upload_period_end = toDateOrNull(req.body.uploadPeriodEnd);
       }
     } else if (willBePosted) {
-      // Set start only once on first transition to posted if not set yet
       if (becomingPosted && !current.upload_period_start) {
         fieldsToSet.upload_period_start = new Date();
       }
-      // Never touch upload_period_end here
     }
-    // For other statuses, leave upload period untouched
 
-    // Instance update (avoids beforeBulkUpdate hook)
     await current.update(fieldsToSet, {
       fields: Object.keys(fieldsToSet),
       transaction: t,
-      userId: req.session?.user?.id, // used by afterUpdate log
+      userId: req.session?.user?.id,
     });
 
-    // Numbering: only on first transition to posted
     if (becomingPosted && !(current.volume != null && current.sequence_number != null)) {
       await assignArchiveNumbers(current, t);
     }
@@ -278,23 +259,22 @@ export const updateArticle = async (req, res) => {
     if (error.name === 'SequelizeValidationError') {
       return res.status(400).json({
         message: 'Validation error',
-        errors: (error.errors || []).map(e => ({
-          path: e.path, message: e.message, value: e.value
-        })),
+        errors: (error.errors || []).map(e => ({ path: e.path, message: e.message, value: e.value })),
       });
     }
     return res.status(500).json({ message: 'Server error updating article', error: error.message });
   }
 };
 
-/**
- * BY ID
- */
+/* --------------------------------- BY ID --------------------------------- */
 export const getArticleById = async (req, res) => {
   try {
-    const { id } = req.params;
-    const article = await Article.findByPk(id);
+    const idNum = Number.parseInt(req.params.id, 10);
+    if (!Number.isFinite(idNum)) return res.status(400).json({ message: 'Invalid article id' });
+
+    const article = await Article.findByPk(idNum);
     if (!article) return res.status(404).json({ message: 'Article not found.' });
+
     res.status(200).json(article);
   } catch (error) {
     console.error('Error fetching article by ID:', error);

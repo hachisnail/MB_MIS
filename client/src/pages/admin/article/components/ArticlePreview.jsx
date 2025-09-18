@@ -40,7 +40,7 @@ const ArticlePreview = ({
     : "[month dd, yyyy]";
 
   return (
-    <div className="bg-white w-full max-w-[50rem] p-6 rounded-lg shadow-2xl mt-4 2xl:mt-0">
+    <div className="bg-white w-[50rem] p-6 rounded-lg shadow-2xl mt-4 2xl:mt-0">
       <h3 className="text-xl font-bold mb-3">Preview</h3>
 
       {/* Archive badges */}

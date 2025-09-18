@@ -94,6 +94,13 @@ const Article = sequelize.define('Article', {
     type: DataTypes.TEXT,
     allowNull: true,
   },
+  reviewer_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: { model: 'users', key: 'id' },
+    onDelete: 'SET NULL',
+    onUpdate: 'CASCADE',
+  },
 }, {
   tableName: 'articles',
   timestamps: false,
@@ -104,6 +111,7 @@ const Article = sequelize.define('Article', {
 });
 
 Article.belongsTo(User, { foreignKey: 'user_id' });
+Article.belongsTo(User, { foreignKey: 'reviewer_id', as: 'Reviewer' });
 
 // Change-feed hooks you already use
 addDbChangeHooks(Article, 'Article');
@@ -164,3 +172,5 @@ Article.addHook('beforeBulkUpdate', (options) => {
 
 
 export default Article;
+
+

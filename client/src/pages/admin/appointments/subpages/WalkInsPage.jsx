@@ -1429,14 +1429,37 @@ const WalkInsPage = () => {
                                         <Calendar
                                             onChange={handleDateSelect}
                                             value={selectedDate}
-                                            tileClassName="relative"
+                                            tileClassName={({ date, view }) => {
+                                                if (view === 'month') {
+                                                    const ds = getLocalDateString(date);
+                                                    const isFullyBooked = disabledDates.includes(ds);
+                                                    return isFullyBooked ? 'relative group' : 'relative';
+                                                }
+                                                return 'relative';
+                                            }}
                                             onActiveStartDateChange={({ activeStartDate }) => {
                                                 setViewedDate(activeStartDate);
                                             }}
                                             tileContent={({ date, view }) => {
                                                 if (view === 'month') {
                                                     const ds = getLocalDateString(date);
+                                                    const isFullyBooked = disabledDates.includes(ds);
 
+                                                    // Show cross mark only for fully booked dates
+                                                    if (isFullyBooked) {
+                                                        return (
+                                                            <>
+                                                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                                                    <span className="text-red-500 text-3xl font-bold">×</span>
+                                                                </div>
+                                                                <div className="absolute z-50 bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-48 p-2 bg-gray-800 text-white text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
+                                                                    No available time slots on this date
+                                                                </div>
+                                                            </>
+                                                        );
+                                                    }
+
+                                                    // Show event count for all other dates (including past dates)
                                                     const activeSchedules = calendarEvents.filter(event =>
                                                         event.date === ds && event.isSchedule && event.isActive
                                                     ).length;
@@ -1457,7 +1480,10 @@ const WalkInsPage = () => {
                                             }}
                                             tileDisabled={({ date }) => {
                                                 const dateString = getLocalDateString(date);
-                                                return disabledDates.includes(dateString);
+                                                const today = new Date();
+                                                today.setHours(0, 0, 0, 0);
+                                                const isPastDate = date < today;
+                                                return disabledDates.includes(dateString) || isPastDate;
                                             }}
                                             showNeighboringMonth={false}
                                             className="p-2 rounded-lg text-base"

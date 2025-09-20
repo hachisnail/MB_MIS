@@ -9,7 +9,7 @@ export const STATUS = [
 export const STATUS_LABELS = {
   pending:   'Pending',
   scheduled: 'Schedule', 
-  posted:    'Post',     
+  posted:    'Posted',     
   rejected:  'Reject',
   archived:  'Archive',
 };

@@ -280,7 +280,7 @@ router.post(
 );
 
 
-router.put("/update-step", requireAuth, updateTimelineStep);
+router.put("/update-step", updateTimelineStep);
 router.get("/contract/:contractId", getContract);
 router.post("/set-contract", requireAuth, setContract);
 router.post("/contributions/session/close", closeContributionSession);

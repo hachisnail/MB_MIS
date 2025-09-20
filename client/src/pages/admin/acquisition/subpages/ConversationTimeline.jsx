@@ -11,23 +11,29 @@ export default function ConversationTimeline({
   height = "34rem",
   className = "",
 }) {
-  const laneStyles = {
-    donor: "bg-[#8B7E52] text-white border-[#736945]",
-    admin: "bg-[#fff299] text-[#1D1911] border-[#c6b462]",
-  };
+  
+const laneStyles = {
+  donor: "bg-[#8B7E52] text-white border-[#736945]",
+  admin: "bg-[#fff299] text-[#1D1911] border-[#c6b462]",
+  system: "bg-[#E5E7EB] text-[#111827] border-[#D1D5DB]", // NEW
+};
 
-  const bubbleStyles = {
-    donor: "bg-[#BE9758] border-[#7d6239] text-[#1D1911]",
-    admin: "bg-[#FFF07A] border-[#C3B567] text-[#1D1911]",
-    default: "bg-white border-gray-300 text-[#1D1911]",
-  };
+const bubbleStyles = {
+  donor: "bg-[#BE9758] border-[#7d6239] text-[#1D1911]",
+  admin: "bg-[#FFF07A] border-[#C3B567] text-[#1D1911]",
+  system: "bg-white border-[#D1D5DB] text-[#374151]",     // NEW neutral
+  default: "bg-white border-gray-300 text-[#1D1911]",
+};
 
-  const ringStyles = {
-    donor: "border-[#8b7e52]",
-    admin: "border-[#c6b462]",
-  };
+const ringStyles = {
+  donor: "border-[#8b7e52]",
+  admin: "border-[#c6b462]",
+  system: "border-[#9CA3AF]", // NEW
+};
 
-  const laneKey = (v) => (v === "admin" ? "admin" : "donor");
+// laneKey -> understand system
+const laneKey = (v) => (v === "admin" ? "admin" : v === "system" ? "system" : "donor");
+
 
   // refs
   const scrollRef = useRef(null);
@@ -161,9 +167,7 @@ export default function ConversationTimeline({
           ) : (
             items.map((it, idx) => {
               const k = laneKey(it.laneVariant);
-              const role = (it.author || "Donor").toLowerCase().includes("admin")
-                ? "admin"
-                : "donor";
+              const role = laneKey(it.laneVariant);
               const bubble = bubbleStyles[role] || bubbleStyles.default;
 
               return (
@@ -244,7 +248,7 @@ export default function ConversationTimeline({
                         </div>
 
                         {it.author ? (
-                          <div className="absolute -bottom-6 right-1 text-sm text-[#6b6142] select-none">
+                          <div className="absolute -bottom-6 left-2 w-30 text-sm text-[#6b6142] select-none truncate">
                             {it.author}
                           </div>
                         ) : null}

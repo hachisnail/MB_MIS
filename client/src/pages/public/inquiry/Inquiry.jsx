@@ -1,4 +1,5 @@
-import { useEffect, useState, useRef } from "react";
+// src/pages/public/inquiry/Inquiry.jsx
+import { useEffect, useState, useRef, useMemo } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import axiosClient from "@/lib/axiosClient";
 import { LoadingSpinner } from "../../../components/commons";
@@ -8,9 +9,61 @@ import StyledButton from "../../../components/buttons/StyledButton";
 import DocxViewer from "./components/DocxViewer";
 import DonorTimeline from "./components/DonorTimeline";
 import ContractIcon from "../../../assets/contract.svg";
-import { getSocketClient } from "../../../lib/socketSingleton";
 import ConversationTimeline from "../../admin/acquisition/subpages/ConversationTimeline";
-import { mapMessageToLane } from "../../../utils/messageUtils";
+import { FormInput } from "../../../features/FormUtilities";
+import { DateInput } from "../../../features/FormUtilities";
+import { useForm, FormProvider } from "react-hook-form";
+import * as yup from "yup";
+import { yupResolver } from "@hookform/resolvers/yup";
+import { getMessagingClient, toTimelineItem } from "@/lib/messagingClient";
+import QRHandler from "./components/QRHandler"; 
+
+/* ===================== Validation Schema ===================== */
+/* Step 1 required, Step 2 optional,
+   deliveryReason required only when accept_delivery === "no" */
+const schema = yup.object({
+  accept_moa: yup
+    .string()
+    .oneOf(["yes", "no"])
+    .required("Please select Yes or No for accepting MOA"),
+  satisfied_moa: yup
+    .string()
+    .oneOf(["yes", "no"])
+    .when("accept_moa", {
+      is: "yes",
+      then: (s) => s.required("Please select Yes or No for MOA errors"),
+      otherwise: (s) => s.notRequired(),
+    }),
+  reason: yup.string().when("accept_moa", {
+    is: "no",
+    then: (s) => s.trim().required("Reason is required"),
+    otherwise: (s) => s.notRequired(),
+  }),
+  // Step 2 (optional)
+  name: yup.string().trim().notRequired(),
+  title: yup.string().trim().notRequired(),
+  loanStart: yup
+    .date()
+    .nullable()
+    .transform((v, o) => (o === "" ? null : v))
+    .notRequired(),
+  loanEnd: yup
+    .date()
+    .nullable()
+    .transform((v, o) => (o === "" ? null : v))
+    .notRequired(),
+  // Delivery section
+  accept_delivery: yup.string().oneOf(["yes", "no"]).notRequired(), // validated only when that section is shown
+  deliveryReason: yup
+    .string()
+    .trim()
+    .when("accept_delivery", {
+      is: "no",
+      then: (s) => s.required("Please provide a reason."),
+      otherwise: (s) => s.notRequired(),
+    }),
+  deliverySuggestions: yup.string().trim().notRequired(),
+});
 
 export default function Inquiry() {
   const { token: tokenFromPath } = useParams();
@@ -22,50 +75,65 @@ export default function Inquiry() {
   const [sessionData, setSessionData] = useState(null);
   const [error, setError] = useState(null);
 
+  // OTP-gate UI
   const [otpSending, setOtpSending] = useState(false);
   const [otpCode, setOtpCode] = useState("");
-  const [writeEnabled, setWriteEnabled] = useState(false);
   const [requiresOtp, setRequiresOtp] = useState(true);
-
+  const [writeEnabled, setWriteEnabled] = useState(false);
   const [otpInput, setOtpInput] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
 
+  // Views & steps
   const [showView, setShowView] = useState("document");
+  const [formStep, setFormStep] = useState(1);
 
-  // Question flow state
-  const [currentQuestion, setCurrentQuestion] = useState(1);
-  const [q1Answer, setQ1Answer] = useState("");
-  const [q2Answer, setQ2Answer] = useState("");
-  const [showInputs, setShowInputs] = useState(false);
-  const [reason, setReason] = useState("");
-  const [suggestion, setSuggestion] = useState("");
-
-  // Stable socket instance
-  const socketRef = useRef(null);
-  if (!socketRef.current) socketRef.current = getSocketClient();
-  const socket = socketRef.current;
-
+  // Messaging
+  const messaging = useRef(getMessagingClient()).current;
   const [conversationId, setConversationId] = useState(null);
   const [messages, setMessages] = useState([]);
+  const [suggestion, setSuggestion] = useState("");
 
-  /* ===================== Message normalization & dedupe ===================== */
-
-  const normalizeMessage = (raw) => ({
-    message_id: raw.message_id ?? raw.id ?? null,
-    conversation_id: raw.conversation_id ?? raw.conversationId ?? null,
-    sender_user_id: raw.sender_user_id ?? raw.sender?.userId ?? null,
-    sender_guest_id: raw.sender_guest_id ?? raw.sender?.guestId ?? null,
-    message: raw.message ?? raw.text ?? "",
-    status: raw.status ?? "sent",
-    created_at: raw.created_at ?? raw.createdAt ?? new Date().toISOString(),
+  // RHF
+  const methods = useForm({
+    defaultValues: {
+      accept_moa: "",
+      satisfied_moa: "",
+      reason: "",
+      // Step 2 (optional)
+      name: "",
+      title: "",
+      loanStart: null,
+      loanEnd: null,
+      // Delivery section
+      accept_delivery: "",
+      deliveryReason: "",
+      deliverySuggestions: "",
+    },
+    resolver: yupResolver(schema),
+    mode: "onSubmit",
   });
+  const {
+    register,
+    formState: { errors },
+    watch,
+    control,
+    trigger,
+    getValues,
+  } = methods;
 
-  const msgKey = (m) =>
-    m.message_id ??
-    `${m.conversation_id ?? ""}-${m.sender_guest_id ?? m.sender_user_id ?? ""}-${m.created_at ?? ""}-${m.message ?? ""}`;
+  const acceptDelivery = watch("accept_delivery");
 
-  /* ===================== Bootstrapping conversation ===================== */
+  const hasDelivery = useMemo(
+    () =>
+      messages.some((m) =>
+        (m?.message ?? "")
+          .toLowerCase()
+          .startsWith("delivery details submitted")
+      ),
+    [messages]
+  );
 
+  /* ===================== Conversation bootstrap ===================== */
   const setupConversation = async (session) => {
     try {
       const cid = session.contribution.contribution_id;
@@ -78,7 +146,19 @@ export default function Inquiry() {
       const { data: history } = await axiosClient.get(
         `/auth/conversations/${convo.conversation_id}/messages`
       );
-      setMessages(history.map(normalizeMessage));
+      setMessages(
+        history.map((raw) => ({
+          message_id: raw.message_id ?? raw.id ?? null,
+          conversation_id: raw.conversation_id ?? raw.conversationId ?? null,
+          sender_user_id: raw.sender_user_id ?? raw.sender?.userId ?? null,
+          sender_guest_id: raw.sender_guest_id ?? raw.sender?.guestId ?? null,
+          message: raw.message ?? raw.text ?? "",
+          type: raw.type || null,
+          status: raw.status ?? "sent",
+          created_at:
+            raw.created_at ?? raw.createdAt ?? new Date().toISOString(),
+        }))
+      );
 
       return convo.conversation_id;
     } catch (err) {
@@ -86,8 +166,35 @@ export default function Inquiry() {
     }
   };
 
+  const refreshMessages = async (cid = conversationId) => {
+    if (!cid) return;
+    try {
+      const { data: history } = await axiosClient.get(
+        `/auth/conversations/${cid}/messages`
+      );
+      setMessages(
+        history.map((raw) => ({
+          message_id: raw.message_id ?? raw.id ?? null,
+          conversation_id: raw.conversation_id ?? raw.conversationId ?? null,
+          sender_user_id: raw.sender_user_id ?? raw.sender?.userId ?? null,
+          sender_guest_id: raw.sender_guest_id ?? raw.sender?.guestId ?? null,
+          message: raw.message ?? raw.text ?? "",
+          type: raw.type || null,
+          status: raw.status ?? "sent",
+          created_at:
+            raw.created_at ?? raw.createdAt ?? new Date().toISOString(),
+        }))
+      );
+    } catch (e) {
+      console.error("Failed to refresh messages:", e);
+    }
+  };
+
+  /* ===================== Session fetch (race-proof) ===================== */
+  const fetchSeq = useRef(0);
   const fetchSession = async () => {
     try {
+      const seq = ++fetchSeq.current;
       if (!token) throw new Error("Missing token");
       setLoading(true);
 
@@ -95,9 +202,21 @@ export default function Inquiry() {
         params: { token },
       });
 
+      // Ignore stale results
+      if (seq !== fetchSeq.current) return;
+
       setSessionData(res.data);
-      setRequiresOtp(!!res.data?.requires_otp);
-      setWriteEnabled(!!res.data?.session?.write_enabled);
+
+      const serverRequiresOtp = !!res.data?.requires_otp;
+      setRequiresOtp(serverRequiresOtp);
+      setWriteEnabled(!serverRequiresOtp);
+
+      if (serverRequiresOtp) {
+        setOtpInput(true);
+        setOtpCode("");
+        setErrorMessage("");
+      }
+
       setError(null);
 
       if (
@@ -115,99 +234,75 @@ export default function Inquiry() {
     }
   };
 
-  /* ===================== Socket (re)join + live updates ===================== */
-
-  useEffect(() => {
-    if (!conversationId || !sessionData?.session?.guest_identity?.guest_id) return;
-
-    const s = socket;
-    const room = `conversation:${conversationId}`;
-    const guestId = sessionData.session.guest_identity.guest_id;
-    const cid = sessionData.contribution.contribution_id;
-
-    let joined = false;
-
-    const join = () => {
-      if (joined) return;
-      try {
-        s.joinRoom(room, { guestId, contributionId: cid });
-        joined = true;
-      } catch (e) {
-        console.warn("joinRoom failed (will retry on connect):", e);
-      }
-    };
-
-    const leave = () => {
-      if (!joined) return;
-      try {
-        s.leaveRoom(room);
-      } finally {
-        joined = false;
-      }
-    };
-
-    // Live message handler – only append if not already present
-    const handler = (raw) => {
-      const msg = normalizeMessage(raw);
-
-      setMessages((prev) => {
-        const key = msgKey(msg);
-        if (prev.some((p) => msgKey(p) === key)) return prev;
-        const next = [...prev, msg];
-        next.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
-        return next;
-      });
-    };
-
-    // Join immediately if already connected
-    const isConnected =
-      s.connected ||
-      (s.socket && s.socket.connected) ||
-      (s.io && s.io.connected) ||
-      false;
-    if (isConnected) join();
-
-    // Join on future connect/reconnects
-    const on = s.on?.bind(s);
-    const off = s.off?.bind(s);
-    const onConnect = (cb) =>
-      s.onConnect ? s.onConnect(cb) : on && on("connect", cb);
-    const offConnect = (cb) =>
-      s.offConnect ? s.offConnect(cb) : off && off("connect", cb);
-    const onReconnect = (cb) =>
-      s.onReconnect
-        ? s.onReconnect(cb)
-        : (s.io && s.io.on && s.io.on("reconnect", cb)) ||
-          (on && on("reconnect", cb));
-    const offReconnect = (cb) =>
-      s.offReconnect
-        ? s.offReconnect(cb)
-        : (s.io && s.io.off && s.io.off("reconnect", cb)) ||
-          (off && off("reconnect", cb));
-
-    onConnect(join);
-    onReconnect(join);
-
-    s.onMessage(handler);
-
-    return () => {
-      s.offMessage(handler);
-      offConnect(join);
-      offReconnect(join);
-      leave();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [conversationId, sessionData?.session?.guest_identity?.guest_id]);
-
-  /* ===================== Lifecycle ===================== */
-
+  /* ===================== Effects ===================== */
+  // Fetch on mount / token change
   useEffect(() => {
     fetchSession();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
-  /* ===================== OTP handlers ===================== */
+  // Reset OTP gate UI on token change
+  useEffect(() => {
+    setWriteEnabled(false);
+    setRequiresOtp(true);
+    setOtpInput(true);
+    setOtpCode("");
+    setErrorMessage("");
+  }, [token]);
 
+  // Join conversation only after OTP is verified
+  useEffect(() => {
+    if (!writeEnabled) return; // gate until OTP verified
+    if (!conversationId || !sessionData?.session?.guest_identity?.guest_id)
+      return;
+
+    const guestId = sessionData.session.guest_identity.guest_id;
+    const cid = sessionData.contribution.contribution_id;
+
+    messaging.joinConversation(conversationId, {
+      guestId,
+      contributionId: cid,
+    });
+
+    const off = messaging.onMessage((msg) => {
+      setMessages((prev) => {
+        const key = `${msg.message_id ?? ""}-${msg.created_at ?? ""}-${
+          msg.message ?? ""
+        }`;
+        if (
+          prev.some(
+            (p) =>
+              `${p.message_id ?? ""}-${p.created_at ?? ""}-${
+                p.message ?? ""
+              }` === key
+          )
+        )
+          return prev;
+        const next = [...prev, msg];
+        next.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+        return next;
+      });
+    });
+
+    return () => {
+      off();
+      messaging.leaveConversation(conversationId);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    writeEnabled,
+    conversationId,
+    sessionData?.session?.guest_identity?.guest_id,
+  ]);
+
+  // If user lands on delivery view and it's already submitted, move on
+  useEffect(() => {
+    if (showView === "delivery" && hasDelivery) {
+      setShowView("conversation");
+    }
+  }, [showView, hasDelivery]);
+
+  /* ===================== OTP handlers ===================== */
   const handleSendOtp = async () => {
     try {
       setOtpSending(true);
@@ -231,9 +326,10 @@ export default function Inquiry() {
         { code: otpCode }
       );
       if (res.data?.ok) {
-        setWriteEnabled(true);
+        // Open the gate immediately, then refresh session data
         setRequiresOtp(false);
-        await fetchSession(); 
+        setWriteEnabled(true);
+        await fetchSession();
       } else {
         setErrorMessage("That code doesn’t match. Please try again.");
       }
@@ -242,27 +338,247 @@ export default function Inquiry() {
     }
   };
 
-  /* ===================== Send message (NO optimistic) ===================== */
-
+  /* ===================== Messaging ===================== */
   const sendGuestMessage = (text) => {
+    if (!writeEnabled || requiresOtp) return;
     if (!conversationId || !text.trim()) return;
-    const s = socketRef.current;
-    const guestId = sessionData?.session?.guest_identity?.guest_id;
-
-    s.emit("message", {
-      room: `conversation:${conversationId}`,
-      text: text.trim(),
-      senderUserId: null,
-      senderGuestId: guestId,
-    });
+    messaging.sendUserMessage(conversationId, text.trim());
   };
 
-  /* ===================== Rendering ===================== */
+  /* ===================== UI helpers ===================== */
+  const PinHeader = () => (
+    <div className="w-fit h-fit flex flex-col items-center justify-center mb-10">
+      <img src={Logo} alt="Museum Logo" className="h-23 mb-4 mx-auto" />
+      <span className="font-bold font-hind text-xl leading-tight">
+        MUSEUM ARCHIVES AND SHRINE CURATION DIVISION
+      </span>
+      <span className="leading-tight text-md font-hind">
+        MANAGEMENT INFORMATION SYSTEMS
+      </span>
+    </div>
+  );
 
-  const userLike = sessionData?.session?.guest_identity
-    ? { id: sessionData.session.guest_identity.guest_id, role: "guest" }
-    : null;
+  const TimelineHeader = () => (
+    <div className="flex flex-col items-center justify-center text-center h-fit">
+      <svg
+        width="40"
+        height="40"
+        viewBox="0 0 48 48"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        className="mb-4"
+      >
+        <path
+          d="M24 12V24L32 28M44 24C44 35.0457 35.0457 44 24 44C12.9543 44 4 35.0457 4 24C4 12.9543 12.9543 4 24 4C35.0457 4 44 12.9543 44 24Z"
+          stroke="black"
+          strokeWidth="4"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
 
+      <h1 className="text-2xl font-semibold">Please wait for the response</h1>
+      <p className="text-gray-600">
+        Revisit the same link to see updates on the review.
+      </p>
+    </div>
+  );
+
+  const RadioQuestion = ({ question, name, options, register, error }) => (
+    <div>
+      <p className="font-medium text-sm mb-2 mt-4">{question}</p>
+      <div className="flex flex-col gap-4">
+        {options.map((opt) => (
+          <label
+            key={opt.value}
+            className="flex items-center gap-2 border rounded-md px-4 py-2 cursor-pointer"
+          >
+            <input
+              type="radio"
+              value={opt.value}
+              {...register(name)}
+              className="peer hidden"
+            />
+            <span className="text-black peer-checked:font-bold">
+              {opt.label}
+            </span>
+          </label>
+        ))}
+      </div>
+      {error && <p className="text-red-500 text-sm mt-1">{error.message}</p>}
+    </div>
+  );
+
+  /* ===================== Timeline updates / submits ===================== */
+  const moaSettledAt = async () => {
+    if (!writeEnabled || requiresOtp) return;
+    try {
+      const contribution_id = sessionData?.contribution?.contribution_id;
+      if (!contribution_id) return;
+      const step = 4;
+      await axiosClient.put("/auth/update-step", { contribution_id, step });
+      await fetchSession();
+    } catch (error) {
+      console.error("Failed to update timeline:", error);
+    }
+  };
+
+  const postDeliveryAt = async () => {
+    if (!writeEnabled || requiresOtp) return;
+    try {
+      const contribution_id = sessionData?.contribution?.contribution_id;
+      if (!contribution_id) return;
+      const step = 5;
+      await axiosClient.put("/auth/update-step", { contribution_id, step });
+      await fetchSession();
+    } catch (error) {
+      console.error("Failed to update delivery:", error);
+    }
+  };
+
+  const postPendingAt = async (data) => {
+    if (!writeEnabled || requiresOtp) return;
+    try {
+      const contribution_id = sessionData?.contribution?.contribution_id;
+      if (!contribution_id) return;
+
+      const step = 3; // pending
+      await axiosClient.put("/auth/update-step", { contribution_id, step });
+      await fetchSession();
+
+      if (conversationId) {
+        const includeStep2 = !!(
+          data.name?.trim() ||
+          data.title?.trim() ||
+          data.loanStart ||
+          data.loanEnd
+        );
+
+        const lines = [
+          "Donor response submitted:",
+          `• Accept MOA: ${data.accept_moa === "yes" ? "Yes" : "No"}`,
+          ...(data.accept_moa === "yes"
+            ? [`• MOA errors: ${data.satisfied_moa === "yes" ? "Yes" : "No"}`]
+            : []),
+        ];
+
+        if (data.accept_moa === "no" && data.reason?.trim()) {
+          lines.push(`• Reason: ${data.reason.trim()}`);
+        }
+
+        if (includeStep2) {
+          lines.push(
+            `• Donor: ${data.name?.trim() || "-"}`,
+            `• Artifact: ${data.title?.trim() || "-"}`,
+            `• Loan Start: ${
+              data.loanStart
+                ? new Date(data.loanStart).toLocaleDateString()
+                : "-"
+            }`,
+            `• Loan End: ${
+              data.loanEnd ? new Date(data.loanEnd).toLocaleDateString() : "-"
+            }`
+          );
+        }
+
+        try {
+          if (messaging.sendClientSystemNote) {
+            messaging.sendClientSystemNote(conversationId, lines.join("\n"));
+          } else {
+            messaging.sendUserMessage(conversationId, lines.join("\n"));
+          }
+        } catch (sendErr) {
+          console.error("Failed to send postPendingAt message:", sendErr);
+        }
+      }
+    } catch (error) {
+      console.error("Failed to update timeline:", error);
+    }
+  };
+
+  /* ===================== Navigation handlers ===================== */
+  const handleNext = async () => {
+    if (formStep === 1) {
+      const acceptMoa = getValues("accept_moa");
+      const fields = ["accept_moa", "reason"];
+      if (acceptMoa === "yes") fields.push("satisfied_moa");
+
+      const ok = await trigger(fields);
+      if (!ok) return;
+
+      const satisfied = getValues("satisfied_moa"); // answers "Are there any errors?"
+      const hasErrors = satisfied === "yes"; // yes => there ARE errors
+
+      if (acceptMoa === "yes" && !hasErrors) {
+        // Accept + NO errors -> MOA is settled now
+        await moaSettledAt();
+        setShowView("moasettle");
+        return;
+      }
+
+      if (acceptMoa === "yes" && hasErrors) {
+        // Accept + has errors -> capture additional info
+        setFormStep(2);
+        return;
+      }
+
+      // accept_moa === "no" -> mark pending and show waiting screen
+      await postPendingAt(getValues());
+      setShowView("moasettle");
+      return;
+    }
+
+    if (formStep === 2) {
+      // Step 2 optional -> submit now (still pending until admins resolve)
+      await postPendingAt(getValues());
+      setShowView("moasettle");
+      return;
+    }
+  };
+
+  const postDeliverySection = async (data) => {
+    if (!writeEnabled || requiresOtp) return;
+    try {
+      if (!conversationId) return;
+
+      const lines = [
+        "Delivery details submitted:",
+        `• Will donor deliver artifact: ${
+          data.accept_delivery === "yes" ? "Yes" : "No"
+        }`,
+        ...(data.accept_delivery === "no" && data.deliveryReason
+          ? [`• Delivery reason: ${data.deliveryReason}`]
+          : []),
+        ...(data.deliverySuggestions
+          ? [`• Suggestions: ${data.deliverySuggestions}`]
+          : []),
+      ];
+      const text = lines.join("\n");
+
+      if (messaging.sendClientSystemNote) {
+        messaging.sendClientSystemNote(conversationId, text);
+      } else {
+        messaging.sendUserMessage(conversationId, text);
+      }
+
+      await refreshMessages(conversationId);
+    } catch (e) {
+      console.error("Failed to send delivery section:", e);
+    }
+  };
+
+  const handleSubmitStep3 = async () => {
+    const ok = await trigger([
+      "accept_delivery",
+      "deliveryReason",
+      "deliverySuggestions",
+    ]);
+    if (!ok) return;
+    await postDeliverySection(getValues());
+    setShowView("conversation");
+  };
+
+  /* ===================== Early returns ===================== */
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -279,30 +595,29 @@ export default function Inquiry() {
     );
   }
 
-  const PinHeader = () => (
-    <div className="w-fit h-fit flex flex-col items-center justify-center mb-10">
-      <img src={Logo} alt="Museum Logo" className="h-23 mb-4 mx-auto" />
-      <span className="font-bold font-hind text-xl leading-tight">
-        MUSEUM ARCHIVES AND SHRINE CURATION DIVISION
-      </span>
-      <span className="leading-tight text-md font-hind">
-        MANAGEMENT INFORMATION SYSTEMS
-      </span>
-    </div>
-  );
+  /* ===================== Derived flags ===================== */
+  const hasPendingAt =
+    !!sessionData?.contribution?.ContributionTimeline?.pending_at;
+  const hasMoasSetteledAt =
+    !!sessionData?.contribution?.ContributionTimeline?.moa_settled_at;
+  const hasTransportingAt =
+    !!sessionData?.contribution?.ContributionTimeline?.on_delivery_at;
+
+  const userLike = sessionData?.session?.guest_identity
+    ? { id: sessionData.session.guest_identity.guest_id, role: "guest" }
+    : null;
 
   const sessionId = sessionData?.session?.session_id;
-  const contributionType =
-    sessionData?.contribution?.contribution_type?.toLowerCase();
-
   const templateUrl = sessionId
     ? `${axiosClient.defaults.baseURL}/auth/contributions/session/${sessionId}/contract-preview`
     : null;
 
+  /* ===================== Render ===================== */
   return (
     <div className="w-screen h-screen overflow-y-scroll flex flex-col items-center justify-center ">
+      {/* OTP Gate */}
       {!writeEnabled && requiresOtp && (
-        <div className="w-[45rem]  h-fit shadow-md shadow-gray-600 flex flex-col items-center px-10 pb-2 pt-10">
+        <div className="w-[45rem] h-fit shadow-md shadow-gray-600 flex flex-col items-center px-10 pb-2 pt-10">
           <>
             {otpInput ? (
               <>
@@ -311,11 +626,11 @@ export default function Inquiry() {
                   OTP Verification
                 </span>
                 <span className="text-3xl font-semibold text-center w-[35rem] mb-10">
-                  We would like to confirm your identity before you proceed.
+                  We’d like to confirm your identity before you proceed.
                 </span>
                 <span className="text-center w-[35rem] text-xl mb-10">
-                  To continue, please click the button below to send a one-time
-                  password (OTP) to your registered email address.
+                  Click the button below to send a one-time password (OTP) to
+                  your registered email address.
                 </span>
                 <StyledButton
                   onClick={handleSendOtp}
@@ -356,7 +671,7 @@ export default function Inquiry() {
                     }}
                     className="w-[5rem] text-2xl shadow-md shadow-gray-500"
                   >
-                    Back
+                    Previous
                   </StyledButton>
                   <StyledButton
                     onClick={handleVerifyOtp}
@@ -371,17 +686,23 @@ export default function Inquiry() {
         </div>
       )}
 
+      {/* Everything below is fully gated by OTP */}
       {writeEnabled && !requiresOtp && sessionData?.contribution && (
         <>
-          {/* DOCX template preview */}
+          {/* Contract preview */}
           {showView === "document" && (
             <div className="w-fit h-screen pt-20 flex flex-col items-center overflow-y-scroll px-1 gap-y-5 pb-5">
               <div className="w-fit h-fit flex flex-col items-center">
-                <img src={ContractIcon} alt="Contract Icon" className="h-16 mb-4" />
+                <img
+                  src={ContractIcon}
+                  alt="Contract Icon"
+                  className="h-16 mb-4"
+                />
                 <span className="text-5xl font-semibold my-2">Contract</span>
                 <span className="text-center text-xl">
                   Please review the Memorandum of Agreement. <br />
-                  The MOA will be signed when the the donor has delivered the artifact.
+                  The MOA will be signed when the donor has delivered the
+                  artifact.
                 </span>
               </div>
 
@@ -390,251 +711,436 @@ export default function Inquiry() {
               </div>
 
               <div className="min-h-fit w-full flex justify-end">
-                <StyledButton
-                  onClick={() => setShowView("timeline")}
-                  className="h-fit"
-                >
-                  Next
-                </StyledButton>
+                <div className="min-h-fit w-full flex justify-end">
+                  <StyledButton
+                    onClick={() =>
+                      setShowView(
+                        hasPendingAt
+                          ? "moasettle"
+                          : hasMoasSetteledAt
+                          ? hasTransportingAt
+                            ? "onDelivery"
+                            : hasDelivery
+                            ? "conversation"
+                            : "delivery"
+                          : "timeline"
+                      )
+                    }
+                    className="h-fit"
+                  >
+                    Next
+                  </StyledButton>
+                </div>
               </div>
             </div>
           )}
 
-          {showView === "timeline" && (
+          {/* Step 1/2 Flow (only if not yet settled/pending) */}
+          {showView === "timeline" && !hasPendingAt && !hasMoasSetteledAt && (
             <div className="min-w-[50rem] h-full flex flex-col items-center justify-center px-2">
-              <div className="w-full max-w-5xl flex flex-col items-center gap-y-10 py-10">
-                {/* Heading */}
-                <div className="flex flex-col items-center justify-center text-center h-fit">
+              <div className="w-full max-w-5xl flex flex-col items-center gap-y-10">
+                <FormProvider {...methods}>
+                  <TimelineHeader />
+
+                  <DonorTimeline
+                    timelineData={
+                      sessionData?.contribution?.ContributionTimeline ||
+                      sessionData?.contribution?.contributiontimeline
+                    }
+                  />
+
+                  <div className="w-full flex bg-white shadow-md shadow-gray-500 rounded-xl p-8 gap-x-5">
+                    <div className="flex flex-col items-start gap-4 w-[20rem]">
+                      <div className="shrink-0 mt-1">
+                        <svg
+                          width="48"
+                          height="48"
+                          viewBox="0 0 48 48"
+                          fill="none"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path
+                            d="M4 4L33 11L36 26L26 36L11 33L4 4ZM4 4L19.172 19.172M24 38L38 24L44 30L30 44L24 38ZM26 22C26 24.2091 24.2091 26 22 26C19.7909 26 18 24.2091 18 22C18 19.7909 19.7909 18 22 18C24.2091 18 26 19.7909 26 22Z"
+                            stroke="black"
+                            strokeWidth="4"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      </div>
+
+                      <div className="flex-1">
+                        {formStep === 1 ? (
+                          <>
+                            <h2 className="text-lg font-bold">
+                              What are your thoughts?
+                            </h2>
+                            <p className="text-gray-600 text-sm">
+                              Please answer the questions below. Your responses
+                              are important in determining the final outcome of
+                              the transaction.
+                            </p>
+                          </>
+                        ) : (
+                          <>
+                            <h2 className="text-lg font-bold">
+                              Official Notice
+                            </h2>
+                            <p className="text-gray-600 text-sm">
+                              Please be advised that only the following sections
+                              of the Memorandum of Agreement (MOA) are subject
+                              to modification:
+                            </p>
+                          </>
+                        )}
+                      </div>
+                    </div>
+
+                    <form className="mt-8 w-full" noValidate>
+                      {formStep === 1 && (
+                        <>
+                          <RadioQuestion
+                            question="Do you accept all conditions in the MOA?"
+                            name="accept_moa"
+                            options={[
+                              { value: "yes", label: "Yes" },
+                              { value: "no", label: "No" },
+                            ]}
+                            register={register}
+                            error={errors.accept_moa}
+                          />
+
+                          {watch("accept_moa") === "no" && (
+                            <FormInput
+                              placeholder="State your reason"
+                              register={register}
+                              name="reason"
+                              error={errors.reason}
+                              className="w-full mt-2"
+                            />
+                          )}
+
+                          {watch("accept_moa") === "yes" && (
+                            <RadioQuestion
+                              question="Are there any errors in the current MOA?"
+                              name="satisfied_moa"
+                              options={[
+                                { value: "yes", label: "Yes" },
+                                { value: "no", label: "No" },
+                              ]}
+                              register={register}
+                              error={errors.satisfied_moa}
+                            />
+                          )}
+                        </>
+                      )}
+
+                      {formStep === 2 && (
+                        <>
+                          <span className="text-sm font-medium">
+                            Name of the Donor:
+                          </span>
+                          <FormInput
+                            placeholder="Complete Name (optional)"
+                            register={register}
+                            name="name"
+                            error={errors.name}
+                            className="w-full mt-2"
+                          />
+
+                          <span className="text-sm font-medium">
+                            Title of the Artifact:
+                          </span>
+                          <FormInput
+                            placeholder="Title of the Artifact (optional)"
+                            register={register}
+                            name="title"
+                            error={errors.title}
+                            className="w-full mt-2"
+                          />
+
+                          <span className="text-sm font-medium">
+                            Starting date of the loan:
+                          </span>
+                          <DateInput
+                            name="loanStart"
+                            control={control}
+                            placeholder="Start date (optional)"
+                            minDate={new Date()}
+                            maxDate={new Date(2100, 0, 1)}
+                            error={errors.loanStart}
+                            className="w-full mt-2"
+                          />
+
+                          <span className="text-sm font-medium">
+                            Ending date of the loan:
+                          </span>
+                          <DateInput
+                            name="loanEnd"
+                            control={control}
+                            placeholder="End date (optional)"
+                            minDate={new Date()}
+                            maxDate={new Date(2100, 0, 1)}
+                            error={errors.loanEnd}
+                            className="w-full mt-2"
+                          />
+                        </>
+                      )}
+                    </form>
+                  </div>
+
+                  <div className="min-h-fit w-full flex justify-between">
+                    <StyledButton
+                      onClick={() => {
+                        if (formStep === 1) setShowView("document");
+                        else if (formStep === 2) setFormStep(1);
+                      }}
+                      className="h-fit"
+                    >
+                      Previous
+                    </StyledButton>
+
+                    <StyledButton onClick={handleNext} className="h-fit">
+                      {formStep < 2 ? "Next" : "Submit"}
+                    </StyledButton>
+                  </div>
+                </FormProvider>
+              </div>
+            </div>
+          )}
+
+          {/* Waiting / settled screen */}
+          {showView === "moasettle" && (
+            <div className="w-full max-w-4xl gap-y-10 justify-center h-full flex flex-col items-center px-2">
+              <TimelineHeader />
+
+              <DonorTimeline
+                timelineData={
+                  sessionData?.contribution?.ContributionTimeline ||
+                  sessionData?.contribution?.contributiontimeline
+                }
+              />
+
+              <div className="w-full flex bg-white shadow-md shadow-gray-500 rounded-xl p-8 gap-x-5 items-center">
+                <div className="shrink-0 mt-1">
                   <svg
-                    width="40"
-                    height="40"
+                    width="48"
+                    height="48"
                     viewBox="0 0 48 48"
                     fill="none"
                     xmlns="http://www.w3.org/2000/svg"
-                    className="mb-4"
                   >
                     <path
-                      d="M24 12V24L32 28M44 24C44 35.0457 35.0457 44 24 44C12.9543 44 4 35.0457 4 24C4 12.9543 12.9543 4 24 4C35.0457 4 44 12.9543 44 24Z"
+                      d="M4 4L33 11L36 26L26 36L11 33L4 4ZM4 4L19.172 19.172M24 38L38 24L44 30L30 44L24 38ZM26 22C26 24.2091 24.2091 26 22 26C19.7909 26 18 24.2091 18 22C18 19.7909 19.7909 18 22 18C24.2091 18 26 19.7909 26 22Z"
                       stroke="black"
                       strokeWidth="4"
                       strokeLinecap="round"
                       strokeLinejoin="round"
                     />
                   </svg>
-
-                  <h1 className="text-2xl font-semibold">Please wait for the response</h1>
-                  <p className="text-gray-600">
-                    Revisit the same link to see the update about the review
-                  </p>
                 </div>
+                <span className="font-semibold">
+                  {hasMoasSetteledAt
+                    ? "You can now proceed to the transportation step."
+                    : "We’ll email you once the admins have reviewed your concern, and then you’ll be able to continue with the transaction."}
+                </span>
+              </div>
 
-                {/* Timeline */}
-                <DonorTimeline
-                  timelineData={
-                    sessionData?.contribution?.ContributionTimeline ||
-                    sessionData?.contribution?.contributiontimeline
-                  }
-                />
-
-                {/* Card with questions */}
-                <div className="w-full flex bg-white shadow-md shadow-gray-500 rounded-xl p-8 gap-x-5">
-                  <div className="flex flex-col items-start gap-4 w-[20rem]">
-                    <div className="shrink-0 mt-1">
-                      <svg
-                        width="48"
-                        height="48"
-                        viewBox="0 0 48 48"
-                        fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
-                      >
-                        <path
-                          d="M4 4L33 11L36 26L26 36L11 33L4 4ZM4 4L19.172 19.172M24 38L38 24L44 30L30 44L24 38ZM26 22C26 24.2091 24.2091 26 22 26C19.7909 26 18 24.2091 18 22C18 19.7909 19.7909 18 22 18C24.2091 18 26 19.7909 26 22Z"
-                          stroke="black"
-                          strokeWidth="4"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                    </div>
-                    <div className="flex-1">
-                      <h2 className="text-lg font-bold">What are your thoughts?</h2>
-                      <p className="text-gray-600 text-sm">
-                        Please answer the questions below. Your responses are important in
-                        determining the final outcome of the transaction.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="mt-8 space-y-8">
-                    {/* Q1 */}
-                    {currentQuestion >= 1 && (
-                      <div>
-                        <p className="font-medium text-sm mb-2">
-                          Do you accept all conditions in the MOA (Memorandum of Agreement)?
-                        </p>
-                        <div className="flex flex-col gap-4">
-                          <label className="flex items-center gap-2 border rounded-md px-4 py-2 cursor-pointer has-[input:checked]:border-green-500">
-                            <input
-                              type="radio"
-                              name="accept_moa"
-                              value="yes"
-                              className="peer hidden"
-                              checked={q1Answer === "yes"}
-                              onChange={(e) => {
-                                setQ1Answer(e.target.value);
-                                setCurrentQuestion(2);
-                                setShowInputs(false);
-                                setQ2Answer("");
-                              }}
-                            />
-                            <span className="text-black peer-checked:text-green-600">Yes</span>
-                          </label>
-
-                          <label className="flex items-center gap-2 border rounded-md px-4 py-2 cursor-pointer has-[input:checked]:border-red-500">
-                            <input
-                              type="radio"
-                              name="accept_moa"
-                              value="no"
-                              className="peer hidden"
-                              checked={q1Answer === "no"}
-                              onChange={(e) => {
-                                setQ1Answer(e.target.value);
-                                setShowInputs(true);
-                                setCurrentQuestion(1);
-                                setQ2Answer("");
-                              }}
-                            />
-                            <span className="text-black peer-checked:text-red-600">No</span>
-                          </label>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Q2 */}
-                    {currentQuestion === 2 && (
-                      <div>
-                        <p className="font-medium text-sm mb-2">
-                          Are there any errors in the current MOA (Memorandum of Agreement)?
-                        </p>
-                        <div className="flex flex-col gap-4">
-                          <label className="flex items-center gap-2 border rounded-md px-4 py-2 cursor-pointer has-[input:checked]:border-green-500">
-                            <input
-                              type="radio"
-                              name="satisfied_moa"
-                              value="yes"
-                              className="peer hidden"
-                              checked={q2Answer === "yes"}
-                              onChange={(e) => {
-                                setQ2Answer(e.target.value);
-                                setShowInputs(true);
-                              }}
-                            />
-                            <span className="text-black peer-checked:text-green-600">Yes</span>
-                          </label>
-
-                          <label className="flex items-center gap-2 border rounded-md px-4 py-2 cursor-pointer has-[input:checked]:border-red-500">
-                            <input
-                              type="radio"
-                              name="satisfied_moa"
-                              value="no"
-                              className="peer hidden"
-                              checked={q2Answer === "no"}
-                              onChange={(e) => {
-                                setQ2Answer(e.target.value);
-                                setShowInputs(false);
-                              }}
-                            />
-                            <span className="text-black peer-checked:text-red-600">No</span>
-                          </label>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Reason and Suggestion Inputs */}
-                    {showInputs && (
-                      <div className="space-y-4">
-                        <div>
-                          <label className="block font-medium text-sm mb-2">Reason:</label>
-                          <textarea
-                            value={reason}
-                            onChange={(e) => setReason(e.target.value)}
-                            className="w-full border rounded-md px-3 py-2 text-sm resize-none"
-                            rows="3"
-                            placeholder="Please provide your reason..."
-                          />
-                        </div>
-                        <div>
-                          <label className="block font-medium text-sm mb-2">Any Suggestion:</label>
-                          <textarea
-                            value={suggestion}
-                            onChange={(e) => setSuggestion(e.target.value)}
-                            className="w-full border rounded-md px-3 py-2 text-sm resize-none"
-                            rows="3"
-                            placeholder="Please provide any suggestions..."
-                          />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Bottom buttons */}
-                <div className="min-h-fit w-full flex justify-between">
+              <div className="min-h-fit w-full flex justify-between">
+                <StyledButton
+                  onClick={() => setShowView("document")}
+                  className="h-fit"
+                >
+                  Document
+                </StyledButton>
+                {hasMoasSetteledAt && (
                   <StyledButton
-                    onClick={() => setShowView("document")}
+                    onClick={() =>
+                      setShowView(
+                        hasTransportingAt ? "conversation" : "delivery"
+                      )
+                    }
                     className="h-fit"
                   >
-                    Back
+                    Next
                   </StyledButton>
-                  <StyledButton
-                    onClick={() => setShowView("conversation")}
-                    className="h-fit"
-                  >
-                    Accept
-                  </StyledButton>
-                </div>
+                )}
               </div>
             </div>
           )}
 
-          {showView === "conversation" && (
-            <div className="w-full max-w-4xl justify-center h-full flex flex-col">
-              {/* Timeline */}
-              <div className="w-full h-fit border">
+          {/* Delivery section (pre-transport) */}
+          {showView === "delivery" && !hasTransportingAt && (
+            <div className="w-full max-w-4xl gap-y-10 justify-center h-full flex flex-col items-center px-2">
+              <TimelineHeader />
+
+              <DonorTimeline
+                timelineData={
+                  sessionData?.contribution?.ContributionTimeline ||
+                  sessionData?.contribution?.contributiontimeline
+                }
+              />
+
+              <div className="w-full bg-white shadow-md shadow-gray-500 rounded-xl p-8 mt-6">
+                <h2 className="text-lg font-bold">Delivery</h2>
+                <p className="text-gray-600 text-sm">
+                  Please confirm delivery details for the artifact.
+                </p>
+
+                <form className="space-y-6 mt-6" noValidate>
+                  <RadioQuestion
+                    question="Do you confirm that you will be the one to deliver the artifact?"
+                    name="accept_delivery"
+                    options={[
+                      { value: "yes", label: "Yes" },
+                      { value: "no", label: "No" },
+                    ]}
+                    register={register}
+                    error={errors.accept_delivery}
+                  />
+
+                  {watch("accept_delivery") === "no" && (
+                    <FormInput
+                      placeholder="Reason (required)"
+                      register={register}
+                      name="deliveryReason"
+                      error={errors.deliveryReason}
+                      className="w-full"
+                    />
+                  )}
+
+                  <FormInput
+                    placeholder="Any suggestions? (optional)"
+                    register={register}
+                    name="deliverySuggestions"
+                    error={errors.deliverySuggestions}
+                    className="w-full"
+                  />
+
+                  <div className="flex justify-between">
+                    <StyledButton
+                      onClick={() => setShowView("document")}
+                      className="h-fit"
+                    >
+                      Document
+                    </StyledButton>
+                    <StyledButton onClick={handleSubmitStep3}>
+                      Submit delivery info
+                    </StyledButton>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* Conversation after delivery info (pre-transport) */}
+          {showView === "conversation" && !hasTransportingAt && (
+            <div className="w-full max-w-4xl justify-center h-full flex flex-col items-center gap-y-10">
+              <TimelineHeader />
+
+              <DonorTimeline
+                timelineData={
+                  sessionData?.contribution?.ContributionTimeline ||
+                  sessionData?.contribution?.contributiontimeline
+                }
+              />
+
+              <div className="w-full h-fit rounded-xl shadow-md shadow-gray-500 flex flex-col p-2">
                 <ConversationTimeline
-                  items={messages.map((m) => mapMessageToLane(m, userLike)).filter(Boolean)}
+                  items={messages
+                    .map((m) => toTimelineItem(m, userLike))
+                    .filter(Boolean)}
                   height="33rem"
                 />
-                </div>
-
-              {/* Input Box */}
-              <div className="flex mt-2">
-                <input
-                  className="flex-1 border rounded-l px-3 py-2"
-                  value={suggestion}
-                  onChange={(e) => setSuggestion(e.target.value)}
-                  placeholder="Type your message..."
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault();
+                <div className="flex gap-2">
+                  <input
+                    className="flex w-full border rounded-xl px-3 py-2"
+                    value={suggestion}
+                    onChange={(e) => setSuggestion(e.target.value)}
+                    placeholder="Type your message..."
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        if (suggestion.trim()) {
+                          sendGuestMessage(suggestion.trim());
+                          setSuggestion("");
+                        }
+                      }
+                    }}
+                  />
+                  <StyledButton
+                    className="rounded-xl"
+                    onClick={() => {
                       if (suggestion.trim()) {
                         sendGuestMessage(suggestion.trim());
                         setSuggestion("");
                       }
-                    }
-                  }}
-                />
+                    }}
+                  >
+                    Send
+                  </StyledButton>
+                </div>
+              </div>
+
+              <div className="flex mt-2 justify-between w-full">
                 <StyledButton
-                  className="rounded-l-none"
-                  onClick={() => {
-                    if (suggestion.trim()) {
-                      sendGuestMessage(suggestion.trim());
-                      setSuggestion("");
-                    }
-                  }}
+                  onClick={() => setShowView("document")}
+                  className="h-fit"
                 >
-                  Send
+                  Document
                 </StyledButton>
+
+                <StyledButton
+                  onClick={() => {
+                    postDeliveryAt();
+                    setShowView("onDelivery");
+                  }}
+                  className="h-fit"
+                >
+                  Confirm Delivery
+                </StyledButton>
+              </div>
+            </div>
+          )}
+
+          {showView === "onDelivery" && (
+            <div className="w-full max-w-6xl justify-center h-full flex flex-col items-center gap-y-6">
+              <TimelineHeader />
+              <DonorTimeline
+                timelineData={
+                  sessionData?.contribution?.ContributionTimeline ||
+                  sessionData?.contribution?.contributiontimeline
+                }
+              />
+              <div className="bg-white shadow-md shadow-gray-500 rounded-xl flex flex-col py-6 px-20 w-full items-center">
+                <div className="w-full  mb-3">
+                  <span className="text-xl">Delivery Instructions:</span>
+                </div>
+                <div className="w-[55rem]">
+                <span className="text-2xl flex flex-col">
+                  • The Museum is open 8:00am to 5:00pm,  Monday to Friday,
+                  and close during holidays.
+                </span>
+                <span className="text-2xl">
+                  • To complete the transaction, please present this unique QR code to a museum staff member. They will scan it to finalize and record the transaction.
+                </span>
+                </div>
+                <div className="w-full flex h-80 justify-end">
+                  <QRHandler 
+                  sessionId={sessionId} 
+                  contributionId={sessionData?.contribution?.contribution_id}  
+                  triggerGenerate={hasTransportingAt} 
+                  />
+                </div>
+              </div>
+              <div className="w-full flex justify-start">
+                <StyledButton
+                  onClick={() => setShowView("document")}
+                  className="h-fit"
+                >
+                  Document
+                </StyledButton>
+
               </div>
             </div>
           )}
@@ -644,10 +1150,4 @@ export default function Inquiry() {
   );
 }
 
-// qr handler usage
-// import QRHandler from "./components/QRHandler";
-// <QRHandler
-//   sessionId={sessionId}
-//   contributionId={sessionData?.contribution?.contribution_id}
-//   triggerGenerate={true}
-// />
+

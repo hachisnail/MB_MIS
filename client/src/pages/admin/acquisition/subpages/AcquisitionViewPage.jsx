@@ -319,7 +319,7 @@ const sendMessage = (text) => {
           await moaRef.current?.saveContract?.();
         }
 
-        await axiosClient.patch(
+      await axiosClient.patch(
           `auth/contributions/${contributionData?.contribution_id}/status`,
           { status, responseMessage }
         );
@@ -724,7 +724,7 @@ const sendMessage = (text) => {
         </form>
       ) : (
         // --- Conversation timeline + input ---
-        <div className="w-full h-full p-2 bg-white shadow-[inset_0_6px_6px_rgba(0,0,0,0.8),inset_0_-6px_6px_rgba(0,0,0,0.3)] rounded-xl flex flex-col">
+        <div className="w-full h-full justify-between p-2 bg-white shadow-[inset_0_6px_6px_rgba(0,0,0,0.8),inset_0_-6px_6px_rgba(0,0,0,0.3)] rounded-xl flex flex-col">
           <ConversationTimeline
             items={messages.map((m) => mapMessageToLane(m, user))}
             height="33rem"

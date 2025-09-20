@@ -21,6 +21,7 @@ class SocketClient {
 
     this.listeners = new Map();
     this.joinedRooms = new Set();
+    this.roomPayloads = new Map();
     this.userId = null;
     this.isGuest = false;
 
@@ -73,10 +74,17 @@ class SocketClient {
     }
   }
 
-  _syncRooms() {
-    const desired = this._desiredRooms();
-    this._applyRoomsToServer(desired);
+_syncRooms() {
+  const desired = this._desiredRooms();
+  this._applyRoomsToServer(desired);
+
+  // ✅ Reapply stored payloads
+  for (const [room, payload] of this.roomPayloads.entries()) {
+    if (this.joinedRooms.has(room) && this.socket.connected) {
+      this.socket.emit("joinRoom", room, payload);
+    }
   }
+}
 
   // 🔧 force a new Engine.IO handshake so server re-reads cookies
   rehandshake() {
@@ -200,29 +208,36 @@ class SocketClient {
     }
   }
   
-  joinRoom(roomName) {
-    if (roomName === "guestRoom" && !this.isGuest) {
-      if (this.joinedRooms.has("guestRoom")) {
-        this.joinedRooms.delete("guestRoom");
-        if (this.socket.connected) this.socket.emit("leaveRoom", "guestRoom");
-      }
-      return;
+joinRoom(roomName, payload = {}) {
+  if (roomName === "guestRoom" && !this.isGuest) {
+    if (this.joinedRooms.has("guestRoom")) {
+      this.joinedRooms.delete("guestRoom");
+      this.roomPayloads.delete("guestRoom");
+      if (this.socket.connected) this.socket.emit("leaveRoom", "guestRoom");
     }
-    if (roomName.startsWith("user:")) {
-      if (this.isGuest) return;
-      if (!this.userId || roomName !== `user:${this.userId}`) return;
-    }
-
-    if (this.joinedRooms.has(roomName)) return;
-    this.joinedRooms.add(roomName);
-    if (this.socket.connected) this.socket.emit("joinRoom", roomName);
+    return;
+  }
+  if (roomName.startsWith("user:")) {
+    if (this.isGuest) return;
+    if (!this.userId || roomName !== `user:${this.userId}`) return;
   }
 
-  leaveRoom(roomName) {
-    if (!this.joinedRooms.has(roomName)) return;
-    this.joinedRooms.delete(roomName);
-    if (this.socket.connected) this.socket.emit("leaveRoom", roomName);
-  }
+  if (this.joinedRooms.has(roomName)) return;
+  this.joinedRooms.add(roomName);
+  this.roomPayloads.set(roomName, payload); // 🆕
+
+  if (this.socket.connected) this.socket.emit("joinRoom", roomName, payload);
+}
+
+leaveRoom(roomName) {
+  if (!this.joinedRooms.has(roomName)) return;
+  this.joinedRooms.delete(roomName);
+  this.roomPayloads.delete(roomName); // 🆕
+  if (this.socket.connected) this.socket.emit("leaveRoom", roomName);
+}
+
+
+
 
   sendMessage(roomName, message) {
     this.socket.emit("message", { room: roomName, message });

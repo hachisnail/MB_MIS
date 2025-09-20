@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import axiosClient from "@/lib/axiosClient";
 import { LoadingSpinner } from "../../../components/commons";
@@ -10,8 +10,7 @@ import DonorTimeline from "./components/DonorTimeline";
 import ContractIcon from "../../../assets/contract.svg";
 import { getSocketClient } from "../../../lib/socketSingleton";
 import ConversationTimeline from "../../admin/acquisition/subpages/ConversationTimeline";
-
-
+import { mapMessageToLane } from "../../../utils/messageUtils";
 
 export default function Inquiry() {
   const { token: tokenFromPath } = useParams();
@@ -41,47 +40,53 @@ export default function Inquiry() {
   const [reason, setReason] = useState("");
   const [suggestion, setSuggestion] = useState("");
 
-  const socket = getSocketClient();
-const [conversationId, setConversationId] = useState(null);
-const [messages, setMessages] = useState([]);
+  // Stable socket instance
+  const socketRef = useRef(null);
+  if (!socketRef.current) socketRef.current = getSocketClient();
+  const socket = socketRef.current;
 
-const setupConversation = async (session) => {
+  const [conversationId, setConversationId] = useState(null);
+  const [messages, setMessages] = useState([]);
+
+  /* ===================== Message normalization & dedupe ===================== */
+
+  const normalizeMessage = (raw) => ({
+    message_id: raw.message_id ?? raw.id ?? null,
+    conversation_id: raw.conversation_id ?? raw.conversationId ?? null,
+    sender_user_id: raw.sender_user_id ?? raw.sender?.userId ?? null,
+    sender_guest_id: raw.sender_guest_id ?? raw.sender?.guestId ?? null,
+    message: raw.message ?? raw.text ?? "",
+    status: raw.status ?? "sent",
+    created_at: raw.created_at ?? raw.createdAt ?? new Date().toISOString(),
+  });
+
+  const msgKey = (m) =>
+    m.message_id ??
+    `${m.conversation_id ?? ""}-${m.sender_guest_id ?? m.sender_user_id ?? ""}-${m.created_at ?? ""}-${m.message ?? ""}`;
+
+  /* ===================== Bootstrapping conversation ===================== */
+
+  const setupConversation = async (session) => {
     try {
       const cid = session.contribution.contribution_id;
 
-      // 1. Ensure conversation exists
       const { data: convo } = await axiosClient.get(
         `/auth/conversations/by-contribution/${cid}`
       );
       setConversationId(convo.conversation_id);
 
-      // 2. Fetch history
       const { data: history } = await axiosClient.get(
         `/auth/conversations/${convo.conversation_id}/messages`
       );
-      setMessages(history);
+      setMessages(history.map(normalizeMessage));
 
-      // 3. Join socket room
-      const guestId = session.session.guest_identity.guest_id;
-socket.onReady(() => {
-  socket.joinRoom(`conversation:${convo.conversation_id}`, {
-    guestId: sessionData.session.guest_identity.guest_id,
-    contributionId: sessionData.contribution.contribution_id, // 👈 extra
-  });
-});
-
-      const handler = (msg) => setMessages((prev) => [...prev, msg]);
-      socket.onMessage(handler);
-
-      return () => {
-        socket.leaveRoom(`conversation:${convo.conversation_id}`);
-        socket.offMessage(handler);
-      };
+      return convo.conversation_id;
     } catch (err) {
       console.error("Guest socket setup failed:", err);
     }
   };
- const fetchSession = async () => {
+
+  const fetchSession = async () => {
     try {
       if (!token) throw new Error("Missing token");
       setLoading(true);
@@ -95,12 +100,12 @@ socket.onReady(() => {
       setWriteEnabled(!!res.data?.session?.write_enabled);
       setError(null);
 
-      // 🚀 trigger conversation/socket setup once we have guest_id + contribution_id
       if (
         res.data?.contribution?.contribution_id &&
         res.data?.session?.guest_identity?.guest_id
       ) {
-        setupConversation(res.data);
+        const convoId = await setupConversation(res.data);
+        setConversationId(convoId);
       }
     } catch (err) {
       console.error(err);
@@ -110,25 +115,98 @@ socket.onReady(() => {
     }
   };
 
+  /* ===================== Socket (re)join + live updates ===================== */
 
+  useEffect(() => {
+    if (!conversationId || !sessionData?.session?.guest_identity?.guest_id) return;
 
-  // // Close session on tab close
-  // useEffect(() => {
-  //   const handleUnload = () => {
-  //     const url = `${axiosClient.defaults.baseURL}/auth/contributions/session/close`;
-  //     const blob = new Blob([JSON.stringify({ reason: "tab_closed" })], {
-  //       type: "application/json",
-  //     });
-  //     navigator.sendBeacon(url, blob);
-  //   };
-  //   window.addEventListener("beforeunload", handleUnload);
-  //   return () => window.removeEventListener("beforeunload", handleUnload);
-  // }, []);
+    const s = socket;
+    const room = `conversation:${conversationId}`;
+    const guestId = sessionData.session.guest_identity.guest_id;
+    const cid = sessionData.contribution.contribution_id;
+
+    let joined = false;
+
+    const join = () => {
+      if (joined) return;
+      try {
+        s.joinRoom(room, { guestId, contributionId: cid });
+        joined = true;
+      } catch (e) {
+        console.warn("joinRoom failed (will retry on connect):", e);
+      }
+    };
+
+    const leave = () => {
+      if (!joined) return;
+      try {
+        s.leaveRoom(room);
+      } finally {
+        joined = false;
+      }
+    };
+
+    // Live message handler – only append if not already present
+    const handler = (raw) => {
+      const msg = normalizeMessage(raw);
+
+      setMessages((prev) => {
+        const key = msgKey(msg);
+        if (prev.some((p) => msgKey(p) === key)) return prev;
+        const next = [...prev, msg];
+        next.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+        return next;
+      });
+    };
+
+    // Join immediately if already connected
+    const isConnected =
+      s.connected ||
+      (s.socket && s.socket.connected) ||
+      (s.io && s.io.connected) ||
+      false;
+    if (isConnected) join();
+
+    // Join on future connect/reconnects
+    const on = s.on?.bind(s);
+    const off = s.off?.bind(s);
+    const onConnect = (cb) =>
+      s.onConnect ? s.onConnect(cb) : on && on("connect", cb);
+    const offConnect = (cb) =>
+      s.offConnect ? s.offConnect(cb) : off && off("connect", cb);
+    const onReconnect = (cb) =>
+      s.onReconnect
+        ? s.onReconnect(cb)
+        : (s.io && s.io.on && s.io.on("reconnect", cb)) ||
+          (on && on("reconnect", cb));
+    const offReconnect = (cb) =>
+      s.offReconnect
+        ? s.offReconnect(cb)
+        : (s.io && s.io.off && s.io.off("reconnect", cb)) ||
+          (off && off("reconnect", cb));
+
+    onConnect(join);
+    onReconnect(join);
+
+    s.onMessage(handler);
+
+    return () => {
+      s.offMessage(handler);
+      offConnect(join);
+      offReconnect(join);
+      leave();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conversationId, sessionData?.session?.guest_identity?.guest_id]);
+
+  /* ===================== Lifecycle ===================== */
 
   useEffect(() => {
     fetchSession();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
+
+  /* ===================== OTP handlers ===================== */
 
   const handleSendOtp = async () => {
     try {
@@ -155,7 +233,7 @@ socket.onReady(() => {
       if (res.data?.ok) {
         setWriteEnabled(true);
         setRequiresOtp(false);
-        await fetchSession(); // refresh
+        await fetchSession(); 
       } else {
         setErrorMessage("That code doesn’t match. Please try again.");
       }
@@ -164,24 +242,14 @@ socket.onReady(() => {
     }
   };
 
+  /* ===================== Send message (NO optimistic) ===================== */
+
   const sendGuestMessage = (text) => {
     if (!conversationId || !text.trim()) return;
-
+    const s = socketRef.current;
     const guestId = sessionData?.session?.guest_identity?.guest_id;
 
-    const newMessage = {
-      message_id: Date.now(),
-      conversation_id: conversationId,
-      sender_user_id: null,
-      sender_guest_id: guestId,
-      message: text.trim(),
-      status: "sent",
-      created_at: new Date().toISOString(),
-    };
-
-    setMessages((prev) => [...prev, newMessage]);
-
-    socket.emit("message", {
+    s.emit("message", {
       room: `conversation:${conversationId}`,
       text: text.trim(),
       senderUserId: null,
@@ -189,7 +257,11 @@ socket.onReady(() => {
     });
   };
 
-// console.log("messages:", sessionData.guest_identity?.guest_id);
+  /* ===================== Rendering ===================== */
+
+  const userLike = sessionData?.session?.guest_identity
+    ? { id: sessionData.session.guest_identity.guest_id, role: "guest" }
+    : null;
 
   if (loading) {
     return (
@@ -206,23 +278,6 @@ socket.onReady(() => {
       </div>
     );
   }
-  const mapMessagesToTimelineItems = (msgs, currentGuestId) => {
-  return msgs.map((msg) => {
-    const isGuest =
-      msg.sender_guest_id === currentGuestId ||
-      (!!msg.sender_guest_id && !msg.sender_user_id);
-
-    return {
-      id: msg.message_id,
-      laneLabel: isGuest ? "Donor" : "Admin",
-      laneVariant: isGuest ? "donor" : "admin",
-      // badge: dayjs(msg.created_at).format("MMM D, h:mm A"), // timestamp as badge
-      message: msg.message,
-      author: isGuest ? "Donor" : `Admin #${msg.sender_user_id ?? "?"}`,
-    };
-  });
-};
-
 
   const PinHeader = () => (
     <div className="w-fit h-fit flex flex-col items-center justify-center mb-10">
@@ -248,8 +303,6 @@ socket.onReady(() => {
     <div className="w-screen h-screen overflow-y-scroll flex flex-col items-center justify-center ">
       {!writeEnabled && requiresOtp && (
         <div className="w-[45rem]  h-fit shadow-md shadow-gray-600 flex flex-col items-center px-10 pb-2 pt-10">
-          {/* OTP FLOW */}
-
           <>
             {otpInput ? (
               <>
@@ -287,8 +340,9 @@ socket.onReady(() => {
 
                 <div className="h-15 w-fit my-2 flex justify-center items-center">
                   <span
-                    className={`text-2xl ${errorMessage === "" ? "text-gray-500" : "text-red-500"
-                      } text-center`}
+                    className={`text-2xl ${
+                      errorMessage === "" ? "text-gray-500" : "text-red-500"
+                    } text-center`}
                   >
                     {errorMessage ||
                       "Please enter the 6-digit code we sent to your email."}
@@ -314,33 +368,21 @@ socket.onReady(() => {
               </>
             )}
           </>
-
-          {/* After OTP: show contribution info + the DOCX viewer */}
         </div>
       )}
+
       {writeEnabled && !requiresOtp && sessionData?.contribution && (
         <>
-          {/* <div className="space-y-3 mb-6 w-full">
-              <p>
-                <b>Artifact:</b>{" "}
-                {sessionData.contribution.ContributionArtifact?.title}
-              </p>
-              <p>
-                <b>Status:</b> {sessionData.contribution.status}
-              </p>
-              <p>
-                <b>Type:</b> {sessionData.contribution.contribution_type}
-              </p>
-            </div> */}
-
           {/* DOCX template preview */}
-
           {showView === "document" && (
             <div className="w-fit h-screen pt-20 flex flex-col items-center overflow-y-scroll px-1 gap-y-5 pb-5">
               <div className="w-fit h-fit flex flex-col items-center">
                 <img src={ContractIcon} alt="Contract Icon" className="h-16 mb-4" />
                 <span className="text-5xl font-semibold my-2">Contract</span>
-                <span className="text-center text-xl">Please review the Memorandum of Agreement. <br />The MOA will be signed when the the donor has delivered the artifact.</span>
+                <span className="text-center text-xl">
+                  Please review the Memorandum of Agreement. <br />
+                  The MOA will be signed when the the donor has delivered the artifact.
+                </span>
               </div>
 
               <div className="h-[135rem] shadow-md shadow-gray-600">
@@ -348,17 +390,21 @@ socket.onReady(() => {
               </div>
 
               <div className="min-h-fit w-full flex justify-end">
-                <StyledButton onClick={() => setShowView("timeline")} className="h-fit">Next</StyledButton>
+                <StyledButton
+                  onClick={() => setShowView("timeline")}
+                  className="h-fit"
+                >
+                  Next
+                </StyledButton>
               </div>
             </div>
           )}
-          {showView === "timeline" && (
-            <div className="min-w-[50rem] h-full flex flex-col items-center justify-center">
-              {/* === START: timeline content === */}
-              <div className="w-full max-w-5xl flex flex-col items-center gap-y-10 py-10">
 
+          {showView === "timeline" && (
+            <div className="min-w-[50rem] h-full flex flex-col items-center justify-center px-2">
+              <div className="w-full max-w-5xl flex flex-col items-center gap-y-10 py-10">
                 {/* Heading */}
-                <div className="flex flex-col items-center justify-center text-center h-full">
+                <div className="flex flex-col items-center justify-center text-center h-fit">
                   <svg
                     width="40"
                     height="40"
@@ -382,20 +428,17 @@ socket.onReady(() => {
                   </p>
                 </div>
 
-
                 {/* Timeline */}
                 <DonorTimeline
-                  timelineData={sessionData?.contribution?.ContributionTimeline || sessionData?.contribution?.contributiontimeline}
+                  timelineData={
+                    sessionData?.contribution?.ContributionTimeline ||
+                    sessionData?.contribution?.contributiontimeline
+                  }
                 />
 
-
-
-
-
                 {/* Card with questions */}
-                <div className="w-full flex bg-white shadow-md shadow-gray-500/30 rounded-xl p-8 gap-x-5">
+                <div className="w-full flex bg-white shadow-md shadow-gray-500 rounded-xl p-8 gap-x-5">
                   <div className="flex flex-col items-start gap-4 w-[20rem]">
-                    {/* pen tip icon */}
                     <div className="shrink-0 mt-1">
                       <svg
                         width="48"
@@ -440,8 +483,8 @@ socket.onReady(() => {
                               onChange={(e) => {
                                 setQ1Answer(e.target.value);
                                 setCurrentQuestion(2);
-                                setShowInputs(false); // Hide inputs when switching to Yes
-                                setQ2Answer(""); // Reset Q2 answer
+                                setShowInputs(false);
+                                setQ2Answer("");
                               }}
                             />
                             <span className="text-black peer-checked:text-green-600">Yes</span>
@@ -457,8 +500,8 @@ socket.onReady(() => {
                               onChange={(e) => {
                                 setQ1Answer(e.target.value);
                                 setShowInputs(true);
-                                setCurrentQuestion(1); // Stay on Q1, don't show Q2
-                                setQ2Answer(""); // Reset Q2 answer
+                                setCurrentQuestion(1);
+                                setQ2Answer("");
                               }}
                             />
                             <span className="text-black peer-checked:text-red-600">No</span>
@@ -498,7 +541,7 @@ socket.onReady(() => {
                               checked={q2Answer === "no"}
                               onChange={(e) => {
                                 setQ2Answer(e.target.value);
-                                setShowInputs(false); // Hide inputs for No
+                                setShowInputs(false);
                               }}
                             />
                             <span className="text-black peer-checked:text-red-600">No</span>
@@ -511,9 +554,7 @@ socket.onReady(() => {
                     {showInputs && (
                       <div className="space-y-4">
                         <div>
-                          <label className="block font-medium text-sm mb-2">
-                            Reason:
-                          </label>
+                          <label className="block font-medium text-sm mb-2">Reason:</label>
                           <textarea
                             value={reason}
                             onChange={(e) => setReason(e.target.value)}
@@ -523,9 +564,7 @@ socket.onReady(() => {
                           />
                         </div>
                         <div>
-                          <label className="block font-medium text-sm mb-2">
-                            Any Suggestion:
-                          </label>
+                          <label className="block font-medium text-sm mb-2">Any Suggestion:</label>
                           <textarea
                             value={suggestion}
                             onChange={(e) => setSuggestion(e.target.value)}
@@ -537,96 +576,78 @@ socket.onReady(() => {
                       </div>
                     )}
                   </div>
-
-
                 </div>
-
-
 
                 {/* Bottom buttons */}
                 <div className="min-h-fit w-full flex justify-between">
-                  <StyledButton onClick={() => setShowView("document")} className="h-fit">Back</StyledButton>
-                          <StyledButton
-          onClick={() => {
-            // if (q1Answer === "no" || q2Answer === "yes") {
-            //   // send reason/suggestion
-            //   sendGuestMessage(
-            //     `Reason: ${reason || "None"} | Suggestion: ${suggestion || "None"}`
-            //   );
-            // } else {
-            //   sendGuestMessage("I have accepted the MOA without changes.");
-            // }
-
-            // After sending, show the conversation timeline
-            setShowView("conversation");
-          }}
-          className="h-fit"
-        >
-          Accept
-        </StyledButton>
+                  <StyledButton
+                    onClick={() => setShowView("document")}
+                    className="h-fit"
+                  >
+                    Back
+                  </StyledButton>
+                  <StyledButton
+                    onClick={() => setShowView("conversation")}
+                    className="h-fit"
+                  >
+                    Accept
+                  </StyledButton>
                 </div>
               </div>
-              {/* === END: timeline content === */}
             </div>
           )}
-{showView === "conversation" && (
-  <div className="w-full max-w-4xl h-full flex flex-col">
-    {/* Timeline */}
-    <div className="flex-1 bg-white rounded-md shadow p-4 overflow-y-auto">
-<ConversationTimeline
-  items={mapMessagesToTimelineItems(
-    messages,
-    sessionData?.session?.guest_identity?.guest_id
-  )}
-/>
 
-    </div>
+          {showView === "conversation" && (
+            <div className="w-full max-w-4xl justify-center h-full flex flex-col">
+              {/* Timeline */}
+              <div className="w-full h-fit border">
+                <ConversationTimeline
+                  items={messages.map((m) => mapMessageToLane(m, userLike)).filter(Boolean)}
+                  height="33rem"
+                />
+                </div>
 
-    {/* Input Box */}
-    <div className="flex mt-2">
-      <input
-        className="flex-1 border rounded-l px-3 py-2"
-        value={suggestion}
-        onChange={(e) => setSuggestion(e.target.value)}
-        placeholder="Type your message..."
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && !e.shiftKey) {
-            e.preventDefault();
-            if (suggestion.trim()) {
-              sendGuestMessage(suggestion.trim());
-              setSuggestion("");
-            }
-          }
-        }}
-      />
-      <StyledButton
-        className="rounded-l-none"
-        onClick={() => {
-          if (suggestion.trim()) {
-            sendGuestMessage(suggestion.trim());
-            setSuggestion("");
-          }
-        }}
-      >
-        Send
-      </StyledButton>
-    </div>
-  </div>
-)}
-
-
-
+              {/* Input Box */}
+              <div className="flex mt-2">
+                <input
+                  className="flex-1 border rounded-l px-3 py-2"
+                  value={suggestion}
+                  onChange={(e) => setSuggestion(e.target.value)}
+                  placeholder="Type your message..."
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      if (suggestion.trim()) {
+                        sendGuestMessage(suggestion.trim());
+                        setSuggestion("");
+                      }
+                    }
+                  }}
+                />
+                <StyledButton
+                  className="rounded-l-none"
+                  onClick={() => {
+                    if (suggestion.trim()) {
+                      sendGuestMessage(suggestion.trim());
+                      setSuggestion("");
+                    }
+                  }}
+                >
+                  Send
+                </StyledButton>
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>
   );
 }
 
-// qr hadnler usage
+// qr handler usage
 // import QRHandler from "./components/QRHandler";
-
-//       <QRHandler
-//         sessionId={sessionId}
-//         contributionId={sessionData?.contribution?.contribution_id}
-//         triggerGenerate={true}
-//       />
+// <QRHandler
+//   sessionId={sessionId}
+//   contributionId={sessionData?.contribution?.contribution_id}
+//   triggerGenerate={true}
+// />

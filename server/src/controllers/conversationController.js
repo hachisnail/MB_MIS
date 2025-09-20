@@ -3,6 +3,16 @@ import Conversation from "../models/conversationModel.js";
 import Message from "../models/messageModel.js";
 
 export default {
+  async getById(id) {
+  try {
+    return await Conversation.findByPk(id);
+  } catch (err) {
+    console.error("[ConversationController] getById:", err);
+    return null;
+  }
+},
+
+
   async getMessages(req, res) {
     try {
       const { id } = req.params;

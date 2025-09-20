@@ -1,28 +1,58 @@
-import { useState } from "react";
-import { RenderRelatedDocs } from "../components/Artifactlist";
-import ImageCarousel from "../components/ImageCarousel";
+import { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
+
+// ✅ same components your Acquisition page uses
+import Breadcrumb from "../../../../components/Breadcrumb";
+import {
+  RenderRelatedDocs,
+  RenderArtifactImageAndDonatorInfo,
+  OptionsPanel,
+} from "../../acquisition/components/ViewPageRenderer";
+import ArtifactDetailsShell from "../../acquisition/layouts/ArtifactDetailsShell";
+
+// ✅ maintenance form (replacing the old metadata form)
+import ArtifactMaintenanceForm from "../components/ArtifactMaintenanceForm";
+
+// local inventory piece
 import MaintenanceReportCard from "../components/MaintenanceReportCard";
 
-const ViewArtifacts = () => {
-  const [isPanelOpen, setIsPanelOpen] = useState(false);
+// ✅ network + helpers
+import axiosClient from "@/lib/axiosClient";
+import { decodeBase64 } from "@/utils/base64";
 
-  const relatedImages = [
-    { src: "https://picsum.photos/id/1011/800/800", alt: "Forest" },
-    { src: "https://picsum.photos/id/1025/800/800", alt: "Doggo" },
-    { src: "https://picsum.photos/id/1020/800/800", alt: "Lake" },
-    { src: "https://picsum.photos/id/1003/800/800", alt: "Bridge" },
-  ];
+const SERVER_URL = import.meta.env.VITE_SERVER_URL;
 
-  const attachedFiles = [
-    { name: "File 1", url: "#" },
-    { name: "File 2", url: "#" },
-  ];
+function extractContributionIdFromPath(pathname) {
+  const segments = pathname.split("/");
+  const last = segments[segments.length - 1] || "";
+
+  // Try base64-encoded "ID ..." (same pattern used in AcquisitionViewPage)
+  try {
+    const decoded = decodeBase64(last);
+    if (decoded && typeof decoded === "string") {
+      const [id] = decoded.split(" ");
+      if (id) return id;
+    }
+  } catch {
+    // ignore; fall back to raw
+  }
+  // Fallback: use the raw last segment if it looks like an id
+  return last;
+}
+
+export default function ViewArtifacts() {
+  const location = useLocation();
+
+  // data state
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [contributionData, setContributionData] = useState(null);
 
   // tabs
   const [activeTab, setActiveTab] = useState("Artifact Information");
   const TABS = ["Artifact Information", "Maintenance Report"];
 
-  // ✅ define the report state (this fixes "maintReport1 is not defined")
+  // report editor state (your existing MaintenanceReportCard)
   const [maintReport1, setMaintReport1] = useState({
     id: "",
     personResponsible: "",
@@ -43,6 +73,121 @@ const ViewArtifacts = () => {
     remarks: "",
   });
 
+  // ✅ maintenance editing (replaces old metadata form state)
+  const [maintenance, setMaintenance] = useState({
+    status: "", // "On Display" | "In Maintenance" (snake_case accepted by the form too)
+    maintenanceDescription: "",
+    damageImages: [],
+  });
+
+  // (Optional) keep curatorial description on the right panel
+  const [curatorialDesc, setCuratorialDesc] = useState("");
+
+  // --------------------- Fetch (same controller as Acquisition page) ---------------------
+  useEffect(() => {
+    (async () => {
+      try {
+        setLoading(true);
+        setError("");
+
+        const id = extractContributionIdFromPath(location.pathname);
+        if (!id) throw new Error("Invalid contribution id in URL");
+
+        // main fetch (ContributionController.getContributionById)
+        const { data } = await axiosClient.get(`/auth/contributions/${id}`);
+        setContributionData(data);
+
+        // If you already store maintenance data server-side, hydrate here (example):
+        // const m = await axiosClient.get(`/auth/contributions/${data?.contribution_id}/maintenance`);
+        // setMaintenance({
+        //   status: m.data?.status ?? "",
+        //   maintenanceDescription: m.data?.description ?? "",
+        //   damageImages: m.data?.damage_images ?? [],
+        // });
+      } catch (e) {
+        console.error("Error fetching contribution:", e);
+        setError(e?.response?.data?.message || e?.message || "Failed to load contribution");
+        setContributionData(null);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [location.pathname]);
+
+  // --------------------- Derived, null-safe accessors ---------------------
+  const artifact =
+    contributionData?.ContributionArtifact ?? contributionData?.contributionartifact ?? null;
+
+  const contributor =
+    contributionData?.Contributor ?? contributionData?.contributor ?? null;
+
+  // adapt images/files for the shared renderers
+  const artifactImg =
+    (artifact?.images ?? []).map((img, idx) => ({
+      src: `${SERVER_URL}/uploads/private/pictures/${img}`,
+      label: `Image ${idx + 1}`,
+    }));
+
+  const relatedImages =
+    (artifact?.related_images ?? []).map((img, idx) => ({
+      key: String(idx),
+      src: `${SERVER_URL}/uploads/private/pictures/${img}`,
+      label: img || `Image ${idx + 1}`,
+    }));
+
+  const attachedFiles =
+    (artifact?.documents ?? []).map((doc, idx) => ({
+      key: String(idx),
+      filename: doc || `File ${idx + 1}`,
+      category: "file",
+      url: `${SERVER_URL}/uploads/private/files/${doc}`,
+    }));
+
+  // donor info
+  const donatorInformation = contributor
+    ? [
+        {
+          label: "From",
+          value:
+            `${contributor?.first_name ?? ""} ${contributor?.last_name ?? ""}`.trim() || "Not provided",
+        },
+        { label: "Email", value: contributor?.email || "Not provided" },
+        { label: "Phone Number", value: contributor?.phone_number || "Not provided" },
+        {
+          label: "Address",
+          value:
+            [contributor?.street, contributor?.barangay, contributor?.city, contributor?.province]
+              .filter(Boolean)
+              .join(", ") || "Not provided",
+        },
+        { label: "Organization", value: contributor?.organization || "Not provided" },
+      ]
+    : [];
+
+  // --------------------- UI guards ---------------------
+  if (loading) {
+    return (
+      <div className="w-full h-full flex items-center justify-center">
+        <span>Loading…</span>
+      </div>
+    );
+  }
+  if (error) {
+    return (
+      <div className="w-full h-full flex items-center justify-center text-red-600">
+        <span>{error}</span>
+      </div>
+    );
+  }
+  if (!contributionData) {
+    return (
+      <div className="w-full h-full flex items-center justify-center text-2xl text-gray-500">
+        <span>No contribution data found or invalid ID.</span>
+      </div>
+    );
+  }
+
+  // --------------------- Render ---------------------
   return (
     <div className="w-full h-full flex flex-col gap-6">
       {/* --- Tabs (preview-style) --- */}
@@ -63,172 +208,128 @@ const ViewArtifacts = () => {
         ))}
       </div>
 
+      {/* ====================== ARTIFACT INFORMATION — same design as acquisition ====================== */}
       {activeTab === "Artifact Information" && (
-        <>
-          <div className="w-full h-full rounded-md grid grid-cols-[43rem_34rem_52rem]">
-            {/* ==================== LEFT COLUMN (full overflow background) ==================== */}
-            <div className="col-span-1 relative overflow-visible h-full">
-              <div className="absolute inset-x-0 -top-full -bottom-[1.2rem] bg-black" aria-hidden />
-              <div className="relative w-full h-full flex flex-col">
-                <div className="w-full h-[12rem] flex items-start justify-end pl-10 pb-5 pt-4 overflow-hidden flex-col">
-                  <span className="text-white text-3xl font-bold text-left break-words line-clamp-3 max-w-[38rem]">
-                    {/* {contributionData.ContributionArtifact.title} */}
-                  </span>
-                </div>
+        <ArtifactDetailsShell
+          left={
+            <>
+              <div className="absolute left-0 -top-[12rem] w-full h-[12rem] bg-black flex items-start justify-end pl-10 pb-5 pt-4 overflow-hidden flex-col">
+                <span className="text-white text-3xl font-bold text-left break-words line-clamp-3 max-w-[38rem]">
+                  {artifact?.title || "Artifact Title"}
+                </span>
+                <Breadcrumb hideTitle={true} overrideTheme="text-white" />
               </div>
-            </div>
 
-            {/* ==================== MIDDLE COLUMN ==================== */}
-            <div className="col-span-1 w-[30rem] h-full flex flex-col gap-8">
-              <div className="w-[30rem] h-[7rem] bg-[#EDCA86] rounded-r-3xl flex justify-center items-center p-2">
-                <div className="w-full h-fit flex items-center gap-1">
-                  <span className="text-2xl font-semibold text-black">This artifact is currently</span>
-                  <div className="w-[12rem] h-full bg-black rounded-lg flex items-center justify-center">
-                    <span className="text-white font-semibold text-xl">On Maintenance</span>
+              <RenderArtifactImageAndDonatorInfo
+                donatorInformation={donatorInformation}
+                artifactImg={artifactImg}
+              />
+
+              <div className="absolute left-0 -bottom-[1.2rem] w-full h-[1.2rem] bg-black" />
+            </>
+          }
+          /* ✅ Replaced the metadata form with the maintenance form */
+          middle={
+            <ArtifactMaintenanceForm value={maintenance} onChange={setMaintenance} />
+          }
+          right={
+            <div className="w-full h-full flex flex-col gap-4 pr-6">
+              <div className="flex-1 min-h-0 rounded-lg border border-gray-300 p-6 flex flex-col">
+                <span className="text-4xl font-bold">Artifact Description</span>
+                <div className="mt-3 flex-1 min-h-0">
+                  <div className="w-full h-full rounded-md border border-gray-300 p-3 overflow-auto bg-white">
+                    {artifact?.description && artifact.description.trim() ? (
+                      <p className="whitespace-pre-wrap text-lg text-[#1D1911]">
+                        {artifact.description}
+                      </p>
+                    ) : (
+                      <span className="text-gray-500 italic">Not provided</span>
+                    )}
                   </div>
                 </div>
               </div>
 
-              <div className="w-[30rem] h-[20rem] bg-[#9A8252] rounded-r-3xl flex flex-col items-center p-6 gap-4 text-white font-hind px-10">
-                <span className="text-3xl font-semibold">Maintenance description</span>
-                <p className="text-lg font-semibold text-justify tracking-wider">
-                  Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut
-                  labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco
-                  laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in
-                  voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat
-                  non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
-                </p>
-              </div>
 
-              <div className="w-[30rem] h-[27rem] bg-[#1D1911] rounded-r-3xl flex flex-col items-center p-6 gap-4 text-white font-hind">
-                <span className="text-3xl font-bold">Artifact Damage</span>
-
-                <div className="flex items-center justify-center overflow-hidden">
-                  <ImageCarousel
-                    images={relatedImages}
-                    thumbnailSizeClass="w-[3rem] h-[3rem]"
-                    mainSizeClass="w-[14rem] h-[14rem]"
-                  />
-                </div>
-
-                <span className="text-2xl font-bold">Termite Damage</span>
-
-                <span className="text-lg font-bold text-center">
-                  The handle shows visible termite damage, with parts of the wood hollowed out and weakened.
-                </span>
-              </div>
-            </div>
-
-            {/* ==================== RIGHT COLUMN (with sliding panel) ==================== */}
-            <div className="relative col-span-1 w-full h-[60rem] flex flex-col ml-12 gap-12 overflow-visible">
-              {/* top section */}
-              <div className="w-full h-[29rem] bg-[#1D1911] rounded-l-3xl"></div>
-
-              {/* bottom section */}
-              <div className="w-full h-full flex relative">
-                <div className="w-full">
+              <div className="flex-1 min-h-0 flex gap-4">
+                <div className="flex-1 min-h-0 min-w-0">
+                  {/* Adapted arrays to acquisition renderer props */}
                   <RenderRelatedDocs
                     relatedImages={relatedImages}
                     attachedFiles={attachedFiles}
-                    imageBoxWidth="25rem"
-                    imageBoxHeight="h-full"
-                    fileBoxWidth="14rem"
-                    fileBoxHeight="h-full"
-                    imgHeight="h-12"
+                    containerHeight="h-full"
+                    imageBoxWidth="w-[29rem]"
+                    fileBoxWidth="w-[17rem]"
+                    imgHeight="h-52"
                   />
                 </div>
-              </div>
 
-              {/* sliding panel (covers entire right column) */}
-              <div
-                className={`absolute top-0 right-0 w-full h-[60rem] bg-white border-2 border-[#1D1911] rounded-l-3xl z-20 transform transition-transform duration-500 ${
-                  isPanelOpen ? "translate-x-0" : "translate-x-full"
-                }`}
-              >
-                {/* toggle button (sticks to left edge of panel, overlaps middle column) */}
-                <button
-                  onClick={() => setIsPanelOpen((prev) => !prev)}
-                  className={`absolute -bottom-[9.5rem] -translate-y-1/2 ${
-                    isPanelOpen ? "-left-[5rem] w-[5rem]" : "-left-[8rem] w-[8rem]"
-                  } h-[32rem] bg-[#1D1911] rounded-tl-2xl rounded-bl-2xl text-white font-bold shadow-lg z-30 flex items-center justify-center transition-all duration-500`}
-                >
-                  <div className="flex flex-col items-center justify-center gap-4 transform -rotate-90">
-                    {isPanelOpen ? (
-                      <span className="flex items-center gap-12 text-3xl font-bold tracking-wide w-[24rem] ">
-                        Artifact Information
-                        <span
-                          className={`inline-block transform transition-transform duration-500 ${
-                            isPanelOpen ? "-rotate-90" : "rotate-90"
-                          }`}
-                        >
-                          ⟨
-                        </span>
-                      </span>
-                    ) : (
-                      <div className="flex flex-col items-center text-3xl font-hind font-bold leading-tight w-[24rem]">
-                        <span className="mb-2">Click to Show</span>
-                        <span className="flex items-center gap-12">
-                          Artifact Information
-                          <span
-                            className={`inline-block transform transition-transform duration-500 ${
-                              isPanelOpen ? "-rotate-90" : "rotate-90"
-                            }`}
-                          >
-                            ⟨
-                          </span>
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </button>
-
-                {/* panel content — header + Report card */}
-                <div className="w-full h-full flex flex-col p-4 overflow-auto">
-                  
-                  <div className="w-full h-[24rem] bg-amber-200"></div>
-                  <div className="w-full h-[20rem] bg-blue-200"></div>
-                  <div className="w-full h-[22rem] bg-red-200"></div>
-                
-                </div>
+                <OptionsPanel
+                  onEdit={() => {
+                    // optional: toggle edit mode, etc.
+                  }}
+                  onSave={async () => {
+                    // Wire this to your maintenance endpoint when ready (example below).
+                    // Keeping it as a console.log to avoid 404s if the route doesn't exist yet.
+                    //
+                    // const id = contributionData?.contribution_id;
+                    // await axiosClient.post(`/auth/contributions/${id}/maintenance`, {
+                    //   status: maintenance.status,
+                    //   description: maintenance.maintenanceDescription,
+                    //   damage_images: maintenance.damageImages,
+                    //   curatorial_description: curatorialDesc,
+                    // });
+                    console.log("Save maintenance", {
+                      maintenance,
+                      curatorialDesc,
+                      contributionId: contributionData?.contribution_id,
+                    });
+                    alert("Maintenance data not yet wired to API. See console for payload.");
+                  }}
+                  onComplete={async () => {
+                    // Optional finalize behavior for maintenance
+                    console.log("Complete maintenance", {
+                      maintenance,
+                      curatorialDesc,
+                      contributionId: contributionData?.contribution_id,
+                    });
+                    alert("Finalize maintenance (stub). Wire to API when available.");
+                  }}
+                />
               </div>
             </div>
-          </div>
-        </>
+          }
+        />
       )}
 
-      {/* ====================== MAINTENANCE REPORT TAB (only black rail) ====================== */}
+      {/* ====================== MAINTENANCE REPORT TAB ====================== */}
       {activeTab === "Maintenance Report" && (
-  <div className="w-full h-full grid grid-cols-[43rem_1fr] items-start">
-    {/* LEFT: black rail (fixed height, won’t stretch) */}
-    <div className="col-span-1 relative overflow-visible self-start h-full">
-      {/* background that overflows above/below the column, but is bounded to h-[60rem] */}
-      <div className="absolute inset-x-0 -top-full -bottom-[1.2rem] bg-black" aria-hidden />
-      
-    </div>
-
-        <div >
-          <div className="w-full h-20 rounded-r-2xl bg-[#1D1911] flex items-center justify-start pl-12">
-            <span className="text-3xl font-bold font-hind text-white tracking-wide">Maintenance record</span>
+        <div className="w-full h-full grid grid-cols-[43rem_1fr] items-start">
+          {/* LEFT: black rail (fixed height, won’t stretch) */}
+          <div className="col-span-1 relative overflow-visible self-start h-full">
+            <div className="absolute inset-x-0 -top-full -bottom-[1.2rem] bg-black" aria-hidden />
           </div>
-    {/* RIGHT: card content */}
-    <div className="h-full col-span-1 flex-1 px-1 sm:px-2 pt-4">
-      <MaintenanceReportCard
-        title="Report 1"
-        report={maintReport1}
-        onChange={setMaintReport1}
-        defaultOpen
-      />
-    
-    </div>
-    <div className="w-full">
-      
-    </div>
-    </div>
-  </div>
-)}
 
+          <div>
+            <div className="w-full h-20 rounded-r-2xl bg-[#1D1911] flex items-center justify-start pl-12">
+              <span className="text-3xl font-bold font-hind text-white tracking-wide">
+                Maintenance record
+              </span>
+            </div>
+
+            {/* RIGHT: card content */}
+            <div className="h-full col-span-1 flex-1 px-1 sm:px-2 pt-4">
+              <MaintenanceReportCard
+                title="Report 1"
+                report={maintReport1}
+                onChange={setMaintReport1}
+                defaultOpen
+              />
+            </div>
+
+            <div className="w-full">{/* spacer */}</div>
+          </div>
+        </div>
+      )}
     </div>
   );
-};
-
-export default ViewArtifacts;
+}

@@ -129,7 +129,14 @@ const ScheduleStep = ({
                                 <Calendar
                                     onChange={handleDateSelect}
                                     value={selectedDate}
-                                    tileClassName="relative"
+                                    tileClassName={({ date, view }) => {
+                                        if (view === 'month') {
+                                            const ds = getLocalDateString(date);
+                                            const isDisabled = disabledDates?.includes(ds);
+                                            return isDisabled ? 'relative group' : 'relative';
+                                        }
+                                        return 'relative';
+                                    }}
                                     tileContent={({ date, view }) => {
                                         if (view === 'month') {
                                             const ds = getLocalDateString(date);
@@ -140,9 +147,14 @@ const ScheduleStep = ({
                                             // Show cross mark for fully booked dates
                                             if (isDisabled) {
                                                 return (
-                                                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                                        <span className="text-red-500 text-3xl font-bold">×</span>
-                                                    </div>
+                                                    <>
+                                                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                                            <span className="text-red-500 text-3xl font-bold">×</span>
+                                                        </div>
+                                                        <div className="absolute z-50 bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-48 p-2 bg-gray-800 text-white text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
+                                                            No available time slots on this date
+                                                        </div>
+                                                    </>
                                                 );
                                             }
                                         }
@@ -164,7 +176,7 @@ const ScheduleStep = ({
                                 </div>
                             )}
                             {isLoadingDateAvailability && (
-                                <p className="mt-2 text-sm text-gray-500">Checking date availability...</p>
+                                <p className="mt-2 text-sm text-gray-500">Checking available dates...</p>
                             )}
                             {errors.selectedDate && (
                                 <p className="mt-2 text-base text-red-600">{errors.selectedDate.message}</p>
@@ -188,7 +200,7 @@ const ScheduleStep = ({
                                                     const isExclusive = timeSlotExclusive[time];
                                                     const hasConfirmedAppointment = confirmedSlots[time];
                                                     const slotOverlapCount = timeSlotCounts[time] || 0;
-                                                    const isOverLimit = slotOverlapCount >= 5;
+                                                    const isOverLimit = slotOverlapCount >= 1;
                                                     const isUnavailable = isExclusive || hasConfirmedAppointment || isOverLimit;
                                                     const isSelected = field.value === time;
 
@@ -215,11 +227,6 @@ const ScheduleStep = ({
                                                                 <span className={`font-medium ${isUnavailable ? 'line-through' : ''}`}>
                                                                     {time}
                                                                 </span>
-                                                                {slotOverlapCount > 0 && !isUnavailable && (
-                                                                    <span className="text-sm text-gray-500 block">
-                                                                        {slotOverlapCount}/5 slots used
-                                                                    </span>
-                                                                )}
                                                                 {isUnavailable && (
                                                                     <span className="absolute inset-0 flex items-center justify-center text-red-600">
                                                                         <i className="fa-solid fa-times text-2xl"></i>
@@ -229,10 +236,10 @@ const ScheduleStep = ({
 
                                                             {isUnavailable && (
                                                                 <div className="absolute z-10 bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-56 p-3 bg-gray-800 text-white text-sm rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
-                                                                    {isExclusive ? 'This time slot has an exclusive schedule' :
-                                                                        hasConfirmedAppointment ? 'This time slot already has a confirmed appointment' :
-                                                                            isOverLimit ? 'This time slot has reached the maximum limit of 5 overlapping events' :
-                                                                                'This time slot is unavailable'}
+                                                                    {isExclusive ? 'This time slot is reserved for a special event' :
+                                                                        hasConfirmedAppointment ? 'This time slot is already taken' :
+                                                                            isOverLimit ? 'This time slot is already booked' :
+                                                                                'This time slot is not available'}
                                                                 </div>
                                                             )}
                                                         </div>
@@ -242,7 +249,7 @@ const ScheduleStep = ({
                                         )}
                                     />
                                     {isLoadingTimeSlots && (
-                                        <p className="mt-3 text-base text-gray-500">Checking time slot availability...</p>
+                                        <p className="mt-3 text-base text-gray-500">Checking available time slots...</p>
                                     )}
                                     {errors.selectedTime && (
                                         <p className="mt-2 text-base text-red-600">{errors.selectedTime.message}</p>

@@ -1,65 +1,43 @@
 @import url('https://fonts.googleapis.com/css2?family=Hina+Mincho&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Hind:wght@400;500;600;700&display=swap');
 
-
 @import "tailwindcss";
 @import '../node_modules/modern-normalize/modern-normalize.css';
-
-
-
 
 html {
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
 }
 
-
 /* Hide scrollbar but keep scrolling */
 ::-webkit-scrollbar {
     display: none;
 }
 
-
 body {
-    -ms-overflow-style: none;
-    /* For IE & Edge */
-    scrollbar-width: none;
-    /* For Firefox */
+    -ms-overflow-style: none; /* IE & Edge */
+    scrollbar-width: none; /* Firefox */
 }
 
 /* animation for header */
 @keyframes slideInRight {
-    0% {
-        transform: translateX(15%);
-    }
-
-    100% {
-        transform: translateX(0%);
-    }
+    0% { transform: translateX(15%); }
+    100% { transform: translateX(0%); }
 }
-
-.animate-slide-in-right {
-    animation: slideInRight 0.8s ease forwards;
-}
+.animate-slide-in-right { animation: slideInRight 0.8s ease forwards; }
 
 @-moz-document url-prefix() {
-    html {
-        font-size: 10px !important;
-    }
+    html { font-size: 10px !important; }
 }
-
 @supports (-webkit-touch-callout: none) {
-    html {
-        font-size: 10px !important;
-    }
+    html { font-size: 10px !important; }
 }
-
 
 @theme {
     --breakpoint-3xl: 1800px;
     --font-hina: "Hina Mincho", "serif";
     --font-hind: "Hind", "serif";
-   --shadow-inset-test: inset 0 1px 1px rgba(0, 0, 0, 0.05); 
+    --shadow-inset-test: inset 0 1px 1px rgba(0, 0, 0, 0.05); 
 }
 
 @custom-variant 1xl (@media (max-height: 800px));
@@ -70,83 +48,23 @@ input:-webkit-autofill {
 }
 
 /* 2 block text on article */
-.editor-content-preview h1 {
-    font-size: 2em;
-    font-weight: bold;
-    margin-bottom: 0.5em;
-}
+.editor-content-preview h1 { font-size: 2em; font-weight: bold; margin-bottom: 0.5em; }
+.editor-content-preview h2 { font-size: 1.5em; font-weight: bold; margin-bottom: 0.5em; }
+.editor-content-preview h3 { font-size: 1.3em; font-weight: bold; margin-bottom: 0.5em; }
+.editor-content-preview h4 { font-size: 1.2em; font-weight: bold; margin-bottom: 0.5em; }
+.editor-content-preview h5 { font-size: 1.1em; font-weight: bold; margin-bottom: 0.5em; }
 
-.editor-content-preview h2 {
-    font-size: 1.5em;
-    font-weight: bold;
-    margin-bottom: 0.5em;
-}
-
-.editor-content-preview h3 {
-    font-size: 1.3em;
-    font-weight: bold;
-    margin-bottom: 0.5em;
-}
-
-.editor-content-preview h4 {
-    font-size: 1.2em;
-    font-weight: bold;
-    margin-bottom: 0.5em;
-}
-
-.editor-content-preview h5 {
-    font-size: 1.1em;
-    font-weight: bold;
-    margin-bottom: 0.5em;
-}
-
-
-.ProseMirror h1 {
-    font-size: 2em;
-    font-weight: bold;
-    margin-bottom: 0.5em;
-}
-
-.ProseMirror h2 {
-    font-size: 1.5em;
-    font-weight: bold;
-    margin-bottom: 0.5em;
-}
-
-.ProseMirror h3 {
-    font-size: 1.3em;
-    font-weight: bold;
-    margin-bottom: 0.5em;
-}
-
-.ProseMirror h4 {
-    font-size: 1.2em;
-    font-weight: bold;
-    margin-bottom: 0.5em;
-}
-
-.ProseMirror h5 {
-    font-size: 1.1em;
-    font-weight: bold;
-    margin-bottom: 0.5em;
-}
+.ProseMirror h1 { font-size: 2em; font-weight: bold; margin-bottom: 0.5em; }
+.ProseMirror h2 { font-size: 1.5em; font-weight: bold; margin-bottom: 0.5em; }
+.ProseMirror h3 { font-size: 1.3em; font-weight: bold; margin-bottom: 0.5em; }
+.ProseMirror h4 { font-size: 1.2em; font-weight: bold; margin-bottom: 0.5em; }
+.ProseMirror h5 { font-size: 1.1em; font-weight: bold; margin-bottom: 0.5em; }
 
 /* Text alignment styles */
-.editor-content-preview [data-text-align="center"] {
-    text-align: center;
-}
-
-.editor-content-preview [data-text-align="right"] {
-    text-align: right;
-}
-
-.editor-content-preview [data-text-align="left"] {
-    text-align: left;
-}
-
-.editor-content-preview [data-text-align="justify"] {
-    text-align: justify;
-}
+.editor-content-preview [data-text-align="center"] { text-align: center; }
+.editor-content-preview [data-text-align="right"] { text-align: right; }
+.editor-content-preview [data-text-align="left"] { text-align: left; }
+.editor-content-preview [data-text-align="justify"] { text-align: justify; }
 
 .two-column-grid {
     display: grid;
@@ -166,8 +84,6 @@ input:-webkit-autofill {
     word-break: break-word;
     white-space: pre-wrap;
 }
-
-
 
 .ProseMirror p {
     word-wrap: break-word;
@@ -193,21 +109,8 @@ input:-webkit-autofill {
 }
 
 /* GoCapsule Extension Css */
-.editor-content-preview .column-block {
-    display: flex;
-    /* Arrange columns side-by-side */
-    gap: 1.5rem;
-    /* Spacing between columns */
-}
-
-.editor-content-preview .column {
-    flex: 1;
-    /* Make each column flexible */
-    min-width: 0;
-    /* Necessary to prevent overflow in flex layout */
-    padding: 0 0.75rem;
-    /* Optional: column padding */
-}
+.editor-content-preview .column-block { display: flex; gap: 1.5rem; }
+.editor-content-preview .column { flex: 1; min-width: 0; padding: 0 0.75rem; }
 
 /* Remove blue border on focus for the Tiptap editor */
 .ProseMirror:focus,
@@ -217,13 +120,8 @@ input:-webkit-autofill {
 }
 
 /* Custom list styles for Tiptap editor */
-.ProseMirror ol,
-.ProseMirror ul {
-  color: #111 !important;
-}
-.ProseMirror ol.circle-number-list {
-  list-style-type: decimal;
-}
+.ProseMirror ol, .ProseMirror ul { color: #111 !important; }
+.ProseMirror ol.circle-number-list { list-style-type: decimal; }
 .ProseMirror ol.circle-number-list > li::marker,
 .ProseMirror ol.roman-list > li::marker,
 .ProseMirror ol.letter-list > li::marker,
@@ -231,52 +129,38 @@ input:-webkit-autofill {
 .ProseMirror ul > li::marker {
   color: #111 !important;
 }
-.ProseMirror ol.roman-list {
-  list-style-type: upper-roman;
-}
-.ProseMirror ol.letter-list {
-  list-style-type: upper-alpha;
-}
+.ProseMirror ol.roman-list { list-style-type: upper-roman; }
+.ProseMirror ol.letter-list { list-style-type: upper-alpha; }
 
 /* Bullet lists */
-.ProseMirror ul > li::marker {
-  color: #111 !important;
-}
+.ProseMirror ul > li::marker { color: #111 !important; }
 
 /* Ensure lists are visible in the editor */
-.ProseMirror ul,
-.ProseMirror ol {
+.ProseMirror ul, .ProseMirror ol {
   list-style-position: inside !important;
   color: #111 !important;
 }
-
-.ProseMirror ul > li::marker,
-.ProseMirror ol > li::marker {
+.ProseMirror ul > li::marker, .ProseMirror ol > li::marker {
   color: #111 !important;
   font-size: 1em;
   opacity: 1 !important;
 }
 
 /* Optional: Remove any prose class hiding bullets */
-.prose ul,
-.prose ol {
+.prose ul, .prose ol {
   list-style-type: initial !important;
   margin-left: 1.5em !important;
 }
-
-.ProseMirror ul,
-.ProseMirror ul > li::marker {
+.ProseMirror ul, .ProseMirror ul > li::marker {
   color: #111 !important;
   list-style-type: disc !important;
 }
 
 /* Fix bullet alignment for Tiptap's <li><p> structure */
-.ProseMirror ul,
-.ProseMirror ol {
+.ProseMirror ul, .ProseMirror ol {
   padding-left: 1.5em !important;
   margin-left: 0 !important;
 }
-
 .ProseMirror li > p {
   display: inline;
   margin: 0;
@@ -286,14 +170,11 @@ input:-webkit-autofill {
 /* PUBLIC article body: clearly larger than editor */
 .article-public,
 .article-public .editor-content-preview {
-  font-size: clamp(1.8rem, 1.2rem + 1.2vw, 2.6rem) !important; /* visibly bigger */
+  font-size: clamp(1.8rem, 1.2rem + 1.2vw, 2.6rem) !important;
   line-height: 1.75;
 }
-
 /* Ensure descendants inherit the bigger base (paragraphs, spans, etc.) */
-.article-public .editor-content-preview * {
-  line-height: inherit;
-}
+.article-public .editor-content-preview * { line-height: inherit; }
 
 /* Ensure the content uses the desired font and wraps well */
 .editor-content-preview {
@@ -305,27 +186,14 @@ input:-webkit-autofill {
 
 /* align inline images with text/other inline elements */
 .editor-content-preview img[data-inline="true"],
-.ProseMirror .resizable-image {
-  vertical-align: middle;
-}
+.ProseMirror .resizable-image { vertical-align: middle; }
 
 /* keep correct aspect ratio */
 .editor-content-preview img,
-.ProseMirror img {
-  height: auto;
-}
+.ProseMirror img { height: auto; }
 
 .ProseMirror [style*="font-size"],
-.editor-content-preview [style*="font-size"] {
-  line-height: 1.6;
-}
-
-/* scope to your editor root if you have one */
-/* .ProseMirror .resizable-image {
-  flex: 0 0 auto;
-  align-self: flex-start;
-} */
-
+.editor-content-preview [style*="font-size"] { line-height: 1.6; }
 
 /* If a paragraph is centered AND contains only an image, treat the image like a block centered */
 .editor-content-preview [data-text-align="center"] > img:only-child {
@@ -333,7 +201,6 @@ input:-webkit-autofill {
   margin-left: auto;
   margin-right: auto;
 }
-
 /* If an inline image sits with text, keep it inline so text-align works */
 .editor-content-preview img[data-inline="true"] {
   display: inline;
@@ -341,17 +208,49 @@ input:-webkit-autofill {
 }
 
 /* Beat .prose defaults if needed */
-.editor-content-preview [data-text-align] {
-  text-align: inherit;         /* reset */
-}
+.editor-content-preview [data-text-align] { text-align: inherit; }
 .editor-content-preview [data-text-align="center"],
 .editor-content-preview [data-text-align="right"],
 .editor-content-preview [data-text-align="left"],
-.editor-content-preview [data-text-align="justify"] {
-  text-align: unset;           /* ensure specificity bump */
-}
+.editor-content-preview [data-text-align="justify"] { text-align: unset; }
 .editor-content-preview [data-text-align="center"] { text-align: center !important; }
 .editor-content-preview [data-text-align="right"]  { text-align: right  !important; }
 .editor-content-preview [data-text-align="left"]   { text-align: left   !important; }
 .editor-content-preview [data-text-align="justify"]{ text-align: justify!important; }
 
+/* =========================
+   TipTap paragraph + HardBreak spacing
+   ========================= */
+
+/* Paragraph spacing (editor + preview) */
+.ProseMirror p,
+.editor-content-preview p {
+  /* keep your wrapping behavior */
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-break: break-word;
+
+  /* vertical rhythm */
+  margin: 0 0 1em;
+  white-space: normal; /* let <br> render line breaks normally */
+}
+
+/* When a <p> is inside a list, don't add paragraph spacing */
+.ProseMirror li > p,
+.editor-content-preview li > p {
+  margin: 0;
+  display: inline;
+}
+
+/* TipTap HardBreak (<br>) — targets when HardBreak configured with class */
+.ProseMirror br.tiptap-hard-break,
+.editor-content-preview br.tiptap-hard-break {
+  display: inline;
+  line-height: inherit;
+}
+
+/* Fallback for environments with aggressive resets */
+.ProseMirror br,
+.editor-content-preview br {
+  line-height: inherit;
+}

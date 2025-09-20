@@ -200,7 +200,7 @@ const TypedDropdown = forwardRef(function TypedDropdown(
     }
   };
 
-  const getSizeStyles = () => (size === "small" ? "text-sm h-6" : size === "large" ? "text-lg h-10" : "text-md h-8");
+  const getSizeStyles = () => (size === "small" ? "text-sm h-6" : size === "large" ? "text-lg h-5" : "text-md h-[17px]");
 
   const handleInputChange = (e) => {
     if (disabled) return;

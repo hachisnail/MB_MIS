@@ -36,11 +36,9 @@ const CustomMultiLineInput = ({
         })}
         rows={rows}
         disabled={disabled}
-        className={`border text-xl px-2 py-3 rounded-2xl w-full resize-y min-h-[3rem] ${
-          error !== "" ? "border-red-600" : "border-black"
-        } focus:outline-none ${
-          disabled ? "border-gray-400 cursor-not-allowed" : ""
-        }`}
+        className={`border text-xl px-2 py-3 rounded-2xl w-full resize-y min-h-[3rem] ${error !== "" ? "border-red-600" : "border-black"
+          } focus:outline-none ${disabled ? "border-gray-400 cursor-not-allowed" : ""
+          }`}
         style={{
           boxShadow: "inset 0 1px 1px rgba(1, 1, 1, 0.50)",
         }}
@@ -146,7 +144,11 @@ const AddSchedulePage = () => {
   const [isDirty, setIsDirty] = useState(false);
   const [hasUserInteracted, setHasUserInteracted] = useState(false);
 
-  // Use the prompt hook to warn about unsaved changes
+  // State for internal confirmation modal
+  const [showInternalConfirm, setShowInternalConfirm] = useState(false);
+  const [pendingAction, setPendingAction] = useState(null);
+
+  // Use the prompt hook to warn about unsaved changes when navigating away
   const { PromptModal } = usePrompt(
     "You have unsaved changes. Are you sure you want to leave?",
     isDirty && hasUserInteracted,
@@ -210,6 +212,51 @@ const AddSchedulePage = () => {
     setIsDirty(false);
     setHasUserInteracted(false);
   }, []);
+
+  // Success handlers for form operations
+  const handleScheduleSuccess = () => {
+    // Reset schedule form
+    resetScheduleForm();
+    // Clear time picker states
+    setNewStartTime("");
+    setNewEndTime("");
+    // Reset dirty state tracking
+    resetDirtyState();
+    // Clear pending data
+    setPendingScheduleData(null);
+    // Clear selected schedule
+    setSelectedSchedule(null);
+  };
+
+  const handleDisableDateSuccess = () => {
+    // Reset disable date form
+    resetDisableDateForm();
+    // Clear time picker states
+    setNewStartTime("");
+    setNewEndTime("");
+    // Reset dirty state tracking
+    resetDirtyState();
+    // Clear pending data
+    setPendingDisableDateData(null);
+    // Clear selected schedule
+    setSelectedSchedule(null);
+  };
+
+  const resetForms = () => {
+    // Reset both forms
+    resetScheduleForm();
+    resetDisableDateForm();
+    // Clear time picker states
+    setNewStartTime("");
+    setNewEndTime("");
+    // Reset dirty state tracking
+    resetDirtyState();
+    // Clear pending data
+    setPendingScheduleData(null);
+    setPendingDisableDateData(null);
+    // Clear selected schedule
+    setSelectedSchedule(null);
+  };
 
   // Fetch monthly events for calendar display (schedules + appointments)
   const fetchMonthEvents = useCallback(async () => {
@@ -417,6 +464,20 @@ const AddSchedulePage = () => {
     );
   };
 
+  // Check if a date is in the past (disable past dates)
+  const isPastDate = (date) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Reset time to start of day for accurate comparison
+    const compareDate = new Date(date);
+    compareDate.setHours(0, 0, 0, 0); // Reset time to start of day for accurate comparison
+    return compareDate < today;
+  };
+
+  // Combined function to check if a tile should be disabled
+  const isTileDisabled = (date) => {
+    return isPastDate(date) || isDateDisabled(date);
+  };
+
   // Handle form submission for adding a new schedule (SHARED only) - Show confirmation first
   const onNewScheduleSubmit = (data) => {
     // Validate time inputs - always required for Add Schedule
@@ -596,13 +657,26 @@ const AddSchedulePage = () => {
   };
 
 
+  // Handle internal confirmation for mode/type switches
+  const handleInternalConfirm = () => {
+    if (pendingAction) {
+      resetForms();
+      pendingAction();
+    }
+    setShowInternalConfirm(false);
+    setPendingAction(null);
+  };
+
+  const handleInternalCancel = () => {
+    setShowInternalConfirm(false);
+    setPendingAction(null);
+  };
+
   // Handle mode switch
   const handleModeSwitch = (mode) => {
     if (isDirty && hasUserInteracted) {
-      if (window.confirm("You have unsaved changes. Are you sure you want to switch modes?")) {
-        resetForms();
-        setActiveMode(mode);
-      }
+      setPendingAction(() => () => setActiveMode(mode));
+      setShowInternalConfirm(true);
     } else {
       setActiveMode(mode);
     }
@@ -611,10 +685,8 @@ const AddSchedulePage = () => {
   // Handle schedule type switch
   const handleTypeSwitch = (type) => {
     if (isDirty && hasUserInteracted) {
-      if (window.confirm("You have unsaved changes. Are you sure you want to switch types?")) {
-        resetForms();
-        setScheduleType(type);
-      }
+      setPendingAction(() => () => setScheduleType(type));
+      setShowInternalConfirm(true);
     } else {
       setScheduleType(type);
     }
@@ -749,6 +821,7 @@ const AddSchedulePage = () => {
               value={selectedDate}
               onActiveStartDateChange={handleViewChange}
               tileClassName="relative"
+              tileDisabled={({ date }) => isTileDisabled(date)}
               tileContent={({ date, view }) => {
                 if (view === 'month') {
                   const ds = getLocalDateString(date);
@@ -809,7 +882,7 @@ const AddSchedulePage = () => {
                   let colorClasses = "";
                   let typeLabel = "";
                   let typeColor = "";
-                  
+
                   if (event.isAppointment) {
                     colorClasses = "border-l-4 border-l-blue-500";
                     typeLabel = "Appointment";
@@ -950,8 +1023,8 @@ const AddSchedulePage = () => {
             <button
               onClick={() => handleModeSwitch("addSchedule")}
               className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors ${activeMode === "addSchedule"
-                  ? "bg-purple-500 text-white"
-                  : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                ? "bg-purple-500 text-white"
+                : "bg-gray-200 text-gray-700 hover:bg-gray-300"
                 }`}
             >
               Add Schedule
@@ -959,8 +1032,8 @@ const AddSchedulePage = () => {
             <button
               onClick={() => handleModeSwitch("closeDate")}
               className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors ${activeMode === "closeDate"
-                  ? "bg-red-500 text-white"
-                  : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                ? "bg-red-500 text-white"
+                : "bg-gray-200 text-gray-700 hover:bg-gray-300"
                 }`}
             >
               Close a Date
@@ -1066,8 +1139,8 @@ const AddSchedulePage = () => {
                 <button
                   onClick={() => handleTypeSwitch("day")}
                   className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors ${scheduleType === "day"
-                      ? "bg-gray-800 text-white"
-                      : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                    ? "bg-gray-800 text-white"
+                    : "bg-gray-200 text-gray-700 hover:bg-gray-300"
                     }`}
                 >
                   Day
@@ -1075,8 +1148,8 @@ const AddSchedulePage = () => {
                 <button
                   onClick={() => handleTypeSwitch("time")}
                   className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors ${scheduleType === "time"
-                      ? "bg-red-500 text-white"
-                      : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                    ? "bg-red-500 text-white"
+                    : "bg-gray-200 text-gray-700 hover:bg-gray-300"
                     }`}
                 >
                   Time
@@ -1087,18 +1160,18 @@ const AddSchedulePage = () => {
               {(() => {
                 const dateString = getLocalDateString(selectedDate);
                 const dayEventsForDate = dayEvents.filter(e => e.date === dateString);
-                
+
                 // Check for existing disabled day
-                const existingDisabledDay = dayEventsForDate.find(event => 
-                  event.title === "DATE_DISABLED" || 
-                  (event.isSchedule && event.availability === "EXCLUSIVE" && 
-                   event.startTime === "00:00" && event.endTime === "23:59")
+                const existingDisabledDay = dayEventsForDate.find(event =>
+                  event.title === "DATE_DISABLED" ||
+                  (event.isSchedule && event.availability === "EXCLUSIVE" &&
+                    event.startTime === "00:00" && event.endTime === "23:59")
                 );
-                
+
                 // Check for existing exclusive time slots
-                const existingExclusiveTimeSlots = dayEventsForDate.filter(event => 
-                  event.isSchedule && 
-                  event.availability === "EXCLUSIVE" && 
+                const existingExclusiveTimeSlots = dayEventsForDate.filter(event =>
+                  event.isSchedule &&
+                  event.availability === "EXCLUSIVE" &&
                   event.title !== "DATE_DISABLED" &&
                   !(event.startTime === "00:00" && event.endTime === "23:59")
                 );
@@ -1148,13 +1221,13 @@ const AddSchedulePage = () => {
                         ⚠️ {scheduleType === "day" ? "Disable Entire Date" : "Close Time Slot"}
                       </h3>
                       <p className="text-xs text-red-700">
-                        {scheduleType === "day" 
+                        {scheduleType === "day"
                           ? "This will prevent new appointments for the entire day. Existing events remain unaffected."
                           : "This will block new appointments during the specified time period."
                         }
                       </p>
                     </div>
-                    
+
                     {/* Important Notes - Restored */}
                     <div className="mb-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                       <h4 className="text-sm font-semibold text-yellow-800 mb-1">
@@ -1299,7 +1372,7 @@ const AddSchedulePage = () => {
       />
 
       {/* Confirmation Modals */}
-      
+
       {/* Add Schedule Confirmation Modal */}
       <ConfirmationModal
         isOpen={showScheduleConfirm}
@@ -1399,6 +1472,17 @@ const AddSchedulePage = () => {
           )
         }
         type="danger"
+        theme="light"
+      />
+
+      {/* Internal Confirmation Modal for Mode/Type Switches */}
+      <ConfirmationModal
+        isOpen={showInternalConfirm}
+        onClose={handleInternalCancel}
+        onConfirm={handleInternalConfirm}
+        title="Unsaved Changes"
+        message="You have unsaved changes. Are you sure you want to continue? This will discard your current changes."
+        type="question"
         theme="light"
       />
 

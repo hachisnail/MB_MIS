@@ -35,7 +35,7 @@ const handleImageError =
     const img = e.currentTarget;
     const wrapper = document.createElement("div");
     wrapper.className =
-      "flex items-center flex-col justify-center w-full h-full bg-gray-100 rounded-xl";
+      "flex items-center flex-col justify-center w-full h-full bg-gray-500 rounded-xl";
     wrapper.innerHTML = `
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="1.5" class="w-12 h-12 text-gray-400" viewBox="0 0 24 24">
         <path d="M15 8h.01" />

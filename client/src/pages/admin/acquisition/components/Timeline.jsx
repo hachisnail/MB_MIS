@@ -113,7 +113,7 @@ export default function Timeline({
                 type="button"
                 onClick={onComplete}
                 disabled={completeDisabled || completeLoading}
-                className={`absolute right-4 md:right-5 top-1/2 -translate-y-1/2
+                className={`absolute right-4 md:right-5 top-1/ -translate-y-1/2
                   px-5 md:px-6 py-2 md:py-2.5 rounded-full bg-white text-[#111] font-semibold
                   shadow-[0_4px_10px_rgba(0,0,0,0.25)]
                   border border-black

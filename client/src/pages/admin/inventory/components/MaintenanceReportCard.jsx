@@ -40,7 +40,7 @@ export default function MaintenanceReportCard({
   const inputBase =
     "w-full bg-transparent outline-none border-b border-neutral-300 focus:border-black px-1 py-0.5 text-lg";
   const textAreaBase =
-    "w-full h-[6rem] overflow-y-auto resize-none rounded-md border border-neutral-300 px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-black focus:border-black placeholder:text-neutral-400 text-lg";
+    "w-full h-[4rem] 3xl:h-[6rem] overflow-y-auto resize-none rounded-md border border-neutral-300 px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-black focus:border-black placeholder:text-neutral-400 text-lg";
 
   const toArray = (v) => (v == null ? [] : Array.isArray(v) ? v : [v]);
 
@@ -333,7 +333,7 @@ export default function MaintenanceReportCard({
 /* --- Helpers --- */
 function RowInline({ title, hint, children, labelWidth = "w-48" }) {
   return (
-    <div className="h-30 border-t border-neutral-300 p-2.5">
+    <div className="h-27 3xl:h-30 border-t border-neutral-300 p-2.5">
       <div className="flex items-start gap-3">
         <div className={`shrink-0 ${labelWidth}`}>
           <div className="text-lg font-medium text-neutral-800">{title}</div>

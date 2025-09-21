@@ -1,6 +1,6 @@
 // src/pages/admin/inventory/pages/ViewArtifacts.jsx
 import { useState, useEffect, Fragment } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useOutletContext } from "react-router-dom";
 
 // ✅ same components your Acquisition page uses
 import Breadcrumb from "../../../../components/Breadcrumb";
@@ -15,6 +15,8 @@ import ArtifactMaintenanceForm from "../components/ArtifactMaintenanceForm";
 
 // local inventory piece
 import MaintenanceReportCard from "../components/MaintenanceReportCard";
+
+
 
 // ✅ network + helpers
 import axiosClient from "@/lib/axiosClient";
@@ -99,10 +101,38 @@ function maintenanceFromReport(r) {
   };
 }
 /* ----------------------------------------- */
+const TABS = ["Artifact Information", "Maintenance Report"];
+
+function InventoryTabs({
+  labels = TABS,
+  active,
+  onChange,
+}) {
+  return (
+    <div className="w-full h-full flex items-end justify-end gap-3 mb-4">
+      {labels.map((label) => (
+        <button
+          key={label}
+          type="button"
+          onClick={() => onChange?.(label)}
+          className={`w-[12rem] h-[3rem] flex items-center justify-center rounded-md border-[3px] text-2xl font-bold transition-colors ${
+            active === label
+              ? "bg-black border-black text-[#CDC469]"
+              : "border-black text-black hover:bg-gray-300"
+          }`}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+
 
 export default function ViewArtifacts() {
   const location = useLocation();
-
+  const { setExtraBlockContent } = useOutletContext();
   // data state
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -113,7 +143,7 @@ export default function ViewArtifacts() {
 
   // tabs
   const [activeTab, setActiveTab] = useState("Artifact Information");
-  const TABS = ["Artifact Information", "Maintenance Report"];
+
 
   // report editor (user-editable)
   const [maintReport1, setMaintReport1] = useState({
@@ -144,6 +174,23 @@ export default function ViewArtifacts() {
 
   // sliding panel open/close
   const [isPanelOpen, setIsPanelOpen] = useState(false);
+
+useEffect(() => {
+  if (typeof setExtraBlockContent === "function") {
+    if (contributionData) {
+      setExtraBlockContent(
+        <InventoryTabs
+          labels={TABS}
+          active={activeTab}
+          onChange={setActiveTab}
+        />
+      );
+    } else {
+      setExtraBlockContent(null);
+    }
+    return () => setExtraBlockContent(null);
+  }
+}, [setExtraBlockContent, contributionData, activeTab]);
 
   // --------------------- Fetch ---------------------
   useEffect(() => {
@@ -393,7 +440,7 @@ export default function ViewArtifacts() {
   return (
     <div className="w-full h-full flex flex-col gap-6">
       {/* --- Tabs --- */}
-      <div className="w-full flex items-end justify-end gap-3 mb-4">
+      {/* <div className="w-full flex items-end justify-end gap-3 mb-4">
         {TABS.map((label) => (
           <button
             key={label}
@@ -408,7 +455,7 @@ export default function ViewArtifacts() {
             {label}
           </button>
         ))}
-      </div>
+      </div> */}
 
       {/* ====================== ARTIFACT INFORMATION ====================== */}
       {activeTab === "Artifact Information" && (
@@ -421,7 +468,7 @@ export default function ViewArtifacts() {
                 </span>
                 <Breadcrumb hideTitle={true} overrideTheme="text-white" />
               </div>
-
+              
               <RenderArtifactImageAndDonatorInfo
                 donatorInformation={donatorInformation}
                 artifactImg={artifactImg}
@@ -432,7 +479,7 @@ export default function ViewArtifacts() {
           }
           middle={<ArtifactMaintenanceForm value={maintenance} onChange={setMaintenance} />}
           right={
-            <div className="w-full h-full flex flex-col gap-4 pr-6 relative">
+            <div className="w-full h-full flex flex-col gap-4 relative pl-20 pr-15 overflow-hidden">
               <div className="flex-1 min-h-0 rounded-lg border border-gray-300 p-6 flex flex-col">
                 <span className="text-4xl font-bold">Artifact Description</span>
                 <div className="mt-3 flex-1 min-h-0">
@@ -463,7 +510,7 @@ export default function ViewArtifacts() {
 
               {/* Sliding panel -> shows Artifact Metadata as a TABLE */}
               <div
-                className={`absolute top-0 right-0 w-full h-[60rem] bg-white border-2 border-[#1D1911] rounded-l-3xl z-20 transform transition-transform duration-500 ${
+                className={`absolute top-0 right-0 w-[calc(100%-5rem)] h-full  bg-white border-2 border-[#1D1911] rounded-l-3xl z-20 transform transition-transform duration-500 ${
                   isPanelOpen ? "translate-x-0" : "translate-x-full"
                 }`}
               >
@@ -514,21 +561,39 @@ export default function ViewArtifacts() {
 
       {/* ====================== MAINTENANCE REPORT TAB ====================== */}
       {activeTab === "Maintenance Report" && (
-        <div className="w-full h-full grid grid-cols-[43rem_1fr] items-start relative">
+        <div className="w-full h-full grid grid-cols-[43rem_1fr] items-start relative pr-15">
           {/* LEFT: black rail */}
-          <div className="col-span-1 relative overflow-visible self-start h-full">
-            <div className="absolute inset-x-0 -top-full -bottom-[1.2rem] bg-black" aria-hidden />
-          </div>
+              <div className="absolute left-0  -top-[12rem] w-[43rem] h-[12rem] bg-black flex items-start justify-end pl-10 pb-5 pt-4 overflow-hidden flex-col">
+                <span className="text-white text-3xl font-bold text-left break-words line-clamp-3 max-w-[38rem]">
+                  {artifact?.title || "Artifact Title"}
+                </span>
+                <Breadcrumb hideTitle={true} overrideTheme="text-white" />
+              </div>
+              <div className="bg-black h-full">
+              <RenderArtifactImageAndDonatorInfo
+                donatorInformation={donatorInformation}
+                artifactImg={artifactImg}
+              />
+</div>
+              <div className="absolute left-0 -bottom-[1.2rem] w-[43rem] h-[1.2rem] bg-black" />
 
-          <div className="relative">
-            <div className="w-full h-20 rounded-r-2xl bg-[#1D1911] flex items-center justify-start pl-12">
+          <div className="relative col-span-1">
+            <div className="w-full h-20 rounded-r-2xl bg-[#1D1911] flex items-center justify-between pr-5 pl-12">
               <span className="text-3xl font-bold font-hind text-white tracking-wide">
                 Maintenance record
               </span>
+
+                <button
+                  type="button"
+                  onClick={() => alert("Starting maintenance… (stub)")}
+                  className="px-6 py-3 rounded-lg bg-white text-black text-lg font-bold hover:bg-gray-400"
+                >
+                  Start Maintenance
+                </button>
             </div>
 
             {/* Your form stays the same */}
-            <form className="h-full col-span-1 flex-1 px-1 sm:px-2 pt-4" onSubmit={handleSubmit}>
+            <form className="max-h-[57rem] overflow-scroll col-span-1 flex-1 px-1 sm:px-2 pt-4" onSubmit={handleSubmit}>
               <MaintenanceReportCard
                 title="Report 1"
                 report={maintReport1}
@@ -537,22 +602,10 @@ export default function ViewArtifacts() {
                 errors={reportErrors}
               />
 
-              <div className="w-full flex items-center justify-between px-0 py-4">
-                <button
-                  type="submit"
-                  className="px-6 py-3 rounded-lg bg-[#CDC469] text-[#1D1911] text-lg font-bold hover:brightness-95 border border-[#1D1911]"
-                >
-                  Submit Report
-                </button>
+              {/* <div className=" w-full flex items-center justify-end px-0 pt-2">
 
-                <button
-                  type="button"
-                  onClick={() => alert("Starting maintenance… (stub)")}
-                  className="px-6 py-3 rounded-lg bg-[#1D1911] text-white text-lg font-bold hover:bg-black"
-                >
-                  Start Maintenance
-                </button>
-              </div>
+
+              </div> */}
             </form>
           </div>
         </div>

@@ -571,7 +571,7 @@ const AcquisitionViewPage = () => {
                           percent={metadataPercent}
                           label="Artifact metadata completion"
                           widthClass="w-[40rem] 3xl:w-[49rem]"
-                          barHeight={168}
+                          barHeight={110}
                         />
                       ) : (
                         <Timeline currentStep={step} steps={steps} />
@@ -734,7 +734,7 @@ const AcquisitionViewPage = () => {
                       <div className="w-full h-full justify-between p-2 bg-white shadow-[inset_0_6px_6px_rgba(0,0,0,0.8),inset_0_-6px_6px_rgba(0,0,0,0.3)] rounded-xl flex flex-col">
                         <ConversationTimeline
                           items={messages.map((m) => toTimelineItem(m, user))}
-                          height="33rem"
+                          height="29rem"
                         />
 
                         <div className="mt-3 relative w-full">

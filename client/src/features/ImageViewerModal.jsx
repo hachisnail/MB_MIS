@@ -72,7 +72,7 @@ const ImageViewerModal = ({ images = [], initialIndex = 0, onClose }) => {
                         (() => {
                           const wrapper = document.createElement("div");
                           wrapper.className =
-                            "flex items-center flex-col justify-center  w-[50rem] h-[50rem] bg-gray-200 rounded-xl";
+                            "flex items-center flex-col justify-center  w-[50rem] h-[50rem] bg-gray-500 rounded-xl";
                           wrapper.innerHTML = `
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="1.5" class="w-12 h-12 text-red-500" viewBox="0 0 24 24">
                             <path d="M15 8h.01" />

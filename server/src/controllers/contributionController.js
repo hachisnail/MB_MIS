@@ -174,10 +174,8 @@ export const createContribution = async (req, res) => {
       }
     }
 
-
     const contributor = await Contributors.create({
       first_name: firstName,
-
       last_name: lastName,
       birth_date: birthDate,
       phone_number: contact,
@@ -189,7 +187,6 @@ export const createContribution = async (req, res) => {
       barangay,
       street,
     });
-
 
     const contribution = await Contributions.create({
       contributor_id: contributor.contributor_id,
@@ -339,14 +336,14 @@ export const getContributionById = async (req, res) => {
   }
 };
 
+// --- UPDATED: accept "completed" and do all completion side-effects ---
 export const updateContributionStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    the: {
-    }
     const { status, responseMessage } = req.body;
 
-    const validStatuses = ["pending", "approved", "rejected"];
+    // now includes "completed"
+    const validStatuses = ["pending", "approved", "rejected", "completed"];
     if (!validStatuses.includes(status)) {
       return res.status(400).json({ message: "Invalid status" });
     }
@@ -375,15 +372,32 @@ export const updateContributionStatus = async (req, res) => {
 
     const timelineUpdates = {};
     const now = new Date();
-    if (status === "pending") timelineUpdates.under_review_at = now;
+    if (status === "pending")  timelineUpdates.under_review_at = now;
     if (status === "approved") timelineUpdates.approved_at = now;
     if (status === "rejected") timelineUpdates.under_review_at = now;
+    if (status === "completed") timelineUpdates.completed_at = now;
 
     await ContributionTimelines.update(
       { ...timelineUpdates, updated_at: now },
       { where: { contribution_id: id } }
     );
 
+    // When completing → close sessions & sync inventory
+    if (status === "completed") {
+      await ContributionSessions.update(
+        { is_active: false, closed_at: now },
+        { where: { contribution_id: id, is_active: true } }
+      );
+      try { await upsertCatalogArtifact(id); } catch (e) { console.warn(e); }
+      // afterUpdate hook on Contributions will assign collection_number
+    }
+
+    // Build and send email (unchanged behavior)
+    const artifactName = contribution.ContributionArtifact?.title || "your artifact";
+    const typeWord = contribution.contribution_type === "donation" ? "donation" : "lending";
+    const subject = `Your ${typeWord} request for "${artifactName}" has been ${status}`;
+
+    // If approved, include an interaction link (existing logic)
     let interactionLink = null;
     if (status === "approved") {
       let session = await ContributionSessions.findOne({
@@ -402,7 +416,7 @@ export const updateContributionStatus = async (req, res) => {
         guest_id: guestId,
         email: contribution.Contributor.email,
         status: "active",
-        scopes: [readScope], // write scope is granted after OTP
+        scopes: [readScope],
         expires_at: linkExpiresAt.toISOString(),
         last_seen_at: null,
       };
@@ -437,15 +451,11 @@ export const updateContributionStatus = async (req, res) => {
       interactionLink = `${baseClientUrl}/acquisition/inquiry/${encodeURIComponent(token)}`;
     }
 
-    const artifactName = contribution.ContributionArtifact?.title || "your artifact";
-    const typeWord = contribution.contribution_type === "donation" ? "donation" : "lending";
-    const subject = `Your ${typeWord} request for "${artifactName}" has been ${status}`;
-
     let emailHtml = `
       <p>Dear ${contribution.Contributor.first_name},</p>
       <p>Your <b>${typeWord}</b> request for the artifact <b>"${artifactName}"</b> has been <b>${status}</b>.</p>
       <p>Message from our team:</p>
-      <blockquote>${responseMessage}</blockquote>
+      <blockquote>${responseMessage || ""}</blockquote>
     `;
 
     if (interactionLink) {
@@ -479,6 +489,7 @@ export const updateContributionStatus = async (req, res) => {
   }
 };
 
+// --- UPDATED: when timeline hits completed_at, also set status & sync inventory ---
 export const updateTimelineStep = async (req, res) => {
   try {
     const { contribution_id, step } = req.body;
@@ -524,12 +535,22 @@ export const updateTimelineStep = async (req, res) => {
     timeline[field] = new Date();
     await timeline.save();
 
-    // If completed, deactivate any active sessions for this contribution
+    // If completed, flip status, close sessions, and sync inventory
     if (field === "completed_at") {
-      await ContributionSessions.update(
-        { is_active: false, closed_at: new Date() },
+      const now = new Date();
+
+      await Contributions.update(
+        { status: "completed", updated_at: now },
         { where: { contribution_id } }
       );
+
+      await ContributionSessions.update(
+        { is_active: false, closed_at: now },
+        { where: { contribution_id, is_active: true } }
+      );
+
+      try { await upsertCatalogArtifact(contribution_id); } catch (e) { console.warn(e); }
+      // afterUpdate hook on Contributions will assign collection_number
     }
 
     return res.json({ success: true, timeline });
@@ -538,7 +559,6 @@ export const updateTimelineStep = async (req, res) => {
     return res.status(500).json({ message: "Server error" });
   }
 };
-
 
 export const getContributionStats = async (req, res) => {
   try {
@@ -843,7 +863,6 @@ export const openContributionSessionByToken = async (req, res) => {
   }
 };
 
-
 export const sendContributionSessionOtp = async (req, res) => {
   try {
     securityHeaders(res);
@@ -994,8 +1013,6 @@ export const completeContributionSession = async (req, res) => {
       .json({ message: "Server error completing contribution session" });
   }
 };
-
-
 
 export const closeContributionSession = async (req, res) => {
   try {

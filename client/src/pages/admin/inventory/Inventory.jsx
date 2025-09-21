@@ -1,3 +1,4 @@
+// client/src/pages/admin/inventory/Inventory.jsx
 import { useState, useCallback, useEffect, useMemo } from "react";
 import axios from "axios";
 import TimelineDatePicker from "@/features/TimelineDatePicker";
@@ -10,8 +11,8 @@ import { TableHeaderContainer } from "@/features/Utilities";
 import ListRenderer from "@/components/tables/ListRenderer";
 import InventortyList from "./components/Inventorylist";
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL;
-const SERVER_ORIGIN = BASE_URL?.replace(/\/api$/, "");
+const BASE_URL = import.meta.env.VITE_API_BASE_URL;         // e.g. http://localhost:5000/api
+const SERVER_ORIGIN = BASE_URL?.replace(/\/api$/, "");       // e.g. http://localhost:5000
 
 const Inventory = () => {
   const location = useLocation();
@@ -25,7 +26,6 @@ const Inventory = () => {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
   const [rows, setRows] = useState([]);
-  const [artifacts, setArtifacts] = useState([]);
 
   useEffect(() => {
     switch (initialFilter) {
@@ -42,44 +42,67 @@ const Inventory = () => {
     }
   }, [initialFilter]);
 
+  // 🔁 Fetch enriched inventory (absolute URL to avoid Vite returning index.html)
   useEffect(() => {
     let abort = false;
-    (async () => {
+
+    async function fetchInventory() {
       try {
         setLoading(true);
         setErr("");
-        const { data } = await axios.get(`${SERVER_ORIGIN}/api/auth/public-artifacts`, {
+        console.log("[Inventory.jsx] fetching (A) GET", `${SERVER_ORIGIN}/api/auth/inventory`, Date.now());
+        const respA = await axios.get(`${SERVER_ORIGIN}/api/auth/inventory`, {
           withCredentials: true,
+          // Explicitly expect JSON
+          headers: { Accept: "application/json" },
+          validateStatus: () => true,
         });
-        if (!abort) setRows(Array.isArray(data) ? data : []);
-      } catch (e) {
+
+        const ctA = respA.headers?.["content-type"] || "";
+        console.log("[Inventory.jsx] (A) status:", respA.status, respA.statusText, "ct:", ctA);
+
+        if (respA.status === 200 && Array.isArray(respA.data)) {
+          console.log("[Inventory.jsx] (A) rows:", respA.data.length);
+          if (!abort) setRows(respA.data);
+          return;
+        }
+
+        // Fallback: try older path if your server used /api/inventory
+        console.log("[Inventory.jsx] (A) not array or wrong status, trying (B) GET", `${SERVER_ORIGIN}/api/inventory`);
+        const respB = await axios.get(`${SERVER_ORIGIN}/api/inventory`, {
+          withCredentials: true,
+          headers: { Accept: "application/json" },
+          validateStatus: () => true,
+        });
+        const ctB = respB.headers?.["content-type"] || "";
+        console.log("[Inventory.jsx] (B) status:", respB.status, respB.statusText, "ct:", ctB);
+
+        if (respB.status === 200 && Array.isArray(respB.data)) {
+          console.log("[Inventory.jsx] (B) rows:", respB.data.length);
+          if (!abort) setRows(respB.data);
+          return;
+        }
+
+        // If still not JSON array, surface a useful error
+        const sample = typeof respA.data === "string" ? respA.data.slice(0, 200) : JSON.stringify(respA.data)?.slice(0, 200);
+        console.warn("[Inventory.jsx] Neither A nor B returned JSON array. Sample:", sample);
         if (!abort) {
-          console.error("Failed to load catalog artifacts:", e);
+          setErr("Inventory API did not return JSON. Check server route and Vite proxy.");
+          setRows([]);
+        }
+      } catch (e) {
+        console.error("[Inventory.jsx] fetch error:", e);
+        if (!abort) {
           setErr("Failed to load inventory.");
           setRows([]);
         }
       } finally {
         if (!abort) setLoading(false);
       }
-    })();
-    return () => { abort = true; };
-  }, []);
+    }
 
-  useEffect(() => {
-    axios.get("/api/inventory")
-      .then(res => {
-        // Map API data to expected fields
-        const mapped = res.data.map(item => ({
-          ...item,
-          donor_name: `${item.first_name} ${item.last_name}`,
-          contract_expires_at: item.contract_expiration, // match expected key
-        }));
-        setArtifacts(mapped);
-      })
-      .catch(err => {
-        setArtifacts([]);
-        // handle error
-      });
+    fetchInventory();
+    return () => { abort = true; };
   }, []);
 
   const { toastConfig, showToast, hideToast } = useToast();
@@ -89,16 +112,16 @@ const Inventory = () => {
     showToast(date ? `Filtering data for ${date.toLocaleDateString()}` : "Showing all dates", "info");
   }, [showToast]);
 
-  // headers (Articles-style widths)
+  // headers
   const artifactsHeaders = [
     { label: "Title", width: "1fr" },
     { label: "Donator Name", width: "1fr" },
-    { label: "Origin", width: 20 },                // 20rem
-    { label: "Acquisition Date", width: 15 },      // 12rem
+    { label: "Origin", width: 20 },
+    { label: "Acquisition Date", width: 15 },
     { label: "Type", width: 10 },
     { label: "Display Status", width: 14 },
     { label: "Last Maintenance", width: 14 },
-  { label: "Contract Expiration", width: 16 },
+    { label: "Contract Expiration", width: 16 },
   ];
   const acquiredHeaders = [
     { label: "Title", width: "1fr" },
@@ -144,36 +167,31 @@ const Inventory = () => {
         (r.title && r.title.toLowerCase().includes(q)) ||
         (r.collection_number && String(r.collection_number).toLowerCase().includes(q)) ||
         (r.provenance && r.provenance.toLowerCase().includes(q)) ||
-        (r.current_location && r.current_location.toLowerCase().includes(q)) ||
-        (r.display_description && r.display_description.toLowerCase().includes(q)) ||
-        (r.curatorial_description && r.curatorial_description.toLowerCase().includes(q)) ||
-        (r.donor_description && r.donor_description.toLowerCase().includes(q));
+        (r.current_location && r.current_location.toLowerCase().includes(q));
       if (!matchQ) return false;
 
       if (selectedDate) {
-        const dd =
-          r.acquisition_date || r.metadata_updated_at || r.updated_at || r.created_at || r.date_of_creation;
+        const dd = r.acquisition_date || r.metadata_updated_at || r.updated_at || r.created_at;
         if (!dd || !sameDay(dd, selectedDate)) return false;
       }
 
       if (artifactFilter === "displayed") {
-        const status = (r.display_status || "").toLowerCase();
-        const onDisp = r.on_display || status.includes("display");
+        const onDisp = (r.display_status || "").toLowerCase().includes("display");
         if (!onDisp) return false;
       }
       return true;
     });
 
     let tabbed = list;
-    if (activeTab === "acquired") {
-      tabbed = list.filter((r) => r.contribution_type !== "lending");
-    } else if (activeTab === "borrowing") {
-      tabbed = list.filter((r) => r.contribution_type === "lending");
-    }
+    if (activeTab === "acquired") tabbed = list.filter((r) => r.contribution_type !== "lending");
+    else if (activeTab === "borrowing") tabbed = list.filter((r) => r.contribution_type === "lending");
 
     tabbed.sort(
-      (a, b) => new Date(b.metadata_updated_at || b.updated_at || 0) - new Date(a.metadata_updated_at || a.updated_at || 0)
+      (a, b) =>
+        new Date(b.metadata_updated_at || b.updated_at || 0) -
+        new Date(a.metadata_updated_at || a.updated_at || 0)
     );
+
     return tabbed;
   }, [rows, searchQuery, selectedDate, activeTab, artifactFilter]);
 
@@ -187,10 +205,11 @@ const Inventory = () => {
     const total = rows.length;
     const acquired = rows.filter((r) => r.contribution_type !== "lending").length;
     const borrowing = rows.filter((r) => r.contribution_type === "lending").length;
-    const onDisplay = rows.filter((r) => r.on_display || (r.display_status || "").toLowerCase().includes("display")).length;
+    const onDisplay = rows.filter((r) => (r.display_status || "").toLowerCase().includes("display")).length;
     const inStorage = rows.filter((r) => (r.current_location || "").toLowerCase().includes("storage")).length;
-    const underMaint = rows.filter((r) => (r.maintenance_status || "").toLowerCase().includes("maintenance")).length;
-
+    const underMaint = rows.filter((r) => (r.display_status || "").toLowerCase().includes("maintenance")).length;
+    const s = { total, acquired, borrowing, onDisplay, inStorage, underMaint };
+    console.log("[Inventory.jsx] summary:", s);
     return [
       { label: "Total Artifacts", Value: String(total) },
       { label: "Acquired", Value: String(acquired) },

@@ -141,8 +141,11 @@ const AcquisitionViewPage = () => {
     return 0;
   };
 
-  // derive gating for Artifact Details tab
-  const showArtifactDetails = step === 5; // completed
+  // 🔐 Source of truth for completion (status-based)
+  const isCompleted = contributionData?.status === "completed";
+
+  // derive gating for Artifact Details tab (status → single source of truth)
+  const showArtifactDetails = isCompleted;
   const tabsToShow = showArtifactDetails
     ? ALL_TABS
     : ["Overview", "Document", "Transaction"];
@@ -210,10 +213,10 @@ const AcquisitionViewPage = () => {
 
   // Guard: if user somehow lands on "Artifact Details" before completion, send back to Overview
   useEffect(() => {
-    if (activeDocument === "Artifact Details" && !showArtifactDetails) {
+    if (activeDocument === "Artifact Details" && !isCompleted) {
       setActiveDocument("Overview");
     }
-  }, [activeDocument, showArtifactDetails]);
+  }, [activeDocument, isCompleted]);
 
   useEffect(() => {
     if (location.pathname.includes("lending")) {
@@ -361,7 +364,6 @@ const AcquisitionViewPage = () => {
 
   const updateStep = async (contribution_id, step) => {
     try {
-      
       await axiosClient.put("/auth/update-step", { contribution_id, step });
       console.log("updated step " + step);
       setStep(step);
@@ -370,12 +372,11 @@ const AcquisitionViewPage = () => {
     }
   };
 
-    const settleMoa = async ( ) => {
+  const settleMoa = async () => {
     try {
-    const contribution_id = contributionData?.contribution_id;
-      // console.log(cid)
+      const contribution_id = contributionData?.contribution_id;
       const step = 4;
-      await axiosClient.put("/auth/update-step", { contribution_id,  step});
+      await axiosClient.put("/auth/update-step", { contribution_id, step });
       console.log("updated step " + step);
       setStep(step);
     } catch (error) {
@@ -383,13 +384,15 @@ const AcquisitionViewPage = () => {
     }
   };
 
-
+  // ✅ Status-overlay for progress (status can't be behind the timeline)
   useEffect(() => {
-    if (timeline) {
-      const stepIndex = mapTimelineStep(timeline);
-      setStep(stepIndex);
-    }
-  }, [timeline]);
+    const tStep = mapTimelineStep(timeline || {});
+    let sStep = 0;
+    const st = contributionData?.status;
+    if (st === "approved") sStep = 2;
+    if (st === "completed") sStep = 5;
+    setStep(Math.max(tStep, sStep));
+  }, [timeline, contributionData?.status]);
 
   const donatorInformation = contributor
     ? [
@@ -499,6 +502,22 @@ const AcquisitionViewPage = () => {
     { label: "Time", value: submittedTime || "Not Provided" },
   ];
 
+  // NEW: complete action (status-based)
+  const markCompleted = async () => {
+    try {
+      const id = contributionData?.contribution_id;
+      await axiosClient.patch(`/auth/contributions/${id}/status`, {
+        status: "completed",
+        responseMessage: "Marked completed by staff.",
+      });
+      await fetchContribution();
+      setActiveDocument("Overview");
+    } catch (e) {
+      console.error("Failed to mark as completed:", e);
+      alert("Failed to complete the contribution. Please check server logs.");
+    }
+  };
+
   if (loading) {
     return (
       <div className="w-full h-full flex items-center justify-center">
@@ -556,7 +575,7 @@ const AcquisitionViewPage = () => {
                     <div className="w-full h-fit flex flex-col gap-y-10">
                       <div className="flex justify-between w-full h-fit items-center">
                         <span className="text-4xl font-bold text-white">
-                          {step === 5 ? "Artifact Data Status" : "Timeline"}
+                          {isCompleted ? "Artifact Data Status" : "Timeline"}
                         </span>
                         <button
                           onClick={() => setActiveDocument("Transaction")}
@@ -565,7 +584,7 @@ const AcquisitionViewPage = () => {
                           Click For Full View
                         </button>
                       </div>
-                      {step === 5 ? (
+                      {isCompleted ? (
                         <Timeline
                           variant="percent"
                           percent={metadataPercent}
@@ -710,83 +729,89 @@ const AcquisitionViewPage = () => {
                         </div>
                       </form>
                     ) : (
-                      // --- Conversation timeline + input ---
+                      // --- Conversation timeline + admin override controls ---
                       <>
-                         <div className="flex flex-col gap-y-2">
-                          <span className="text-xl font-semibold">Overide Form Controls:</span>
-                          <div className="flex gap-3">
-                          <StyledButton
-                            className="w-50 mt-5"
-                            buttonColor="bg-[#6F3FFF]"
-                            onClick={()=> settleMoa()} 
-                          >
-                            Settle MOA
-                          </StyledButton>
-                          <StyledButton
-                            className="w-50 mt-5"
-                            buttonColor="bg-red-500"
-                            // onClick={handleSubmit} trigger moa cancelled status in contribution table and disable related info
-                          >
-                            Cancel Contribution
-                          </StyledButton>
+                        <div className="flex flex-col gap-y-2">
+                          <span className="text-xl font-semibold">Override Form Controls:</span>
+                          <div className="flex gap-3 flex-wrap">
+                            <StyledButton
+                              className="w-50 mt-5"
+                              buttonColor="bg-[#6F3FFF]"
+                              onClick={() => settleMoa()}
+                            >
+                              Settle MOA
+                            </StyledButton>
+                            <StyledButton
+                              className="w-50 mt-5"
+                              buttonColor="bg-emerald-600"
+                              onClick={markCompleted}
+                              disabled={isCompleted}
+                              title={isCompleted ? "Already completed" : "Mark as completed"}
+                            >
+                              {isCompleted ? "Completed" : "Mark Completed"}
+                            </StyledButton>
+                            <StyledButton
+                              className="w-50 mt-5"
+                              buttonColor="bg-red-500"
+                            >
+                              Cancel Contribution
+                            </StyledButton>
                           </div>
                         </div>
-                      <div className="w-full h-full justify-between p-2 bg-white shadow-[inset_0_6px_6px_rgba(0,0,0,0.8),inset_0_-6px_6px_rgba(0,0,0,0.3)] rounded-xl flex flex-col">
-                        <ConversationTimeline
-                          items={messages.map((m) => toTimelineItem(m, user))}
-                          height="29rem"
-                        />
 
-                        <div className="mt-3 relative w-full">
-                          <input
-                            type="text"
-                            value={chatText}
-                            onChange={(e) => setChatText(e.target.value)}
-                            placeholder="Type a message..."
-                            className="w-full h-14 rounded-xl border-2 border-black bg-white shadow-[inset_0_6px_6px_rgba(0,0,0,0.4)] pl-4 pr-28 text-lg outline-none"
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter" && !e.shiftKey) {
-                                e.preventDefault();
+                        <div className="w-full h-full justify-between p-2 bg-white shadow-[inset_0_6px_6px_rgba(0,0,0,0.8),inset_0_-6px_6px_rgba(0,0,0,0.3)] rounded-xl flex flex-col">
+                          <ConversationTimeline
+                            items={messages.map((m) => toTimelineItem(m, user))}
+                            height="29rem"
+                          />
+
+                          <div className="mt-3 relative w-full">
+                            <input
+                              type="text"
+                              value={chatText}
+                              onChange={(e) => setChatText(e.target.value)}
+                              placeholder="Type a message..."
+                              className="w-full h-14 rounded-xl border-2 border-black bg-white shadow-[inset_0_6px_6px_rgba(0,0,0,0.4)] pl-4 pr-28 text-lg outline-none"
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" && !e.shiftKey) {
+                                  e.preventDefault();
+                                  if (chatText.trim()) {
+                                    sendMessage(chatText.trim());
+                                    setChatText("");
+                                  }
+                                }
+                              }}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
                                 if (chatText.trim()) {
                                   sendMessage(chatText.trim());
                                   setChatText("");
                                 }
-                              }
-                            }}
-                          />
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (chatText.trim()) {
-                                sendMessage(chatText.trim());
-                                setChatText("");
-                              }
-                            }}
-                            className="absolute right-2 top-1.5 h-11 px-4 rounded-lg bg-black text-white shadow-[0_2px_6px_rgba(0,0,0,0.35)] text-sm font-semibold active:translate-y-[1px] inline-flex items-center gap-2"
-                            title="Send"
-                            aria-label="Send"
-                          >
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              viewBox="0 0 24 24"
-                              className="w-4 h-4"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              aria-hidden="true"
+                              }}
+                              className="absolute right-2 top-1.5 h-11 px-4 rounded-lg bg-black text-white shadow-[0_2px_6px_rgba(0,0,0,0.35)] text-sm font-semibold active:translate-y-[1px] inline-flex items-center gap-2"
+                              title="Send"
+                              aria-label="Send"
                             >
-                              <path d="M22 2 15 22l-4-9-9-4Z" />
-                              <path d="M22 2 11 13" />
-                            </svg>
-                            Send
-                          </button>
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                viewBox="0 0 24 24"
+                                className="w-4 h-4"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                aria-hidden="true"
+                              >
+                                <path d="M22 2 15 22l-4-9-9-4Z" />
+                                <path d="M22 2 11 13" />
+                              </svg>
+                              Send
+                            </button>
+                          </div>
                         </div>
-
-
-                      </div>
-         
                       </>
                     )}
                   </>
@@ -794,7 +819,7 @@ const AcquisitionViewPage = () => {
               />
             )}
 
-            {/* Artifact Details (only reachable when step === 5 due to gating) */}
+            {/* Artifact Details (only reachable when completed due to gating) */}
             {activeDocument === "Artifact Details" && showArtifactDetails && (
               <ArtifactDetailsShell
                 left={
@@ -824,7 +849,7 @@ const AcquisitionViewPage = () => {
                   <div className="w-full pl-5 h-full flex flex-col gap-4 pr-6">
                     <div className="flex-1 min-h-0 rounded-lg border border-gray-300 p-6 flex gap-x-4">
                       <div className="mt-3 gap-6 flex w-full h-full flex-col ">
-                      <span className="text-4xl font-bold">Curatorial Description</span>
+                        <span className="text-4xl font-bold">Curatorial Description</span>
 
                         <MultiLineInputField
                           placeholder="Enter staff-facing curatorial description…"
@@ -923,8 +948,6 @@ const AcquisitionViewPage = () => {
                           imgHeight="h-52"
                         />
                       </div>
-
-
                     </div>
                   </div>
                 }

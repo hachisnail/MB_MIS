@@ -140,6 +140,10 @@ const AddSchedulePage = () => {
   const [pendingScheduleData, setPendingScheduleData] = useState(null);
   const [pendingDisableDateData, setPendingDisableDateData] = useState(null);
 
+  // Countdown state for disable date confirmation
+  const [disableDateCountdown, setDisableDateCountdown] = useState(5);
+  const [canConfirmDisableDate, setCanConfirmDisableDate] = useState(false);
+
   // State for tracking unsaved changes
   const [isDirty, setIsDirty] = useState(false);
   const [hasUserInteracted, setHasUserInteracted] = useState(false);
@@ -217,7 +221,7 @@ const AddSchedulePage = () => {
   const handleScheduleSuccess = () => {
     // Reset schedule form
     resetScheduleForm();
-    // Clear time picker states
+    // Clear time picker states - TimePicker component now handles proper reset
     setNewStartTime("");
     setNewEndTime("");
     // Reset dirty state tracking
@@ -231,7 +235,7 @@ const AddSchedulePage = () => {
   const handleDisableDateSuccess = () => {
     // Reset disable date form
     resetDisableDateForm();
-    // Clear time picker states
+    // Clear time picker states - TimePicker component now handles proper reset
     setNewStartTime("");
     setNewEndTime("");
     // Reset dirty state tracking
@@ -246,7 +250,7 @@ const AddSchedulePage = () => {
     // Reset both forms
     resetScheduleForm();
     resetDisableDateForm();
-    // Clear time picker states
+    // Clear time picker states - TimePicker component now handles proper reset
     setNewStartTime("");
     setNewEndTime("");
     // Reset dirty state tracking
@@ -584,6 +588,22 @@ const AddSchedulePage = () => {
     // Store data for confirmation
     setPendingDisableDateData(data);
     setShowDisableDateConfirm(true);
+
+    // Reset countdown and start timer
+    setDisableDateCountdown(5);
+    setCanConfirmDisableDate(false);
+
+    // Start countdown timer
+    const countdownInterval = setInterval(() => {
+      setDisableDateCountdown(prev => {
+        if (prev <= 1) {
+          setCanConfirmDisableDate(true);
+          clearInterval(countdownInterval);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
   };
 
   // Actual date disabling after confirmation
@@ -784,12 +804,13 @@ const AddSchedulePage = () => {
   return (
     <div className="add-schedule-page h-full bg-gray-50 flex flex-col overflow-hidden">
       {/* Back Button */}
-      <div className="flex-shrink-0 p-4 pb-2">
+      <div className="flex-shrink-0 p-4 pb-2 flex justify-end">
         <button
           onClick={() => navigate('/admin/schedule')}
-          className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
+          className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-800 bg-gray-300 hover:bg-gray-500 rounded-lg transition-colors"
         >
           <svg
+
             className="w-5 h-5"
             fill="none"
             stroke="currentColor"
@@ -1051,16 +1072,10 @@ const AddSchedulePage = () => {
                     year: "numeric",
                   })}
                 </div>
-                <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                  <h3 className="text-sm font-semibold text-blue-800 mb-2">
-                    Important Notes for Regular Schedules:
-                  </h3>
-                  <ul className="text-xs text-blue-700 space-y-1 list-disc pl-5">
-                    <li>Schedules must be between 6:00 AM and 6:00 PM</li>
-                    <li>Minimum duration is 15 minutes</li>
-                    <li><strong>Schedules can be created during exclusive event times (unlike appointments)</strong></li>
-                    <li>Maximum 5 overlapping shared events allowed</li>
-                  </ul>
+                <div className="mt-6 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-sm text-blue-800">
+                    <strong>Quick tip:</strong> Time must be 6:00 AM - 6:00 PM, at least 15 minutes long.
+                  </p>
                 </div>
                 {/* Schedule Title */}
                 <div>
@@ -1156,7 +1171,7 @@ const AddSchedulePage = () => {
                 </button>
               </div>
 
-              {/* Current Date Status Information - Simplified */}
+              {/* Simplified Status Information */}
               {(() => {
                 const dateString = getLocalDateString(selectedDate);
                 const dayEventsForDate = dayEvents.filter(e => e.date === dateString);
@@ -1168,88 +1183,28 @@ const AddSchedulePage = () => {
                     event.startTime === "00:00" && event.endTime === "23:59")
                 );
 
-                // Check for existing exclusive time slots
-                const existingExclusiveTimeSlots = dayEventsForDate.filter(event =>
-                  event.isSchedule &&
-                  event.availability === "EXCLUSIVE" &&
-                  event.title !== "DATE_DISABLED" &&
-                  !(event.startTime === "00:00" && event.endTime === "23:59")
-                );
-
                 return (
                   <>
-                    {/* Only show critical warnings */}
+                    {/* Only show critical blocking warnings */}
                     {existingDisabledDay && scheduleType === "day" && (
                       <div className="mb-3 p-3 bg-orange-50 border border-orange-200 rounded-lg">
-                        <h4 className="text-sm font-semibold text-orange-800 mb-1 flex items-center gap-2">
-                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                          </svg>
-                          Date Already Disabled
-                        </h4>
-                        <p className="text-xs text-orange-700">
-                          This date is already disabled. You cannot disable the same date twice.
+                        <p className="text-sm text-orange-800">
+                          ⚠️ This date is already closed.
                         </p>
                       </div>
                     )}
 
-                    {/* Show existing exclusive time slots only in time mode and if there are conflicts */}
-                    {existingExclusiveTimeSlots.length > 0 && scheduleType === "time" && (
-                      <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                        <h4 className="text-sm font-semibold text-blue-800 mb-1">
-                          Existing Exclusive Time Slots ({existingExclusiveTimeSlots.length})
-                        </h4>
-                        <div className="text-xs text-blue-700 space-y-1">
-                          {existingExclusiveTimeSlots.slice(0, 3).map((slot, index) => (
-                            <div key={index} className="flex justify-between">
-                              <span className="font-medium">{slot.title}</span>
-                              <span>{formatTimeTo12H(slot.startTime)} - {formatTimeTo12H(slot.endTime)}</span>
-                            </div>
-                          ))}
-                          {existingExclusiveTimeSlots.length > 3 && (
-                            <div className="text-xs text-blue-600 italic">
-                              +{existingExclusiveTimeSlots.length - 3} more slots
-                            </div>
-                          )}
-                        </div>
+                    {/* Simple action warning */}
+                    {!existingDisabledDay && (
+                      <div className="mb-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                        <p className="text-sm text-yellow-800">
+                          {scheduleType === "day"
+                            ? "⚠️ This will close the entire day for new appointments."
+                            : "⚠️ This will close this time slot for new appointments."
+                          }
+                        </p>
                       </div>
                     )}
-
-                    {/* Single consolidated warning */}
-                    <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-lg">
-                      <h3 className="text-sm font-semibold text-red-800 mb-1">
-                        ⚠️ {scheduleType === "day" ? "Disable Entire Date" : "Close Time Slot"}
-                      </h3>
-                      <p className="text-xs text-red-700">
-                        {scheduleType === "day"
-                          ? "This will prevent new appointments for the entire day. Existing events remain unaffected."
-                          : "This will block new appointments during the specified time period."
-                        }
-                      </p>
-                    </div>
-
-                    {/* Important Notes - Restored */}
-                    <div className="mb-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                      <h4 className="text-sm font-semibold text-yellow-800 mb-1">
-                        {scheduleType === "day" ? "Note for Date Disabling:" : "Note for Exclusive Time Slots:"}
-                      </h4>
-                      <ul className="text-xs text-gray-700 list-disc pl-5 space-y-1">
-                        {scheduleType === "day" ? (
-                          <>
-                            <li>Date disabling covers the entire day (24 hours)</li>
-                            <li>Cannot disable a date that's already disabled</li>
-                            <li>Existing exclusive time slots will remain unaffected</li>
-                          </>
-                        ) : (
-                          <>
-                            <li>Exclusive time slots must be between 6:00 AM and 6:00 PM</li>
-                            <li>Cannot overlap with existing exclusive schedules</li>
-                            <li>Can be created even if the day is already disabled</li>
-                            <li>Different from disabled days - serves specific purposes</li>
-                          </>
-                        )}
-                      </ul>
-                    </div>
                   </>
                 );
               })()}
@@ -1420,18 +1375,18 @@ const AddSchedulePage = () => {
         onClose={() => {
           setShowDisableDateConfirm(false);
           setPendingDisableDateData(null);
+          setDisableDateCountdown(5);
+          setCanConfirmDisableDate(false);
         }}
-        onConfirm={handleDisableDateConfirm}
-        title={scheduleType === "day" ? "⚠️ Disable Entire Date" : "⚠️ Close Time Slot"}
+        onConfirm={canConfirmDisableDate ? handleDisableDateConfirm : undefined}
+        title={scheduleType === "day" ? "Disable Entire Date" : "Close Time Slot"}
         message={
           pendingDisableDateData ? (
             <>
-              <div className="text-red-600 font-semibold mb-2">
-                ⚠️ WARNING: This action will prevent new appointments and schedules from being created!
+              <div className="text-red-600 font-semibold mb-3">
+                This will prevent new appointments from being created.
               </div>
-              Are you sure you want to {scheduleType === "day" ? "disable the entire date" : "close this time slot"}?
-              <br />
-              <br />
+
               <strong>Date:</strong> {selectedDate.toLocaleDateString("en-US", {
                 month: "long",
                 day: "numeric",
@@ -1462,10 +1417,17 @@ const AddSchedulePage = () => {
                   <br />
                 </>
               )}
-              <br />
-              <div className="text-sm text-gray-600">
-                Existing appointments and schedules will not be affected.
-              </div>
+
+              {!canConfirmDisableDate && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-2 mt-3 mb-2">
+                  <div className="flex items-center gap-2 text-yellow-800 text-sm">
+                    <svg className="w-4 h-4 animate-pulse" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                    </svg>
+                    <span className="font-medium">Wait {disableDateCountdown} seconds to confirm</span>
+                  </div>
+                </div>
+              )}
             </>
           ) : (
             `Are you sure you want to ${scheduleType === "day" ? "disable this date" : "close this time slot"}?`
@@ -1473,6 +1435,10 @@ const AddSchedulePage = () => {
         }
         type="danger"
         theme="light"
+        confirmButtonProps={{
+          disabled: !canConfirmDisableDate,
+          className: !canConfirmDisableDate ? 'opacity-50 cursor-not-allowed' : ''
+        }}
       />
 
       {/* Internal Confirmation Modal for Mode/Type Switches */}

@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 
-const TimePicker = ({ 
-  value, 
-  onChange, 
-  className = '', 
+const TimePicker = ({
+  value,
+  onChange,
+  className = '',
+  position = null,
   id = '',
   disabled = false,
   minTime = '06:00',
@@ -33,19 +34,19 @@ const TimePicker = ({
       const hour24 = parseInt(hours, 10);
       const hour12 = hour24 === 0 ? 12 : hour24 > 12 ? hour24 - 12 : hour24;
       const period = hour24 >= 12 ? 'PM' : 'AM';
-      
+
       return {
         hour: hour12.toString(),
         minute: minutes,
         period: period
       };
     }
-    
+
     const [hours, minutes] = time24.split(':');
     const hour24 = parseInt(hours, 10);
     const hour12 = hour24 === 0 ? 12 : hour24 > 12 ? hour24 - 12 : hour24;
     const period = hour24 >= 12 ? 'PM' : 'AM';
-    
+
     return {
       hour: hour12.toString(),
       minute: minutes,
@@ -56,13 +57,13 @@ const TimePicker = ({
   // Convert 12-hour format to 24-hour time
   const convertTo24Hour = (hour, minute, period) => {
     let hour24 = parseInt(hour, 10);
-    
+
     if (period === 'AM' && hour24 === 12) {
       hour24 = 0;
     } else if (period === 'PM' && hour24 !== 12) {
       hour24 += 12;
     }
-    
+
     return `${hour24.toString().padStart(2, '0')}:${minute}`;
   };
 
@@ -70,7 +71,7 @@ const TimePicker = ({
   const parseTypedTime = (input) => {
     // Remove any spaces and convert to lowercase
     const cleanInput = input.replace(/\s+/g, '').toLowerCase();
-    
+
     // Try to match various time formats
     const patterns = [
       /^(\d{1,2}):(\d{2})(am|pm)?$/,  // 9:30am, 9:30pm, 9:30
@@ -117,9 +118,11 @@ const TimePicker = ({
   const [displayTime, setDisplayTime] = useState(currentValue);
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
-  
+  const [dropdownPosition, setDropdownPosition] = useState('bottom'); // 'top' or 'bottom'
+
   // Initialize state from current value or current time for dropdown positioning
   const initialTime = convertTo12Hour(currentValue);
+
   const [tempHour, setTempHour] = useState(initialTime.hour);
   const [tempMinute, setTempMinute] = useState(initialTime.minute);
   const [tempPeriod, setTempPeriod] = useState(initialTime.period);
@@ -140,7 +143,15 @@ const TimePicker = ({
       setTempMinute(newTime.minute);
       setTempPeriod(newTime.period);
     } else {
+      // Completely reset all states when value is cleared
+      setDisplayTime('');
       setInputValue('');
+      setIsTyping(false);
+      // Reset temp values to current time for dropdown positioning
+      const currentTime = convertTo12Hour('');
+      setTempHour(currentTime.hour);
+      setTempMinute(currentTime.minute);
+      setTempPeriod(currentTime.period);
     }
   }, [value]);
 
@@ -224,13 +235,13 @@ const TimePicker = ({
     const newValue = e.target.value;
     setInputValue(newValue);
     setIsTyping(true);
-    
+
     // Try to parse the typed input
     const parsedTime = parseTypedTime(newValue);
     if (parsedTime) {
       setDisplayTime(parsedTime);
       onChange && onChange(parsedTime);
-      
+
       // Update temp values for dropdown positioning
       const newTime = convertTo12Hour(parsedTime);
       setTempHour(newTime.hour);
@@ -266,13 +277,13 @@ const TimePicker = ({
   // Handle input click - either open dropdown or focus for typing
   const handleInputClick = (e) => {
     if (disabled) return;
-    
+
     // If clicking on the input text area, focus for typing
     if (e.target.tagName === 'INPUT') {
       setIsTyping(true);
       return;
     }
-    
+
     // Otherwise, toggle dropdown
     setIsOpen(!isOpen);
   };
@@ -281,7 +292,7 @@ const TimePicker = ({
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target) &&
-          inputRef.current && !inputRef.current.contains(event.target)) {
+        inputRef.current && !inputRef.current.contains(event.target)) {
         setIsOpen(false);
       }
     };
@@ -294,6 +305,35 @@ const TimePicker = ({
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [isOpen]);
+
+  // Determine dropdown position
+  useEffect(() => {
+    if (isOpen && inputRef.current && dropdownRef.current) {
+      const inputRect = inputRef.current.getBoundingClientRect();
+      const dropdownHeight = dropdownRef.current.offsetHeight;
+
+      if (position === 'top') {
+        setDropdownPosition('top');
+      } else {
+        // Find the closest relatively positioned ancestor
+        let container = inputRef.current.parentNode;
+        while (container && window.getComputedStyle(container).position !== 'relative') {
+          container = container.parentNode;
+        }
+
+        // If no relatively positioned ancestor is found, use the document body
+        const containerRect = container ? container.getBoundingClientRect() : document.documentElement.getBoundingClientRect();
+
+        const willOverflow = (inputRect.bottom + dropdownHeight) > containerRect.bottom;
+
+        if (willOverflow) {
+          setDropdownPosition('top');
+        } else {
+          setDropdownPosition('bottom');
+        }
+      }
+    }
+  }, [isOpen, dropdownRef.current?.offsetHeight, position]);
 
   const hours = generateHours();
   const minutes = generateMinutes();
@@ -318,8 +358,8 @@ const TimePicker = ({
         >
           <div className="flex items-center gap-2 flex-1 min-w-0">
             <svg className="w-5 h-5 text-gray-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <circle cx="12" cy="12" r="10"/>
-              <polyline points="12,6 12,12 16,14"/>
+              <circle cx="12" cy="12" r="10" />
+              <polyline points="12,6 12,12 16,14" />
             </svg>
             {isTyping ? (
               <input
@@ -352,16 +392,17 @@ const TimePicker = ({
               </button>
             )}
             <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <polyline points="6,9 12,15 18,9"/>
+              <polyline points="6,9 12,15 18,9" />
             </svg>
           </div>
         </div>
 
         {/* Dropdown */}
         {isOpen && (
-          <div 
+          <div
             ref={dropdownRef}
-            className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-2xl shadow-lg z-50"
+            className={`absolute left-0 right-0 mt-1 bg-white border border-gray-300 rounded-2xl shadow-lg z-50 ${dropdownPosition === 'bottom' ? 'top-full' : 'bottom-full mb-1'
+              }`}
           >
             {/* Time Picker Columns */}
             <div className="flex p-4 gap-4">
@@ -378,8 +419,8 @@ const TimePicker = ({
                       }}
                       className={`
                         px-3 py-2 cursor-pointer text-center transition-colors text-lg
-                        ${tempHour === hour 
-                          ? 'bg-blue-500 text-white' 
+                        ${tempHour === hour
+                          ? 'bg-blue-500 text-white'
                           : 'hover:bg-gray-100 text-gray-700'
                         }
                       `}
@@ -403,8 +444,8 @@ const TimePicker = ({
                       }}
                       className={`
                         px-3 py-2 cursor-pointer text-center transition-colors text-lg
-                        ${tempMinute === minute 
-                          ? 'bg-blue-500 text-white' 
+                        ${tempMinute === minute
+                          ? 'bg-blue-500 text-white'
                           : 'hover:bg-gray-100 text-gray-700'
                         }
                       `}
@@ -429,8 +470,8 @@ const TimePicker = ({
                         }}
                         className={`
                           px-3 py-2 cursor-pointer text-center transition-colors text-lg
-                          ${tempPeriod === period 
-                            ? 'bg-blue-500 text-white' 
+                          ${tempPeriod === period
+                            ? 'bg-blue-500 text-white'
                             : 'hover:bg-gray-100 text-gray-700'
                           }
                         `}
@@ -442,7 +483,7 @@ const TimePicker = ({
                 </div>
               )}
             </div>
-            
+
             {/* Cancel and OK Buttons */}
             <div className="flex justify-end gap-3 px-4 pb-4 pt-2 border-t border-gray-200">
               <button

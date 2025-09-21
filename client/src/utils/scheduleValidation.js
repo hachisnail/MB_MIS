@@ -102,7 +102,7 @@ export const validateScheduleCreation = (scheduleData, existingEvents) => {
   if (startMinutes < sixAM || endMinutes > sixPM) {
     return {
       isValid: false,
-      error: 'Please schedule between 6:00 AM and 6:00 PM'
+      error: 'Please choose a time between 6:00 AM and 6:00 PM'
     };
   }
 
@@ -119,7 +119,7 @@ export const validateScheduleCreation = (scheduleData, existingEvents) => {
   if (duration < 15) {
     return {
       isValid: false,
-      error: 'Your schedule must be at least 15 minutes long'
+      error: 'Please select at least 15 minutes for your schedule'
     };
   }
 
@@ -134,7 +134,7 @@ export const validateScheduleCreation = (scheduleData, existingEvents) => {
   if (overlappingCount >= 10) {
     return {
       isValid: false,
-      error: 'This time slot has reached the maximum limit of 10 events. Please choose a different time.'
+      error: 'This time slot is fully booked. Please choose a different time.'
     };
   }
 
@@ -221,7 +221,7 @@ export const validateDateDisabling = (disableData, existingEvents) => {
     if (duration < 15) {
       return {
         isValid: false,
-        error: 'Time slot must be at least 15 minutes long',
+        error: 'Please select at least 15 minutes for your time slot',
         warning: null
       };
     }
@@ -252,7 +252,7 @@ export const validateDateDisabling = (disableData, existingEvents) => {
     if (overlappingExclusive) {
       return {
         isValid: false,
-        error: 'This time overlaps with another reserved time slot',
+        error: 'This time slot overlaps with another reserved time. Please choose a different time.',
         warning
       };
     }

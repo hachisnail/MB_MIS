@@ -11,6 +11,7 @@ import { useEffect, useRef, useState, Fragment } from "react";
 import { Transition } from "@headlessui/react";
 import { createPortal } from "react-dom";
 import axiosClient from "../../../lib/axiosClient";
+import { encodeBase64 } from "../../../utils/base64";
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -41,21 +42,40 @@ const Dashboard = () => {
   const [isLoadingSchedules, setIsLoadingSchedules] = useState(true);
   const [isLoadingQueries, setIsLoadingQueries] = useState(true);
 
+  // State for artifact statistics
+  const [artifactStats, setArtifactStats] = useState({
+    total: 0,
+    acquired: 0,
+    borrowed: 0,
+    displayed: 0
+  });
+  const [isLoadingArtifacts, setIsLoadingArtifacts] = useState(true);
+  const [artifactError, setArtifactError] = useState(null);
+
   // Function to fetch schedules for today
   const fetchSchedulesToday = async () => {
     try {
       setIsLoadingSchedules(true);
 
-      // Get today's date in YYYY-MM-DD format
-      const today = new Date().toISOString().split('T')[0];
+      // Get today's date in YYYY-MM-DD format using local timezone
+      const today = new Date();
+      const todayString = today.getFullYear() + '-' +
+        String(today.getMonth() + 1).padStart(2, '0') + '-' +
+        String(today.getDate()).padStart(2, '0');
+
+      console.log('Fetching schedules for today:', todayString);
 
       // Fetch schedules for today, excluding DATE_DISABLED
-      const schedulesResponse = await axiosClient.get(`/auth/schedules?date=${today}`);
+      const schedulesResponse = await axiosClient.get(`/auth/schedules?date=${todayString}`);
       const schedules = schedulesResponse.data;
 
-      // Filter out DATE_DISABLED schedules and transform data
+      // Filter out DATE_DISABLED schedules and ensure date matches exactly
       const todaySchedules = schedules
-        .filter(schedule => schedule.title !== 'DATE_DISABLED' && schedule.status === 'ACTIVE')
+        .filter(schedule => {
+          const isValidSchedule = schedule.title !== 'DATE_DISABLED' && schedule.status === 'ACTIVE';
+          const isToday = schedule.date === todayString;
+          return isValidSchedule && isToday;
+        })
         .map(schedule => ({
           type: schedule.title,
           time: `${schedule.start_time} - ${schedule.end_time}`,
@@ -64,16 +84,23 @@ const Dashboard = () => {
           itemType: 'schedule' // Add identifier for display logic
         }));
 
+      console.log('Today schedules found:', todaySchedules.length);
+
       // Fetch approved appointments for today (based on preferred_date)
       const appointmentsResponse = await axiosClient.get('/auth/appointment');
       const appointments = appointmentsResponse.data;
 
-      // Filter for approved appointments with preferred_date = today
+      // Filter for approved appointments with preferred_date = today (strict date comparison)
       const todayApprovedAppointments = appointments
         .filter(appointment => {
           const status = appointment.AppointmentStatus?.status?.toUpperCase();
           const preferredDate = appointment.preferred_date;
-          return status === 'APPROVED' && preferredDate === today;
+
+          // Ensure strict date comparison - only today's appointments
+          const isApproved = status === 'APPROVED';
+          const isToday = preferredDate === todayString;
+
+          return isApproved && isToday;
         })
         .map(appointment => ({
           type: appointment.purpose_of_visit || 'Appointment',
@@ -85,9 +112,12 @@ const Dashboard = () => {
           itemType: 'appointment' // Add identifier for display logic
         }));
 
-      // Combine schedules and approved appointments
+      console.log('Today approved appointments found:', todayApprovedAppointments.length);
+
+      // Combine schedules and approved appointments - only for today
       const combinedData = [...todaySchedules, ...todayApprovedAppointments];
 
+      console.log('Total items for today:', combinedData.length);
       setSchedulesTodayData(combinedData);
     } catch (error) {
       console.error('Error fetching schedules and appointments:', error);
@@ -177,6 +207,46 @@ const Dashboard = () => {
     }
   };
 
+  // Function to fetch artifact statistics
+  const fetchArtifactStats = async () => {
+    try {
+      setIsLoadingArtifacts(true);
+      setArtifactError(null);
+
+      // Fetch artifact data from the same endpoint used by inventory
+      const response = await axiosClient.get('/auth/public-artifacts');
+      const artifacts = response.data;
+
+      // Calculate statistics using the same logic as inventory
+      const total = artifacts.length;
+      const acquired = artifacts.filter(artifact => artifact.contribution_type !== "lending").length;
+      const borrowed = artifacts.filter(artifact => artifact.contribution_type === "lending").length;
+      const displayed = artifacts.filter(artifact =>
+        artifact.on_display || (artifact.display_status || "").toLowerCase().includes("display")
+      ).length;
+
+      setArtifactStats({
+        total,
+        acquired,
+        borrowed,
+        displayed
+      });
+
+    } catch (error) {
+      console.error('Error fetching artifact statistics:', error);
+      setArtifactError('Failed to load artifact data');
+      // Fallback to default data
+      setArtifactStats({
+        total: 0,
+        acquired: 0,
+        borrowed: 0,
+        displayed: 0
+      });
+    } finally {
+      setIsLoadingArtifacts(false);
+    }
+  };
+
   // Function to fetch visitor quota data
   const fetchVisitorQuotaData = async () => {
     try {
@@ -192,7 +262,7 @@ const Dashboard = () => {
       const presentVisitors = stats.present || 0;
 
       // Set a reasonable maximum capacity (you can adjust this based on museum capacity)
-      const maxCapacity = Math.max(expectedVisitors, 500); // Use at least 500 as baseline capacity
+      const maxCapacity = Math.max(expectedVisitors, 1000); // Use at least 1000 as baseline capacity
 
       const percentage = maxCapacity > 0 ? Math.round((presentVisitors / maxCapacity) * 100) : 0;
 
@@ -332,33 +402,74 @@ const Dashboard = () => {
     return () => window.removeEventListener('resize', updateChartHeight);
   }, []);
 
+  // Navigation handler function
+  const handleItemNavigation = (item) => {
+    try {
+      if (item.itemType === 'appointment') {
+        // For appointments: navigate to /admin/appointment/:encoded
+        // Need to get visitor name for breadcrumb - using a placeholder for now
+        const appointmentBreadcrumb = `${item.id} Visitor`;
+        const encodedParam = btoa(appointmentBreadcrumb);
+        navigate(`/admin/appointment/${encodedParam}`, {
+          state: { cameFrom: 'schedule' }
+        });
+      } else if (item.itemType === 'contribution') {
+        // For contributions: navigate to /admin/acquisition/:type/:encoded
+        // Need to determine contribution type and get title
+        const contributionBreadcrumb = `${item.id} ${item.type}`;
+        const encodedParam = encodeBase64(contributionBreadcrumb);
+        // Default to donation type - could be enhanced to get actual type from API
+        navigate(`/admin/acquisition/donation/${encodedParam}`);
+      } else if (item.itemType === 'schedule') {
+        // For schedules: navigate to /admin/schedule and pass the schedule data to auto-select
+        navigate('/admin/schedule', {
+          state: {
+            selectedScheduleId: item.id,
+            selectedScheduleData: {
+              id: item.id,
+              title: item.type,
+              startTime: item.time.split(' - ')[0],
+              endTime: item.time.split(' - ')[1],
+              date: item.date,
+              isSchedule: true
+            }
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Navigation error:', error);
+    }
+  };
+
   // Fetch all data on component mount
   useEffect(() => {
     fetchAppointmentData();
     fetchVisitorQuotaData();
     fetchSchedulesToday();
     fetchUnreadQueries();
+    fetchArtifactStats();
   }, []);
 
+  // Dynamic topItems using real artifact statistics
   const topItems = [
     {
       label: "Total Artifacts",
-      value: 300,
+      value: isLoadingArtifacts ? "..." : artifactStats.total,
       path: { pathname: "/admin/inventory", state: { filter: "artifacts" } },
     },
     {
       label: "Acquired Artifacts",
-      value: 150,
+      value: isLoadingArtifacts ? "..." : artifactStats.acquired,
       path: { pathname: "/admin/inventory", state: { filter: "acquired" } },
     },
     {
       label: "Borrowed Artifacts",
-      value: 50,
+      value: isLoadingArtifacts ? "..." : artifactStats.borrowed,
       path: { pathname: "/admin/inventory", state: { filter: "borrowing" } },
     },
     {
       label: "Displayed Artifacts",
-      value: 200,
+      value: isLoadingArtifacts ? "..." : artifactStats.displayed,
       path: { pathname: "/admin/inventory", state: { filter: "displayed" } },
     },
   ];
@@ -441,7 +552,7 @@ const Dashboard = () => {
                     className={`${label === "Appointment"
                       ? "bg-[#332613] text-white border-2 border-[#332613]"
                       : "bg-white border-2 border-[#332613] text-[#332613]"
-                      } px-6 py-2 rounded-full flex items-center gap-3 w-full justify-between hover:opacity-90 transition-opacity`}
+                      } px-6 py-2 rounded-full flex items-center gap-3 w-full justify-between hover:opacity-90 transition-opacity cursor-pointer`}
                   >
                     <span className="text-2xl font-medium">{label}</span>
                     <div className="w-5 h-5 rounded-full border border-current flex items-center justify-center">
@@ -589,6 +700,7 @@ const Dashboard = () => {
                     <button
                       type="button"
                       className="w-8 h-8 rounded-full border-2 border-[#3F2E1B] text-[#3F2E1B] flex items-center justify-center hover:bg-[#3F2E1B] hover:text-white transition-colors"
+                      onClick={() => handleItemNavigation(item)}
                       aria-label="Open"
                     >
                       <svg
@@ -680,6 +792,7 @@ const Dashboard = () => {
                     <button
                       type="button"
                       className="w-8 h-8 rounded-full border-2 border-white text-white flex items-center justify-center hover:bg-white hover:text-[#3F2E1B] transition-colors"
+                      onClick={() => handleItemNavigation(item)}
                       aria-label="Open"
                     >
                       <svg
@@ -1028,7 +1141,7 @@ const Dashboard = () => {
 
                     {/* Fallback background gradient (for visual consistency) */}
                     <div
-                      cla ssName="absolute inset-0 rounded-full pointer-events-none"
+                      className="absolute inset-0 rounded-full pointer-events-none"
                       style={{
                         background: `conic-gradient(${stops})`,
                         zIndex: 1
@@ -1135,7 +1248,7 @@ const Dashboard = () => {
       {/* <NavLink to="/admin/sandbox" className="w-fit">
         <StyledButton className="w-fit">Open sandbox</StyledButton>
       </NavLink> */}
-    </div>
+    </div >
   );
 };
 

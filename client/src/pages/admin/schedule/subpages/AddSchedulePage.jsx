@@ -1072,11 +1072,20 @@ const AddSchedulePage = () => {
                     year: "numeric",
                   })}
                 </div>
-                <div className="mt-6 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                  <p className="text-sm text-blue-800">
-                    <strong>Quick tip:</strong> Time must be 6:00 AM - 6:00 PM, at least 15 minutes long.
+                <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-sm text-blue-800 font-semibold mb-2">
+                    📝 Schedule Creation Notes:
                   </p>
+                  <ul className="text-sm text-blue-700 space-y-1 list-disc list-inside">
+                    <li><strong>Operating Hours:</strong> Schedules must be between 6:00 AM and 6:00 PM</li>
+                    <li><strong>Minimum Duration:</strong> At least 15 minutes required</li>
+
+                    <li><strong>Capacity Limit:</strong> Maximum 10 overlapping events per time slot</li>
+                    <li><strong>Shared Access:</strong> Added schedules are shared and allow appointments</li>
+
+                  </ul>
                 </div>
+
                 {/* Schedule Title */}
                 <div>
                   <label className="block text-sm font-medium mb-1">
@@ -1208,6 +1217,21 @@ const AddSchedulePage = () => {
                   </>
                 );
               })()}
+
+              {/* Close Date Notes */}
+              <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-sm text-red-800 font-semibold mb-2">
+                  🚫 Date Closing Notes:
+                </p>
+                <ul className="text-sm text-red-700 space-y-1 list-disc list-inside">
+                  <li><strong>Day Mode:</strong> Closes entire date (24 hours) for new appointments</li>
+                  <li><strong>Time Mode:</strong> Closes specific time slot only</li>
+                  <li><strong>Operating Hours:</strong> Time slots must be between 6:00 AM and 6:00 PM</li>
+                  <li><strong>Minimum Duration:</strong> At least 15 minutes required for time slots</li>
+                  <li><strong>Existing Events:</strong> Won't affect already scheduled appointments</li>
+                  <li><strong>Overlap Prevention:</strong> Cannot overlap with other exclusive schedules</li>
+                </ul>
+              </div>
 
               {/* Close Date Form */}
               <form onSubmit={handleDisableDateSubmit(onDisableDateSubmit)} className="space-y-3">

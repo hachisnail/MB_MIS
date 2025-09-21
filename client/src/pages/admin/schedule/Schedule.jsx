@@ -1,7 +1,7 @@
 // src/pages/Schedule.jsx
 
 import React, { useState, useCallback, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
 import LiveClock from '@/features/LiveClock';
@@ -25,11 +25,14 @@ import { normalizeStatus } from '../appointments/components/statusUtils';
 // ---------------- MAIN SCHEDULE PAGE ----------------
 const Schedule = () => {
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Calendar state
   const [selectedDate, setSelectedDate] = useState(new Date());
   // Track the currently selected appointment from the DayScheduler
   const [selectedAppointment, setSelectedAppointment] = useState(null);
+  // Track the currently selected tour from Today's Scheduled Tours
+  const [selectedTour, setSelectedTour] = useState(null);
 
   // Build a local date string for the selected date (no UTC offset).
   const dateString = getLocalDateString(selectedDate);
@@ -98,7 +101,7 @@ const Schedule = () => {
           date: schedule.date,
           startTime: schedule.start_time,
           endTime: schedule.end_time,
-          availability: schedule.availability || 'SHARED',
+          availability: schedule.title === 'DATE_DISABLED' ? 'EXCLUSIVE' : (schedule.availability || 'SHARED'),
           status: schedule.status || 'ACTIVE',
           type: schedule.title === 'DATE_DISABLED' ? 'DISABLED' : 'SCHEDULE', // Add type property for disabled dates
           isSchedule: true,
@@ -245,7 +248,9 @@ const Schedule = () => {
           startTime: schedule.start_time,
           endTime: schedule.end_time,
           isDone: schedule.status === 'COMPLETED',
-          isSchedule: true
+          isSchedule: true,
+          availability: schedule.title === 'DATE_DISABLED' ? 'EXCLUSIVE' : (schedule.availability || 'SHARED'),
+          status: schedule.status || 'ACTIVE'
         }));
 
       console.log("Processed schedules:", todaySchedules.length);
@@ -435,6 +440,34 @@ const Schedule = () => {
     fetchAllData();
   }, [selectedDate, viewedDate, fetchAllData]);
 
+  // Handle navigation from Dashboard - auto-select schedule
+  useEffect(() => {
+    const navigationState = location.state;
+    if (navigationState?.selectedScheduleData && backendEvents.length > 0) {
+      const scheduleData = navigationState.selectedScheduleData;
+
+      // Set the date to match the schedule's date (only once)
+      if (scheduleData.date) {
+        const scheduleDate = new Date(scheduleData.date);
+        setSelectedDate(scheduleDate);
+      }
+
+      // Find and select the matching schedule
+      const matchingEvent = backendEvents.find(event =>
+        event.isSchedule &&
+        event.schedule_id === scheduleData.id
+      );
+
+      if (matchingEvent) {
+        setSelectedAppointment(matchingEvent);
+        console.log('Auto-selected schedule from Dashboard:', matchingEvent);
+
+        // Clear the navigation state to prevent re-triggering
+        window.history.replaceState({}, document.title);
+      }
+    }
+  }, [location.state?.selectedScheduleData, backendEvents.length]); // Only depend on the specific data and length
+
   // Socket integration for real-time updates
   useEffect(() => {
     if (!socket) return;
@@ -519,6 +552,25 @@ const Schedule = () => {
       console.error('Error updating appointment status:', error);
       throw error;
     }
+  };
+
+  // Handle tour selection from Today's Scheduled Tours
+  const handleTourSelect = (tour) => {
+    if (selectedTour && selectedTour.id === tour.id) {
+      // Deselect if clicking the same tour
+      setSelectedTour(null);
+      setSelectedAppointment(null);
+    } else {
+      // Select the new tour and clear DayScheduler selection
+      setSelectedTour(tour);
+      setSelectedAppointment(tour);
+    }
+  };
+
+  // Update DayScheduler selection handler to clear tour selection
+  const handleDaySchedulerSelect = (appointment) => {
+    setSelectedTour(null); // Clear tour selection
+    setSelectedAppointment(appointment);
   };
 
 
@@ -639,6 +691,8 @@ const Schedule = () => {
                       tour={tour}
                       idx={idx}
                       formatTimeTo12H={formatTimeTo12H}
+                      isSelected={selectedTour && selectedTour.id === tour.id}
+                      onSelect={handleTourSelect}
                     />
                   ))}
                 </div>
@@ -696,7 +750,7 @@ const Schedule = () => {
                 <DayScheduler
                   appointments={backendEvents}
                   selectedDate={selectedDate}
-                  onSelectAppointment={setSelectedAppointment}
+                  onSelectAppointment={handleDaySchedulerSelect}
                   selectedAppointment={selectedAppointment}
                   isLoading={isLoading}
                 />
@@ -801,17 +855,29 @@ const Schedule = () => {
                       </p>
                     )}
 
-                    <div className="flex justify-end">
-                      <StyledButton
-                        onClick={handleMarkAsDone}
-                        buttonColor="bg-green-500"
-                        hoverColor="hover:bg-green-600"
-                        textColor="text-white"
-                        className="mt-4 transition-colors"
-                      >
-                        Mark as Done
-                      </StyledButton>
-                    </div>
+                    {/* Only show Mark as Done button if the event is not completed */}
+                    {!selectedAppointment.isDone && selectedAppointment.status !== 'COMPLETED' && (
+                      <div className="flex justify-end">
+                        <StyledButton
+                          onClick={handleMarkAsDone}
+                          buttonColor="bg-green-500"
+                          hoverColor="hover:bg-green-600"
+                          textColor="text-white"
+                          className="mt-4 transition-colors"
+                        >
+                          Mark as Done
+                        </StyledButton>
+                      </div>
+                    )}
+
+                    {/* Show completion status if the event is done */}
+                    {(selectedAppointment.isDone || selectedAppointment.status === 'COMPLETED') && (
+                      <div className="flex justify-end">
+                        <div className="mt-4 px-4 py-2 bg-green-100 text-green-800 rounded-lg font-medium">
+                          ✓ Completed
+                        </div>
+                      </div>
+                    )}
                   </>
                 ) : (
                   <p className="text-gray-500 italic">No event selected</p>

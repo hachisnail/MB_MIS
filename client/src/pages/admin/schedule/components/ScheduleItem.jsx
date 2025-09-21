@@ -1,15 +1,25 @@
 import { memo } from 'react';
 
-const ScheduleItem = memo(({ tour, idx, formatTimeTo12H }) => {
+const ScheduleItem = memo(({ tour, idx, formatTimeTo12H, isSelected, onSelect }) => {
     // Check if this is a flexible time appointment
     const isFlexibleTime = tour.startTime === "Flexible" || tour.hasFlexibleTime;
+
+    const handleClick = () => {
+        if (onSelect) {
+            onSelect(tour);
+        }
+    };
 
     return (
         <div
             className={`
-        ${idx % 2 === 0 ? 'bg-black text-white' : 'bg-gray-100 text-gray-700'}
-        p-3 rounded-lg flex items-center justify-between
+        ${isSelected
+                    ? 'bg-blue-500 text-white border-2 border-blue-600'
+                    : idx % 2 === 0 ? 'bg-black text-white' : 'bg-gray-100 text-gray-700'
+                }
+        p-3 rounded-lg flex items-center justify-between cursor-pointer hover:opacity-80
       `}
+            onClick={handleClick}
         >
             <div className="flex items-center flex-grow">
                 <div

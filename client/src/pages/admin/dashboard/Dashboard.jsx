@@ -369,8 +369,8 @@ const Dashboard = () => {
   ];
 
   return (
-    <div className="w-full flex flex-col gap-y-5 pt-15 h-full overflow-scroll">
-      <div className="flex justify-between pb-8">
+    <div className="w-full flex flex-col gap-y-3 pt-5 3xl:pt-15 pb-1 px-1 h-full overflow-scroll">
+      <div className="flex justify-between">
         <span className="text-5xl font-bold font-hind">
           Welcome {user.username}!
         </span>
@@ -379,20 +379,20 @@ const Dashboard = () => {
 
       <div className="w-full h-[36rem] flex gap-x-5">
         <div className="gap-y-5 flex flex-col justify-between">
-          <div className="w-fit grid grid-cols-2 gap-4">
+          <div className="w-fit grid grid-cols-2 gap-3">
             {/* Artifact cards grid */}
             {topItems.map(({ label, value, path }) => {
               return (
                 <div
                   key={label}
-                  className={`w-[190px] h-[105px] rounded-lg shadow-md flex items-center justify-between px-4 py-3 ${label === "Total Artifacts"
+                  className={`w-[190px] h-[90px] 3xl:h-[105px] rounded-lg shadow-md shadow-gray-400 flex items-center justify-between px-4 py-3 ${label === "Total Artifacts"
                     ? "bg-gradient-to-b from-[#251B0E] to-[#523d1f] text-white"
                     : "bg-white border border-gray-200"
                     }`}
                 >
                   <div className="flex flex-col">
                     <span className="text-2xl font-medium mb-1">{label}</span>
-                    <span className="text-6xl font-bold">{value}</span>
+                    <span className="text-4xl 3xl:text-6xl font-bold">{value}</span>
                     <span className="text-lg opacity-70">Total Artifacts</span>
                   </div>
                   <button
@@ -423,7 +423,7 @@ const Dashboard = () => {
             })}
           </div>
 
-          <div className="w-[39rem] bg-white rounded-lg shadow-md border border-gray-200 p-9 flex items-center justify-between gap-8">
+          <div className="w-[39rem] bg-white rounded-lg shadow-md shadow-gray-400 border border-gray-200 p-4 3xl:p-9 flex items-center justify-between gap-8">
             {/* Walk-ins section */}
             <h2 className="text-5xl font-bold text-gray-800">Walk-ins</h2>
             <div className="flex flex-col gap-3 w-[180px]">
@@ -466,8 +466,8 @@ const Dashboard = () => {
         </div>
 
 
-        <div className="w-full h-full bg-white rounded-lg shadow-md border border-gray-200 p-8 flex flex-col">
-          <h3 className="text-4xl font-bold text-gray-900 mb-5">Appointment Rate</h3>
+        <div className="w-full h-full bg-white rounded-lg shadow-md shadow-gray-400 border border-gray-200 p-4 3xl:p-8 flex flex-col">
+          <h3 className="text-2xl 3xl:text-4xl font-bold text-gray-900 mb-5">Appointment Rate</h3>
           <div ref={chartContainerRef} className="flex-1 w-full h-fit">
             {isLoadingAppointments ? (
               <div className="flex items-center justify-center h-full">
@@ -528,8 +528,8 @@ const Dashboard = () => {
 
 
         <div className="w-fit flex flex-row gap-x-5">
-          <div className="w-[25rem] h-auto bg-white rounded-lg shadow-md border border-gray-200 p-8 flex flex-col">
-            <h3 className="text-4xl font-bold text-gray-900 mb-6">Schedules Today</h3>
+          <div className="w-[25rem] h-auto bg-white rounded-lg shadow-md shadow-gray-400 border border-gray-200 p-4 3xl:p-8 flex flex-col">
+            <h3 className="text-2xl 3xl:text-4xl font-bold text-gray-900 mb-6">Schedules Today</h3>
 
             <div className="flex flex-col gap-8">
               {isLoadingSchedules ? (
@@ -581,7 +581,7 @@ const Dashboard = () => {
                       {/* Text */}
                       <div className="flex flex-col leading-tight">
                         <span className="text-2xl font-semibold text-gray-900">{item.type}</span>
-                        <span className="text-lg text-gray-700">{item.time}</span>
+                        <span className="text-md 3xl:text-lg text-gray-700">{item.time}</span>
                       </div>
                     </div>
 
@@ -613,8 +613,8 @@ const Dashboard = () => {
           </div>
 
 
-          <div className="w-[25rem] h-auto bg-gradient-to-b from-[#251B0E] to-[#523d1f] rounded-lg shadow-md border border-gray-200 p-8 flex flex-col">
-            <h3 className="text-4xl font-bold text-[#F2A93B] mb-6">Unread Queries</h3>
+          <div className="w-[25rem] h-auto bg-gradient-to-b from-[#251B0E] to-[#523d1f] rounded-lg shadow-md shadow-gray-400 border border-gray-200 p-4 3xl:p-8 flex flex-col">
+            <h3 className="text-2xl 3xl:text-4xl font-bold text-[#F2A93B] mb-6">Unread Queries</h3>
 
             <div className="flex flex-col gap-8">
               {isLoadingQueries ? (
@@ -672,7 +672,7 @@ const Dashboard = () => {
                       {/* Text */}
                       <div className="flex flex-col leading-tight">
                         <span className="text-2xl font-semibold text-[#F2A93B]">{item.type}</span>
-                        <span className="text-lg text-white opacity-90">{item.time} {item.date}</span>
+                        <span className="text-sm 3xl:text-lg text-white opacity-90">{item.time} {item.date}</span>
                       </div>
                     </div>
 
@@ -709,9 +709,9 @@ const Dashboard = () => {
       <div className="w-full h-full flex flex-row gap-x-5">
 
 
-        <div className="w-[50rem] h-full bg-gradient-to-b from-[#251B0E] to-[#523d1f] rounded-lg shadow-md border border-gray-200 p-8 flex flex-col">
+        <div className="w-[50rem] h-full bg-gradient-to-b from-[#251B0E] to-[#523d1f] rounded-lg shadow-md shadow-gray-400 border border-gray-200 p-4 3xl:p-8 flex flex-col">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-4xl font-bold text-white">Visitor Quota</h3>
+            <h3 className="text-2xl 3xl:text-4xl font-bold text-white">Visitor Quota</h3>
             <span className="text-2xl font-semibold text-white">{visitorQuotaData.percentage}%</span>
           </div>
 
@@ -808,8 +808,8 @@ const Dashboard = () => {
         </div>
 
 
-        <div className="w-full h-full bg-white rounded-lg shadow-md border border-gray-200 p-8 flex flex-col">
-          <h3 className="text-4xl font-bold text-gray-900 mb-4">Website Traffic Overview</h3>
+        <div className="w-full h-full bg-white rounded-lg shadow-md shadow-gray-400 border border-gray-200 p-4 3xl:p-8 flex flex-col">
+          <h3 className="text-2xl 3xl:text-4xl font-bold text-gray-900 mb-4">Website Traffic Overview</h3>
           <div className="flex flex-1 w-full min-h-0">
             {/* Legend */}
             <div className="w-32 flex flex-col items-center justify-center gap-y-6 pr-6">
@@ -875,8 +875,8 @@ const Dashboard = () => {
 
 
 
-        <div className="w-[104rem] h-full bg-white rounded-lg shadow-md border border-gray-200 p-5 flex flex-col">
-          <h3 className="text-4xl font-bold text-gray-900 mb-6">Appointment Rate</h3>
+        <div className="w-[104rem] h-full bg-white rounded-lg shadow-md shadow-gray-400 border border-gray-200 p-4 3xl:p-5 flex flex-col">
+          <h3 className="text-2xl 3xl:text-4xl font-bold text-gray-900 mb-6">Appointment Rate</h3>
           <div className="flex items-center justify-between h-full">
             {/* Legend */}
             <div className="flex flex-col gap-y-4">

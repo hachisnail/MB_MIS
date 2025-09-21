@@ -217,6 +217,9 @@ router.get("/inventory", async (req, res, next) => {
     next(e);
   }
 });
+router.get("/auth/inventory", getInventoryList);
+
+
 
 // (Optional) Back-compat if your client still calls /api/inventory directly
 router.get("/../inventory", (req, res, next) => next()); // NO-OP (kept for safety)

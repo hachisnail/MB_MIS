@@ -1,54 +1,87 @@
-// controllers/inventoryController.js
+// server/src/controllers/inventoryController.js
 import { mainDb } from "../configs/databases.js";
 
-export async function listInventory(req, res) {
+/**
+ * GET /api/auth/inventory
+ * Returns enriched inventory rows joined across:
+ *  - catalog_artifacts (ca)
+ *  - contributions (con)
+ *  - contributors (contrib)
+ *  - lendingdetails (ld)                → contract_expires_at
+ *  - maintenance_reports (aggregated)   → last_maintenance_at, open_maint
+ *
+ * NOTE: No dependency on a non-existent `ca.published` column.
+ */
+export async function getInventoryList(req, res) {
   try {
-    // (debug logs removed)
-    const [rows] = await mainDb.query(`
+    const [rows] = await mainDb.query(
+      `
       SELECT
         ca.catalog_id,
         ca.artifact_id,
         ca.contribution_id,
         ca.title,
-        CONCAT(ct.first_name,' ',ct.last_name) AS donor_name,
+        CONCAT(COALESCE(contrib.first_name,''), ' ', COALESCE(contrib.last_name,'')) AS donor_name,
         con.contribution_type,
         ca.provenance,
         ca.current_location,
-        con.updated_at AS acquisition_date,
-        m.last_end AS last_maintenance_at,
-        CASE WHEN con.contribution_type = 'lending'
-             THEN ld.duration_to
-             ELSE NULL
-        END AS contract_expires_at,
+
+        -- best-effort date you already use for filtering/sorting
+        COALESCE(ca.metadata_updated_at, ca.updated_at, ca.created_at) AS acquisition_date,
+
+        mr.last_maintenance_at,
+        ld.duration_to AS contract_expires_at,
+
         CASE
-          WHEN m.last_end IS NOT NULL AND m.last_end >= CURRENT_DATE THEN 'Under Maintenance'
+          WHEN COALESCE(mr.open_maint, 0) = 1 THEN 'In Maintenance'
           WHEN LOWER(COALESCE(ca.current_location,'')) LIKE '%display%'
             OR LOWER(COALESCE(ca.current_location,'')) LIKE '%gallery%'
             OR LOWER(COALESCE(ca.current_location,'')) LIKE '%exhibit%'
             THEN 'On Display'
-          WHEN LOWER(COALESCE(ca.current_location,'')) LIKE '%storage%' THEN 'In Storage'
+          WHEN LOWER(COALESCE(ca.current_location,'')) LIKE '%storage%'
+            THEN 'In Storage'
           ELSE '—'
         END AS display_status,
+
         ca.collection_number,
         ca.metadata_updated_at,
         ca.updated_at,
         ca.created_at
       FROM catalog_artifacts ca
-      JOIN contributions con ON ca.contribution_id = con.contribution_id
-      JOIN contributors ct ON con.contributor_id = ct.contributor_id
-      LEFT JOIN lendingdetails ld ON con.contribution_id = ld.contribution_id
+      JOIN contributions con
+        ON ca.contribution_id = con.contribution_id
+      JOIN contributors contrib
+        ON con.contributor_id = contrib.contributor_id
+      LEFT JOIN lendingdetails ld
+        ON ld.contribution_id = con.contribution_id
       LEFT JOIN (
-        SELECT contribution_id, MAX(date_end) AS last_end
+        /* Per-contribution maintenance summary:
+           - last_maintenance_at: most recent date_end
+           - open_maint: 1 if any report currently open/ongoing
+        */
+        SELECT
+          contribution_id,
+          MAX(date_end) AS last_maintenance_at,
+          MAX(
+            CASE
+              WHEN date_end IS NULL OR date_end >= CURRENT_DATE THEN 1
+              ELSE 0
+            END
+          ) AS open_maint
         FROM maintenance_reports
         GROUP BY contribution_id
-      ) m ON m.contribution_id = con.contribution_id
+      ) mr
+        ON mr.contribution_id = con.contribution_id
       ORDER BY ca.updated_at DESC
-    `);
+      `
+    );
 
-    return res.json(rows);
+    res.json(rows);
   } catch (err) {
-    // keep error logs
     console.error("[Inventory] error:", err);
-    return res.status(500).json({ message: "Server error loading inventory" });
+    res.status(500).json({ message: "Error loading inventory", error: err.message });
   }
 }
+
+/* Back-compat alias: if elsewhere you imported { listInventory } */
+export { getInventoryList as listInventory };

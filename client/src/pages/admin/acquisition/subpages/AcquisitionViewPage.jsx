@@ -821,7 +821,7 @@ const AcquisitionViewPage = () => {
                   />
                 }
                 right={
-                  <div className="w-[45rem] h-full flex flex-col gap-4 pr-6">
+                  <div className="w-full pl-5 h-full flex flex-col gap-4 pr-6">
                     <div className="flex-1 min-h-0 rounded-lg border border-gray-300 p-6 flex gap-x-4">
                       <div className="mt-3 gap-6 flex w-full h-full flex-col ">
                       <span className="text-4xl font-bold">Curatorial Description</span>
@@ -831,12 +831,12 @@ const AcquisitionViewPage = () => {
                           mode="hard"
                           value={curatorialDesc}
                           onChange={setCuratorialDesc}
-                          heightClass="h-full 2xl:h-[25rem]"
+                          heightClass="h-full 2xl:h-[23rem]"
                           maxChars={8000}
                         />
                       </div>
 
-                                            <OptionsPanel
+                      <OptionsPanel
                         onEdit={() => {
                           // optional: toggle edit mode
                         }}

@@ -94,17 +94,17 @@ const Inventory = () => {
     { label: "Title", width: "1fr" },
     { label: "Donator Name", width: "1fr" },
     { label: "Origin", width: 20 },                // 20rem
-    { label: "Acquisition Date", width: 12 },      // 12rem
+    { label: "Acquisition Date", width: 15 },      // 12rem
     { label: "Type", width: 10 },
     { label: "Display Status", width: 14 },
     { label: "Last Maintenance", width: 14 },
-    { label: "Contract Expiration", width: 16 },
+  { label: "Contract Expiration", width: 16 },
   ];
   const acquiredHeaders = [
     { label: "Title", width: "1fr" },
     { label: "Donator Name", width: "1fr" },
     { label: "Origin", width: 20 },
-    { label: "Acquisition Date", width: 12 },
+    { label: "Acquisition Date", width: 15 },
     { label: "Display Status", width: 14 },
     { label: "Last Maintenance", width: 14 },
   ];
@@ -112,7 +112,7 @@ const Inventory = () => {
     { label: "Title", width: "1fr" },
     { label: "Donator Name", width: "1fr" },
     { label: "Origin", width: 20 },
-    { label: "Acquisition Date", width: 12 },
+    { label: "Acquisition Date", width: 15 },
     { label: "Display Status", width: 14 },
     { label: "Last Maintenance", width: 14 },
     { label: "Contract Information", width: 16 },
@@ -256,7 +256,7 @@ const Inventory = () => {
           {/* table */}
           <div className="w-full h-full flex flex-col">
             <TableHeaderContainer headers={headersMap[activeTab]} />
-            <div className="w-full h-[52rem] 3xl:h-[67rem] overflow-y-auto border-y border-gray-400">
+            <div className="w-full h-[43.7rem] 3xl:h-[67rem] overflow-y-auto border-y border-gray-400">
               <ListRenderer
                 isLoading={loading}
                 error={err}

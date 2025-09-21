@@ -9,7 +9,7 @@ const RowField = ({
   labelWidth = "w-62",
 }) => (
   <div className="w-full flex items-center gap-4">
-    <span className={`text-[#555555] font-hind font-bold text-2xl ${labelWidth}`}>
+    <span className={`text-[#555555] font-hind font-bold text-xl 3xl:text-2xl ${labelWidth}`}>
       {label}
     </span>
     <input
@@ -17,7 +17,7 @@ const RowField = ({
       placeholder={placeholder}
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className={`flex-1 h-16 rounded-xl border border-gray-300 px-4 text-xl font-semibold text-[#1D1911]
+      className={`flex-1 h-15 3xl:h-16 rounded-xl border border-gray-300 px-4 text-md 3xl:text-xl font-semibold text-[#1D1911]
         shadow-[inset_0_6px_10px_rgba(0,0,0,0.12)] outline-none ${
           disabled ? "bg-gray-100 cursor-not-allowed" : "bg-white"
         }`}
@@ -51,7 +51,7 @@ export default function ArtifactMetadataForm({
     <div className="w-full h-full flex flex-col gap-8 pl-5">
       {/* Basic Information */}
       <div className="w-full min-h-fit rounded-lg border border-gray-300 p-7 p-8 flex flex-col gap-6">
-        <span className="text-4xl font-bold">Basic Information</span>
+        <span className="text-3xl 3xl:text-4xl font-bold">Basic Information</span>
         <div className="flex flex-col gap-6">
           <RowField
             label="Collection Number"
@@ -77,7 +77,7 @@ export default function ArtifactMetadataForm({
 
       {/* Origin & Current Location */}
       <div className="w-full min-h-fit rounded-lg border border-gray-300 p-4 3xl:p-8 flex flex-col gap-6">
-        <span className="text-4xl font-bold">Origin &amp; Current Location</span>
+        <span className="text-3xl 3xl:text-4xl font-bold">Origin &amp; Current Location</span>
         <div className="flex flex-col gap-6">
           <RowField
             label="Origin / Provenance"
@@ -96,7 +96,7 @@ export default function ArtifactMetadataForm({
 
       {/* Discovery & Acquisition */}
       <div className="w-full min-h-fit rounded-lg border border-gray-300 p-4 3xl:p-8 flex flex-col gap-6">
-        <span className="text-4xl font-bold">Discovery &amp; Acquisition</span>
+        <span className="text-3xl 3xl:text-4xl font-bold">Discovery &amp; Acquisition</span>
         <div className="flex flex-col gap-6">
           <RowField
             label="Discovery Details"

@@ -1,7 +1,7 @@
 const ArtifactDetailsShells = ({ left, middle, right, className = "" }) => {
   return (
     <div
-      className={`w-full h-full rounded-md grid grid-cols-[43rem_1fr_52rem] 3xl:grid-cols-[43rem_1fr_61rem] ${className}`}
+      className={`w-full h-full rounded-md grid grid-cols-[43rem_1fr_50rem] 3xl:grid-cols-[43rem_1fr_61rem] ${className}`}
     >
       <section className=" col-span-1 w-full h-full bg-black relative overflow-visible flex flex-col">
         {left}

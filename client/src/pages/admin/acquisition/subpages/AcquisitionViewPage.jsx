@@ -361,6 +361,7 @@ const AcquisitionViewPage = () => {
 
   const updateStep = async (contribution_id, step) => {
     try {
+      
       await axiosClient.put("/auth/update-step", { contribution_id, step });
       console.log("updated step " + step);
       setStep(step);
@@ -368,6 +369,20 @@ const AcquisitionViewPage = () => {
       console.error("Failed to update timeline:", error);
     }
   };
+
+    const settleMoa = async ( ) => {
+    try {
+    const contribution_id = contributionData?.contribution_id;
+      // console.log(cid)
+      const step = 4;
+      await axiosClient.put("/auth/update-step", { contribution_id,  step});
+      console.log("updated step " + step);
+      setStep(step);
+    } catch (error) {
+      console.error("Failed to update timeline:", error);
+    }
+  };
+
 
   useEffect(() => {
     if (timeline) {
@@ -703,7 +718,7 @@ const AcquisitionViewPage = () => {
                           <StyledButton
                             className="w-50 mt-5"
                             buttonColor="bg-[#6F3FFF]"
-                            // onClick={handleSubmit} trigger moa settled step
+                            onClick={()=> settleMoa()} 
                           >
                             Settle MOA
                           </StyledButton>
@@ -806,34 +821,22 @@ const AcquisitionViewPage = () => {
                   />
                 }
                 right={
-                  <div className="w-full h-full flex flex-col gap-4 pr-6">
-                    <div className="flex-1 min-h-0 rounded-lg border border-gray-300 p-6 flex flex-col">
+                  <div className="w-[45rem] h-full flex flex-col gap-4 pr-6">
+                    <div className="flex-1 min-h-0 rounded-lg border border-gray-300 p-6 flex gap-x-4">
+                      <div className="mt-3 gap-6 flex w-full h-full flex-col ">
                       <span className="text-4xl font-bold">Curatorial Description</span>
-                      <div className="mt-3 flex-1 min-h-0">
+
                         <MultiLineInputField
                           placeholder="Enter staff-facing curatorial description…"
                           mode="hard"
                           value={curatorialDesc}
                           onChange={setCuratorialDesc}
-                          heightClass="h-full"
+                          heightClass="h-full 2xl:h-[25rem]"
                           maxChars={8000}
                         />
                       </div>
-                    </div>
 
-                    <div className="flex-1 min-h-0 flex gap-4">
-                      <div className="flex-1 min-h-0 min-w-0">
-                        <RenderRelatedDocs
-                          relatedImages={relatedImages}
-                          attachedFiles={attachedFiles}
-                          containerHeight="h-full"
-                          imageBoxWidth="w-[29rem]"
-                          fileBoxWidth="w-[17rem]"
-                          imgHeight="h-52"
-                        />
-                      </div>
-
-                      <OptionsPanel
+                                            <OptionsPanel
                         onEdit={() => {
                           // optional: toggle edit mode
                         }}
@@ -907,6 +910,21 @@ const AcquisitionViewPage = () => {
                           }
                         }}
                       />
+                    </div>
+
+                    <div className="flex-1 min-h-0 flex gap-4">
+                      <div className="flex-1 min-h-0 min-w-0">
+                        <RenderRelatedDocs
+                          relatedImages={relatedImages}
+                          attachedFiles={attachedFiles}
+                          containerHeight="h-full"
+                          imageBoxWidth="w-[29rem]"
+                          fileBoxWidth="w-[17rem]"
+                          imgHeight="h-52"
+                        />
+                      </div>
+
+
                     </div>
                   </div>
                 }

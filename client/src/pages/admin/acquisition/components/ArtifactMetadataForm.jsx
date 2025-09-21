@@ -6,7 +6,7 @@ const RowField = ({
   onChange,
   placeholder,
   disabled = false,
-  labelWidth = "w-72",
+  labelWidth = "w-62",
 }) => (
   <div className="w-full flex items-center gap-4">
     <span className={`text-[#555555] font-hind font-bold text-2xl ${labelWidth}`}>
@@ -48,9 +48,9 @@ export default function ArtifactMetadataForm({
   const set = (k) => (v) => onChange({ ...meta, [k]: v });
 
   return (
-    <div className="w-full h-full flex flex-col gap-8 pr-20">
+    <div className="w-full h-full flex flex-col gap-8 pl-5">
       {/* Basic Information */}
-      <div className="w-full min-h-fit rounded-lg border border-gray-300 p-8 flex flex-col gap-6">
+      <div className="w-full min-h-fit rounded-lg border border-gray-300 p-7 p-8 flex flex-col gap-6">
         <span className="text-4xl font-bold">Basic Information</span>
         <div className="flex flex-col gap-6">
           <RowField
@@ -76,7 +76,7 @@ export default function ArtifactMetadataForm({
       </div>
 
       {/* Origin & Current Location */}
-      <div className="w-full min-h-fit rounded-lg border border-gray-300 p-8 flex flex-col gap-6">
+      <div className="w-full min-h-fit rounded-lg border border-gray-300 p-4 3xl:p-8 flex flex-col gap-6">
         <span className="text-4xl font-bold">Origin &amp; Current Location</span>
         <div className="flex flex-col gap-6">
           <RowField
@@ -95,7 +95,7 @@ export default function ArtifactMetadataForm({
       </div>
 
       {/* Discovery & Acquisition */}
-      <div className="w-full min-h-fit rounded-lg border border-gray-300 p-8 flex flex-col gap-6">
+      <div className="w-full min-h-fit rounded-lg border border-gray-300 p-4 3xl:p-8 flex flex-col gap-6">
         <span className="text-4xl font-bold">Discovery &amp; Acquisition</span>
         <div className="flex flex-col gap-6">
           <RowField

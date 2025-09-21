@@ -593,7 +593,7 @@ useEffect(() => {
             </div>
 
             {/* Your form stays the same */}
-            <form className="max-h-[57rem] overflow-scroll col-span-1 flex-1 px-1 sm:px-2 pt-4" onSubmit={handleSubmit}>
+            <form className="h-[57rem] 3xl:h-[74rem] overflow-scroll col-span-1 flex-1 px-1 sm:px-2 pt-4" onSubmit={handleSubmit}>
               <MaintenanceReportCard
                 title="Report 1"
                 report={maintReport1}

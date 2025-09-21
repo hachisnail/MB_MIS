@@ -148,7 +148,7 @@ export default function ArtifactMaintenanceForm({ value = {} }) {
   };
 
   return (
-    <div className="w-[15rem] min-w-fit h-full flex flex-col gap-8 pl-5">
+    <div className="w-full min-w-fit h-full flex flex-col gap-8 pl-5">
       {/* =================== TOP: Status =================== */}
       <div className="w-full min-h-fit rounded-lg border border-gray-300 p-8 flex flex-col gap-6">
         <span className="text-4xl font-bold">Artifact Status</span>

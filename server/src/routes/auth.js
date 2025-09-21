@@ -89,6 +89,13 @@ import {
   
 } from "../controllers/artifactMetadataController.js";
 
+import {
+  createMaintenanceReport,
+  getLatestMaintenanceReportByContribution
+} from "../controllers/maintenanceReportController.js";
+import { forcePrivateCategory } from "../middlewares/forcePrivateCategory.js";
+
+
 import ConversationController from "../controllers/conversationController.js";
 
 import { upload, multerErrorHandler } from "../middlewares/multerMiddleware.js";
@@ -383,5 +390,27 @@ router.get(
 );
 router.get("/public-artifacts", listPublicCatalogArtifacts);
 router.get("/api/inventory", getInventoryList);
+
+// ---- Maintenance Reports ----
+router.post(
+  "/contributions/:id/maintenance/report",
+  requireAuth,
+  requireRole([1, 2, 5]),
+  forcePrivateCategory,                 // <--- here
+  upload.fields([
+    { name: "imgBefore", maxCount: 10 },
+    { name: "imgAfter",  maxCount: 10 },
+  ]),
+  multerErrorHandler,
+  createMaintenanceReport
+);
+
+router.get(
+  "/contributions/:id/maintenance/latest",
+  requireAuth,
+  requireRole([1, 2, 5]),
+  getLatestMaintenanceReportByContribution
+);
+
 
 export default router;

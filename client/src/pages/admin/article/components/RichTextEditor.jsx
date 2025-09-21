@@ -1,3 +1,4 @@
+// src/pages/admin/article/components/RichTextEditor.jsx
 import React, { useRef, forwardRef, useImperativeHandle } from "react";
 import { EditorContent, useEditor, BubbleMenu } from "@tiptap/react";
 
@@ -15,11 +16,15 @@ import TableHeader from "@tiptap/extension-table-header";
 import Highlight from "@tiptap/extension-highlight";
 import Youtube from "@tiptap/extension-youtube";
 import Dropcursor from "@tiptap/extension-dropcursor";
+import HardBreak from "@tiptap/extension-hard-break";
 
-// Your custom extensions
+// Custom
 import { ColumnBlock, Column } from "../components/ColumBlock";
 import FontSize from "../components/FontSize";
 import CustomImage from "../components/CustomImage";
+
+// Keyboard remap for Enter
+import { Extension } from "@tiptap/core";
 
 // Icons
 import {
@@ -33,11 +38,37 @@ import {
   Image as ImageIcon,
   Columns as ColumnsIcon,
   Type as TypeIcon,
-  List,
-  ListOrdered,
   Highlighter as HighlighterIcon,
   Video as VideoIcon,
 } from "lucide-react";
+
+/** Make Enter insert a HardBreak (line break), except:
+ *  - in an empty list item (let default split/exit list)
+ *  - in a code block (let default behavior)
+ */
+const EnterAsHardBreak = Extension.create({
+  name: "enterAsHardBreak",
+  addKeyboardShortcuts() {
+    return {
+      Enter: ({ editor }) => {
+        // keep default inside code blocks
+        if (editor.isActive("codeBlock")) return false;
+
+        // if in list and the current paragraph is empty, let default handle it
+        const inList = editor.isActive("listItem");
+        const { $from } = editor.state.selection;
+        const isEmptyParagraph =
+          $from.parent.type.name === "paragraph" && $from.parent.content.size === 0;
+
+        if (inList && isEmptyParagraph) return false;
+
+        return editor.commands.setHardBreak();
+      },
+      // Shift+Enter stays a hard break (muscle memory)
+      "Shift-Enter": ({ editor }) => editor.commands.setHardBreak(),
+    };
+  },
+});
 
 const RichTextEditor = forwardRef(
   (
@@ -54,12 +85,23 @@ const RichTextEditor = forwardRef(
     ref
   ) => {
     const imageInputRef = useRef(null);
+    const firstUpdateRef = useRef(true);
 
     const editor = useEditor({
       extensions: [
-        StarterKit,
+        // Disable StarterKit’s hardBreak; add our own with a class
+        StarterKit.configure({ hardBreak: false }),
+        HardBreak.configure({
+          keepMarks: true,
+          HTMLAttributes: { class: "tiptap-hard-break" },
+        }),
+        EnterAsHardBreak,
+
         Underline,
-        CustomTextAlign.configure({ types: ["heading", "paragraph"], alignments: ["left","center","right","justify"] }),
+        CustomTextAlign.configure({
+          types: ["heading", "paragraph"],
+          alignments: ["left", "center", "right", "justify"],
+        }),
         TextStyle,
         ColumnBlock,
         Column,
@@ -71,9 +113,8 @@ const RichTextEditor = forwardRef(
         TableCell,
         Placeholder.configure({ placeholder }),
         Highlight,
-        // 👇 Add a class hook to the YouTube iframe
         Youtube.configure({
-          width: 640,      // doesn't matter; we clamp via CSS
+          width: 640,
           height: 360,
           allowFullscreen: true,
           HTMLAttributes: { class: "youtube-video" },
@@ -88,7 +129,9 @@ const RichTextEditor = forwardRef(
           if (moved) return false;
           const hasFiles = event.dataTransfer?.files?.length;
           if (!hasFiles) return false;
-          const images = Array.from(event.dataTransfer.files).filter((f) => f.type.startsWith("image/"));
+          const images = Array.from(event.dataTransfer.files).filter((f) =>
+            f.type.startsWith("image/")
+          );
           if (images.length === 0) return false;
           if (onImageUpload) onImageUpload(event);
           return true;
@@ -97,7 +140,13 @@ const RichTextEditor = forwardRef(
       onUpdate: ({ editor }) => {
         const html = editor.getHTML();
         const text = editor.state.doc.textContent || "";
-        setIsDirty?.(true);
+        if (firstUpdateRef.current) {
+          firstUpdateRef.current = false;
+        } else {
+          // [DBG] Editor internal update -> mark dirty
+          console.log("[RTE:onUpdate] setIsDirty(true) htmlLen:", html?.length ?? 0, "textLen:", text?.length ?? 0);
+          setIsDirty?.(true);
+        }
         onUpdate?.({ html, text });
       },
     });
@@ -114,7 +163,7 @@ const RichTextEditor = forwardRef(
       },
     }));
 
-    // --- helpers for columns (unchanged) ---
+    // --- helpers for columns ---
     const splitTextIntoNColumns = (text, n) => {
       const cleaned = (text || "").trim().replace(/\s+/g, " ");
       if (!cleaned) return Array.from({ length: n }, () => "");
@@ -171,6 +220,7 @@ const RichTextEditor = forwardRef(
           content: [{ type: "paragraph" }],
         }));
         editor.chain().focus().insertContent({ type: "columnBlock", content: emptyColumns }).run();
+        console.log("[RTE:columns] insert empty columns -> setIsDirty(true)");
         setIsDirty?.(true);
         return;
       }
@@ -182,6 +232,7 @@ const RichTextEditor = forwardRef(
       }));
       const columnBlockNode = { type: "columnBlock", content: columnNodes };
       editor.chain().focus().deleteRange({ from, to }).insertContent(columnBlockNode).run();
+      console.log("[RTE:columns] replace selection -> setIsDirty(true)");
       setIsDirty?.(true);
     };
 
@@ -195,12 +246,19 @@ const RichTextEditor = forwardRef(
         <div className="flex flex-wrap items-center gap-2 p-2 bg-[#f5f5f7] rounded border border-black-400">
           {/* Headings */}
           <div className="flex gap-1">
-            {[1,2,3,4,5].map((level) => (
+            {[1, 2, 3, 4, 5].map((level) => (
               <button
                 key={level}
                 type="button"
-                onClick={(e) => { e.preventDefault(); e.stopPropagation(); editor?.chain().focus().toggleHeading({ level }).run(); setIsDirty?.(true); }}
-                className={`text-sm px-2 py-1 border rounded-sm ${editor?.isActive("heading", { level }) ? "bg-white" : ""}`}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  editor?.chain().focus().toggleHeading({ level }).run();
+                  setIsDirty?.(true);
+                }}
+                className={`text-sm px-2 py-1 border rounded-sm ${
+                  editor?.isActive("heading", { level }) ? "bg-white" : ""
+                }`}
               >
                 H{level}
               </button>
@@ -213,18 +271,30 @@ const RichTextEditor = forwardRef(
           <div className="flex items-center gap-1">
             <TypeIcon size={16} className="text-gray-600" />
             <select
-              onChange={(e) => { editor?.chain().focus().setFontSize(e.target.value).run(); setIsDirty?.(true); }}
+              onChange={(e) => {
+                editor?.chain().focus().setFontSize(e.target.value).run();
+                setIsDirty?.(true);
+              }}
               className="px-1 py-1 border rounded text-sm"
               defaultValue="1em"
             >
               {fontSizes.map((s) => (
-                <option key={s.value} value={s.value}>{s.label}</option>
+                <option key={s.value} value={s.value}>
+                  {s.label}
+                </option>
               ))}
             </select>
             <button
               type="button"
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); editor?.chain().focus().toggleHighlight().run(); setIsDirty?.(true); }}
-              className={`p-1 border rounded ${editor?.isActive("highlight") ? "bg-white" : ""}`}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                editor?.chain().focus().toggleHighlight().run();
+                setIsDirty?.(true);
+              }}
+              className={`p-1 border rounded ${
+                editor?.isActive("highlight") ? "bg-white" : ""
+              }`}
               title="Highlight"
             >
               <HighlighterIcon size={11} />
@@ -235,9 +305,42 @@ const RichTextEditor = forwardRef(
 
           {/* Bold / Underline / Italic */}
           <div className="flex gap-1 ml-2">
-            <button type="button" onClick={(e)=>{e.preventDefault();e.stopPropagation();editor?.chain().focus().toggleBold().run();setIsDirty?.(true);}} className={`p-1 border rounded ${editor?.isActive("bold") ? "bg-white" : ""}`}><Bold size={16} /></button>
-            <button type="button" onClick={(e)=>{e.preventDefault();e.stopPropagation();editor?.chain().focus().toggleUnderline().run();setIsDirty?.(true);}} className={`p-1 border rounded ${editor?.isActive("underline") ? "bg-white" : ""}`}><UnderlineIcon size={16} /></button>
-            <button type="button" onClick={(e)=>{e.preventDefault();e.stopPropagation();editor?.chain().focus().toggleItalic().run();setIsDirty?.(true);}} className={`p-1 border rounded ${editor?.isActive("italic") ? "bg-white" : ""}`}><Italic size={16} /></button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                editor?.chain().focus().toggleBold().run();
+                setIsDirty?.(true);
+              }}
+              className={`p-1 border rounded ${editor?.isActive("bold") ? "bg-white" : ""}`}
+            >
+              <Bold size={16} />
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                editor?.chain().focus().toggleUnderline().run();
+                setIsDirty?.(true);
+              }}
+              className={`p-1 border rounded ${editor?.isActive("underline") ? "bg-white" : ""}`}
+            >
+              <UnderlineIcon size={16} />
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                editor?.chain().focus().toggleItalic().run();
+                setIsDirty?.(true);
+              }}
+              className={`p-1 border rounded ${editor?.isActive("italic") ? "bg-white" : ""}`}
+            >
+              <Italic size={16} />
+            </button>
           </div>
 
           <div className="border-l h-6 mx-2" />
@@ -253,8 +356,15 @@ const RichTextEditor = forwardRef(
               <button
                 key={dir}
                 type="button"
-                onClick={(e) => { e.preventDefault(); e.stopPropagation(); editor?.chain().focus().setTextAlign(dir).run(); setIsDirty?.(true); }}
-                className={`p-1 border rounded ${editor?.isActive({ textAlign: dir }) ? "bg-white" : ""}`}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  editor?.chain().focus().setTextAlign(dir).run();
+                  setIsDirty?.(true);
+                }}
+                className={`p-1 border rounded ${
+                  editor?.isActive({ textAlign: dir }) ? "bg-white" : ""
+                }`}
               >
                 <Icon size={16} />
               </button>
@@ -265,10 +375,28 @@ const RichTextEditor = forwardRef(
 
           {/* Columns */}
           <div className="flex gap-1">
-            <button type="button" onClick={(e)=>{e.preventDefault();e.stopPropagation();distributeSelectionIntoColumns(2);}} className="p-1 border rounded" title="Split selection into 2 columns (or insert empty)">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                distributeSelectionIntoColumns(2);
+              }}
+              className="p-1 border rounded"
+              title="Split selection into 2 columns (or insert empty)"
+            >
               <ColumnsIcon size={16} />
             </button>
-            <button type="button" onClick={(e)=>{e.preventDefault();e.stopPropagation();distributeSelectionIntoColumns(3);}} className="p-1 border rounded flex items-center justify-center" title="Split selection into 3 columns (or insert empty)">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                distributeSelectionIntoColumns(3);
+              }}
+              className="p-1 border rounded flex items-center justify-center"
+              title="Split selection into 3 columns (or insert empty)"
+            >
               <svg width="18" height="16" viewBox="0 0 18 16" fill="none">
                 <rect x="1" y="2" width="4" height="12" rx="1" fill="#555" />
                 <rect x="7" y="2" width="4" height="12" rx="1" fill="#555" />
@@ -279,27 +407,27 @@ const RichTextEditor = forwardRef(
 
           <div className="border-l h-6 mx-2" />
 
-          {/* Lists */}
+          {/* Insert Image / YouTube / Hard Break */}
           <div className="flex gap-1">
-            <button type="button" onClick={(e)=>{e.preventDefault();e.stopPropagation();editor?.chain().focus().toggleBulletList().run();setIsDirty?.(true);}} className={`p-1 border rounded ${editor?.isActive("bulletList") ? "bg-white" : ""}`} title="Bullet List">
-              <List size={18} />
-            </button>
-            <button type="button" onClick={(e)=>{e.preventDefault();e.stopPropagation();editor?.chain().focus().toggleOrderedList().run();editor?.chain().focus().updateAttributes("orderedList", { class: "roman-list" }).run();setIsDirty?.(true);}} className={`p-1 border rounded ${editor?.isActive("orderedList", { class: "roman-list" }) ? "bg-white" : ""}`} title="Roman List">
-              <ListOrdered size={18} />
-            </button>
-            <button type="button" onClick={(e)=>{e.preventDefault();e.stopPropagation();editor?.chain().focus().toggleOrderedList().run();editor?.chain().focus().updateAttributes("orderedList", { class: "letter-list" }).run();setIsDirty?.(true);}} className={`p-1 border rounded ${editor?.isActive("orderedList", { class: "letter-list" }) ? "bg-white" : ""}`} title="Letter List">
-              <ListOrdered size={18} />
-            </button>
-          </div>
-
-          <div className="border-l h-6 mx-2" />
-
-          {/* Insert Image / YouTube */}
-          <div className="flex gap-1">
-            <button type="button" onClick={(e)=>{e.preventDefault();e.stopPropagation();imageInputRef.current?.click();}} className="p-1 border rounded" title="Insert Image">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                imageInputRef.current?.click();
+              }}
+              className="p-1 border rounded"
+              title="Insert Image"
+            >
               <ImageIcon size={16} />
             </button>
-            <input type="file" ref={imageInputRef} onChange={onImageUpload} accept="image/*" className="hidden" />
+            <input
+              type="file"
+              ref={imageInputRef}
+              onChange={onImageUpload}
+              accept="image/*"
+              className="hidden"
+            />
             <button
               type="button"
               onClick={(e) => {
@@ -316,6 +444,21 @@ const RichTextEditor = forwardRef(
             >
               <VideoIcon size={18} />
             </button>
+
+            {/* Hard break button */}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                editor?.chain().focus().setHardBreak().run();
+                setIsDirty?.(true);
+              }}
+              className="p-1 border rounded"
+              title="Insert line break (Enter / Shift+Enter)"
+            >
+              <span className="text-xs font-semibold">↵</span>
+            </button>
           </div>
         </div>
 
@@ -330,7 +473,6 @@ const RichTextEditor = forwardRef(
             2xl:min-h-[30rem] 2xl:max-h-[37rem]
             overflow-auto prose focus:outline-none
 
-            /* 👇 Miniature YouTube in EDITOR (responsive clamps) */
             [&_.youtube-video]:w-full
             [&_.youtube-video]:mx-auto
             [&_.youtube-video]:!max-w-[18rem]
@@ -372,12 +514,11 @@ const RichTextEditor = forwardRef(
           tabIndex={0}
           onClick={() => editor?.commands.focus()}
         >
-          {/* Bubble Menu (shows on text selection) */}
           {editor && (
             <BubbleMenu
               editor={editor}
               tippyOptions={{ duration: 150, placement: "top" }}
-              shouldShow={({ editor, state, from, to }) => {
+              shouldShow={({ editor, from, to }) => {
                 if (!editor?.isEditable) return false;
                 if (from === to) return false;
                 if (editor.isActive("image")) return false;
@@ -389,30 +530,68 @@ const RichTextEditor = forwardRef(
                 <div className="flex items-center gap-1">
                   <TypeIcon size={16} className="text-gray-600" />
                   <select
-                    onChange={(e) => { editor?.chain().focus().setFontSize(e.target.value).run(); setIsDirty?.(true); }}
+                    onChange={(e) => {
+                      editor?.chain().focus().setFontSize(e.target.value).run();
+                      setIsDirty?.(true);
+                    }}
                     className="px-1 py-1 border rounded text-sm"
                     defaultValue="1em"
                   >
                     {fontSizes.map((s) => (
-                      <option key={s.value} value={s.value}>{s.label}</option>
+                      <option key={s.value} value={s.value}>
+                        {s.label}
+                      </option>
                     ))}
                   </select>
                   <button
                     type="button"
-                    onClick={() => { editor?.chain().focus().toggleHighlight().run(); setIsDirty?.(true); }}
+                    onClick={() => {
+                      editor?.chain().focus().toggleHighlight().run();
+                      setIsDirty?.(true);
+                    }}
                     className={`p-1 border rounded ${editor?.isActive("highlight") ? "bg-white" : ""}`}
                     title="Highlight"
                   >
                     <HighlighterIcon size={11} />
                   </button>
                 </div>
-                <button type="button" onClick={()=>{editor.chain().focus().toggleBold().run();setIsDirty?.(true);}} className={`p-1 rounded border ${editor.isActive("bold") ? "bg-neutral-100" : "bg-white"}`} title="Bold">
+                <button
+                  type="button"
+                  onClick={() => {
+                    editor.chain().focus().toggleBold().run();
+                    setIsDirty?.(true);
+                  }}
+                  className={`p-1 rounded border ${
+                    editor.isActive("bold") ? "bg-neutral-100" : "bg-white"
+                  }`}
+                  title="Bold"
+                >
                   <Bold size={14} />
                 </button>
-                <button type="button" onClick={()=>{editor.chain().focus().toggleItalic().run();setIsDirty?.(true);}} className={`p-1 rounded border ${editor.isActive("italic") ? "bg-neutral-100" : "bg-white"}`} title="Italic">
+                <button
+                  type="button"
+                  onClick={() => {
+                    editor.chain().focus().toggleItalic().run();
+                    setIsDirty?.(true);
+                  }}
+                  className={`p-1 rounded border ${
+                    editor.isActive("italic") ? "bg-neutral-100" : "bg-white"
+                  }`}
+                  title="Italic"
+                >
                   <Italic size={14} />
                 </button>
-                <button type="button" onClick={()=>{editor.chain().focus().toggleUnderline().run();setIsDirty?.(true);}} className={`p-1 rounded border ${editor.isActive("underline") ? "bg-neutral-100" : "bg-white"}`} title="Underline">
+                <button
+                  type="button"
+                  onClick={() => {
+                    editor.chain().focus().toggleUnderline().run();
+                    setIsDirty?.(true);
+                  }}
+                  className={`p-1 rounded border ${
+                    editor.isActive("underline") ? "bg-neutral-100" : "bg-white"
+                  }`}
+                  title="Underline"
+                >
                   <UnderlineIcon size={14} />
                 </button>
               </div>

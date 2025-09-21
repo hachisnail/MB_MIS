@@ -168,7 +168,7 @@ export default function ArtifactMaintenanceForm({ value = {} }) {
       </div>
 
       {/* ================= MIDDLE: Maintenance Description (read-only) ================= */}
-      <div className="w-full min-h-fit rounded-lg border border-gray-300 p-8 flex flex-col gap-4">
+      <div className="w-full h-[25rem] rounded-lg border border-gray-300 p-8 flex flex-col gap-4">
         <span className="text-4xl font-bold">Maintenance Description</span>
         <div className="rounded-xl border border-gray-200 bg-white p-4 min-h-[10rem]">
           {meta.maintenanceDescription && meta.maintenanceDescription.trim() ? (
@@ -182,7 +182,7 @@ export default function ArtifactMaintenanceForm({ value = {} }) {
       </div>
 
       {/* ================= BOTTOM: Damage Gallery (Carousel) ================= */}
-      <div className="w-full min-h-fit rounded-lg border border-gray-300 p-8 flex flex-col gap-6">
+      <div className="w-full h-[25rem] rounded-lg border border-gray-300 p-8 flex flex-col gap-6">
         <span className="text-4xl font-bold">Artifact Damage Images</span>
         <DamageCarousel items={meta.damageImages} />
       </div>

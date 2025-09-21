@@ -1,4 +1,5 @@
-import { useEffect, useState, useRef, useMemo } from "react";
+// src/pages/admin/article/ArticleEditorForm.jsx
+import { useEffect, useState, useRef, useMemo, useContext } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import axios from "axios";
 
@@ -6,6 +7,7 @@ import Button from "../../../../components/buttons/artclbtn";
 import ConfirmDialog from "@/components/modals/ConfirmDialog";
 import StyledButton from "@/components/buttons/StyledButton";
 import PopupModal from "@/components/modals/PopupModal";
+import Modal from "@/components/modals/Modal";
 import { useAuth } from "@/context/authContext";
 
 import useAutosave, {
@@ -16,7 +18,6 @@ import useAutosave, {
   shouldPromptForDraft,
 } from "@/features/ContentDrafting.jsx";
 
-import usePrompt from "@/hooks/usePrompt";
 import ViewPort from "../../../../features/Viewport";
 import { handleGenerateCaption, handleSummarizeCaption } from "../components/CaptionGenerator";
 import RichTextEditor from "../components/RichTextEditor";
@@ -54,7 +55,18 @@ import ArticleScheduledFields from "../components/ArticleScheduledFields";
 import ArticleThumbnailInput from "../components/ArticleThumbnailInput";
 import ArticleDetailsForm from "../components/ArticleDetailsForm";
 
+/* ✅ Use your existing blocker hook */
+import { useBlocker } from "@/hooks/useBlocker";
+
 const SUPPRESS_DRAFT_FLAG = "suppressDraftPromptOnce";
+
+/** Uppercase the first non-space character of a string */
+const capFirst = (s = "") => {
+  const ws = (s.match(/^\s*/) || [""])[0];
+  const rest = s.slice(ws.length);
+  if (!rest) return s;
+  return ws + rest.charAt(0).toUpperCase() + rest.slice(1);
+};
 
 const ArticleEditorForm = () => {
   const BASE_URL = import.meta.env.VITE_API_BASE_URL;
@@ -104,7 +116,6 @@ const ArticleEditorForm = () => {
 
   const thumbnailInputRef = useRef(null);
   const [isDirty, setIsDirty] = useState(false);
-  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
   const [errors, setErrors] = useState({});
   const [removeThumbnail, setRemoveThumbnail] = useState(false);
@@ -120,7 +131,6 @@ const ArticleEditorForm = () => {
   const [uploadPeriodStartTime, setUploadPeriodStartTime] = useState("");
   const [uploadPeriodEndTime, setUploadPeriodEndTime] = useState("");
 
-  // Keep original archive bucket on edit
   const [origVolume, setOrigVolume] = useState(null);
   const [origSeqNum, setOrigSeqNum] = useState(null);
   const [origContentType, setOrigContentType] = useState(null);
@@ -129,20 +139,33 @@ const ArticleEditorForm = () => {
   const [showDraftPrompt, setShowDraftPrompt] = useState(false);
   const [draftToLoad, setDraftToLoad] = useState(null);
 
-  // PopupModal state
-  const [showCannotSchedule, setShowCannotSchedule] = useState(false);
-  const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
-  const confirmActionRef = useRef(null);
-  const openArchiveConfirm = (actionFn) => {
-    confirmActionRef.current = actionFn;
-    setShowArchiveConfirm(true);
-  };
+  // Navigation/blocker guards
+  const bypassBlockRef = useRef(false);         // used to skip the custom blocker
+  const [isSaving, setIsSaving] = useState(false); // true while submit/save is running
 
-  const { PromptModal } = usePrompt(
-    "You have unsaved changes. Are you sure you want to leave?",
-    isDirty,
-    "light"
-  );
+  // Dirty suppression
+  const suppressDirtyRef = useRef(false);
+  const markDirty = () => {
+    if (!suppressDirtyRef.current) setIsDirty(true);
+  };
+  const runWithoutDirty = (fn) => {
+    suppressDirtyRef.current = true;
+    try {
+      fn?.();
+      setIsDirty(false);
+    } finally {
+      requestAnimationFrame(() => {
+        suppressDirtyRef.current = false;
+      });
+    }
+  };
+  const setIsDirtySafe = (v) => {
+    if (v) {
+      if (!suppressDirtyRef.current) setIsDirty(true);
+    } else {
+      setIsDirty(false);
+    }
+  };
 
   let articleId = null;
   try {
@@ -191,8 +214,9 @@ const ArticleEditorForm = () => {
     ]
   );
 
-  // ✅ Only autosave in EDIT mode
-  useAutosave(isDirty ? draftData : null, draftKey, 1000, forceEditorMode);
+  // Stop autosave after user picks “Don’t Save”
+  const [suppressAutosave, setSuppressAutosave] = useState(false);
+  useAutosave(isDirty && !suppressAutosave ? draftData : null, draftKey, 1000, forceEditorMode);
 
   // Live archive preview
   const volumePreview = useMemo(() => getVolumeFromYYYYMMDD(selectedDate), [selectedDate]);
@@ -227,9 +251,9 @@ const ArticleEditorForm = () => {
     [wasPosted, willBePosted]
   );
 
-  // Submit to API
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  // Extracted save so the leave modal can call it
+  const saveArticle = async ({ skipNavigate = false } = {}) => {
+    console.log("[Save] start", { skipNavigate });
 
     const newErrors = validateForm({
       title,
@@ -245,12 +269,13 @@ const ArticleEditorForm = () => {
       uploadPeriodEndTime,
     });
     if (Object.keys(newErrors).length > 0) {
+      console.log("[Save] validation failed", newErrors);
       setErrors(newErrors);
-      return;
+      return false;
     }
 
     const formData = new FormData();
-    formData.append("title", title);
+    formData.append("title", capFirst(title)); // normalize before save
     formData.append("article_category", category);
     if (contentType) formData.append("content_type", contentType);
     formData.append("description", editorHTML || "");
@@ -290,62 +315,179 @@ const ArticleEditorForm = () => {
 
     try {
       if (isEditing) {
+        console.log("[Save] updateArticle");
         await updateArticle(articleId, formData);
       } else {
+        console.log("[Save] createArticle");
         await createArticle(formData);
       }
 
-      // ✅ suppress draft modal on next mount, tidy up, navigate
+      // suppress draft prompt after a real save
       sessionStorage.setItem(SUPPRESS_DRAFT_FLAG, "1");
       setShowDraftPrompt(false);
       setDraftToLoad(null);
       clearDraft(draftKey);
       clearDraft("new-article-draft");
 
-      resetForm();
-      navigate("/admin/article", { replace: true });
-      fetchArticles();
+      if (!skipNavigate) {
+        console.log("[Save] success -> navigating");
+        bypassBlockRef.current = true;
+        setIsSaving(true);
+        setIsDirty(false);
+        navigate("/admin/article", { replace: true });
+        return true;
+      }
+
+      console.log("[Save] success (no navigation)");
+      runWithoutDirty(() => {});
+      setIsDirty(false);
+      return true;
     } catch (err) {
       console.error(`Error ${isEditing ? "updating" : "creating"} article:`, err?.response?.data || err?.message);
+      return false;
+    } finally {
+      console.log("[Save] finished");
     }
   };
 
-    // Replace your current guardedHandleSubmit with this:
-    const guardedHandleSubmit = (e) => {
-      e.preventDefault();
+  // Submit to API (normal Save/Submit button)
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    console.log("[Submit] start");
 
-      // Can't switch to scheduled once numbered
-      if (isNumbered && status === "scheduled") {
-        setShowCannotSchedule(true);
-        return;
+    const newErrors = validateForm({
+      title,
+      selectedDate,
+      author,
+      category,
+      contentType,
+      status,
+      editorHTML,
+      uploadPeriodStart,
+      uploadPeriodEnd,
+      uploadPeriodStartTime,
+      uploadPeriodEndTime,
+    });
+    if (Object.keys(newErrors).length > 0) {
+      console.log("[Submit] validation failed", newErrors);
+      setErrors(newErrors);
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("title", capFirst(title)); // normalize before submit
+    formData.append("article_category", category);
+    if (contentType) formData.append("content_type", contentType);
+    formData.append("description", editorHTML || "");
+    formData.append("user_id", String(user.id));
+    formData.append("author", author);
+    formData.append("address", municipality);
+    formData.append("selectedDate", selectedDate);
+    formData.append("editImages", JSON.stringify(contentImages));
+    formData.append("caption", caption);
+    formData.append("barangay", barangay);
+    formData.append("reviewer_notes", reviewerNotes || "");
+    formData.append("status", status);
+
+    if (status === "scheduled") {
+      const startDateTime = toISOZFromManila(uploadPeriodStart, uploadPeriodStartTime, "08:00");
+      const endDateTime = toISOZFromManila(uploadPeriodEnd, uploadPeriodEndTime, "23:59");
+      formData.append("uploadPeriodStart", startDateTime);
+      formData.append("uploadPeriodEnd", endDateTime);
+    }
+
+    if (thumbnail && thumbnail instanceof File) {
+      formData.append("thumbnail", thumbnail);
+    }
+
+    const finalVolume = getVolumeFromYYYYMMDD(selectedDate) || "";
+    const year = getYearFromYYYYMMDD(selectedDate);
+    const sameBucket =
+      isEditing &&
+      origVolume &&
+      origContentType &&
+      Number(origVolume) === Number(finalVolume) &&
+      String(origContentType || "").toLowerCase() === String(contentType || "").toLowerCase();
+
+    const finalSeqNum = sameBucket ? origSeqNum || "" : computeNextSequence(articles, year, contentType) || "";
+    if (finalVolume) formData.append("volume", String(finalVolume));
+    if (finalSeqNum) formData.append("sequence_number", String(finalSeqNum));
+
+    try {
+      if (isEditing) {
+        console.log("[Submit] updateArticle");
+        await updateArticle(articleId, formData);
+      } else {
+        console.log("[Submit] createArticle");
+        await createArticle(formData);
       }
 
-      // First-time move to Posted -> confirm, then SUBMIT
-      if (!isNumbered && becomingPosted) {
-        openArchiveConfirm(() => {
-          // set status, then actually submit on next tick
-          setStatus("posted");
-          setTimeout(() => {
-            handleSubmit({ preventDefault: () => {} });
-          }, 0);
-        });
-        return;
-      }
+      sessionStorage.setItem(SUPPRESS_DRAFT_FLAG, "1");
+      setShowDraftPrompt(false);
+      setDraftToLoad(null);
+      clearDraft(draftKey);
+      clearDraft("new-article-draft");
 
-      // Normal flow: just show your generic "Save/Submit" confirm
-      setShowSubmitConfirm(true);
-    };
+      console.log("[Submit] success -> navigating");
+      bypassBlockRef.current = true;
+      setIsSaving(true);
+      setIsDirty(false);
+      navigate("/admin/article", { replace: true });
+    } catch (err) {
+      console.error(`Error ${isEditing ? "updating" : "creating"} article:`, err?.response?.data || err?.message);
+    } finally {
+      console.log("[Submit] finished");
+    }
+  };
 
+  // Guarded submit (archive-numbering rules)
+  const [showCannotSchedule, setShowCannotSchedule] = useState(false);
+  const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
+  const confirmActionRef = useRef(null);
+  const openArchiveConfirm = (actionFn) => {
+    confirmActionRef.current = actionFn;
+    setShowArchiveConfirm(true);
+  };
+
+  const guardedHandleSubmit = (e) => {
+    e.preventDefault();
+    console.log("[GuardedSubmit]");
+
+    if (isNumbered && status === "scheduled") {
+      setShowCannotSchedule(true);
+      return;
+    }
+
+    if (!isNumbered && becomingPosted) {
+      openArchiveConfirm(() => {
+        console.log("[GuardedSubmit] confirm assign numbers -> handleSubmit");
+        runWithoutDirty(() => setStatus("posted"));
+        handleSubmit({ preventDefault: () => {} });
+      });
+      return;
+    }
+
+    setShowSubmitConfirm(true);
+  };
 
   const handleThumbnailChange = (e) => {
     const file = e.target.files[0];
     if (file) {
       setThumbnail(file);
-      setPreviewImage(URL.createObjectURL(file));
+      const url = URL.createObjectURL(file);
+      setPreviewImage(url);
     }
   };
+  useEffect(() => {
+    return () => {
+      if (previewImage?.startsWith("blob:")) {
+        URL.revokeObjectURL(previewImage);
+      }
+    };
+  }, [previewImage]);
 
-  const resetForm = () => {
+  // Core reset
+  const resetFormCore = () => {
     setTitle("");
     setAuthor("");
     setCategory("");
@@ -375,6 +517,12 @@ const ArticleEditorForm = () => {
     clearDraft(draftKey);
   };
 
+  const resetForm = () => {
+    runWithoutDirty(() => {
+      resetFormCore();
+    });
+  };
+
   // guard ref to avoid double-fetch on id change
   const hasRun = useRef(false);
   useEffect(() => {
@@ -392,69 +540,71 @@ const ArticleEditorForm = () => {
         const response = await getArticle(articleId);
         const data = response.data;
 
-        setArticle(data);
-        setIsEditing(true);
-        setEditingArticleId(data.article_id);
+        runWithoutDirty(() => {
+          setArticle(data);
+          setIsEditing(true);
+          setEditingArticleId(data.article_id);
 
-        setTitle(data.title || "");
-        setAuthor(data.author || "");
-        setCategory(data.article_category || "");
-        setContentType((data.content_type || "").toLowerCase() || "");
-        setMunicipality(data.address || "");
-        setBarangay(data.barangay || "");
-        setStatus(data.status || "pending");
-        setUploadPeriodStart(data.upload_period_start || "");
-        setUploadPeriodEnd(data.upload_period_end || "");
-        setReviewerNotes(data.reviewer_notes || "");
-        setCaption(data.caption || "");
-        editorRef.current?.setContent(data.description || "");
-        setEditorHTML(data.description || "");
-        setEditorText(editorRef.current?.getText() || "");
+          setTitle(capFirst(data.title || "")); // normalize from server
+          setAuthor(data.author || "");
+          setCategory(data.article_category || "");
+          setContentType((data.content_type || "").toLowerCase() || "");
+          setMunicipality(data.address || "");
+          setBarangay(data.barangay || "");
+          setStatus(data.status || "pending");
+          setUploadPeriodStart(data.upload_period_start || "");
+          setUploadPeriodEnd(data.upload_period_end || "");
+          setReviewerNotes(data.reviewer_notes || "");
+          setCaption(data.caption || "");
+          editorRef.current?.setContent(data.description || "");
+          setEditorHTML(data.description || "");
+          setEditorText(editorRef.current?.getText() || "");
 
-        setOrigVolume(data.volume ?? null);
-        setOrigSeqNum(data.sequence_number ?? null);
-        setOrigContentType((data.content_type || "").toLowerCase() || null);
+          setOrigVolume(data.volume ?? null);
+          setOrigSeqNum(data.sequence_number ?? null);
+          setOrigContentType((data.content_type || "").toLowerCase() || null);
 
-        if (data.upload_date) {
-          const formattedDate = new Date(data.upload_date).toISOString().split("T")[0];
-          setSelectedDate(formattedDate);
-        } else {
-          setSelectedDate("");
-        }
+          if (data.upload_date) {
+            const formattedDate = new Date(data.upload_date).toISOString().split("T")[0];
+            setSelectedDate(formattedDate);
+          } else {
+            setSelectedDate("");
+          }
 
-        if (data.images) setPreviewImage(`${UPLOAD_PATH}${data.images}`);
-        else setPreviewImage(null);
-        setThumbnail(null);
+          if (data.images) setPreviewImage(`${UPLOAD_PATH}${data.images}`);
+          else setPreviewImage(null);
+          setThumbnail(null);
 
-        setUploadPeriodStart(data.upload_period_start ? data.upload_period_start.split("T")[0] : "");
-        setUploadPeriodEnd(data.upload_period_end ? data.upload_period_end.split("T")[0] : "");
+          setUploadPeriodStart(data.upload_period_start ? data.upload_period_start.split("T")[0] : "");
+          setUploadPeriodEnd(data.upload_period_end ? data.upload_period_end.split("T")[0] : "");
 
-        setUploadPeriodStartTime(
-          data.upload_period_start
-            ? new Date(data.upload_period_start).toLocaleTimeString("en-GB", {
-                hour: "2-digit",
-                minute: "2-digit",
-                hour12: false,
-                timeZone: "Asia/Manila",
-              })
-            : ""
-        );
-        setUploadPeriodEndTime(
-          data.upload_period_end
-            ? new Date(data.upload_period_end).toLocaleTimeString("en-GB", {
-                hour: "2-digit",
-                minute: "2-digit",
-                hour12: false,
-                timeZone: "Asia/Manila",
-              })
-            : ""
-        );
+          setUploadPeriodStartTime(
+            data.upload_period_start
+              ? new Date(data.upload_period_start).toLocaleTimeString("en-GB", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  hour12: false,
+                  timeZone: "Asia/Manila",
+                })
+              : ""
+          );
+          setUploadPeriodEndTime(
+            data.upload_period_end
+              ? new Date(data.upload_period_end).toLocaleTimeString("en-GB", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  hour12: false,
+                  timeZone: "Asia/Manila",
+                })
+              : ""
+          );
+        });
       } catch (err) {
         console.error("Failed to fetch article:", err);
       }
     };
 
-    // 🔒 REVIEWER VIEW: ignore drafts completely, just fetch server data
+    // REVIEWER VIEW: ignore drafts completely, just fetch server data
     if (!forceEditorMode) {
       setShowDraftPrompt(false);
       setDraftToLoad(null);
@@ -462,7 +612,7 @@ const ArticleEditorForm = () => {
       return;
     }
 
-    // ✍️ EDITOR VIEW: honor suppress flag first
+    // EDITOR VIEW: honor suppress flag first
     if (sessionStorage.getItem(SUPPRESS_DRAFT_FLAG) === "1") {
       sessionStorage.removeItem(SUPPRESS_DRAFT_FLAG);
       fetchAndHydrate();
@@ -491,9 +641,11 @@ const ArticleEditorForm = () => {
     if (forceEditorMode && article?.description && editorRef.current) {
       const current = editorRef.current.getHTML?.() || "";
       if (!current || current === "<p></p>") {
-        editorRef.current.setContent(article.description);
-        setEditorHTML(article.description);
-        setEditorText(editorRef.current?.getText() || "");
+        runWithoutDirty(() => {
+          editorRef.current.setContent(article.description);
+          setEditorHTML(article.description);
+          setEditorText(editorRef.current?.getText() || "");
+        });
       }
     }
   }, [forceEditorMode, article]);
@@ -567,38 +719,36 @@ const ArticleEditorForm = () => {
     { label: "2XL", value: "2em" },
   ];
 
- const handleImageUpload = async (e) => {
-  if (e?.preventDefault) e.preventDefault();
-  const fileList = e?.target?.files || e?.dataTransfer?.files;
-  const file = fileList?.[0];
-  if (!file) return;
+  const handleImageUpload = async (e) => {
+    if (e?.preventDefault) e.preventDefault();
+    const fileList = e?.target?.files || e?.dataTransfer?.files;
+    const file = fileList?.[0];
+    if (!file) return;
 
-  try {
-    const response = await uploadContentImage(file);
-    if (response.data?.images?.length > 0) {
-      const uploadedFilename = response.data.images[0];
-      const fullImageUrl = `${SERVER_ORIGIN}/uploads/pictures/${uploadedFilename}`;
+    try {
+      const response = await uploadContentImage(file);
+      if (response.data?.images?.length > 0) {
+        const uploadedFilename = response.data.images[0];
+        const fullImageUrl = `${SERVER_ORIGIN}/uploads/pictures/${uploadedFilename}`;
 
-      editorRef.current?.runChain((chain) =>
-        chain
-          .focus()
-          .insertContent({
-            type: "image",
-            // ✅ ensure initial width so it won't appear as a dot
-            attrs: { src: fullImageUrl, alt: file.name, widthPct: 100 },
-          })
-          .run()
-      );
+        editorRef.current?.runChain((chain) =>
+          chain
+            .focus()
+            .insertContent({
+              type: "image",
+              attrs: { src: fullImageUrl, alt: file.name, widthPct: 100 },
+            })
+            .run()
+        );
 
-      setContentImages((prev) => [...prev, uploadedFilename]);
-      setIsDirty(true);
+        setContentImages((prev) => [...prev, uploadedFilename]);
+        markDirty();
+      }
+    } catch (err) {
+      console.error("Error uploading content image:", err);
+      alert("Failed to upload image");
     }
-  } catch (err) {
-    console.error("Error uploading content image:", err);
-    alert("Failed to upload image");
-  }
-};
-
+  };
 
   const handleRemoveThumbnail = (e) => {
     e.preventDefault();
@@ -608,38 +758,32 @@ const ArticleEditorForm = () => {
     }
     setRemoveThumbnail(true);
     setHasThumbnail(false);
-    setIsDirty(true);
+    markDirty();
   };
 
   const handleCustomThumbnailChange = (e) => {
     if (removeThumbnail) setRemoveThumbnail(false);
     handleThumbnailChange(e);
     setHasThumbnail(!!e.target.files && e.target.files.length > 0);
-    if (e.target.files && e.target.files.length > 0) setIsDirty(true);
+    if (e.target.files && e.target.files.length > 0) markDirty();
   };
 
-  // reviewer cancel
-  const handleCancel = () => {
-    resetForm();
+  // reviewer cancel → navigate; the blocker will intercept if dirty
+  const handleCancelClick = () => {
     navigate("/admin/article");
   };
 
-  const handleCancelClick = () => {
-    if (isDirty) setShowCancelConfirm(true);
-    else handleCancel();
-  };
-
-  // beforeunload guard
+  // beforeunload: native browser prompt for hard refresh/close (does NOT save)
   useEffect(() => {
     const handleBeforeUnload = (e) => {
-      if (isDirty) {
+      if (isDirty && !isSaving) {
         e.preventDefault();
         e.returnValue = "";
       }
     };
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, [isDirty]);
+  }, [isDirty, isSaving]);
 
   const showBackToReview = isPrivileged && forcedFromNav && !!articleId && forceEditorMode;
 
@@ -651,7 +795,7 @@ const ArticleEditorForm = () => {
       return;
     }
     setUploadPeriodStart(val);
-    setIsDirty(true);
+    markDirty();
     clearFieldError("uploadPeriodStart");
 
     if (uploadPeriodEnd && new Date(`${uploadPeriodEnd}T00:00:00+08:00`) < new Date(`${val}T00:00:00+08:00`)) {
@@ -669,7 +813,7 @@ const ArticleEditorForm = () => {
       return;
     }
     setUploadPeriodEnd(val);
-    setIsDirty(true);
+    markDirty();
     clearFieldError("uploadPeriodEnd");
   };
 
@@ -683,9 +827,7 @@ const ArticleEditorForm = () => {
       const first = (user.fname || "").trim();
       const last = (user.lname || "").trim();
       const full = [first, last].filter(Boolean).join(" ").trim();
-      if (full) {
-        setAuthor(full);
-      }
+      if (full) setAuthor(full);
     }
   }, [isEditing, author, user]);
 
@@ -698,17 +840,7 @@ const ArticleEditorForm = () => {
     if (contentType === "event" && !municipality) return false;
     if (status === "scheduled" && (!uploadPeriodStart || !uploadPeriodEnd)) return false;
     return true;
-  }, [
-    title,
-    selectedDate,
-    author,
-    category,
-    contentType,
-    municipality,
-    status,
-    uploadPeriodStart,
-    uploadPeriodEnd,
-  ]);
+  }, [title, selectedDate, author, category, contentType, municipality, status, uploadPeriodStart, uploadPeriodEnd]);
 
   const onHeaderBlurCapture = (e) => {
     if (!headerComplete) return;
@@ -718,7 +850,7 @@ const ArticleEditorForm = () => {
     if (!stillInside) setHeaderHidden(true);
   };
 
-  // Hide draft overlay entirely in reviewer view, if ever set
+  // Hide draft overlay entirely in reviewer view
   useEffect(() => {
     if (shouldShowReviewer && showDraftPrompt) {
       setShowDraftPrompt(false);
@@ -726,13 +858,29 @@ const ArticleEditorForm = () => {
     }
   }, [shouldShowReviewer, showDraftPrompt]);
 
+  /* ===== Route leave guard state using your useBlocker ===== */
+  const nextNavRef = useRef(null);
+  const [showLeaveDialog, setShowLeaveDialog] = useState(false);
+
+  useBlocker(
+    (tx) => {
+      console.log("[BLOCKER] invoked", {
+        isDirty,
+        bypass: bypassBlockRef.current,
+        isSaving,
+      });
+      nextNavRef.current = tx.retry;
+      setShowLeaveDialog(true); // we only run when actually dirty (see `when` below)
+    },
+    isDirty && !bypassBlockRef.current && !isSaving // guard while saving
+  );
+  /* ======================================================== */
+
   return (
     <>
-      {/* Leave-page Prompt */}
-      {PromptModal}
-
+      {/* Main layout */}
       <div
-        className="w-full h-full gap-4 gap-x-15 pt-5 border-t-1
+        className="w-full h-full gap-4 gap-x-15 pt-5 border-t
         grid grid-rows-[1fr_40rem] 
         md:grid-rows-[1fr_40rem]
         lg:flex lg:flex-row
@@ -762,9 +910,7 @@ const ArticleEditorForm = () => {
                   hoverColor="hover:bg-gray-600"
                   textColor="text-white"
                   onClick={() => {
-                    navigate(`/admin/article/edit-article/${encoded}?mode=review`, {
-                      replace: true,
-                    });
+                    navigate(`/admin/article/edit-article/${encoded}?mode=review`, { replace: true });
                   }}
                 >
                   Back to Review
@@ -787,11 +933,7 @@ const ArticleEditorForm = () => {
                   onEdit={() => setHeaderHidden(false)}
                 />
               ) : (
-                <div
-                  ref={headerRef}
-                  onBlurCapture={onHeaderBlurCapture}
-                  className="rounded-xl border border-gray-200"
-                >
+                <div ref={headerRef} onBlurCapture={onHeaderBlurCapture} className="rounded-xl border border-gray-200">
                   <div className="flex items-center justify-between px-4 py-2 border-b bg-white">
                     <span className="font-semibold">Details</span>
                     <button
@@ -807,54 +949,45 @@ const ArticleEditorForm = () => {
                   {/* Details block */}
                   <ArticleDetailsForm
                     errors={errors}
-                    values={{
-                      title,
-                      selectedDate,
-                      author,
-                      category,
-                      contentType,
-                      municipality,
-                      barangay,
-                      status,
-                    }}
+                    values={{ title, selectedDate, author, category, contentType, municipality, barangay, status }}
                     onChange={{
                       title: (v) => {
-                        setTitle(v);
-                        setIsDirty(true);
+                        setTitle(capFirst(v)); // normalize while typing
+                        markDirty();
                         clearFieldError("title");
                       },
                       selectedDate: (v) => {
                         setSelectedDate(v);
-                        setIsDirty(true);
+                        markDirty();
                         clearFieldError("selectedDate");
                       },
                       author: (v) => {
                         setAuthor(v);
-                        setIsDirty(true);
+                        markDirty();
                         clearFieldError("author");
                       },
                       category: (v) => {
                         setCategory(v);
-                        setIsDirty(true);
+                        markDirty();
                         clearFieldError("category");
                       },
                       contentType: (v) => {
                         setContentType(v);
-                        setIsDirty(true);
+                        markDirty();
                         clearFieldError("content_type");
                       },
                       municipality: (v) => {
                         setMunicipality(v);
                         setBarangay("");
-                        setIsDirty(true);
+                        markDirty();
                       },
                       barangay: (v) => {
                         setBarangay(v);
-                        setIsDirty(true);
+                        markDirty();
                       },
                       status: (v) => {
                         setStatus(v);
-                        setIsDirty(true);
+                        markDirty();
                       },
                     }}
                     statusOptions={STATUS.filter((s) => AUTHOR_ALLOWED.has(s.value))}
@@ -875,11 +1008,11 @@ const ArticleEditorForm = () => {
                         onEndDate={handleEndDateChange}
                         onStartTime={(v) => {
                           setUploadPeriodStartTime(v);
-                          setIsDirty(true);
+                          markDirty();
                         }}
                         onEndTime={(v) => {
                           setUploadPeriodEndTime(v);
-                          setIsDirty(true);
+                          markDirty();
                         }}
                         disabled={isReviewer}
                       />
@@ -903,16 +1036,24 @@ const ArticleEditorForm = () => {
               <RichTextEditor
                 ref={editorRef}
                 errors={errors}
-                setIsDirty={setIsDirty}
-                fontSizes={fontSizes}
+                setIsDirty={setIsDirtySafe}
+                fontSizes={[
+                  { label: "Small", value: "0.75em" },
+                  { label: "Normal", value: "1em" },
+                  { label: "Medium", value: "1.25em" },
+                  { label: "Large", value: "1.5em" },
+                  { label: "XL", value: "1.75em" },
+                  { label: "2XL", value: "2em" },
+                ]}
                 onImageUpload={handleImageUpload}
                 editable={!isReviewer}
                 placeholder="Start writing your article..."
                 initialHTML={editorHTML || article?.description || ""}
                 onUpdate={({ html, text }) => {
+                  console.log("[Form:RTE:onUpdate] set dirty");
                   setEditorHTML(html);
                   setEditorText(text);
-                  setIsDirty(true);
+                  markDirty();
                 }}
               />
 
@@ -945,7 +1086,10 @@ const ArticleEditorForm = () => {
                   id="caption"
                   className="w-full h-24 p-3 border-2 border-gray-300 rounded-lg text-base md:text-lg outline-none resize-none focus:border-blue-500 transition-colors"
                   value={caption}
-                  onChange={(e) => setCaption(e.target.value)}
+                  onChange={(e) => {
+                    setCaption(e.target.value);
+                    markDirty();
+                  }}
                   placeholder="Enter a brief, engaging caption for the article. This will be visible on the homepage."
                   readOnly={isViewer}
                 />
@@ -968,6 +1112,7 @@ const ArticleEditorForm = () => {
                   hoverColor="hover:bg-[#d69641]"
                   textColor="text-white"
                   className="mt-4"
+                  onClick={() => console.log("[ConfirmDialog] Submit clicked")}
                 >
                   {isEditing ? "Save Changes" : "Submit Article"}
                 </StyledButton>
@@ -1044,7 +1189,10 @@ const ArticleEditorForm = () => {
                 id="reviewerNotes"
                 className="w-full h-40 p-4 border-2 border-black rounded-lg text-base md:text-lg outline-none resize-none"
                 value={reviewerNotes}
-                onChange={(e) => setReviewerNotes(e.target.value)}
+                onChange={(e) => {
+                  setReviewerNotes(e.target.value);
+                  markDirty();
+                }}
                 placeholder="Add your notes here..."
                 disabled={isViewer}
               />
@@ -1070,12 +1218,13 @@ const ArticleEditorForm = () => {
 
                     if (!isNumbered && String(next).toLowerCase() === "posted" && !wasPosted) {
                       openArchiveConfirm(() => {
-                        setStatus("posted");
+                        runWithoutDirty(() => setStatus("posted"));
                       });
                       return;
                     }
 
                     setStatus(next);
+                    markDirty();
                   }}
                   disabled={isViewer}
                 >
@@ -1120,7 +1269,7 @@ const ArticleEditorForm = () => {
                         value={uploadPeriodStartTime}
                         onChange={(e) => {
                           setUploadPeriodStartTime(e.target.value);
-                          setIsDirty(true);
+                          markDirty();
                         }}
                         disabled={isViewer}
                       />
@@ -1157,7 +1306,7 @@ const ArticleEditorForm = () => {
                         value={uploadPeriodEndTime}
                         onChange={(e) => {
                           setUploadPeriodEndTime(e.target.value);
-                          setIsDirty(true);
+                          markDirty();
                         }}
                         disabled={isViewer}
                       />
@@ -1218,38 +1367,24 @@ const ArticleEditorForm = () => {
         </div>
       </div>
 
-      {/* Cancel Confirmation Dialog */}
-      <ConfirmDialog
-        visible={showCancelConfirm}
-        title="Discard Changes?"
-        message="You have unsaved changes. Discard them?"
-        onConfirm={() => {
-          resetForm();
-          setShowCancelConfirm(false);
-          setShowDraftPrompt(false);
-          setDraftToLoad(null);
-          setErrors({});
-        }}
-        onCancel={() => setShowCancelConfirm(false)}
-      />
-
-      {/* Submit Confirmation Dialog (regular flow) */}
+      {/* Submit Confirmation Dialog */}
       <ConfirmDialog
         visible={showSubmitConfirm}
         title={isEditing ? "Save Changes?" : "Submit Article?"}
         message="Are you sure you want to proceed?"
         onConfirm={() => {
+          console.log("[ConfirmDialog] onConfirm -> handleSubmit");
+          setIsSaving(true); // prevent blocker while submit runs
           handleSubmit({ preventDefault: () => {} });
           setShowSubmitConfirm(false);
           setShowDraftPrompt(false);
-          setIsDirty(false);
           setDraftToLoad(null);
           setErrors({});
         }}
         onCancel={() => setShowSubmitConfirm(false)}
       />
 
-      {/* Draft Prompt Modal (never in reviewer view) */}
+      {/* Draft Prompt Modal */}
       {showDraftPrompt && draftToLoad && !shouldShowReviewer && (
         <div className="fixed inset-0 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl border-2 border-gray-300">
@@ -1263,7 +1398,6 @@ const ArticleEditorForm = () => {
               <button
                 onClick={async () => {
                   setShowDraftPrompt(false);
-                  // remember user skipped this specific draft hash
                   setDismissedDraftHash(draftKey, draftToLoad?.draft?.hash || "");
                   setDraftToLoad(null);
 
@@ -1271,64 +1405,67 @@ const ArticleEditorForm = () => {
                     try {
                       const response = await getArticle(articleId);
                       const data = response.data;
-                      setArticle(data);
-                      setIsEditing(true);
-                      setEditingArticleId(data.article_id);
 
-                      setTitle(data.title || "");
-                      setAuthor(data.author || "");
-                      setCategory(data.article_category || "");
-                      setContentType((data.content_type || "").toLowerCase() || "");
-                      setMunicipality(data.address || "");
-                      setBarangay(data.barangay || "");
-                      setStatus(data.status || "pending");
-                      setUploadPeriodStart(data.upload_period_start || "");
-                      setUploadPeriodEnd(data.upload_period_end || "");
-                      setReviewerNotes(data.reviewer_notes || "");
-                      setCaption(data.caption || "");
+                      runWithoutDirty(() => {
+                        setArticle(data);
+                        setIsEditing(true);
+                        setEditingArticleId(data.article_id);
 
-                      editorRef.current?.setContent(data.description || "");
-                      setEditorHTML(data.description || "");
-                      setEditorText(editorRef.current?.getText() || "");
+                        setTitle(capFirst(data.title || "")); // normalize from server
+                        setAuthor(data.author || "");
+                        setCategory(data.article_category || "");
+                        setContentType((data.content_type || "").toLowerCase() || "");
+                        setMunicipality(data.address || "");
+                        setBarangay(data.barangay || "");
+                        setStatus(data.status || "pending");
+                        setUploadPeriodStart(data.upload_period_start || "");
+                        setUploadPeriodEnd(data.upload_period_end || "");
+                        setReviewerNotes(data.reviewer_notes || "");
+                        setCaption(data.caption || "");
 
-                      setOrigVolume(data.volume ?? null);
-                      setOrigSeqNum(data.sequence_number ?? null);
-                      setOrigContentType((data.content_type || "").toLowerCase() || null);
+                        editorRef.current?.setContent(data.description || "");
+                        setEditorHTML(data.description || "");
+                        setEditorText(editorRef.current?.getText() || "");
 
-                      if (data.upload_date) {
-                        const formattedDate = new Date(data.upload_date).toISOString().split("T")[0];
-                        setSelectedDate(formattedDate);
-                      } else {
-                        setSelectedDate("");
-                      }
+                        setOrigVolume(data.volume ?? null);
+                        setOrigSeqNum(data.sequence_number ?? null);
+                        setOrigContentType((data.content_type || "").toLowerCase() || null);
 
-                      if (data.images) setPreviewImage(`${UPLOAD_PATH}${data.images}`);
-                      else setPreviewImage(null);
-                      setThumbnail(null);
+                        if (data.upload_date) {
+                          const formattedDate = new Date(data.upload_date).toISOString().split("T")[0];
+                          setSelectedDate(formattedDate);
+                        } else {
+                          setSelectedDate("");
+                        }
 
-                      setUploadPeriodStart(data.upload_period_start ? data.upload_period_start.split("T")[0] : "");
-                      setUploadPeriodEnd(data.upload_period_end ? data.upload_period_end.split("T")[0] : "");
+                        if (data.images) setPreviewImage(`${UPLOAD_PATH}${data.images}`);
+                        else setPreviewImage(null);
+                        setThumbnail(null);
 
-                      setUploadPeriodStartTime(
-                        data.upload_period_start
-                          ? new Date(data.upload_period_start).toLocaleTimeString("en-GB", {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                              hour12: false,
-                              timeZone: "Asia/Manila",
-                            })
-                          : ""
-                      );
-                      setUploadPeriodEndTime(
-                        data.upload_period_end
-                          ? new Date(data.upload_period_end).toLocaleTimeString("en-GB", {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                              hour12: false,
-                              timeZone: "Asia/Manila",
-                            })
-                          : ""
-                      );
+                        setUploadPeriodStart(data.upload_period_start ? data.upload_period_start.split("T")[0] : "");
+                        setUploadPeriodEnd(data.upload_period_end ? data.upload_period_end.split("T")[0] : "");
+
+                        setUploadPeriodStartTime(
+                          data.upload_period_start
+                            ? new Date(data.upload_period_start).toLocaleTimeString("en-GB", {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                                hour12: false,
+                                timeZone: "Asia/Manila",
+                              })
+                            : ""
+                        );
+                        setUploadPeriodEndTime(
+                          data.upload_period_end
+                            ? new Date(data.upload_period_end).toLocaleTimeString("en-GB", {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                                hour12: false,
+                                timeZone: "Asia/Manila",
+                              })
+                            : ""
+                        );
+                      });
                     } catch (err) {
                       console.error("Failed to fetch article:", err);
                     }
@@ -1343,22 +1480,25 @@ const ArticleEditorForm = () => {
               <button
                 onClick={async () => {
                   const { draft } = draftToLoad;
-                  setTitle(draft.data.title || "");
-                  setAuthor(draft.data.author || "");
-                  setCategory(draft.data.category || "");
-                  setContentType(draft.data.content_type || "");
-                  setMunicipality(draft.data.municipality || "");
-                  setBarangay(draft.data.barangay || "");
-                  setStatus(draft.data.status || "pending");
-                  setSelectedDate(draft.data.selectedDate || "");
-                  setUploadPeriodStart(draft.data.upload_period_start || "");
-                  setUploadPeriodEnd(draft.data.upload_period_end || "");
-                  setReviewerNotes(draft.data.reviewer_notes || "");
-                  setCaption(draft.data.caption || "");
 
-                  editorRef.current?.setContent(draft.data.description || "");
-                  setEditorHTML(draft.data.description || "");
-                  setEditorText(editorRef.current?.getText() || "");
+                  runWithoutDirty(() => {
+                    setTitle(capFirst(draft.data.title || "")); // normalize from draft
+                    setAuthor(draft.data.author || "");
+                    setCategory(draft.data.category || "");
+                    setContentType(draft.data.content_type || "");
+                    setMunicipality(draft.data.municipality || "");
+                    setBarangay(draft.data.barangay || "");
+                    setStatus(draft.data.status || "pending");
+                    setSelectedDate(draft.data.selectedDate || "");
+                    setUploadPeriodStart(draft.data.upload_period_start || "");
+                    setUploadPeriodEnd(draft.data.upload_period_end || "");
+                    setReviewerNotes(draft.data.reviewer_notes || "");
+                    setCaption(draft.data.caption || "");
+
+                    editorRef.current?.setContent(draft.data.description || "");
+                    setEditorHTML(draft.data.description || "");
+                    setEditorText(editorRef.current?.getText() || "");
+                  });
 
                   setShowDraftPrompt(false);
                   setDraftToLoad(null);
@@ -1367,41 +1507,44 @@ const ArticleEditorForm = () => {
                     try {
                       const response = await getArticle(articleId);
                       const data = response.data;
-                      setArticle(data);
-                      setIsEditing(true);
-                      setEditingArticleId(data.article_id);
 
-                      if (data.images) setPreviewImage(`${UPLOAD_PATH}${data.images}`);
-                      else setPreviewImage(null);
-                      setThumbnail(null);
+                      runWithoutDirty(() => {
+                        setArticle(data);
+                        setIsEditing(true);
+                        setEditingArticleId(data.article_id);
 
-                      setOrigVolume(data.volume ?? null);
-                      setOrigSeqNum(data.sequence_number ?? null);
-                      setOrigContentType((data.content_type || "").toLowerCase() || null);
+                        if (data.images) setPreviewImage(`${UPLOAD_PATH}${data.images}`);
+                        else setPreviewImage(null);
+                        setThumbnail(null);
 
-                      setUploadPeriodStart(data.upload_period_start ? data.upload_period_start.split("T")[0] : "");
-                      setUploadPeriodEnd(data.upload_period_end ? data.upload_period_end.split("T")[0] : "");
+                        setOrigVolume(data.volume ?? null);
+                        setOrigSeqNum(data.sequence_number ?? null);
+                        setOrigContentType((data.content_type || "").toLowerCase() || null);
 
-                      setUploadPeriodStartTime(
-                        data.upload_period_start
-                          ? new Date(data.upload_period_start).toLocaleTimeString("en-GB", {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                              hour12: false,
-                              timeZone: "Asia/Manila",
-                            })
-                          : ""
-                      );
-                      setUploadPeriodEndTime(
-                        data.upload_period_end
-                          ? new Date(data.upload_period_end).toLocaleTimeString("en-GB", {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                              hour12: false,
-                              timeZone: "Asia/Manila",
-                            })
-                          : ""
-                      );
+                        setUploadPeriodStart(data.upload_period_start ? data.upload_period_start.split("T")[0] : "");
+                        setUploadPeriodEnd(data.upload_period_end ? data.upload_period_end.split("T")[0] : "");
+
+                        setUploadPeriodStartTime(
+                          data.upload_period_start
+                            ? new Date(data.upload_period_start).toLocaleTimeString("en-GB", {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                                hour12: false,
+                                timeZone: "Asia/Manila",
+                              })
+                            : ""
+                        );
+                        setUploadPeriodEndTime(
+                          data.upload_period_end
+                            ? new Date(data.upload_period_end).toLocaleTimeString("en-GB", {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                                hour12: false,
+                                timeZone: "Asia/Manila",
+                              })
+                            : ""
+                        );
+                      });
                     } catch (err) {
                       console.error("Failed to fetch article:", err);
                     }
@@ -1416,7 +1559,7 @@ const ArticleEditorForm = () => {
         </div>
       )}
 
-      {/* ====== POPUPS ====== */}
+      {/* POPUPS */}
       <PopupModal
         isOpen={showCannotSchedule}
         onClose={() => setShowCannotSchedule(false)}
@@ -1439,6 +1582,70 @@ const ArticleEditorForm = () => {
         buttonText="Continue"
         type="info"
       />
+
+      {/* === Leave modal using your Modal / design (Save / Don’t Save / Cancel) === */}
+      <Modal
+        isOpen={showLeaveDialog}
+        onClose={() => {
+          // overlay/ESC/X act like Cancel
+          setShowLeaveDialog(false);
+        }}
+        title="Save changes before leaving?"
+        type="question"
+        theme="light"
+      >
+        <div className="text-lg text-gray-900 mb-6">
+          You have unsaved changes. Do you want to save?
+        </div>
+
+        <div className="flex justify-end gap-2">
+          {/* Cancel */}
+          <button
+            onClick={() => setShowLeaveDialog(false)}
+            className="px-4 py-2 text-gray-700 cursor-pointer border border-gray-700 hover:text-black bg-gray-100 rounded-sm transition-colors"
+          >
+            Cancel
+          </button>
+          {/* Don’t Save */}
+          <button
+            onClick={() => {
+              setSuppressAutosave(true);       // stop draft autosave
+              clearDraft(draftKey);            // clear drafts
+              clearDraft("new-article-draft");
+              setIsSaving(true);               // prevent blocker
+              bypassBlockRef.current = true;   // prevent blocker
+              setIsDirty(false);
+              setShowLeaveDialog(false);
+              nextNavRef.current?.();          // perform the blocked navigation
+            }}
+            className="px-4 py-2 text-gray-700 cursor-pointer border border-gray-700 hover:text-black bg-gray-100 rounded-sm transition-colors"
+          >
+            Don’t Save
+          </button>
+
+          {/* Save */}
+          <button
+            onClick={async () => {
+              console.log("[LeaveModal] Save clicked");
+              setIsSaving(true);
+              bypassBlockRef.current = true;
+              const ok = await saveArticle({ skipNavigate: true });
+              if (ok) {
+                setShowLeaveDialog(false);
+                setIsDirty(false);
+                nextNavRef.current?.();
+              } else {
+                // if save failed, let user decide again
+                setIsSaving(false);
+                bypassBlockRef.current = false;
+              }
+            }}
+            className="px-4 py-2 cursor-pointer bg-gray-600 text-white rounded-sm hover:bg-gray-700 transition-colors"
+          >
+            Save
+          </button>
+        </div>
+      </Modal>
     </>
   );
 };

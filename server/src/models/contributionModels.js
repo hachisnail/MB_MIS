@@ -1,7 +1,6 @@
 import { DataTypes } from "sequelize";
 import { mainDb } from "../configs/databases.js";
 import { ArtifactMetadata } from "./ArtifactMetadata.js";
-
 // ---------------- Models ----------------
 
 export const Contributors = mainDb.define(
@@ -363,6 +362,8 @@ Contributions.afterUpdate(async (contrib, options) => {
 
 export { ArtifactMetadata };
 
+
+
 export default {
   Contributors,
   Contributions,
@@ -372,4 +373,5 @@ export default {
   ContributionSessions,
   ArtifactMetadata,
   CatalogArtifacts,
+  
 };

@@ -41,6 +41,21 @@ export default {
       message: text,
     });
   },
+  async createMessage({ conversationId, senderUserId, senderGuestId, text, type = "user", meta = null }) {
+  console.log("[createMessage] conversationId=", conversationId, {
+    senderUserId, senderGuestId, text, type
+  });
+  return await Message.create({
+    conversation_id: conversationId,
+    sender_user_id: senderUserId || null,
+    sender_guest_id: senderGuestId || null,
+    message: text,
+    // The following are optional – Sequelize will ignore if model lacks these fields:
+    type,         // e.g., "user" | "system"
+    meta: meta ? JSON.stringify(meta) : null,
+  });
+},
+
 
   async getOrCreateConversation(req, res) {
     try {
@@ -63,3 +78,4 @@ export default {
     }
   },
 };
+

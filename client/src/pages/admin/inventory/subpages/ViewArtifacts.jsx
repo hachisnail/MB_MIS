@@ -1,7 +1,5 @@
-
-
 // src/pages/admin/inventory/pages/ViewArtifacts.jsx
-import { useState, useEffect } from "react";
+import { useState, useEffect, Fragment } from "react";
 import { useLocation } from "react-router-dom";
 
 // ✅ same components your Acquisition page uses
@@ -24,7 +22,7 @@ import { decodeBase64 } from "@/utils/base64";
 
 const SERVER_URL = import.meta.env.VITE_SERVER_URL;
 
-/* ---------------- helpers for mapping/formatting ---------------- */
+/* ---------------- helpers ---------------- */
 function extractContributionIdFromPath(pathname) {
   const segments = pathname.split("/");
   const last = segments[segments.length - 1] || "";
@@ -52,34 +50,55 @@ const toDateOnly = (v) => {
 const parseMaybeJSON = (raw, fallback) => {
   if (!raw) return fallback;
   if (Array.isArray(raw) || typeof raw === "object") return raw;
-  try { return JSON.parse(raw); } catch { return fallback; }
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return fallback;
+  }
 };
 
 // maps API (snake_case) → editor (camelCase) shape for the MaintenanceReportCard
 const mapLatestToEditor = (r, serverUrl) => {
   const dims = parseMaybeJSON(r?.dimensions, []);
   const before = parseMaybeJSON(r?.img_before, []);
-  const after  = parseMaybeJSON(r?.img_after,  []);
+  const after = parseMaybeJSON(r?.img_after, []);
   const imgUrl = (f) => `${serverUrl}/uploads/private/pictures/${f}`;
 
   return {
-    personResponsible:    r?.person_responsible || "",
-    actionTaken:          r?.action_taken || "",
-    dateStart:            toDateOnly(r?.date_start),
-    dateEnd:              toDateOnly(r?.date_end),
-    dimensions:           Array.isArray(dims) ? dims : [],
-    storage:              r?.storage || "",
+    personResponsible: r?.person_responsible || "",
+    actionTaken: r?.action_taken || "",
+    dateStart: toDateOnly(r?.date_start),
+    dateEnd: toDateOnly(r?.date_end),
+    dimensions: Array.isArray(dims) ? dims : [],
+    storage: r?.storage || "",
     responsiblePersonnel: r?.responsible_personnel || "",
-    initialCondition:     r?.initial_condition || "",
-    damages:              r?.damages || "",
-    environment:          r?.environment || "",
-    imgBefore:            (before || []).map(imgUrl),
-    imgAfter:             (after  || []).map(imgUrl),
-    preventive:           r?.preventive || "",
-    remarks:              r?.remarks || "",
+    initialCondition: r?.initial_condition || "",
+    damages: r?.damages || "",
+    environment: r?.environment || "",
+    imgBefore: (before || []).map(imgUrl),
+    imgAfter: (after || []).map(imgUrl),
+    preventive: r?.preventive || "",
+    remarks: r?.remarks || "",
   };
 };
-/* ---------------------------------------------------------------- */
+
+// Map API report → ArtifactMaintenanceForm's value shape (for read-only viewer)
+function maintenanceFromReport(r) {
+  if (!r) return { status: "", maintenanceDescription: "", damageImages: [] };
+  const before = parseMaybeJSON(r.img_before, []);
+  const after = parseMaybeJSON(r.img_after, []);
+  const mkSlides = (files = [], labelPrefix) =>
+    (files || []).map((f, i) => ({
+      src: `${SERVER_URL}/uploads/private/pictures/${f}`,
+      label: `${labelPrefix} ${i + 1}`,
+    }));
+  return {
+    status: "Completed",
+    maintenanceDescription: r.action_taken || "",
+    damageImages: [...mkSlides(before, "Before"), ...mkSlides(after, "After")],
+  };
+}
+/* ----------------------------------------- */
 
 export default function ViewArtifacts() {
   const location = useLocation();
@@ -89,32 +108,34 @@ export default function ViewArtifacts() {
   const [error, setError] = useState("");
   const [contributionData, setContributionData] = useState(null);
 
+  // NEW: artifact metadata for sliding panel table
+  const [metadata, setMetadata] = useState(null);
+
   // tabs
   const [activeTab, setActiveTab] = useState("Artifact Information");
   const TABS = ["Artifact Information", "Maintenance Report"];
 
-  // report editor state (uses dimensions array)
+  // report editor (user-editable)
   const [maintReport1, setMaintReport1] = useState({
     personResponsible: "",
     actionTaken: "",
     dateStart: "",
     dateEnd: "",
-    dimensions: [{ L: "", W: "", H: "" }], // array rows
+    dimensions: [{ L: "", W: "", H: "" }],
     storage: "",
     responsiblePersonnel: "",
     initialCondition: "",
     damages: "",
     environment: "",
-    imgBefore: [], // File[] or string[]
-    imgAfter: [],  // File[] or string[]
+    imgBefore: [],
+    imgAfter: [],
     preventive: "",
     remarks: "",
   });
 
-  // errors for report form
   const [reportErrors, setReportErrors] = useState({});
 
-  // maintenance viewer (status + description + carousel)
+  // maintenance viewer (read-only)
   const [maintenance, setMaintenance] = useState({
     status: "",
     maintenanceDescription: "",
@@ -134,33 +155,26 @@ export default function ViewArtifacts() {
         const id = extractContributionIdFromPath(location.pathname);
         if (!id) throw new Error("Invalid contribution id in URL");
 
+        // Contribution
         const { data } = await axiosClient.get(`/auth/contributions/${id}`);
         setContributionData(data);
 
-        // Hydrate read-only maintenance viewer + prefill editor from latest
-        const latest = await axiosClient.get(
-          `/auth/contributions/${data?.contribution_id}/maintenance/latest`
-        );
-        const r = latest.data;
+        // Latest maintenance (optional)
+        try {
+          const latest = await axiosClient.get(
+            `/auth/contributions/${data?.contribution_id}/maintenance/latest`
+          );
+          const r = latest.data;
+          setMaintenance(maintenanceFromReport(r));
 
-        if (r) {
-          // read-only block
-          setMaintenance({
-            status: "Completed", // or any status you want to display
-            maintenanceDescription: r.action_taken || "",
-            damageImages: (parseMaybeJSON(r.img_before, []) || []).map(
-              (f) => `${SERVER_URL}/uploads/private/pictures/${f}`
-            ),
-          });
-
-          // prefill editor — only if user hasn't typed yet
+          // Prefill editor — only if the user hasn't typed yet
           setMaintReport1((prev) => {
             const untouched =
               !prev.personResponsible &&
               !prev.actionTaken &&
               !prev.dateStart &&
               !prev.dateEnd &&
-              (!prev.dimensions || prev.dimensions.every(d => !d.L && !d.W && !d.H)) &&
+              (!prev.dimensions || prev.dimensions.every((d) => !d.L && !d.W && !d.H)) &&
               !prev.storage &&
               !prev.responsiblePersonnel &&
               !prev.initialCondition &&
@@ -174,6 +188,30 @@ export default function ViewArtifacts() {
             if (!untouched) return prev; // keep user's in-progress edits
             return { ...prev, ...mapLatestToEditor(r, SERVER_URL) };
           });
+        } catch (inner) {
+          console.warn("[maintenance/latest] not found:", inner?.response?.data || inner?.message);
+          setMaintenance(maintenanceFromReport(null));
+        }
+
+        // 🔎 Artifact metadata for sliding-panel table
+        try {
+          const metaRes = await axiosClient.get(
+            `/auth/contributions/${data?.contribution_id}/metadata`
+          );
+          // Controller returns joined object from buildJoinedRecordByContributionId.
+          const joined = metaRes?.data || {};
+          const m =
+            joined?.ArtifactMetadata ||
+            joined?.artifactMetadata ||
+            joined?.metadata ||
+            joined ||
+            null;
+          setMetadata(m);
+        } catch (inner) {
+          if (inner?.response?.status !== 404) {
+            console.warn("[metadata] fetch failed:", inner?.response?.data || inner?.message);
+          }
+          setMetadata(null);
         }
       } catch (e) {
         console.error("Error fetching contribution:", e);
@@ -193,26 +231,23 @@ export default function ViewArtifacts() {
     contributionData?.Contributor ?? contributionData?.contributor ?? null;
 
   // adapt images/files for the shared renderers
-  const artifactImg =
-    (artifact?.images ?? []).map((img, idx) => ({
-      src: `${SERVER_URL}/uploads/private/pictures/${img}`,
-      label: `Image ${idx + 1}`,
-    }));
+  const artifactImg = (artifact?.images ?? []).map((img, idx) => ({
+    src: `${SERVER_URL}/uploads/private/pictures/${img}`,
+    label: `Image ${idx + 1}`,
+  }));
 
-  const relatedImages =
-    (artifact?.related_images ?? []).map((img, idx) => ({
-      key: String(idx),
-      src: `${SERVER_URL}/uploads/private/pictures/${img}`,
-      label: img || `Image ${idx + 1}`,
-    }));
+  const relatedImages = (artifact?.related_images ?? []).map((img, idx) => ({
+    key: String(idx),
+    src: `${SERVER_URL}/uploads/private/pictures/${img}`,
+    label: img || `Image ${idx + 1}`,
+  }));
 
-  const attachedFiles =
-    (artifact?.documents ?? []).map((doc, idx) => ({
-      key: String(idx),
-      filename: doc || `File ${idx + 1}`,
-      category: "file",
-      url: `${SERVER_URL}/uploads/private/files/${doc}`,
-    }));
+  const attachedFiles = (artifact?.documents ?? []).map((doc, idx) => ({
+    key: String(idx),
+    filename: doc || `File ${idx + 1}`,
+    category: "file",
+    url: `${SERVER_URL}/uploads/private/files/${doc}`,
+  }));
 
   // donor info
   const donatorInformation = contributor
@@ -239,7 +274,6 @@ export default function ViewArtifacts() {
   // --------------------- Validation (report) ---------------------
   const validateForm = (d) => {
     const errors = {};
-
     if (!d.personResponsible?.trim()) errors.personResponsible = "Person responsible is required";
     if (!d.actionTaken?.trim()) errors.actionTaken = "Action taken is required";
     if (!d.dateStart) errors.dateStart = "Start date is required";
@@ -247,8 +281,8 @@ export default function ViewArtifacts() {
 
     if (d.dateStart && d.dateEnd) {
       try {
-        const start = new Date(`${d.dateStart}T00:00:00`);
-        const end = new Date(`${d.dateEnd}T23:59:00`);
+        const start = new Date(`${d.dateStart}T00:00:00+08:00`);
+        const end = new Date(`${d.dateEnd}T23:59:00+08:00`);
         if (!(start instanceof Date) || isNaN(start)) errors.dateStart = "Invalid start date";
         if (!(end instanceof Date) || isNaN(end)) errors.dateEnd = "Invalid end date";
         if (!errors.dateStart && !errors.dateEnd && end <= start) {
@@ -258,41 +292,33 @@ export default function ViewArtifacts() {
     }
 
     const dims = Array.isArray(d.dimensions) ? d.dimensions : [];
-    const anyDimProvided = dims.some((r) => (r?.L || r?.W || r?.H));
+    const anyDimProvided = dims.some((r) => r?.L || r?.W || r?.H);
     if (anyDimProvided) {
       const incomplete = dims.some((r) => !(r?.L && r?.W && r?.H));
       if (incomplete) errors.dimensions = "Please complete L/W/H for each dimension row you added.";
     }
+
     return errors;
   };
 
   // --------------------- Submit to API (Report) ---------------------
   const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("[Report Submit] start");
 
     const newErrors = validateForm(maintReport1);
     if (Object.keys(newErrors).length > 0) {
-      console.log("[Report Submit] validation failed", newErrors);
       setReportErrors(newErrors);
-      alert(
-        "Please fix errors:\n" + Object.values(newErrors).map((m) => `• ${m}`).join("\n")
-      );
+      alert("Please fix errors:\n" + Object.values(newErrors).map((m) => `• ${m}`).join("\n"));
       return;
     }
 
     const formData = new FormData();
-
-    // ensure multer writes into /uploads/private/pictures if your route honors `category`
     formData.append("category", "private");
-
     formData.append("person_responsible", maintReport1.personResponsible);
     formData.append("action_taken", maintReport1.actionTaken);
     formData.append("date_start", maintReport1.dateStart);
     formData.append("date_end", maintReport1.dateEnd);
-
     formData.append("dimensions", JSON.stringify(maintReport1.dimensions || []));
-
     formData.append("storage", maintReport1.storage || "");
     formData.append("responsible_personnel", maintReport1.responsiblePersonnel || "");
     formData.append("initial_condition", maintReport1.initialCondition || "");
@@ -302,7 +328,7 @@ export default function ViewArtifacts() {
     formData.append("remarks", maintReport1.remarks || "");
 
     const appendFiles = (filesOrUrls, field) => {
-      const arr = Array.isArray(filesOrUrls) ? filesOrUrls : (filesOrUrls ? [filesOrUrls] : []);
+      const arr = Array.isArray(filesOrUrls) ? filesOrUrls : filesOrUrls ? [filesOrUrls] : [];
       const urls = [];
       arr.forEach((item) => {
         if (item instanceof File) {
@@ -313,43 +339,30 @@ export default function ViewArtifacts() {
       });
       if (urls.length) formData.append(`${field}_urls`, JSON.stringify(urls));
     };
-
     appendFiles(maintReport1.imgBefore, "imgBefore");
     appendFiles(maintReport1.imgAfter, "imgAfter");
 
     try {
       const id = contributionData?.contribution_id;
-      const { data } = await axiosClient.post(
-        `/auth/contributions/${id}/maintenance/report`,
-        formData,
-        { headers: { "Content-Type": "multipart/form-data" } }
-      );
-      console.log("[Report Submit] created", data);
+      await axiosClient.post(`/auth/contributions/${id}/maintenance/report`, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      // refresh viewer + editor from latest
+      try {
+        const latest = await axiosClient.get(`/auth/contributions/${id}/maintenance/latest`);
+        const r = latest.data;
+        setMaintenance(maintenanceFromReport(r));
+        setMaintReport1((prev) => ({ ...prev, ...mapLatestToEditor(r, SERVER_URL) }));
+      } catch (inner) {
+        console.warn("[refresh latest] failed:", inner?.response?.data || inner?.message);
+      }
+
       setReportErrors({});
       alert("Maintenance report saved.");
-
-      // after save, refetch latest & refresh viewer + editor
-      try {
-        const latest = await axiosClient.get(
-          `/auth/contributions/${id}/maintenance/latest`
-        );
-        const r = latest.data;
-        if (r) {
-          setMaintenance({
-            status: "Completed",
-            maintenanceDescription: r.action_taken || "",
-            damageImages: (parseMaybeJSON(r.img_before, []) || []).map(
-              (f) => `${SERVER_URL}/uploads/private/pictures/${f}`
-            ),
-          });
-          setMaintReport1((prev) => ({ ...prev, ...mapLatestToEditor(r, SERVER_URL) }));
-        }
-      } catch {}
     } catch (err) {
       console.error("[Report Submit] submit failed", err?.response?.data || err?.message);
       alert("Failed to save maintenance report.");
-    } finally {
-      console.log("[Report Submit] finished");
     }
   };
 
@@ -417,7 +430,6 @@ export default function ViewArtifacts() {
               <div className="absolute left-0 -bottom-[1.2rem] w-full h-[1.2rem] bg-black" />
             </>
           }
-          // ✅ read-only maintenance viewer (no buttons here)
           middle={<ArtifactMaintenanceForm value={maintenance} onChange={setMaintenance} />}
           right={
             <div className="w-full h-full flex flex-col gap-4 pr-6 relative">
@@ -449,7 +461,7 @@ export default function ViewArtifacts() {
                 </div>
               </div>
 
-              {/* Sliding panel (unchanged) */}
+              {/* Sliding panel -> shows Artifact Metadata as a TABLE */}
               <div
                 className={`absolute top-0 right-0 w-full h-[60rem] bg-white border-2 border-[#1D1911] rounded-l-3xl z-20 transform transition-transform duration-500 ${
                   isPanelOpen ? "translate-x-0" : "translate-x-full"
@@ -492,9 +504,7 @@ export default function ViewArtifacts() {
                 </button>
 
                 <div className="w-full h-full flex flex-col p-4 overflow-auto">
-                  <div className="w-full h-[24rem] bg-amber-200"></div>
-                  <div className="w-full h-[20rem] bg-blue-200"></div>
-                  <div className="w-full h-[22rem] bg-red-200"></div>
+                  <ArtifactMetadataTable metadata={metadata} />
                 </div>
               </div>
             </div>
@@ -517,7 +527,7 @@ export default function ViewArtifacts() {
               </span>
             </div>
 
-            {/* RIGHT: card content — your form stays exactly as requested */}
+            {/* Your form stays the same */}
             <form className="h-full col-span-1 flex-1 px-1 sm:px-2 pt-4" onSubmit={handleSubmit}>
               <MaintenanceReportCard
                 title="Report 1"
@@ -527,7 +537,6 @@ export default function ViewArtifacts() {
                 errors={reportErrors}
               />
 
-              {/* Footer actions */}
               <div className="w-full flex items-center justify-between px-0 py-4">
                 <button
                   type="submit"
@@ -538,10 +547,7 @@ export default function ViewArtifacts() {
 
                 <button
                   type="button"
-                  onClick={() => {
-                    console.log("Start Maintenance clicked", maintReport1);
-                    alert("Starting maintenance… (stub)");
-                  }}
+                  onClick={() => alert("Starting maintenance… (stub)")}
                   className="px-6 py-3 rounded-lg bg-[#1D1911] text-white text-lg font-bold hover:bg-black"
                 >
                   Start Maintenance
@@ -555,4 +561,98 @@ export default function ViewArtifacts() {
   );
 }
 
+/* ---------------------- Sliding panel TABLE for metadata ---------------------- */
+function CellLabel({ children }) {
+  return <div className="text-sm font-semibold text-neutral-700">{children}</div>;
+}
+function CellValue({ children }) {
+  return (
+    <div className="text-sm text-neutral-900 whitespace-pre-wrap">
+      {children?.toString()?.trim() ? children : (
+        <span className="italic text-neutral-500">Not provided</span>
+      )}
+    </div>
+  );
+}
 
+function ArtifactMetadataTable({ metadata }) {
+  // tolerate either snake_case or camelCase from controller/join
+  const m = metadata || {};
+  const val = (snake, camel) => m?.[snake] ?? m?.[camel] ?? "";
+
+  const rows = [
+    {
+      section: "Basic Information",
+      items: [
+        ["Collection Number", val("collection_number", "collectionNumber")],
+        ["Date of Creation / Age", val("date_of_creation", "age")],
+        ["Culture / Civilization", val("culture", "culture")],
+      ],
+    },
+    {
+      section: "Origin & Current Location",
+      items: [
+        ["Origin / Provenance", val("provenance", "provenance")],
+        ["Current Location", val("current_location", "location")],
+      ],
+    },
+    {
+      section: "Discovery & Acquisition",
+      items: [
+        ["Discovery Details", val("discovery_details", "discovery")],
+        ["Excavation Site", val("excavation_site", "excavationSite")],
+        ["Acquisition History", val("acquisition_history", "acquisitionHistory")],
+      ],
+    },
+    {
+      section: "Curatorial",
+      items: [["Curatorial Description", val("curatorial_description", "curatorialDescription")]],
+    },
+  ];
+
+  return (
+    <div className="w-full h-full">
+      <div className="text-xl font-bold mb-3">Artifact Metadata</div>
+
+      {!metadata && (
+        <div className="text-sm text-neutral-500 italic">
+          No artifact metadata yet for this contribution.
+        </div>
+      )}
+
+      {metadata && (
+        <div className="overflow-x-auto rounded-lg border border-neutral-200">
+          <table className="min-w-full text-left text-sm">
+            <thead className="bg-neutral-50 border-b border-neutral-200">
+              <tr>
+                <th className="px-4 py-2 w-64">Field</th>
+                <th className="px-4 py-2">Value</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((group, gi) => (
+                <Fragment key={gi}>
+                  <tr className="bg-neutral-100">
+                    <td className="px-4 py-2 font-bold text-neutral-800" colSpan={2}>
+                      {group.section}
+                    </td>
+                  </tr>
+                  {group.items.map(([label, value], ii) => (
+                    <tr key={ii} className="border-t border-neutral-200">
+                      <td className="px-4 py-2 align-top">
+                        <CellLabel>{label}</CellLabel>
+                      </td>
+                      <td className="px-4 py-2">
+                        <CellValue>{value}</CellValue>
+                      </td>
+                    </tr>
+                  ))}
+                </Fragment>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}

@@ -111,6 +111,20 @@ export function initializeSocket(server, corsOrigins) {
   });
 
   // ===== Helpers / presence / locks (unchanged from your version) =====
+  function normalizeOut(saved, { type = "user" } = {}) {
+    return {
+      id: saved.message_id,
+      conversationId: saved.conversation_id,
+      text: saved.message,
+      sender: {
+        userId: saved.sender_user_id || null,
+        guestId: saved.sender_guest_id || null,
+      },
+      type, // <— "user" | "system"
+      status: saved.status || "sent",
+      createdAt: saved.created_at,
+    };
+  }
   function collectSocketStats() {
     const list = [];
     for (const [id, s] of io.sockets.sockets) {
@@ -250,19 +264,19 @@ export function initializeSocket(server, corsOrigins) {
     io.emit("presenceCounts", aggregatedPresenceCounts());
   };
 
- function presenceSnapshotForAdmins() {
+  function presenceSnapshotForAdmins() {
     const rows = [];
 
     for (const [page, entry] of presenceIndex) {
       // entry.viewers is Map<key, viewerInfo>
       const viewers = Array.from(entry.viewers.values()).map((v) => ({
-        userId: v.userId,           // null for guests
+        userId: v.userId, // null for guests
         isGuest: v.isGuest === true,
         browserId: v.browserId || null,
         tabId: v.tabId || null,
-        at: v.at || Date.now(),     // last activity timestamp
-        title: v.title || null,     // last reported document.title
-        meta: v.meta || null,       // any extra metadata you sent
+        at: v.at || Date.now(), // last activity timestamp
+        title: v.title || null, // last reported document.title
+        meta: v.meta || null, // any extra metadata you sent
       }));
 
       // optional: newest first
@@ -385,51 +399,90 @@ export function initializeSocket(server, corsOrigins) {
       }
     }
 
-socket.on("joinRoom", async (roomOrObj, payload) => {
-  try {
-    let room;
-    let meta = payload || {};
+    socket.on("joinRoom", async (roomOrObj, payload) => {
+      try {
+        let room;
+        let meta = payload || {};
 
-    // Support both old (string) and new (object) formats
-    if (typeof roomOrObj === "string") {
-      room = roomOrObj;
-    } else if (roomOrObj && typeof roomOrObj === "object") {
-      room = roomOrObj.room;
-      meta = roomOrObj.payload || {};
-    }
-
-    if (!room) return;
-
-    if (room.startsWith("conversation:")) {
-      const convId = room.replace("conversation:", "");
-      const convo = await ConversationController.getById(convId);
-      if (!convo) {
-        console.warn(`[Socket] Conversation ${convId} not found`);
-        return;
-      }
-
-      if (socket.userId === "guest") {
-        if (String(convo.contribution_id) === String(meta.contributionId)) {
-          socket.guestId = meta.guestId;
-          socket.join(room);
-          console.log(`[Socket] Guest ${socket.guestId} joined ${room}`);
-        } else {
-          console.warn(`[Socket] Guest denied joining ${room}`);
+        // Support both old (string) and new (object) formats
+        if (typeof roomOrObj === "string") {
+          room = roomOrObj;
+        } else if (roomOrObj && typeof roomOrObj === "object") {
+          room = roomOrObj.room;
+          meta = roomOrObj.payload || {};
         }
-        return;
-      }
 
-      socket.join(room);
+        if (!room) return;
+
+        if (room.startsWith("conversation:")) {
+          const convId = room.replace("conversation:", "");
+          const convo = await ConversationController.getById(convId);
+          if (!convo) {
+            console.warn(`[Socket] Conversation ${convId} not found`);
+            return;
+          }
+
+          if (socket.userId === "guest") {
+            if (String(convo.contribution_id) === String(meta.contributionId)) {
+              socket.guestId = meta.guestId;
+              socket.join(room);
+              console.log(`[Socket] Guest ${socket.guestId} joined ${room}`);
+            } else {
+              console.warn(`[Socket] Guest denied joining ${room}`);
+            }
+            return;
+          }
+
+          socket.join(room);
+          return;
+        }
+
+        socket.join(room);
+      } catch (err) {
+        console.error("[Socket] joinRoom error:", err);
+      }
+    });
+
+    socket.on("clientSystemNote", async (payload = {}) => {
+  try {
+    // only verified guests (you already set guestId on join)
+    if (socket.userId !== "guest" || !socket.guestId) {
+      console.warn("[clientSystemNote] blocked: not a verified guest");
       return;
     }
 
-    socket.join(room);
+    const { room, text = "", meta = null } = payload;
+    if (!room || !text.trim()) return;
+
+    // must be the donor's own conversation room
+    const conversationId = room.replace("conversation:", "");
+
+    // persist as a SYSTEM message (no sender ids -> system)
+    const saved = await ConversationController.createMessage({
+      conversationId,
+      senderUserId: null,
+      senderGuestId: null,
+      text: text.trim(),
+      type: "system",
+      meta: { source: "guest_form", guestId: socket.guestId, ...(meta || {}) },
+    });
+
+    // normalized emitter (as in your previous helper)
+    const out = {
+      id: saved.message_id,
+      conversationId: saved.conversation_id,
+      text: saved.message,
+      sender: { userId: null, guestId: null },
+      type: "system",
+      status: saved.status || "sent",
+      createdAt: saved.created_at,
+    };
+
+    io.to(room).emit("message", out);
   } catch (err) {
-    console.error("[Socket] joinRoom error:", err);
+    console.error("[Socket] clientSystemNote error:", err);
   }
 });
-
-
 
 
     socket.on("leaveRoom", (room) => {
@@ -452,53 +505,61 @@ socket.on("joinRoom", async (roomOrObj, payload) => {
     //   socket.to(room).emit("message", message);
     // });
 
-    socket.on("message", async (payload) => {
-        if (socket.userId === "guest" && !socket.guestId) {
+socket.on("message", async (payload) => {
+  if (socket.userId === "guest" && !socket.guestId) {
     console.warn("Blocked guest message without OTP verification");
     return;
   }
-      try {
-        const { room } = payload;
-        const conversationId = room.replace("conversation:", "");
+  try {
+    const { room } = payload;
+    const conversationId = room.replace("conversation:", "");
 
-        // 🔑 Normalize text regardless of shape
-        const text =
-          typeof payload.message === "object" && payload.message?.text
-            ? payload.message.text
-            : payload.text || "";
+    // 🔑 Normalize text regardless of shape
+    const text =
+      typeof payload.message === "object" && payload.message?.text
+        ? payload.message.text
+        : payload.text || "";
 
-        if (!text.trim()) return; // ignore empty
+    if (!text.trim()) return; // ignore empty
 
-        // persist to DB
-        const saved = await ConversationController.createMessage({
-          conversationId,
-          senderUserId: socket.userId !== "guest" ? socket.userId : null,
-          senderGuestId: socket.userId === "guest" ? socket.guestId : null,
-          text,
-        });
-
-        // normalized payload for clients
-        const out = {
-          id: saved.message_id,
-          conversationId: saved.conversation_id,
-          text: saved.message,
-          sender: {
-            userId: saved.sender_user_id || null,
-            guestId: saved.sender_guest_id || null,
-          },
-          status: saved.status || "sent",
-          createdAt: saved.created_at,
-        };
-
-        io.to(room).emit("message", out);
-      } catch (err) {
-        console.error("[Socket] message persistence error:", err);
-        socket.emit("message:error", {
-          room: payload.room,
-          error: "Failed to persist message",
-        });
-      }
+    // persist to DB
+    const saved = await ConversationController.createMessage({
+      conversationId,
+      senderUserId: socket.userId !== "guest" ? socket.userId : null,
+      senderGuestId: socket.userId === "guest" ? socket.guestId : null,
+      text,
+      type: "user", // <— NEW (safe if model doesn’t have column)
     });
+
+    io.to(room).emit("message", normalizeOut(saved, { type: "user" }));
+  } catch (err) {
+    console.error("[Socket] message persistence error:", err);
+    socket.emit("message:error", { room: payload.room, error: "Failed to persist message" });
+  }
+});
+
+// ✅ NEW: allow admins to push system messages over the socket
+socket.on("systemMessage", async (payload = {}) => {
+  try {
+    if (!isAdmin) return; // only admins
+    const { room, text = "", meta = null } = payload;
+    if (!room || !text.trim()) return;
+
+    const conversationId = room.replace("conversation:", "");
+    const saved = await ConversationController.createMessage({
+      conversationId,
+      senderUserId: null,
+      senderGuestId: null,
+      text: text.trim(),
+      type: "system",
+      meta: meta ?? null,
+    });
+
+    io.to(room).emit("message", normalizeOut(saved, { type: "system" }));
+  } catch (err) {
+    console.error("[Socket] systemMessage error:", err);
+  }
+});
 
     socket.on("pingCheck", () => {
       markSeen(socket);
@@ -561,6 +622,43 @@ socket.on("joinRoom", async (roomOrObj, payload) => {
     broadcastCounts();
     broadcastPresenceCounts();
   });
+  io.sendSystemMessage = async (conversationId, text, { meta = null, persist = true } = {}) => {
+  try {
+    const room = `conversation:${conversationId}`;
+    let out;
+
+    if (persist) {
+      const saved = await ConversationController.createMessage({
+        conversationId,
+        senderUserId: null,
+        senderGuestId: null,
+        text: String(text || "").trim(),
+        type: "system",
+        meta,
+      });
+      out = normalizeOut(saved, { type: "system" });
+    } else {
+      // ephemeral system notice (not persisted)
+      out = {
+        id: `sys-${Date.now()}`,
+        conversationId,
+        text: String(text || "").trim(),
+        sender: { userId: null, guestId: null },
+        type: "system",
+        status: "sent",
+        createdAt: new Date().toISOString(),
+      };
+    }
+
+    if (!out.text) return;
+    io.to(room).emit("message", out);
+    return out;
+  } catch (e) {
+    console.error("[io.sendSystemMessage] error", e);
+    return null;
+  }
+};
+
 
   setInterval(() => {
     emitSocketStatsToAdmins();
@@ -579,4 +677,9 @@ export function getIO() {
 export function forceLogoutUser(userId, opts) {
   if (!io?.forceLogoutUser) return;
   io.forceLogoutUser(userId, opts);
+}
+
+export async function sendSystemMessage(conversationId, text, opts) {
+  if (!io?.sendSystemMessage) throw new Error("Socket.io not initialized!");
+  return io.sendSystemMessage(conversationId, text, opts);
 }

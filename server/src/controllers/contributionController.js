@@ -486,9 +486,10 @@ export const updateTimelineStep = async (req, res) => {
     const stepFieldMap = {
       1: "under_review_at",
       2: "approved_at",
-      3: "moa_settled_at",
-      4: "on_delivery_at",
-      5: "completed_at",
+      3: "pending_at",
+      4: "moa_settled_at",
+      5: "on_delivery_at",
+      6: "completed_at",
     };
 
     const field = stepFieldMap[step];
@@ -857,7 +858,6 @@ export const sendContributionSessionOtp = async (req, res) => {
 
     const { code, salt, hash } = newOtpCode();
     const expiresAt = new Date(Date.now() + OTP_TTL_MIN * 60 * 1000);
-
     await session.update({
       otp_salt: salt,
       otp_code_hash: hash,
@@ -871,6 +871,7 @@ export const sendContributionSessionOtp = async (req, res) => {
       subject: "Your verification code",
       html: `<p>Your Museo Bulawan verification code is <b>${code}</b>.</p><p>It expires in ${OTP_TTL_MIN} minutes.</p>`,
     });
+    console.log("bypass otp: " + code);
 
     return res.json({ ok: true });
   } catch (err) {

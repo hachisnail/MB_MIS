@@ -1,25 +1,19 @@
 @import url('https://fonts.googleapis.com/css2?family=Hina+Mincho&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Hind:wght@400;500;600;700&display=swap');
-
 @import '@mantine/core/styles.css';
 @import '@mantine/charts/styles.css';
 @import "tailwindcss";
 @import '../node_modules/modern-normalize/modern-normalize.css';
-
-
-
 
 html {
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
 
-
 /* Hide scrollbar but keep scrolling */
 ::-webkit-scrollbar {
   display: none;
 }
-
 
 body {
   -ms-overflow-style: none;
@@ -54,7 +48,6 @@ body {
     font-size: 10px !important;
   }
 }
-
 
 @theme {
   --breakpoint-3xl: 1800px;
@@ -167,8 +160,6 @@ input:-webkit-autofill {
   word-break: break-word;
   white-space: pre-wrap;
 }
-
-
 
 .ProseMirror p {
   word-wrap: break-word;
@@ -325,13 +316,6 @@ input:-webkit-autofill {
 .editor-content-preview [style*="font-size"] {
   line-height: 1.6;
 }
-
-/* scope to your editor root if you have one */
-/* .ProseMirror .resizable-image {
-  flex: 0 0 auto;
-  align-self: flex-start;
-} */
-
 
 /* If a paragraph is centered AND contains only an image, treat the image like a block centered */
 .editor-content-preview [data-text-align="center"]>img:only-child {

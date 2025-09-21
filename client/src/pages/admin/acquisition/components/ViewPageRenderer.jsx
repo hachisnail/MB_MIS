@@ -225,7 +225,7 @@ export function RenderRelatedDocs({
                   />
                 ) : (
                   <div className="flex items-center justify-center w-full h-full bg-gray-200 rounded-xl">
-                    <NoImagePlaceholder />
+                    <NoImagePlaceholder className="bg-gray-500"/>
                   </div>
                 )}
               </div>

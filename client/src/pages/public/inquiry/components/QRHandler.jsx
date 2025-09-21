@@ -1,6 +1,6 @@
 import QRCode from "react-qr-code";
 
-const QRHandler = ({ sessionId, contributionId, triggerGenerate = false }) => {
+const QRHandler = ({ sessionId, contributionId, triggerGenerate = false, header="Scan this QR Code" }) => {
   if (!triggerGenerate || !sessionId || !contributionId) {
     return null;
   }
@@ -16,7 +16,7 @@ const QRHandler = ({ sessionId, contributionId, triggerGenerate = false }) => {
 
   return (
     <div className="flex flex-col items-center gap-4 p-6 bg-white rounded-xl shadow">
-      <h2 className="text-lg font-semibold">Scan this QR Code</h2>
+      <h2 className="text-lg font-semibold">{header}</h2>
       <QRCode value={frontendUrl} size={180} />
       <p className="text-sm text-gray-600 text-center">
         Encoded QR links to:

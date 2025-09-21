@@ -1,5 +1,5 @@
 import { useLocation, useOutletContext } from "react-router-dom";
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef } from "react";
 import axiosClient from "@/lib/axiosClient";
 import {
   RenderRelatedDocs,
@@ -37,11 +37,7 @@ import ArtifactMetadataForm from "../components/ArtifactMetadataForm";
 import { OptionsPanel } from "../components/ViewPageRenderer";
 
 import ConversationTimeline from "./ConversationTimeline";
-import { conversationSample } from "./conversationSample";
 
-
-import { getSocketClient } from "../../../../lib/socketSingleton";
-import { mapMessageToLane } from "../../../../utils/messageUtils";
 import { LoadingSpinner } from "../../../../components/commons";
 import {
   Address,
@@ -50,6 +46,8 @@ import {
   Organization,
   PhoneNumber,
 } from "../components/ViewPageSvg";
+
+import { getMessagingClient, toTimelineItem } from "@/lib/messagingClient";
 
 /* ---------------- Tabs (with gating support) ---------------- */
 
@@ -92,7 +90,6 @@ const AcquisitionViewPage = () => {
 
   const [conversationId, setConversationId] = useState(null);
 
-
   // form_states
   const [approved, setApproved] = useState(null);
   const [responseMessage, setResponseMessage] = useState("");
@@ -100,10 +97,8 @@ const AcquisitionViewPage = () => {
   const { setExtraBlockContent } = useOutletContext();
   const [itemTab, setItemTab] = useState("Donor");
 
-    const [messages, setMessages] = useState([]);
-  const socket = getSocketClient();
+  const [messages, setMessages] = useState([]);
   const [chatText, setChatText] = useState("");
-  const [chatItems, setChatItems] = useState([]);
   const tabs = ["Donor", "Artifact Information"];
 
   // --- metadata editing state (UI) ---
@@ -230,7 +225,7 @@ const AcquisitionViewPage = () => {
 
   useEffect(() => {
     fetchContribution();
-  }, [location.pathname]);  
+  }, [location.pathname]);
 
   // load metadata for this contribution into UI state
   useEffect(() => {
@@ -258,58 +253,67 @@ const AcquisitionViewPage = () => {
       }
     })();
   }, [contributionData?.contribution_id]);
-  
-  
-useEffect(() => {
-  async function setup() {
-    if (!contributionData?.contribution_id) return;
 
-    const cid = contributionData.contribution_id;
+  /* ---------------- Messaging (via messaging client) ---------------- */
 
-    // 1. Ensure conversation exists
-    const { data: convo } = await axiosClient.get(
-      `/auth/conversations/by-contribution/${cid}`
-    );
-    setConversationId(convo.conversation_id);
+  const messaging = useRef(getMessagingClient()).current;
 
-    // 2. Fetch history
-    const { data: history } = await axiosClient.get(
-      `/auth/conversations/${convo.conversation_id}/messages`
-    );
-    setMessages(history);
+  useEffect(() => {
+    async function setup() {
+      if (!contributionData?.contribution_id) return;
 
-    // 3. Join + listen
-    socket.onReady(() => {
-      socket.joinRoom(`conversation:${convo.conversation_id}`);
-    });
+      const cid = contributionData.contribution_id;
 
-    const handler = (msg) => setMessages((prev) => [...prev, msg]);
-    socket.onMessage(handler);
+      // 1. Ensure conversation exists
+      const { data: convo } = await axiosClient.get(
+        `/auth/conversations/by-contribution/${cid}`
+      );
+      setConversationId(convo.conversation_id);
 
-    return () => {
-      socket.leaveRoom(`conversation:${convo.conversation_id}`);
-      socket.offMessage(handler);
-    };
-  }
+      // 2. Fetch history
+      const { data: history } = await axiosClient.get(
+        `/auth/conversations/${convo.conversation_id}/messages`
+      );
+      setMessages(history);
 
-  setup();
-}, [contributionData?.contribution_id]);
+      // 3. Join + listen via messaging client
+      messaging.joinConversation(convo.conversation_id);
 
-const sendMessage = (text) => {
-  if (!conversationId || !text.trim()) return;
+      const off = messaging.onMessage((msg) => {
+        // de-dup by (id, created_at, message)
+        setMessages((prev) => {
+          const key = `${msg.message_id ?? ""}-${msg.created_at ?? ""}-${msg.message ?? ""}`;
+          if (
+            prev.some(
+              (p) =>
+                `${p.message_id ?? ""}-${p.created_at ?? ""}-${p.message ?? ""}` === key
+            )
+          ) {
+            return prev;
+          }
+          const next = [...prev, msg];
+          next.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+          return next;
+        });
+      });
 
-  socket.emit("message", {
-    room: `conversation:${conversationId}`,
-    text: text.trim(),
-    senderUserId: user?.id || null,   // << force include from useAuth
-    senderGuestId: !user ? "guest" : null,
-  });
-};
+      return () => {
+        off();
+        messaging.leaveConversation(convo.conversation_id);
+      };
+    }
 
+    setup();
+  }, [contributionData?.contribution_id]); // messaging is stable via ref
 
-  
-  
-  
+  const sendMessage = (text) => {
+    if (!conversationId || !text.trim()) return;
+    // Server infers user from session; no need to pass sender ids
+    messaging.sendUserMessage(conversationId, text.trim());
+  };
+
+  /* ---------------- Submit / server calls ---------------- */
+
   const handleSubmit = async () => {
     if (responseMessage !== "" && approved !== null) {
       try {
@@ -319,7 +323,7 @@ const sendMessage = (text) => {
           await moaRef.current?.saveContract?.();
         }
 
-      await axiosClient.patch(
+        await axiosClient.patch(
           `auth/contributions/${contributionData?.contribution_id}/status`,
           { status, responseMessage }
         );
@@ -357,6 +361,7 @@ const sendMessage = (text) => {
 
   const updateStep = async (contribution_id, step) => {
     try {
+      
       await axiosClient.put("/auth/update-step", { contribution_id, step });
       console.log("updated step " + step);
       setStep(step);
@@ -364,6 +369,20 @@ const sendMessage = (text) => {
       console.error("Failed to update timeline:", error);
     }
   };
+
+    const settleMoa = async ( ) => {
+    try {
+    const contribution_id = contributionData?.contribution_id;
+      // console.log(cid)
+      const step = 4;
+      await axiosClient.put("/auth/update-step", { contribution_id,  step});
+      console.log("updated step " + step);
+      setStep(step);
+    } catch (error) {
+      console.error("Failed to update timeline:", error);
+    }
+  };
+
 
   useEffect(() => {
     if (timeline) {
@@ -480,8 +499,6 @@ const sendMessage = (text) => {
     { label: "Time", value: submittedTime || "Not Provided" },
   ];
 
-
-
   if (loading) {
     return (
       <div className="w-full h-full flex items-center justify-center">
@@ -489,36 +506,6 @@ const sendMessage = (text) => {
       </div>
     );
   }
-
-  const pickSize = (s) => (s.length > 140 ? "lg" : s.length > 60 ? "md" : "sm");
-
-  // const handleSendChat = (e) => {
-  //   e.preventDefault();
-  //   const msg = chatText.trim();
-  //   if (!msg) return;
-
-  //   // Default behavior for testing:
-  //   // Donor message -> lane = "Suggestions", Admin message -> lane = "Admin"
-  //   // (Pwede mong palitan kung may identity ka ng current user)
-  //   const author = "Donor";                  // or "Admin" kung gusto mong i-test admin
-  //   const laneLabel = author === "Admin" ? "Admin" : "Suggestions";
-  //   const laneVariant = author === "Admin" ? "admin" : "suggestions";
-
-  //   const newItem = {
-  //     id: Date.now(),
-  //     laneLabel,
-  //     laneVariant,
-  //     message: msg,
-  //     author,
-  //     size: pickSize(msg),
-  //   };
-
-  //   setChatItems((prev) => [...prev, newItem]);
-  //   setChatText("");
-  // };
-
-
-
 
   return (
     <>
@@ -584,7 +571,7 @@ const sendMessage = (text) => {
                           percent={metadataPercent}
                           label="Artifact metadata completion"
                           widthClass="w-[40rem] 3xl:w-[49rem]"
-                          barHeight={168}   
+                          barHeight={110}
                         />
                       ) : (
                         <Timeline currentStep={step} steps={steps} />
@@ -656,132 +643,155 @@ const sendMessage = (text) => {
               />
             )}
 
-             {/* Transaction */}
+            {/* Transaction */}
             {activeDocument === "Transaction" && (
-<TransactionShell
-  left={
-    <>
-      <MoaBuilder ref={moaRef} payload={contributionData} />
-      {contributionData.status === "pending" && (
-        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/80 rounded-md">
-          <span className="text-white text-2xl">
-            Contract will be accesible when the form is Accepted
-          </span>
-        </div>
-      )}
-    </>
-  }
-  right={
-    <>
-      <div className="w-full px-20 min-h-[21rem] rounded-md gap-y-8 bg-[#1D1911] flex flex-col justify-center items-center">
-        <span className="text-4xl font-bold text-white">Timeline</span>
-        <Timeline currentStep={step} steps={steps} />
-      </div>
-
-      {contributionData.status === "pending" ? (
-        // --- Pending contract form ---
-        <form className="w-full h-full rounded-lg bg-gray-200 flex flex-col px-10 pt-15 pb-5">
-          <span className="text-4xl font-semibold">Respond</span>
-          <div className="px-5 pt-5 pb-2 flex flex-col gap-5">
-            <span className="text-2xl font-semibold w-40">Approve?</span>
-
-            <ButtonSelector
-              options={[
-                {
-                  value: true,
-                  label: "Yes",
-                  activeStyle: "bg-green-500 hover:bg-green-600 text-white",
-                },
-                {
-                  value: false,
-                  label: "No",
-                  activeStyle: "bg-red-500 hover:bg-red-600 text-white",
-                },
-              ]}
-              onChange={(val) => setApproved(val)}
-            />
-
-            <MultiLineInputField
-              placeholder="Send a response to the donor…"
-              mode="hard"
-              value={responseMessage}
-              onChange={setResponseMessage}
-              heightClass="h-75"
-              helperText={`Reply will be sent to ${email}`}
-              maxChars={2500}
-            />
-          </div>
-
-          <div className="px-5 w-full h-fit flex justify-end pl-5">
-            <StyledButton
-              className="w-50 mt-5"
-              buttonColor="bg-[#6F3FFF]"
-              onClick={handleSubmit}
-            >
-              Done
-            </StyledButton>
-          </div>
-        </form>
-      ) : (
-        // --- Conversation timeline + input ---
-        <div className="w-full h-full justify-between p-2 bg-white shadow-[inset_0_6px_6px_rgba(0,0,0,0.8),inset_0_-6px_6px_rgba(0,0,0,0.3)] rounded-xl flex flex-col">
-          <ConversationTimeline
-            items={messages.map((m) => mapMessageToLane(m, user))}
-            height="33rem"
-          />
-
-          <div className="mt-3 relative w-full">
-            <input
-              type="text"
-              value={chatText}
-              onChange={(e) => setChatText(e.target.value)}
-              placeholder="Type a message..."
-              className="w-full h-14 rounded-xl border-2 border-black bg-white shadow-[inset_0_6px_6px_rgba(0,0,0,0.4)] pl-4 pr-28 text-lg outline-none"
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  if (chatText.trim()) {
-                    sendMessage(chatText.trim());
-                    setChatText("");
-                  }
+              <TransactionShell
+                left={
+                  <>
+                    <MoaBuilder ref={moaRef} payload={contributionData} />
+                    {contributionData.status === "pending" && (
+                      <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/80 rounded-md">
+                        <span className="text-white text-2xl">
+                          Contract will be accesible when the form is Accepted
+                        </span>
+                      </div>
+                    )}
+                  </>
                 }
-              }}
-            />
-            <button
-              type="button"
-              onClick={() => {
-                if (chatText.trim()) {
-                  sendMessage(chatText.trim());
-                  setChatText("");
-                }
-              }}
-              className="absolute right-2 top-1.5 h-11 px-4 rounded-lg bg-black text-white shadow-[0_2px_6px_rgba(0,0,0,0.35)] text-sm font-semibold active:translate-y-[1px] inline-flex items-center gap-2"
-              title="Send"
-              aria-label="Send"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
-              >
-                <path d="M22 2 15 22l-4-9-9-4Z" />
-                <path d="M22 2 11 13" />
-              </svg>
-              Send
-            </button>
-          </div>
-        </div>
-      )}
-    </>
-  }
-/>
+                right={
+                  <>
+                    <div className="w-full px-20 min-h-[21rem] rounded-md gap-y-8 bg-[#1D1911] flex flex-col justify-center items-center">
+                      <span className="text-4xl font-bold text-white">Timeline</span>
+                      <Timeline currentStep={step} steps={steps} />
+                    </div>
 
+                    {contributionData.status === "pending" ? (
+                      // --- Pending contract form ---
+                      <form className="w-full h-full rounded-lg bg-gray-200 flex flex-col px-10 pt-15 pb-5">
+                        <span className="text-4xl font-semibold">Respond</span>
+                        <div className="px-5 pt-5 pb-2 flex flex-col gap-5">
+                          <span className="text-2xl font-semibold w-40">Approve?</span>
+
+                          <ButtonSelector
+                            options={[
+                              {
+                                value: true,
+                                label: "Yes",
+                                activeStyle: "bg-green-500 hover:bg-green-600 text-white",
+                              },
+                              {
+                                value: false,
+                                label: "No",
+                                activeStyle: "bg-red-500 hover:bg-red-600 text-white",
+                              },
+                            ]}
+                            onChange={(val) => setApproved(val)}
+                          />
+
+                          <MultiLineInputField
+                            placeholder="Send a response to the donor…"
+                            mode="hard"
+                            value={responseMessage}
+                            onChange={setResponseMessage}
+                            heightClass="h-75"
+                            helperText={`Reply will be sent to ${email}`}
+                            maxChars={2500}
+                          />
+                        </div>
+
+                        <div className="px-5 w-full h-fit flex justify-end pl-5">
+                          <StyledButton
+                            className="w-50 mt-5"
+                            buttonColor="bg-[#6F3FFF]"
+                            onClick={handleSubmit}
+                          >
+                            Done
+                          </StyledButton>
+                        </div>
+                      </form>
+                    ) : (
+                      // --- Conversation timeline + input ---
+                      <>
+                         <div className="flex flex-col gap-y-2">
+                          <span className="text-xl font-semibold">Overide Form Controls:</span>
+                          <div className="flex gap-3">
+                          <StyledButton
+                            className="w-50 mt-5"
+                            buttonColor="bg-[#6F3FFF]"
+                            onClick={()=> settleMoa()} 
+                          >
+                            Settle MOA
+                          </StyledButton>
+                          <StyledButton
+                            className="w-50 mt-5"
+                            buttonColor="bg-red-500"
+                            // onClick={handleSubmit} trigger moa cancelled status in contribution table and disable related info
+                          >
+                            Cancel Contribution
+                          </StyledButton>
+                          </div>
+                        </div>
+                      <div className="w-full h-full justify-between p-2 bg-white shadow-[inset_0_6px_6px_rgba(0,0,0,0.8),inset_0_-6px_6px_rgba(0,0,0,0.3)] rounded-xl flex flex-col">
+                        <ConversationTimeline
+                          items={messages.map((m) => toTimelineItem(m, user))}
+                          height="29rem"
+                        />
+
+                        <div className="mt-3 relative w-full">
+                          <input
+                            type="text"
+                            value={chatText}
+                            onChange={(e) => setChatText(e.target.value)}
+                            placeholder="Type a message..."
+                            className="w-full h-14 rounded-xl border-2 border-black bg-white shadow-[inset_0_6px_6px_rgba(0,0,0,0.4)] pl-4 pr-28 text-lg outline-none"
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" && !e.shiftKey) {
+                                e.preventDefault();
+                                if (chatText.trim()) {
+                                  sendMessage(chatText.trim());
+                                  setChatText("");
+                                }
+                              }
+                            }}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (chatText.trim()) {
+                                sendMessage(chatText.trim());
+                                setChatText("");
+                              }
+                            }}
+                            className="absolute right-2 top-1.5 h-11 px-4 rounded-lg bg-black text-white shadow-[0_2px_6px_rgba(0,0,0,0.35)] text-sm font-semibold active:translate-y-[1px] inline-flex items-center gap-2"
+                            title="Send"
+                            aria-label="Send"
+                          >
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              viewBox="0 0 24 24"
+                              className="w-4 h-4"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              aria-hidden="true"
+                            >
+                              <path d="M22 2 15 22l-4-9-9-4Z" />
+                              <path d="M22 2 11 13" />
+                            </svg>
+                            Send
+                          </button>
+                        </div>
+
+
+                      </div>
+         
+                      </>
+                    )}
+                  </>
+                }
+              />
             )}
 
             {/* Artifact Details (only reachable when step === 5 due to gating) */}
@@ -811,30 +821,18 @@ const sendMessage = (text) => {
                   />
                 }
                 right={
-                  <div className="w-full h-full flex flex-col gap-4 pr-6">
-                    <div className="flex-1 min-h-0 rounded-lg border border-gray-300 p-6 flex flex-col">
+                  <div className="w-full pl-5 h-full flex flex-col gap-4 pr-6">
+                    <div className="flex-1 min-h-0 rounded-lg border border-gray-300 p-6 flex gap-x-4">
+                      <div className="mt-3 gap-6 flex w-full h-full flex-col ">
                       <span className="text-4xl font-bold">Curatorial Description</span>
-                      <div className="mt-3 flex-1 min-h-0">
+
                         <MultiLineInputField
                           placeholder="Enter staff-facing curatorial description…"
                           mode="hard"
                           value={curatorialDesc}
                           onChange={setCuratorialDesc}
-                          heightClass="h-full"
+                          heightClass="h-full 2xl:h-[23rem]"
                           maxChars={8000}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="flex-1 min-h-0 flex gap-4">
-                      <div className="flex-1 min-h-0 min-w-0">
-                        <RenderRelatedDocs
-                          relatedImages={relatedImages}
-                          attachedFiles={attachedFiles}
-                          containerHeight="h-full"
-                          imageBoxWidth="w-[29rem]"
-                          fileBoxWidth="w-[17rem]"
-                          imgHeight="h-52"
                         />
                       </div>
 
@@ -912,6 +910,21 @@ const sendMessage = (text) => {
                           }
                         }}
                       />
+                    </div>
+
+                    <div className="flex-1 min-h-0 flex gap-4">
+                      <div className="flex-1 min-h-0 min-w-0">
+                        <RenderRelatedDocs
+                          relatedImages={relatedImages}
+                          attachedFiles={attachedFiles}
+                          containerHeight="h-full"
+                          imageBoxWidth="w-[29rem]"
+                          fileBoxWidth="w-[17rem]"
+                          imgHeight="h-52"
+                        />
+                      </div>
+
+
                     </div>
                   </div>
                 }

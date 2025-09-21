@@ -185,22 +185,16 @@ const DayScheduler = ({
     };
 
     return (
-        <div className={`w-full h-full relative overflow-hidden ${
-            isDateDisabled 
-                ? 'bg-red-50 border-2 border-red-400' 
-                : 'bg-gray-50'
-        }`}>
-            {/* Date Disabled Notice - positioned at top */}
+        <div className={`w-full h-full relative overflow-hidden ${isDateDisabled ? 'bg-red-50' : 'bg-gray-50'
+            }`}>
+            {/* Subtle disabled date indicator - only affects background */}
             {isDateDisabled && (
-                <div className="absolute top-2 left-2 right-2 z-40 bg-red-100 border border-red-400 rounded-lg p-3 shadow-md">
-                    <div className="flex items-center space-x-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-red-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                <div className="absolute top-2 left-20 z-30 bg-red-500 text-white rounded-full px-3 py-1 text-xs font-medium shadow-lg">
+                    <div className="flex items-center space-x-1">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636m12.728 12.728L18.364 5.636M5.636 18.364l12.728-12.728" />
                         </svg>
-                        <div>
-                            <p className="text-sm font-semibold text-red-700">Date Disabled for New Appointments</p>
-                            <p className="text-xs text-red-600">Existing schedules remain visible. New appointments cannot be created.</p>
-                        </div>
+                        <span>Appointments Disabled</span>
                     </div>
                 </div>
             )}

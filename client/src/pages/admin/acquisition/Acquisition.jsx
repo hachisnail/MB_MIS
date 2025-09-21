@@ -54,6 +54,7 @@ const Acquisition = () => {
     { label: "Title", width: "1fr" },
     { label: "Status", width: 12 },
     { label: "Type", width: 10 },
+    { label: "Last Updated", width: 15 },
   ];
 
   const pendingHeaders = [

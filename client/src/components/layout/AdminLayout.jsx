@@ -23,8 +23,8 @@ const AdminLayout = () => {
   );
 
   const itemRoutes = [
-    "/admin/acquisition/lending/:encoded",
-    "/admin/acquisition/donation/:encoded",
+    // "/admin/acquisition/lending/:encoded",
+    // "/admin/acquisition/donation/:encoded",
     "/admin/inventory/:encoded",
   ];
 
@@ -82,7 +82,7 @@ const AdminLayout = () => {
       {/* Main content */}
       <main
         // ${isItemView ? "pl-15" : "px-15"}
-        className={`col-span-3 row-span-2 col-start-2 row-start-3 h-full w-full ${theme} pb-5 px-15`}
+        className={`${isItemView ? "pl-15" : "px-15"} col-span-3 row-span-2 col-start-2 row-start-3 h-full w-full ${theme} pb-5 `}
       >
         <Outlet context={{ setExtraBlockContent }} />
       </main>

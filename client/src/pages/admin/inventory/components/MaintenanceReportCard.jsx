@@ -114,6 +114,7 @@ export default function MaintenanceReportCard({
               <div className="p-2.5 border-r border-neutral-300">
                 <div className="text-lg font-medium text-neutral-800">Action Taken</div>
                 <input
+                  
                   className={inputBase}
                   value={report.actionTaken || ""}
                   onChange={(e) => set("actionTaken", e.target.value)}
@@ -150,9 +151,9 @@ export default function MaintenanceReportCard({
               </div>
             </div>
 
-            {/* Row 2: Dimensions (array) / Storage / Personnel */}
-            {/* grid: [ 22rem  14rem  1fr ] */}
-            <div className="h-auto grid [grid-template-columns:22rem_14rem_1fr] border-b border-neutral-300">
+            {/* Row 2: Dimensions (array) / Storage / Personnel / Final Location */}
+            {/* grid: [ 22rem  14rem  1fr  12rem ] */}
+            <div className="h-auto grid [grid-template-columns:22rem_14rem_1fr_12rem] border-b border-neutral-300">
               {/* Dimensions as an array */}
               <div className="p-2.5 border-r border-neutral-300">
                 <div className="flex items-center justify-between">
@@ -216,13 +217,34 @@ export default function MaintenanceReportCard({
               </div>
 
               {/* Responsible Personnel */}
-              <div className="p-2.5">
+              <div className="p-2.5 border-r border-neutral-300">
                 <div className="text-lg font-medium text-neutral-800">Responsible Personnel</div>
                 <input
                   className={inputBase}
                   value={report.responsiblePersonnel || ""}
                   onChange={(e) => set("responsiblePersonnel", e.target.value)}
                 />
+              </div>
+
+              {/* Final Location */}
+              <div className="p-2.5">
+                <div className="text-lg font-medium text-neutral-800">Final Location *</div>
+                <select
+                  className={`${inputBase} cursor-pointer`}
+                  value={report.finalLocation || ""}
+                  onChange={(e) => set("finalLocation", e.target.value)}
+                  required
+                >
+                  <option value="">Select location</option>
+                  <option value="On Display">On Display</option>
+                  <option value="In Storage">In Storage</option>
+                  <option value="Gallery Exhibition">Gallery Exhibition</option>
+                  <option value="Temporary Display">Temporary Display</option>
+                  <option value="Conservation Lab">Conservation Lab</option>
+                </select>
+                {errors.finalLocation && (
+                  <p className="mt-1 text-sm text-red-600">{errors.finalLocation}</p>
+                )}
               </div>
             </div>
 

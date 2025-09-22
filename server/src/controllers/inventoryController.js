@@ -8,9 +8,8 @@ import { mainDb } from "../configs/databases.js";
  *  - contributions (con)
  *  - contributors (contrib)
  *  - lendingdetails (ld)                → contract_expires_at
- *  - maintenance_reports (aggregated)   → last_maintenance_at, open_maint
- *
- * NOTE: No dependency on a non-existent `ca.published` column.
+ *  - maintenance_reports (aggregated)   → last_maintenance_at
+ *  - maintenance_sessions (open)        → overrides display_status to "In Maintenance"
  */
 export async function getInventoryList(req, res) {
   try {
@@ -33,14 +32,21 @@ export async function getInventoryList(req, res) {
         ld.duration_to AS contract_expires_at,
 
         CASE
-          WHEN COALESCE(mr.open_maint, 0) = 1 THEN 'In Maintenance'
-          WHEN LOWER(COALESCE(ca.current_location,'')) LIKE '%display%'
+          WHEN COALESCE(ms.open_sessions, 0) > 0 THEN 'In Maintenance'
+          WHEN COALESCE(ca.current_location,'') = 'On Display' THEN 'On Display'
+          WHEN COALESCE(ca.current_location,'') = 'In Storage' THEN 'In Storage'
+          -- Fallback for legacy data with text descriptions
+          WHEN LOWER(TRIM(COALESCE(ca.current_location,''))) IN ('on display', 'display', 'gallery', 'exhibit', 'exhibition')
+            OR LOWER(COALESCE(ca.current_location,'')) LIKE '%display%'
             OR LOWER(COALESCE(ca.current_location,'')) LIKE '%gallery%'
             OR LOWER(COALESCE(ca.current_location,'')) LIKE '%exhibit%'
             THEN 'On Display'
-          WHEN LOWER(COALESCE(ca.current_location,'')) LIKE '%storage%'
+          WHEN LOWER(TRIM(COALESCE(ca.current_location,''))) IN ('in storage', 'storage', 'warehouse', 'archive')
+            OR LOWER(COALESCE(ca.current_location,'')) LIKE '%storage%'
+            OR LOWER(COALESCE(ca.current_location,'')) LIKE '%warehouse%'
+            OR LOWER(COALESCE(ca.current_location,'')) LIKE '%archive%'
             THEN 'In Storage'
-          ELSE '—'
+          ELSE 'In Storage'
         END AS display_status,
 
         ca.collection_number,
@@ -55,23 +61,24 @@ export async function getInventoryList(req, res) {
       LEFT JOIN lendingdetails ld
         ON ld.contribution_id = con.contribution_id
       LEFT JOIN (
-        /* Per-contribution maintenance summary:
-           - last_maintenance_at: most recent date_end
-           - open_maint: 1 if any report currently open/ongoing
-        */
+        /* Most recent maintenance date from reports */
         SELECT
           contribution_id,
-          MAX(date_end) AS last_maintenance_at,
-          MAX(
-            CASE
-              WHEN date_end IS NULL OR date_end >= CURRENT_DATE THEN 1
-              ELSE 0
-            END
-          ) AS open_maint
+          MAX(date_end) AS last_maintenance_at
         FROM maintenance_reports
         GROUP BY contribution_id
       ) mr
         ON mr.contribution_id = con.contribution_id
+      LEFT JOIN (
+        /* Open maintenance sessions (completed_at IS NULL) */
+        SELECT
+          contribution_id,
+          COUNT(*) AS open_sessions
+        FROM maintenance_sessions
+        WHERE completed_at IS NULL
+        GROUP BY contribution_id
+      ) ms
+        ON ms.contribution_id = con.contribution_id
       ORDER BY ca.updated_at DESC
       `
     );
@@ -83,5 +90,5 @@ export async function getInventoryList(req, res) {
   }
 }
 
-/* Back-compat alias: if elsewhere you imported { listInventory } */
+/* Back-compat alias */
 export { getInventoryList as listInventory };

@@ -175,6 +175,9 @@ export default function ViewArtifacts() {
   // sliding panel open/close
   const [isPanelOpen, setIsPanelOpen] = useState(false);
 
+  // maintenance session state
+  const [isMaintenanceActive, setIsMaintenanceActive] = useState(false);
+
 useEffect(() => {
   if (typeof setExtraBlockContent === "function") {
     if (contributionData) {
@@ -260,6 +263,19 @@ useEffect(() => {
           }
           setMetadata(null);
         }
+
+        // Check for active maintenance session
+        try {
+          const sessionRes = await axiosClient.get(
+            `/auth/contributions/${data?.contribution_id}/maintenance/open`
+          );
+          setIsMaintenanceActive(!!sessionRes.data);
+        } catch (inner) {
+          if (inner?.response?.status !== 204) {
+            console.warn("[maintenance session] check failed:", inner?.response?.data || inner?.message);
+          }
+          setIsMaintenanceActive(false);
+        }
       } catch (e) {
         console.error("Error fetching contribution:", e);
         setError(e?.response?.data?.message || e?.message || "Failed to load contribution");
@@ -318,6 +334,65 @@ useEffect(() => {
       ]
     : [];
 
+  // --------------------- Start Maintenance Session ---------------------
+  const handleStartMaintenance = async () => {
+    if (!contributionData?.contribution_id) {
+      alert("No contribution ID available");
+      return;
+    }
+
+    try {
+      await axiosClient.post(`/auth/contributions/${contributionData.contribution_id}/maintenance/start`);
+      setIsMaintenanceActive(true);
+      alert("Maintenance session started successfully!");
+      
+      // Refresh the maintenance status
+      setMaintenance(prev => ({
+        ...prev,
+        status: "In Maintenance"
+      }));
+    } catch (error) {
+      console.error("Failed to start maintenance:", error);
+      const message = error?.response?.data?.message || "Failed to start maintenance session";
+      alert(message);
+    }
+  };
+
+  // --------------------- Location Update Handler ---------------------
+  const handleLocationUpdate = async (contributionId, newLocation) => {
+    try {
+      await axiosClient.patch(`/auth/contributions/${contributionId}/location`, {
+        location: newLocation
+      });
+      
+      // Update local state to reflect the change
+      setContributionData(prev => {
+        if (!prev) return prev;
+        
+        const artifact = prev.ContributionArtifact || prev.contributionartifact;
+        if (artifact) {
+          return {
+            ...prev,
+            ContributionArtifact: {
+              ...artifact,
+              current_location: newLocation
+            },
+            contributionartifact: {
+              ...artifact,
+              current_location: newLocation
+            }
+          };
+        }
+        return prev;
+      });
+      
+      console.log(`Location updated to: ${newLocation}`);
+    } catch (error) {
+      console.error("Failed to update location:", error);
+      throw error; // Re-throw to let the component handle the error display
+    }
+  };
+
   // --------------------- Validation (report) ---------------------
   const validateForm = (d) => {
     const errors = {};
@@ -325,6 +400,7 @@ useEffect(() => {
     if (!d.actionTaken?.trim()) errors.actionTaken = "Action taken is required";
     if (!d.dateStart) errors.dateStart = "Start date is required";
     if (!d.dateEnd) errors.dateEnd = "End date is required";
+    if (!d.finalLocation?.trim()) errors.finalLocation = "Final location is required";
 
     if (d.dateStart && d.dateEnd) {
       try {
@@ -373,6 +449,7 @@ useEffect(() => {
     formData.append("environment", maintReport1.environment || "");
     formData.append("preventive", maintReport1.preventive || "");
     formData.append("remarks", maintReport1.remarks || "");
+    formData.append("finalLocation", maintReport1.finalLocation || "");
 
     const appendFiles = (filesOrUrls, field) => {
       const arr = Array.isArray(filesOrUrls) ? filesOrUrls : filesOrUrls ? [filesOrUrls] : [];
@@ -391,9 +468,18 @@ useEffect(() => {
 
     try {
       const id = contributionData?.contribution_id;
-      await axiosClient.post(`/auth/contributions/${id}/maintenance/report`, formData, {
+      await axiosClient.post(`/auth/contributions/${id}/maintenance/complete`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
+
+      // Maintenance session completed - update status
+      setIsMaintenanceActive(false);
+      
+      // Update maintenance status to reflect final location
+      setMaintenance(prev => ({
+        ...prev,
+        status: maintReport1.finalLocation || "Completed"
+      }));
 
       // refresh viewer + editor from latest
       try {
@@ -406,7 +492,7 @@ useEffect(() => {
       }
 
       setReportErrors({});
-      alert("Maintenance report saved.");
+      alert("Maintenance completed successfully! Artifact location updated.");
     } catch (err) {
       console.error("[Report Submit] submit failed", err?.response?.data || err?.message);
       alert("Failed to save maintenance report.");
@@ -459,25 +545,35 @@ useEffect(() => {
 
       {/* ====================== ARTIFACT INFORMATION ====================== */}
       {activeTab === "Artifact Information" && (
-        <ArtifactDetailsShell
-          left={
-            <>
-              <div className="absolute left-0 -top-[12rem] w-full h-[12rem] bg-black flex items-start justify-end pl-10 pb-5 pt-4 overflow-hidden flex-col">
-                <span className="text-white text-3xl font-bold text-left break-words line-clamp-3 max-w-[38rem]">
-                  {artifact?.title || "Artifact Title"}
-                </span>
-                <Breadcrumb hideTitle={true} overrideTheme="text-white" />
-              </div>
-              
-              <RenderArtifactImageAndDonatorInfo
-                donatorInformation={donatorInformation}
-                artifactImg={artifactImg}
-              />
+          <ArtifactDetailsShell
+            left={
+              <>
+                <div className="absolute left-0 -top-[12rem] w-full h-[12rem] bg-black flex items-start justify-end pl-10 pb-5 pt-4 overflow-hidden flex-col">
+                  <span className="text-white text-3xl font-bold text-left break-words line-clamp-3 max-w-[38rem]">
+                    {artifact?.title || "Artifact Title"}
+                  </span>
+                  <Breadcrumb hideTitle={true} overrideTheme="text-white" />
+                </div>
+                
+                <RenderArtifactImageAndDonatorInfo
+                  donatorInformation={donatorInformation}
+                  artifactImg={artifactImg}
+                />
 
-              <div className="absolute left-0 -bottom-[1.2rem] w-full h-[1.2rem] bg-black" />
-            </>
-          }
-          middle={<ArtifactMaintenanceForm value={maintenance} onChange={setMaintenance} />}
+                <div className="absolute left-0 -bottom-[1.2rem] w-full h-[1.2rem] bg-black" />
+              </>
+            }
+            middle={
+              <ArtifactMaintenanceForm 
+                value={{
+                  ...maintenance,
+                  currentLocation: artifact?.current_location || ""
+                }} 
+                onChange={setMaintenance}
+                contributionId={contributionData?.contribution_id}
+                onLocationUpdate={handleLocationUpdate}
+              />
+            }
           right={
             <div className="w-full h-full flex flex-col gap-4 relative pl-20 pr-15 overflow-hidden">
               <div className="flex-1 min-h-0 rounded-lg border border-gray-300 p-6 flex flex-col">
@@ -583,13 +679,18 @@ useEffect(() => {
                 Maintenance record
               </span>
 
-                <button
-                  type="button"
-                  onClick={() => alert("Starting maintenance… (stub)")}
-                  className="px-6 py-3 rounded-lg bg-white text-black text-lg font-bold hover:bg-gray-400"
-                >
-                  Start Maintenance
-                </button>
+              <button
+                type="button"
+                onClick={handleStartMaintenance}
+                disabled={isMaintenanceActive}
+                className={`px-6 py-3 rounded-lg text-lg font-bold ${
+                  isMaintenanceActive 
+                    ? "bg-gray-400 text-gray-600 cursor-not-allowed" 
+                    : "bg-white text-black hover:bg-gray-400"
+                }`}
+              >
+                {isMaintenanceActive ? "Maintenance Active" : "Start Maintenance"}
+              </button>
             </div>
 
             {/* Your form stays the same */}

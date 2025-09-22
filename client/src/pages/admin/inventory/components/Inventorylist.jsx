@@ -1,4 +1,4 @@
-// client/src/pages/admin/Inventory/components/Inventorylist.jsx
+// client/src/pages/admin/Inventory/components/InventoryList.jsx
 import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import ListRowRenderer from "../../../../components/tables/ListRowRenderer";
@@ -9,6 +9,22 @@ const prettyDate = (d) => {
   return isNaN(dt.getTime()) ? "—" : dt.toLocaleDateString();
 };
 
+// Derive a friendly whereabouts string without adding a new column
+const prettyWhereabouts = (item) => {
+  const status = (item.display_status || "").trim();
+  if (status) return status;
+
+  // Fallback from current_location if display_status isn't present
+  const loc = (item.current_location || "").toLowerCase();
+  if (loc.includes("display") || loc.includes("gallery") || loc.includes("exhibit")) return "On Display";
+  if (loc.includes("storage")) return "In Storage";
+
+  // Optional older flag fallback
+  if (item.on_display) return "On Display";
+
+  return "—";
+};
+
 const InventortyList = ({ item, headers, variant = "artifacts" }) => {
   const navigate = useNavigate();
 
@@ -16,7 +32,7 @@ const InventortyList = ({ item, headers, variant = "artifacts" }) => {
     () => [
       { key: "title", render: () => item.title || "Untitled Artifact" },
       { key: "donor", render: () => item.donor_name || item.contributor_name || "—" },
-      { key: "origin", render: () => item.current_location || item.provenance || "—" },
+      { key: "origin", render: () => item.provenance || "—" },
       { key: "acq", render: () => prettyDate(item.acquisition_date || item.updated_at || item.created_at) },
       {
         key: "type",
@@ -27,7 +43,8 @@ const InventortyList = ({ item, headers, variant = "artifacts" }) => {
             ? "Acquired"
             : "—",
       },
-      { key: "display", render: () => item.display_status || (item.on_display ? "On Display" : "—") },
+      // ✅ Keep the same "display" column key, but make it smart
+      { key: "display", render: () => prettyWhereabouts(item) },
       { key: "last_maint", render: () => prettyDate(item.last_maintenance_at) },
       {
         key: "contract_exp",
@@ -42,9 +59,9 @@ const InventortyList = ({ item, headers, variant = "artifacts" }) => {
     () => [
       { key: "title", render: () => item.title || "Untitled Artifact" },
       { key: "donor", render: () => item.donor_name || item.contributor_name || "—" },
-      { key: "origin", render: () => item.current_location || item.provenance || "—" },
+      { key: "origin", render: () => item.provenance || "—" },
       { key: "acq", render: () => prettyDate(item.acquisition_date || item.updated_at || item.created_at) },
-      { key: "display", render: () => item.display_status || (item.on_display ? "On Display" : "—") },
+      { key: "display", render: () => prettyWhereabouts(item) }, // ✅ no extra column
       { key: "last_maint", render: () => prettyDate(item.last_maintenance_at) },
     ],
     [item]
@@ -54,9 +71,9 @@ const InventortyList = ({ item, headers, variant = "artifacts" }) => {
     () => [
       { key: "title", render: () => item.title || "Untitled Artifact" },
       { key: "donor", render: () => item.donor_name || item.contributor_name || "—" },
-      { key: "origin", render: () => item.current_location || item.provenance || "—" },
+      { key: "origin", render: () => item.provenance || "—" },
       { key: "acq", render: () => prettyDate(item.acquisition_date || item.updated_at || item.created_at) },
-      { key: "display", render: () => item.display_status || (item.on_display ? "On Display" : "—") },
+      { key: "display", render: () => prettyWhereabouts(item) }, // ✅ no extra column
       { key: "last_maint", render: () => prettyDate(item.last_maintenance_at) },
       {
         key: "contract_info",

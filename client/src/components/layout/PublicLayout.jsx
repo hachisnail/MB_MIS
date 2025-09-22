@@ -2,24 +2,28 @@ import { Outlet, useLocation, matchPath } from 'react-router-dom';
 import PublicNav from '@/components/navbar/PublicNav';
 import PublicHeader from '@/components/headers/PublicHeader';
 import PublicFooter from '@/components/footers/PublicFooter';
+import { usePageTracking } from '../../hooks/usePageTracking';
 
 const PublicLayout = () => {
   const location = useLocation();
 
-const hiddenPaths = [
-  '/login',
-  '/login/forgot-password',
-  '/recover',
-  '/recover/success',
-  '/registration-success',
-  /^\/recover\/[^/]+$/,
-  /^\/complete-registration\/[^/]+$/,
-  /^\/acquisition\/inquiry\/[A-Za-z0-9_-]+\/?$/,
-];
+  // Track page views for analytics
+  usePageTracking();
 
-const isMinimalLayout = hiddenPaths.some((p) =>
-  p instanceof RegExp ? p.test(location.pathname) : p === location.pathname
-);
+  const hiddenPaths = [
+    '/login',
+    '/login/forgot-password',
+    '/recover',
+    '/recover/success',
+    '/registration-success',
+    /^\/recover\/[^/]+$/,
+    /^\/complete-registration\/[^/]+$/,
+    /^\/acquisition\/inquiry\/[A-Za-z0-9_-]+\/?$/,
+  ];
+
+  const isMinimalLayout = hiddenPaths.some((p) =>
+    p instanceof RegExp ? p.test(location.pathname) : p === location.pathname
+  );
 
 
   // Define themes for overall layout
@@ -56,15 +60,13 @@ const isMinimalLayout = hiddenPaths.some((p) =>
 
   return (
     <div
-      className={`${
-        theme === 'dark' ? 'bg-[#1C1B19]' : 'bg-white'
-      } flex flex-col h-fit min-h-screen w-screen overflow-scroll relative`}
+      className={`${theme === 'dark' ? 'bg-[#1C1B19]' : 'bg-white'
+        } flex flex-col h-fit min-h-screen w-screen overflow-scroll relative`}
     >
       {!isMinimalLayout && (
         <header
-          className={`${
-            theme === 'dark' ? 'bg-[#1C1B19]' : 'bg-white'
-          } z-40 flex items-center justify-between h-10 min-h-fit`}
+          className={`${theme === 'dark' ? 'bg-[#1C1B19]' : 'bg-white'
+            } z-40 flex items-center justify-between h-10 min-h-fit`}
         >
           <PublicHeader theme={theme} />
         </header>

@@ -4,7 +4,6 @@ import { NavLink } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
 import { SearchBar } from "../../../features/Utilities";
 import LiveSocketBadge from "../../../sandbox/LiveSocketBadge";
-import { websiteTrafficData } from "../../../data/appointmentData";
 import { MantineProvider } from '@mantine/core';
 import { BarChart, AreaChart } from '@mantine/charts';
 import { useEffect, useRef, useState, Fragment } from "react";
@@ -51,6 +50,11 @@ const Dashboard = () => {
   });
   const [isLoadingArtifacts, setIsLoadingArtifacts] = useState(true);
   const [artifactError, setArtifactError] = useState(null);
+
+  // State for website traffic data
+  const [websiteTrafficData, setWebsiteTrafficData] = useState([]);
+  const [isLoadingWebsiteTraffic, setIsLoadingWebsiteTraffic] = useState(true);
+  const [websiteTrafficError, setWebsiteTrafficError] = useState(null);
 
   // Function to fetch schedules for today
   const fetchSchedulesToday = async () => {
@@ -282,6 +286,48 @@ const Dashboard = () => {
     }
   };
 
+  // Function to fetch website traffic data
+  const fetchWebsiteTrafficData = async () => {
+    try {
+      setIsLoadingWebsiteTraffic(true);
+      setWebsiteTrafficError(null);
+
+      // Fetch website analytics data for the last 7 days
+      const response = await axiosClient.get('/auth/analytics/website-traffic?days=7');
+      const analyticsData = response.data;
+
+      // Transform the data to match the chart's expected format
+      const transformedData = processWebsiteTrafficData(analyticsData);
+      setWebsiteTrafficData(transformedData);
+
+    } catch (error) {
+      console.error('Error fetching website traffic data:', error);
+      setWebsiteTrafficError('Failed to load website traffic data');
+      // Fallback to empty data
+      setWebsiteTrafficData([]);
+    } finally {
+      setIsLoadingWebsiteTraffic(false);
+    }
+  };
+
+  // Function to process website traffic data
+  const processWebsiteTrafficData = (analyticsData) => {
+    const dayNames = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+
+    return analyticsData.map(record => {
+      const date = new Date(record.date);
+      const dayName = dayNames[date.getDay()];
+
+      return {
+        day: dayName,
+        Home: record.home_views || 0,
+        NewsEvents: record.articles_views || 0, // articles represent news/events
+        Catalogues: record.catalogue_views || 0,
+        About: record.about_views || 0
+      };
+    });
+  };
+
   // Function to fetch and process appointment data
   const fetchAppointmentData = async () => {
     try {
@@ -448,6 +494,7 @@ const Dashboard = () => {
     fetchSchedulesToday();
     fetchUnreadQueries();
     fetchArtifactStats();
+    fetchWebsiteTrafficData();
   }, []);
 
   // Dynamic topItems using real artifact statistics
@@ -947,40 +994,64 @@ const Dashboard = () => {
 
             {/* Chart */}
             <div className="flex-1 min-h-[300px]">
-              <MantineProvider>
-                <AreaChart
-                  h="100%"
-                  w="100%"
-                  data={websiteTrafficData}
-                  dataKey="day"
-                  series={[
-                    { name: 'About', color: '#D4C899' },
-                    { name: 'Catalogues', color: '#B8A87A' },
-                    { name: 'NewsEvents', color: '#A0956B' },
-                    { name: 'Home', color: '#8B7355' },
-                  ]}
-                  tickLine="xy"
-                  gridAxis="xy"
-                  withXAxis
-                  withYAxis
-                  type="stacked"
-                  strokeWidth={3}          // make lines thicker
-                  fillOpacity={0.6}        // transparent area fill
-                  curveType="linear"
-                  connectNulls={false}
-                  withDots={false}
-                  gridProps={{
-                    stroke: '#E5E7EB',
-                    strokeWidth: 1,
-                  }}
-                  xAxisProps={{
-                    style: { fontSize: '12px', fill: '#374151' },
-                  }}
-                  yAxisProps={{
-                    style: { fontSize: '12px', fill: '#374151' },
-                  }}
-                />
-              </MantineProvider>
+              {isLoadingWebsiteTraffic ? (
+                <div className="flex items-center justify-center h-full">
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#8B7355]"></div>
+                    <span className="text-gray-600">Loading website traffic data...</span>
+                  </div>
+                </div>
+              ) : websiteTrafficError ? (
+                <div className="flex items-center justify-center h-full">
+                  <div className="flex flex-col items-center gap-3 text-center">
+                    <svg className="w-12 h-12 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span className="text-red-600 font-medium">{websiteTrafficError}</span>
+                    <button
+                      onClick={fetchWebsiteTrafficData}
+                      className="px-4 py-2 bg-[#8B7355] text-white rounded-md hover:bg-[#6B5A42] transition-colors"
+                    >
+                      Retry
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <MantineProvider>
+                  <AreaChart
+                    h="100%"
+                    w="100%"
+                    data={websiteTrafficData}
+                    dataKey="day"
+                    series={[
+                      { name: 'About', color: '#D4C899' },
+                      { name: 'Catalogues', color: '#B8A87A' },
+                      { name: 'NewsEvents', color: '#A0956B' },
+                      { name: 'Home', color: '#8B7355' },
+                    ]}
+                    tickLine="xy"
+                    gridAxis="xy"
+                    withXAxis
+                    withYAxis
+                    type="stacked"
+                    strokeWidth={3}          // make lines thicker
+                    fillOpacity={0.6}        // transparent area fill
+                    curveType="linear"
+                    connectNulls={false}
+                    withDots={false}
+                    gridProps={{
+                      stroke: '#E5E7EB',
+                      strokeWidth: 1,
+                    }}
+                    xAxisProps={{
+                      style: { fontSize: '12px', fill: '#374151' },
+                    }}
+                    yAxisProps={{
+                      style: { fontSize: '12px', fill: '#374151' },
+                    }}
+                  />
+                </MantineProvider>
+              )}
             </div>
 
           </div>

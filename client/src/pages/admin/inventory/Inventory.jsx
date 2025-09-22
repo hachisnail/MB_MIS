@@ -42,7 +42,7 @@ const Inventory = () => {
     }
   }, [initialFilter]);
 
-  // 🔁 Fetch enriched inventory (absolute URL to avoid Vite returning index.html)
+  //  Fetch enriched inventory (absolute URL to avoid Vite returning index.html)
   useEffect(() => {
     let abort = false;
 

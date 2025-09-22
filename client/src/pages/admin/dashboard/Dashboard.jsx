@@ -1,10 +1,9 @@
-import { useAuth } from "../../../context/authContext";
+import { useAuth, useSocketClient } from "../../../context/authContext";
 import StyledButton from "../../../components/buttons/StyledButton";
 import { NavLink } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
 import { SearchBar } from "../../../features/Utilities";
 import LiveSocketBadge from "../../../sandbox/LiveSocketBadge";
-import { websiteTrafficData } from "../../../data/appointmentData";
 import { MantineProvider } from '@mantine/core';
 import { BarChart, AreaChart } from '@mantine/charts';
 import { useEffect, useRef, useState, Fragment } from "react";
@@ -12,9 +11,13 @@ import { Transition } from "@headlessui/react";
 import { createPortal } from "react-dom";
 import axiosClient from "../../../lib/axiosClient";
 import { encodeBase64 } from "../../../utils/base64";
+import axios from "axios";
+const BASE_URL = import.meta.env.VITE_API_BASE_URL;
+const SERVER_ORIGIN = BASE_URL?.replace(/\/api$/, "");
 
 const Dashboard = () => {
   const { user } = useAuth();
+  const socket = useSocketClient();
   const navigate = useNavigate();
 
   // State for chart container height
@@ -51,6 +54,11 @@ const Dashboard = () => {
   });
   const [isLoadingArtifacts, setIsLoadingArtifacts] = useState(true);
   const [artifactError, setArtifactError] = useState(null);
+
+  // State for website traffic data
+  const [websiteTrafficData, setWebsiteTrafficData] = useState([]);
+  const [isLoadingWebsiteTraffic, setIsLoadingWebsiteTraffic] = useState(true);
+  const [websiteTrafficError, setWebsiteTrafficError] = useState(null);
 
   // Function to fetch schedules for today
   const fetchSchedulesToday = async () => {
@@ -213,34 +221,54 @@ const Dashboard = () => {
       setIsLoadingArtifacts(true);
       setArtifactError(null);
 
-      // Fetch artifact data from the same endpoint used by inventory
-      const response = await axiosClient.get('/auth/public-artifacts');
-      const artifacts = response.data;
+      // Fetch inventory using the same logic as Inventory.jsx (A then B)
+      console.log("[Dashboard.jsx] fetching inventory for stats (A)", `${SERVER_ORIGIN}/api/auth/inventory`);
+      const respA = await axios.get(`${SERVER_ORIGIN}/api/auth/inventory`, {
+        withCredentials: true,
+        headers: { Accept: "application/json" },
+        validateStatus: () => true,
+      });
 
-      // Calculate statistics using the same logic as inventory
-      const total = artifacts.length;
-      const acquired = artifacts.filter(artifact => artifact.contribution_type !== "lending").length;
-      const borrowed = artifacts.filter(artifact => artifact.contribution_type === "lending").length;
-      const displayed = artifacts.filter(artifact =>
-        artifact.on_display || (artifact.display_status || "").toLowerCase().includes("display")
-      ).length;
+      let rows;
+      if (respA.status === 200 && Array.isArray(respA.data)) {
+        rows = respA.data;
+      } else {
+        console.log("[Dashboard.jsx] (A) not array or wrong status, trying (B)", `${SERVER_ORIGIN}/api/inventory`);
+        const respB = await axios.get(`${SERVER_ORIGIN}/api/inventory`, {
+          withCredentials: true,
+          headers: { Accept: "application/json" },
+          validateStatus: () => true,
+        });
+
+        if (respB.status === 200 && Array.isArray(respB.data)) {
+          rows = respB.data;
+        } else {
+          const sample = typeof respA.data === "string" ? respA.data.slice(0, 200) : JSON.stringify(respA.data)?.slice(0, 200);
+          console.warn("[Dashboard.jsx] Inventory API did not return JSON array. Sample:", sample);
+          throw new Error("Inventory API did not return JSON array");
+        }
+      }
+
+      // Calculate statistics using the same logic as Inventory.jsx summary
+      const total = rows.length;
+      const acquired = rows.filter((r) => r.contribution_type !== "lending").length;
+      const borrowed = rows.filter((r) => r.contribution_type === "lending").length;
+      const displayed = rows.filter((r) => (r.display_status || "").toLowerCase().includes("display")).length;
 
       setArtifactStats({
         total,
         acquired,
         borrowed,
-        displayed
+        displayed,
       });
-
     } catch (error) {
-      console.error('Error fetching artifact statistics:', error);
-      setArtifactError('Failed to load artifact data');
-      // Fallback to default data
+      console.error("Error fetching artifact statistics:", error);
+      setArtifactError("Failed to load artifact data");
       setArtifactStats({
         total: 0,
         acquired: 0,
         borrowed: 0,
-        displayed: 0
+        displayed: 0,
       });
     } finally {
       setIsLoadingArtifacts(false);
@@ -280,6 +308,48 @@ const Dashboard = () => {
     } finally {
       setIsLoadingVisitorData(false);
     }
+  };
+
+  // Function to fetch website traffic data
+  const fetchWebsiteTrafficData = async () => {
+    try {
+      setIsLoadingWebsiteTraffic(true);
+      setWebsiteTrafficError(null);
+
+      // Fetch website analytics data for the last 7 days
+      const response = await axiosClient.get('/auth/analytics/website-traffic?days=7');
+      const analyticsData = response.data;
+
+      // Transform the data to match the chart's expected format
+      const transformedData = processWebsiteTrafficData(analyticsData);
+      setWebsiteTrafficData(transformedData);
+
+    } catch (error) {
+      console.error('Error fetching website traffic data:', error);
+      setWebsiteTrafficError('Failed to load website traffic data');
+      // Fallback to empty data
+      setWebsiteTrafficData([]);
+    } finally {
+      setIsLoadingWebsiteTraffic(false);
+    }
+  };
+
+  // Function to process website traffic data
+  const processWebsiteTrafficData = (analyticsData) => {
+    const dayNames = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+
+    return analyticsData.map(record => {
+      const date = new Date(record.date);
+      const dayName = dayNames[date.getDay()];
+
+      return {
+        day: dayName,
+        Home: record.home_views || 0,
+        NewsEvents: record.articles_views || 0, // articles represent news/events
+        Catalogues: record.catalogue_views || 0,
+        About: record.about_views || 0
+      };
+    });
   };
 
   // Function to fetch and process appointment data
@@ -448,7 +518,52 @@ const Dashboard = () => {
     fetchSchedulesToday();
     fetchUnreadQueries();
     fetchArtifactStats();
+    fetchWebsiteTrafficData();
   }, []);
+
+  // Live updates via socket.io (pattern follows Appointments.jsx)
+  useEffect(() => {
+    if (!socket) return;
+
+    const refreshAppointments = () => {
+      fetchAppointmentData();
+      fetchVisitorQuotaData();
+      fetchUnreadQueries();
+    };
+
+    const refreshSchedules = () => {
+      fetchSchedulesToday();
+    };
+
+    const refreshWebsiteAnalytics = () => {
+      fetchWebsiteTrafficData();
+    };
+
+    // Appointments + Status changes -> update charts, stats, and unread queries
+    socket.onDbChange("Appointment", "*", refreshAppointments);
+    socket.onDbChange("AppointmentStatus", "*", refreshAppointments);
+
+    // Schedules -> update "Schedules Today"
+    socket.onDbChange("Schedule", "*", refreshSchedules);
+
+    // Website analytics -> update traffic overview
+    socket.onDbChange("WebsiteAnalytics", "*", refreshWebsiteAnalytics);
+
+    // If inventory models emit in future, you can attach:
+    // socket.onDbChange("CatalogArtifacts", "*", fetchArtifactStats);
+    // socket.onDbChange("ContributionArtifacts", "*", fetchArtifactStats);
+    // socket.onDbChange("ArtifactMetadata", "*", fetchArtifactStats);
+
+    return () => {
+      socket.offDbChange("Appointment", "*", refreshAppointments);
+      socket.offDbChange("AppointmentStatus", "*", refreshAppointments);
+      socket.offDbChange("Schedule", "*", refreshSchedules);
+      socket.offDbChange("WebsiteAnalytics", "*", refreshWebsiteAnalytics);
+      // socket.offDbChange("CatalogArtifacts", "*", fetchArtifactStats);
+      // socket.offDbChange("ContributionArtifacts", "*", fetchArtifactStats);
+      // socket.offDbChange("ArtifactMetadata", "*", fetchArtifactStats);
+    };
+  }, [socket]);
 
   // Dynamic topItems using real artifact statistics
   const topItems = [
@@ -947,40 +1062,64 @@ const Dashboard = () => {
 
             {/* Chart */}
             <div className="flex-1 min-h-[300px]">
-              <MantineProvider>
-                <AreaChart
-                  h="100%"
-                  w="100%"
-                  data={websiteTrafficData}
-                  dataKey="day"
-                  series={[
-                    { name: 'About', color: '#D4C899' },
-                    { name: 'Catalogues', color: '#B8A87A' },
-                    { name: 'NewsEvents', color: '#A0956B' },
-                    { name: 'Home', color: '#8B7355' },
-                  ]}
-                  tickLine="xy"
-                  gridAxis="xy"
-                  withXAxis
-                  withYAxis
-                  type="stacked"
-                  strokeWidth={3}          // make lines thicker
-                  fillOpacity={0.6}        // transparent area fill
-                  curveType="linear"
-                  connectNulls={false}
-                  withDots={false}
-                  gridProps={{
-                    stroke: '#E5E7EB',
-                    strokeWidth: 1,
-                  }}
-                  xAxisProps={{
-                    style: { fontSize: '12px', fill: '#374151' },
-                  }}
-                  yAxisProps={{
-                    style: { fontSize: '12px', fill: '#374151' },
-                  }}
-                />
-              </MantineProvider>
+              {isLoadingWebsiteTraffic ? (
+                <div className="flex items-center justify-center h-full">
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#8B7355]"></div>
+                    <span className="text-gray-600">Loading website traffic data...</span>
+                  </div>
+                </div>
+              ) : websiteTrafficError ? (
+                <div className="flex items-center justify-center h-full">
+                  <div className="flex flex-col items-center gap-3 text-center">
+                    <svg className="w-12 h-12 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span className="text-red-600 font-medium">{websiteTrafficError}</span>
+                    <button
+                      onClick={fetchWebsiteTrafficData}
+                      className="px-4 py-2 bg-[#8B7355] text-white rounded-md hover:bg-[#6B5A42] transition-colors"
+                    >
+                      Retry
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <MantineProvider>
+                  <AreaChart
+                    h="100%"
+                    w="100%"
+                    data={websiteTrafficData}
+                    dataKey="day"
+                    series={[
+                      { name: 'About', color: '#D4C899' },
+                      { name: 'Catalogues', color: '#B8A87A' },
+                      { name: 'NewsEvents', color: '#A0956B' },
+                      { name: 'Home', color: '#8B7355' },
+                    ]}
+                    tickLine="xy"
+                    gridAxis="xy"
+                    withXAxis
+                    withYAxis
+                    type="stacked"
+                    strokeWidth={3}          // make lines thicker
+                    fillOpacity={0.6}        // transparent area fill
+                    curveType="linear"
+                    connectNulls={false}
+                    withDots={false}
+                    gridProps={{
+                      stroke: '#E5E7EB',
+                      strokeWidth: 1,
+                    }}
+                    xAxisProps={{
+                      style: { fontSize: '12px', fill: '#374151' },
+                    }}
+                    yAxisProps={{
+                      style: { fontSize: '12px', fill: '#374151' },
+                    }}
+                  />
+                </MantineProvider>
+              )}
             </div>
 
           </div>

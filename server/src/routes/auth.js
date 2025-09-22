@@ -30,6 +30,9 @@ import {
 import {
   postEvents, getArticleStats, getNextSuggestions,
 } from "../controllers/EngagementController.js";
+import {
+  trackPageView, getWebsiteTrafficStats, getAnalyticsSummary,
+} from "../controllers/WebsiteAnalyticsController.js";
 
 import {
   createContribution, getAllContributions, getContributionById, updateContributionStatus,
@@ -161,6 +164,11 @@ router.post("/summarize", async (req, res) => {
 router.post("/events", postEvents);
 router.get("/article/:id", getArticleStats);
 router.get("/suggest/next", getNextSuggestions);
+
+// ---- Website Analytics ----
+router.post("/analytics/track", trackPageView);
+router.get("/analytics/website-traffic", requireAuth, getWebsiteTrafficStats);
+router.get("/analytics/summary", requireAuth, getAnalyticsSummary);
 
 // ---- Conversations ----
 router.get("/conversations/by-contribution/:contributionId", ConversationController.getOrCreateConversation);

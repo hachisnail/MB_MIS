@@ -93,6 +93,8 @@ export default function Inquiry() {
   const [messages, setMessages] = useState([]);
   const [suggestion, setSuggestion] = useState("");
 
+  const [isCompleted, setIsCompleted] = useState(false);
+
   // RHF
   const methods = useForm({
     defaultValues: {
@@ -190,6 +192,10 @@ export default function Inquiry() {
     }
   };
 
+    const hasTransportingAt =
+    !!sessionData?.contribution?.ContributionTimeline?.on_delivery_at;
+
+
   /* ===================== Session fetch (race-proof) ===================== */
   const fetchSeq = useRef(0);
   const fetchSession = async () => {
@@ -207,15 +213,36 @@ export default function Inquiry() {
 
       setSessionData(res.data);
 
-      const serverRequiresOtp = !!res.data?.requires_otp;
-      setRequiresOtp(serverRequiresOtp);
-      setWriteEnabled(!serverRequiresOtp);
+const contrib = res?.data?.contribution;
+const sess = res?.data?.session;
 
-      if (serverRequiresOtp) {
-        setOtpInput(true);
-        setOtpCode("");
-        setErrorMessage("");
-      }
+// default to "active" if backend doesn't send it yet
+const sessionActive = (sess?.is_active ?? true);
+
+const statusCompleted = contrib?.status === "completed";
+const timelineCompleted = !!contrib?.ContributionTimeline?.completed_at;
+
+// Only completed if status is completed OR (timeline shows completed AND session is inactive)
+const completed = statusCompleted || (timelineCompleted && !sessionActive);
+setIsCompleted(completed);
+
+const serverRequiresOtp = !!res.data?.requires_otp;
+
+if (completed) {
+  // read-only display: skip OTP & disable writes
+  setRequiresOtp(false);
+  setWriteEnabled(false);
+  setShowView("completed");
+} else {
+  setRequiresOtp(serverRequiresOtp);
+  setWriteEnabled(!serverRequiresOtp);
+}
+
+if (serverRequiresOtp) {
+  setOtpInput(true);
+  setOtpCode("");
+  setErrorMessage("");
+}
 
       setError(null);
 
@@ -296,12 +323,11 @@ export default function Inquiry() {
   ]);
 
   // If user lands on delivery view and it's already submitted, move on
-  useEffect(() => {
-    if (showView === "delivery" && hasDelivery) {
-      setShowView("conversation");
-    }
-  }, [showView, hasDelivery]);
-
+useEffect(() => {
+  if (showView === "delivery" && hasDelivery) {
+    setShowView(hasTransportingAt ? "onDelivery" : "conversation");
+  }
+}, [showView, hasDelivery, hasTransportingAt]);
   /* ===================== OTP handlers ===================== */
   const handleSendOtp = async () => {
     try {
@@ -567,16 +593,26 @@ export default function Inquiry() {
     }
   };
 
-  const handleSubmitStep3 = async () => {
-    const ok = await trigger([
-      "accept_delivery",
-      "deliveryReason",
-      "deliverySuggestions",
-    ]);
-    if (!ok) return;
-    await postDeliverySection(getValues());
-    setShowView("conversation");
-  };
+// Replace your current handleSubmitStep3 with:
+const handleSubmitStep3 = async () => {
+  const ok = await trigger([
+    "accept_delivery",
+    "deliveryReason",
+    "deliverySuggestions",
+  ]);
+  if (!ok) return;
+
+  const values = getValues();
+  await postDeliverySection(values);
+
+  if (values.accept_delivery === "yes") {
+    await postDeliveryAt();          
+    setShowView("onDelivery");       
+  } else {
+    setShowView("conversation");     
+  }
+};
+
 
   /* ===================== Early returns ===================== */
   if (loading) {
@@ -600,8 +636,6 @@ export default function Inquiry() {
     !!sessionData?.contribution?.ContributionTimeline?.pending_at;
   const hasMoasSetteledAt =
     !!sessionData?.contribution?.ContributionTimeline?.moa_settled_at;
-  const hasTransportingAt =
-    !!sessionData?.contribution?.ContributionTimeline?.on_delivery_at;
 
   const userLike = sessionData?.session?.guest_identity
     ? { id: sessionData.session.guest_identity.guest_id, role: "guest" }
@@ -616,7 +650,7 @@ export default function Inquiry() {
   return (
     <div className="w-screen h-screen overflow-y-scroll flex flex-col items-center justify-center ">
       {/* OTP Gate */}
-      {!writeEnabled && requiresOtp && (
+      {!isCompleted && !writeEnabled && requiresOtp && (
         <div className="w-[45rem] h-fit shadow-md shadow-gray-600 flex flex-col items-center px-10 pb-2 pt-10">
           <>
             {otpInput ? (
@@ -687,7 +721,7 @@ export default function Inquiry() {
       )}
 
       {/* Everything below is fully gated by OTP */}
-      {writeEnabled && !requiresOtp && sessionData?.contribution && (
+      {(((writeEnabled && !requiresOtp) || isCompleted) && sessionData?.contribution) && (
         <>
           {/* Contract preview */}
           {showView === "document" && (
@@ -715,7 +749,9 @@ export default function Inquiry() {
                   <StyledButton
                     onClick={() =>
                       setShowView(
-                        hasPendingAt
+                        isCompleted
+                          ? "completed" 
+                       : hasPendingAt
                           ? "moasettle"
                           : hasMoasSetteledAt
                           ? hasTransportingAt
@@ -1144,6 +1180,30 @@ export default function Inquiry() {
               </div>
             </div>
           )}
+                   {/* Completed (read-only) */}
+          {showView === "completed" && (
+            <div className="w-full max-w-4xl gap-y-10 justify-center h-full flex flex-col items-center px-2">
+              <TimelineHeader />
+              <DonorTimeline
+                timelineData={
+                  sessionData?.contribution?.ContributionTimeline ||
+                  sessionData?.contribution?.contributiontimeline
+                }
+              />
+              <div className="w-full flex bg-white shadow-md shadow-gray-500 rounded-xl p-8 gap-x-5 items-center">
+                <div className="shrink-0 mt-1">
+                  <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M20 33L12 25L9 28L20 39L41 18L38 15L20 33Z" stroke="black" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </div>
+                <span className="font-semibold">
+                  This transaction is <b>completed</b>. Thank you for your contribution.
+                </span>
+              </div>
+
+            </div>
+          )}
+
         </>
       )}
     </div>

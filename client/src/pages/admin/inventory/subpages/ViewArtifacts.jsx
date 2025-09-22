@@ -16,8 +16,6 @@ import ArtifactMaintenanceForm from "../components/ArtifactMaintenanceForm";
 // local inventory piece
 import MaintenanceReportCard from "../components/MaintenanceReportCard";
 
-
-
 // ✅ network + helpers
 import axiosClient from "@/lib/axiosClient";
 import { decodeBase64 } from "@/utils/base64";
@@ -34,7 +32,9 @@ function extractContributionIdFromPath(pathname) {
       const [id] = decoded.split(" ");
       if (id) return id;
     }
-  } catch {}
+  } catch {
+    // Handle error silently
+  }
   return last;
 }
 
@@ -67,6 +67,7 @@ const mapLatestToEditor = (r, serverUrl) => {
   const imgUrl = (f) => `${serverUrl}/uploads/private/pictures/${f}`;
 
   return {
+    id: r?.id || null,
     personResponsible: r?.person_responsible || "",
     actionTaken: r?.action_taken || "",
     dateStart: toDateOnly(r?.date_start),
@@ -81,6 +82,8 @@ const mapLatestToEditor = (r, serverUrl) => {
     imgAfter: (after || []).map(imgUrl),
     preventive: r?.preventive || "",
     remarks: r?.remarks || "",
+    finalLocation: r?.final_location || "",
+    isSubmitted: true,
   };
 };
 
@@ -100,6 +103,7 @@ function maintenanceFromReport(r) {
     damageImages: [...mkSlides(before, "Before"), ...mkSlides(after, "After")],
   };
 }
+
 /* ----------------------------------------- */
 const TABS = ["Artifact Information", "Maintenance Report"];
 
@@ -128,11 +132,10 @@ function InventoryTabs({
   );
 }
 
-
-
 export default function ViewArtifacts() {
   const location = useLocation();
   const { setExtraBlockContent } = useOutletContext();
+  
   // data state
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -144,9 +147,13 @@ export default function ViewArtifacts() {
   // tabs
   const [activeTab, setActiveTab] = useState("Artifact Information");
 
+  // NEW: Multiple maintenance reports support
+  const [maintenanceReports, setMaintenanceReports] = useState([]);
+  const [reportErrors, setReportErrors] = useState({});
 
-  // report editor (user-editable)
-  const [maintReport1, setMaintReport1] = useState({
+  // Helper to create a new empty report
+  const createEmptyReport = () => ({
+    id: null, // null for new reports, number for existing ones
     personResponsible: "",
     actionTaken: "",
     dateStart: "",
@@ -161,9 +168,9 @@ export default function ViewArtifacts() {
     imgAfter: [],
     preventive: "",
     remarks: "",
+    finalLocation: "",
+    isSubmitted: false,
   });
-
-  const [reportErrors, setReportErrors] = useState({});
 
   // maintenance viewer (read-only)
   const [maintenance, setMaintenance] = useState({
@@ -178,22 +185,22 @@ export default function ViewArtifacts() {
   // maintenance session state
   const [isMaintenanceActive, setIsMaintenanceActive] = useState(false);
 
-useEffect(() => {
-  if (typeof setExtraBlockContent === "function") {
-    if (contributionData) {
-      setExtraBlockContent(
-        <InventoryTabs
-          labels={TABS}
-          active={activeTab}
-          onChange={setActiveTab}
-        />
-      );
-    } else {
-      setExtraBlockContent(null);
+  useEffect(() => {
+    if (typeof setExtraBlockContent === "function") {
+      if (contributionData) {
+        setExtraBlockContent(
+          <InventoryTabs
+            labels={TABS}
+            active={activeTab}
+            onChange={setActiveTab}
+          />
+        );
+      } else {
+        setExtraBlockContent(null);
+      }
+      return () => setExtraBlockContent(null);
     }
-    return () => setExtraBlockContent(null);
-  }
-}, [setExtraBlockContent, contributionData, activeTab]);
+  }, [setExtraBlockContent, contributionData, activeTab]);
 
   // --------------------- Fetch ---------------------
   useEffect(() => {
@@ -209,35 +216,31 @@ useEffect(() => {
         const { data } = await axiosClient.get(`/auth/contributions/${id}`);
         setContributionData(data);
 
-        // Latest maintenance (optional)
+        // Fetch all maintenance reports for this artifact
+        try {
+          const reportsRes = await axiosClient.get(
+            `/auth/contributions/${data?.contribution_id}/maintenance/reports`
+          );
+          const existingReports = (reportsRes.data || []).map(r => mapLatestToEditor(r, SERVER_URL));
+          
+          // If no reports exist, create one empty report
+          if (existingReports.length === 0) {
+            setMaintenanceReports([createEmptyReport()]);
+          } else {
+            setMaintenanceReports(existingReports);
+          }
+        } catch (inner) {
+          console.warn("[maintenance/reports] not found:", inner?.response?.data || inner?.message);
+          setMaintenanceReports([createEmptyReport()]);
+        }
+
+        // Latest maintenance (optional) - for the maintenance viewer
         try {
           const latest = await axiosClient.get(
             `/auth/contributions/${data?.contribution_id}/maintenance/latest`
           );
           const r = latest.data;
           setMaintenance(maintenanceFromReport(r));
-
-          // Prefill editor — only if the user hasn't typed yet
-          setMaintReport1((prev) => {
-            const untouched =
-              !prev.personResponsible &&
-              !prev.actionTaken &&
-              !prev.dateStart &&
-              !prev.dateEnd &&
-              (!prev.dimensions || prev.dimensions.every((d) => !d.L && !d.W && !d.H)) &&
-              !prev.storage &&
-              !prev.responsiblePersonnel &&
-              !prev.initialCondition &&
-              !prev.damages &&
-              !prev.environment &&
-              (!prev.imgBefore?.length) &&
-              (!prev.imgAfter?.length) &&
-              !prev.preventive &&
-              !prev.remarks;
-
-            if (!untouched) return prev; // keep user's in-progress edits
-            return { ...prev, ...mapLatestToEditor(r, SERVER_URL) };
-          });
         } catch (inner) {
           console.warn("[maintenance/latest] not found:", inner?.response?.data || inner?.message);
           setMaintenance(maintenanceFromReport(null));
@@ -248,7 +251,6 @@ useEffect(() => {
           const metaRes = await axiosClient.get(
             `/auth/contributions/${data?.contribution_id}/metadata`
           );
-          // Controller returns joined object from buildJoinedRecordByContributionId.
           const joined = metaRes?.data || {};
           const m =
             joined?.ArtifactMetadata ||
@@ -344,6 +346,11 @@ useEffect(() => {
     try {
       await axiosClient.post(`/auth/contributions/${contributionData.contribution_id}/maintenance/start`);
       setIsMaintenanceActive(true);
+      
+      // Add a new empty report for the new maintenance session
+      const newReport = createEmptyReport();
+      setMaintenanceReports(prev => [...prev, newReport]);
+      
       alert("Maintenance session started successfully!");
       
       // Refresh the maintenance status
@@ -393,6 +400,21 @@ useEffect(() => {
     }
   };
 
+  // --------------------- Report Management ---------------------
+  const updateReport = (index, updatedReport) => {
+    setMaintenanceReports(prev => 
+      prev.map((report, i) => i === index ? updatedReport : report)
+    );
+  };
+
+  const handleReportEdit = (index) => {
+    setMaintenanceReports(prev =>
+      prev.map((report, i) => 
+        i === index ? { ...report, isSubmitted: false } : report
+      )
+    );
+  };
+
   // --------------------- Validation (report) ---------------------
   const validateForm = (d) => {
     const errors = {};
@@ -411,7 +433,9 @@ useEffect(() => {
         if (!errors.dateStart && !errors.dateEnd && end <= start) {
           errors.dateEnd = "End must be after Start";
         }
-      } catch {}
+      } catch {
+        // Handle error silently
+      }
     }
 
     const dims = Array.isArray(d.dimensions) ? d.dimensions : [];
@@ -425,10 +449,8 @@ useEffect(() => {
   };
 
   // --------------------- Submit to API (Report) ---------------------
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    const newErrors = validateForm(maintReport1);
+  const handleReportSubmit = async (reportData) => {
+    const newErrors = validateForm(reportData);
     if (Object.keys(newErrors).length > 0) {
       setReportErrors(newErrors);
       alert("Please fix errors:\n" + Object.values(newErrors).map((m) => `• ${m}`).join("\n"));
@@ -437,19 +459,19 @@ useEffect(() => {
 
     const formData = new FormData();
     formData.append("category", "private");
-    formData.append("person_responsible", maintReport1.personResponsible);
-    formData.append("action_taken", maintReport1.actionTaken);
-    formData.append("date_start", maintReport1.dateStart);
-    formData.append("date_end", maintReport1.dateEnd);
-    formData.append("dimensions", JSON.stringify(maintReport1.dimensions || []));
-    formData.append("storage", maintReport1.storage || "");
-    formData.append("responsible_personnel", maintReport1.responsiblePersonnel || "");
-    formData.append("initial_condition", maintReport1.initialCondition || "");
-    formData.append("damages", maintReport1.damages || "");
-    formData.append("environment", maintReport1.environment || "");
-    formData.append("preventive", maintReport1.preventive || "");
-    formData.append("remarks", maintReport1.remarks || "");
-    formData.append("finalLocation", maintReport1.finalLocation || "");
+    formData.append("person_responsible", reportData.personResponsible);
+    formData.append("action_taken", reportData.actionTaken);
+    formData.append("date_start", reportData.dateStart);
+    formData.append("date_end", reportData.dateEnd);
+    formData.append("dimensions", JSON.stringify(reportData.dimensions || []));
+    formData.append("storage", reportData.storage || "");
+    formData.append("responsible_personnel", reportData.responsiblePersonnel || "");
+    formData.append("initial_condition", reportData.initialCondition || "");
+    formData.append("damages", reportData.damages || "");
+    formData.append("environment", reportData.environment || "");
+    formData.append("preventive", reportData.preventive || "");
+    formData.append("remarks", reportData.remarks || "");
+    formData.append("finalLocation", reportData.finalLocation || "");
 
     const appendFiles = (filesOrUrls, field) => {
       const arr = Array.isArray(filesOrUrls) ? filesOrUrls : filesOrUrls ? [filesOrUrls] : [];
@@ -463,8 +485,8 @@ useEffect(() => {
       });
       if (urls.length) formData.append(`${field}_urls`, JSON.stringify(urls));
     };
-    appendFiles(maintReport1.imgBefore, "imgBefore");
-    appendFiles(maintReport1.imgAfter, "imgAfter");
+    appendFiles(reportData.imgBefore, "imgBefore");
+    appendFiles(reportData.imgAfter, "imgAfter");
 
     try {
       const id = contributionData?.contribution_id;
@@ -478,18 +500,15 @@ useEffect(() => {
       // Update maintenance status to reflect final location
       setMaintenance(prev => ({
         ...prev,
-        status: maintReport1.finalLocation || "Completed"
+        status: reportData.finalLocation || "Completed"
       }));
 
-      // refresh viewer + editor from latest
-      try {
-        const latest = await axiosClient.get(`/auth/contributions/${id}/maintenance/latest`);
-        const r = latest.data;
-        setMaintenance(maintenanceFromReport(r));
-        setMaintReport1((prev) => ({ ...prev, ...mapLatestToEditor(r, SERVER_URL) }));
-      } catch (inner) {
-        console.warn("[refresh latest] failed:", inner?.response?.data || inner?.message);
-      }
+      // Mark the report as submitted
+      setMaintenanceReports(prev =>
+        prev.map(report => 
+          report === reportData ? { ...report, isSubmitted: true } : report
+        )
+      );
 
       setReportErrors({});
       alert("Maintenance completed successfully! Artifact location updated.");
@@ -525,24 +544,6 @@ useEffect(() => {
   // --------------------- Render ---------------------
   return (
     <div className="w-full h-full flex flex-col gap-6">
-      {/* --- Tabs --- */}
-      {/* <div className="w-full flex items-end justify-end gap-3 mb-4">
-        {TABS.map((label) => (
-          <button
-            key={label}
-            type="button"
-            onClick={() => setActiveTab(label)}
-            className={`w-[12rem] h-[3rem] flex items-center justify-center rounded-md border-[3px] text-2xl font-bold transition-colors ${
-              activeTab === label
-                ? "bg-black border-black text-[#CDC469]"
-                : "border-black text-black hover:bg-gray-300"
-            }`}
-          >
-            {label}
-          </button>
-        ))}
-      </div> */}
-
       {/* ====================== ARTIFACT INFORMATION ====================== */}
       {activeTab === "Artifact Information" && (
           <ArtifactDetailsShell
@@ -659,19 +660,19 @@ useEffect(() => {
       {activeTab === "Maintenance Report" && (
         <div className="w-full h-full grid grid-cols-[43rem_1fr] items-start relative pr-15">
           {/* LEFT: black rail */}
-              <div className="absolute left-0  -top-[12rem] w-[43rem] h-[12rem] bg-black flex items-start justify-end pl-10 pb-5 pt-4 overflow-hidden flex-col">
-                <span className="text-white text-3xl font-bold text-left break-words line-clamp-3 max-w-[38rem]">
-                  {artifact?.title || "Artifact Title"}
-                </span>
-                <Breadcrumb hideTitle={true} overrideTheme="text-white" />
-              </div>
-              <div className="bg-black h-full">
-              <RenderArtifactImageAndDonatorInfo
-                donatorInformation={donatorInformation}
-                artifactImg={artifactImg}
-              />
-</div>
-              <div className="absolute left-0 -bottom-[1.2rem] w-[43rem] h-[1.2rem] bg-black" />
+          <div className="absolute left-0  -top-[12rem] w-[43rem] h-[12rem] bg-black flex items-start justify-end pl-10 pb-5 pt-4 overflow-hidden flex-col">
+            <span className="text-white text-3xl font-bold text-left break-words line-clamp-3 max-w-[38rem]">
+              {artifact?.title || "Artifact Title"}
+            </span>
+            <Breadcrumb hideTitle={true} overrideTheme="text-white" />
+          </div>
+          <div className="bg-black h-full">
+            <RenderArtifactImageAndDonatorInfo
+              donatorInformation={donatorInformation}
+              artifactImg={artifactImg}
+            />
+          </div>
+          <div className="absolute left-0 -bottom-[1.2rem] w-[43rem] h-[1.2rem] bg-black" />
 
           <div className="relative col-span-1">
             <div className="w-full h-20 rounded-r-2xl bg-[#1D1911] flex items-center justify-between pr-5 pl-12">
@@ -693,21 +694,22 @@ useEffect(() => {
               </button>
             </div>
 
-            {/* Your form stays the same */}
-            <form className="h-[57rem] 3xl:h-[74rem] overflow-scroll col-span-1 flex-1 px-1 sm:px-2 pt-4" onSubmit={handleSubmit}>
-              <MaintenanceReportCard
-                title="Report 1"
-                report={maintReport1}
-                onChange={setMaintReport1}
-                defaultOpen
-                errors={reportErrors}
-              />
-
-              {/* <div className=" w-full flex items-center justify-end px-0 pt-2">
-
-
-              </div> */}
-            </form>
+            {/* Multiple Reports Container */}
+            <div className="h-[57rem] 3xl:h-[74rem] overflow-scroll col-span-1 flex-1 px-1 sm:px-2 pt-4">
+              {maintenanceReports.map((report, index) => (
+                <MaintenanceReportCard
+                  key={index}
+                  title={`Report ${index + 1}`}
+                  report={report}
+                  onChange={(updatedReport) => updateReport(index, updatedReport)}
+                  defaultOpen={index === maintenanceReports.length - 1} // Open the latest report
+                  errors={reportErrors}
+                  isSubmitted={report.isSubmitted}
+                  onEdit={() => handleReportEdit(index)}
+                  onSubmit={handleReportSubmit}
+                />
+              ))}
+            </div>
           </div>
         </div>
       )}

@@ -3,7 +3,7 @@ import { mainDb } from "../configs/databases.js";
 import { MaintenanceSessions } from "../models/MaintenanceSessions.js";
 import { MaintenanceReports } from "../models/MaintenanceReports.js";
 import { Contributions } from "../models/contributionModels.js";
-import CatalogArtifact from "../models/CatalogArtifact.js";
+import { CatalogArtifact } from "../models/CatalogArtifact.js";
 
 /* ---------- helpers ---------- */
 const parseArray = (raw, fallback = []) => {

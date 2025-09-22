@@ -1,15 +1,40 @@
 import WebsiteAnalytics from '../models/WebsiteAnalytics.js';
 import { Op } from 'sequelize';
 
+/**
+ * Store last entry timestamp per (sessionId + date + page) to collapse duplicates
+ * within a short cooldown window (e.g., React StrictMode, double renders, quick retries).
+ */
+const ENTRY_COOLDOWN_MS = 2000;
+const lastEntryAt = new Map();
+
 export const trackPageView = async (req, res) => {
   try {
     const { pageName, sessionId, timeSpent } = req.body;
     
-    if (!pageName) {
-      return res.status(400).json({ error: 'Page name is required' });
+    if (!pageName || !sessionId) {
+      return res.status(400).json({ error: 'Page name and session ID are required' });
     }
 
     const today = new Date().toISOString().split('T')[0];
+    const sessionKey = `${sessionId}-${today}-${pageName.toLowerCase()}`;
+
+    // Only count initial page entry, not exit tracking
+    if (timeSpent === 0) {
+      const now = Date.now();
+      const last = lastEntryAt.get(sessionKey) || 0;
+
+      // Collapse duplicates within cooldown window
+      if (now - last < ENTRY_COOLDOWN_MS) {
+        return res.status(200).json({ success: true, message: 'Duplicate within cooldown - skipped' });
+      }
+
+      // Record last successful entry time
+      lastEntryAt.set(sessionKey, now);
+    } else {
+      // For exit tracking (timeSpent > 0), don't increment counters
+      return res.status(200).json({ success: true, message: 'Exit tracking - no count' });
+    }
 
     // Map page names to database columns
     const pageColumnMap = {

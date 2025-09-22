@@ -1,5 +1,6 @@
 import WebsiteAnalytics from '../models/WebsiteAnalytics.js';
 import { Op } from 'sequelize';
+import { emitDbChange } from '../hooks/emitDbChangeHooks.js';
 
 /**
  * Store last entry timestamp per (sessionId + date + page) to collapse duplicates
@@ -75,6 +76,13 @@ export const trackPageView = async (req, res) => {
     };
 
     await analytics.increment(incrementData);
+
+    // Emit live socket event so dashboards update in real-time
+    try {
+      emitDbChange("WebsiteAnalytics", "update", analytics);
+    } catch (e) {
+      console.warn("[WebsiteAnalyticsController] emitDbChange failed:", e?.message || e);
+    }
 
     res.status(200).json({ success: true });
   } catch (error) {

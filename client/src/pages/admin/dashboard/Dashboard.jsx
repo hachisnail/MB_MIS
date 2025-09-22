@@ -1,4 +1,4 @@
-import { useAuth } from "../../../context/authContext";
+import { useAuth, useSocketClient } from "../../../context/authContext";
 import StyledButton from "../../../components/buttons/StyledButton";
 import { NavLink } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
@@ -11,9 +11,13 @@ import { Transition } from "@headlessui/react";
 import { createPortal } from "react-dom";
 import axiosClient from "../../../lib/axiosClient";
 import { encodeBase64 } from "../../../utils/base64";
+import axios from "axios";
+const BASE_URL = import.meta.env.VITE_API_BASE_URL;
+const SERVER_ORIGIN = BASE_URL?.replace(/\/api$/, "");
 
 const Dashboard = () => {
   const { user } = useAuth();
+  const socket = useSocketClient();
   const navigate = useNavigate();
 
   // State for chart container height
@@ -217,34 +221,54 @@ const Dashboard = () => {
       setIsLoadingArtifacts(true);
       setArtifactError(null);
 
-      // Fetch artifact data from the same endpoint used by inventory
-      const response = await axiosClient.get('/auth/public-artifacts');
-      const artifacts = response.data;
+      // Fetch inventory using the same logic as Inventory.jsx (A then B)
+      console.log("[Dashboard.jsx] fetching inventory for stats (A)", `${SERVER_ORIGIN}/api/auth/inventory`);
+      const respA = await axios.get(`${SERVER_ORIGIN}/api/auth/inventory`, {
+        withCredentials: true,
+        headers: { Accept: "application/json" },
+        validateStatus: () => true,
+      });
 
-      // Calculate statistics using the same logic as inventory
-      const total = artifacts.length;
-      const acquired = artifacts.filter(artifact => artifact.contribution_type !== "lending").length;
-      const borrowed = artifacts.filter(artifact => artifact.contribution_type === "lending").length;
-      const displayed = artifacts.filter(artifact =>
-        artifact.on_display || (artifact.display_status || "").toLowerCase().includes("display")
-      ).length;
+      let rows;
+      if (respA.status === 200 && Array.isArray(respA.data)) {
+        rows = respA.data;
+      } else {
+        console.log("[Dashboard.jsx] (A) not array or wrong status, trying (B)", `${SERVER_ORIGIN}/api/inventory`);
+        const respB = await axios.get(`${SERVER_ORIGIN}/api/inventory`, {
+          withCredentials: true,
+          headers: { Accept: "application/json" },
+          validateStatus: () => true,
+        });
+
+        if (respB.status === 200 && Array.isArray(respB.data)) {
+          rows = respB.data;
+        } else {
+          const sample = typeof respA.data === "string" ? respA.data.slice(0, 200) : JSON.stringify(respA.data)?.slice(0, 200);
+          console.warn("[Dashboard.jsx] Inventory API did not return JSON array. Sample:", sample);
+          throw new Error("Inventory API did not return JSON array");
+        }
+      }
+
+      // Calculate statistics using the same logic as Inventory.jsx summary
+      const total = rows.length;
+      const acquired = rows.filter((r) => r.contribution_type !== "lending").length;
+      const borrowed = rows.filter((r) => r.contribution_type === "lending").length;
+      const displayed = rows.filter((r) => (r.display_status || "").toLowerCase().includes("display")).length;
 
       setArtifactStats({
         total,
         acquired,
         borrowed,
-        displayed
+        displayed,
       });
-
     } catch (error) {
-      console.error('Error fetching artifact statistics:', error);
-      setArtifactError('Failed to load artifact data');
-      // Fallback to default data
+      console.error("Error fetching artifact statistics:", error);
+      setArtifactError("Failed to load artifact data");
       setArtifactStats({
         total: 0,
         acquired: 0,
         borrowed: 0,
-        displayed: 0
+        displayed: 0,
       });
     } finally {
       setIsLoadingArtifacts(false);
@@ -496,6 +520,50 @@ const Dashboard = () => {
     fetchArtifactStats();
     fetchWebsiteTrafficData();
   }, []);
+
+  // Live updates via socket.io (pattern follows Appointments.jsx)
+  useEffect(() => {
+    if (!socket) return;
+
+    const refreshAppointments = () => {
+      fetchAppointmentData();
+      fetchVisitorQuotaData();
+      fetchUnreadQueries();
+    };
+
+    const refreshSchedules = () => {
+      fetchSchedulesToday();
+    };
+
+    const refreshWebsiteAnalytics = () => {
+      fetchWebsiteTrafficData();
+    };
+
+    // Appointments + Status changes -> update charts, stats, and unread queries
+    socket.onDbChange("Appointment", "*", refreshAppointments);
+    socket.onDbChange("AppointmentStatus", "*", refreshAppointments);
+
+    // Schedules -> update "Schedules Today"
+    socket.onDbChange("Schedule", "*", refreshSchedules);
+
+    // Website analytics -> update traffic overview
+    socket.onDbChange("WebsiteAnalytics", "*", refreshWebsiteAnalytics);
+
+    // If inventory models emit in future, you can attach:
+    // socket.onDbChange("CatalogArtifacts", "*", fetchArtifactStats);
+    // socket.onDbChange("ContributionArtifacts", "*", fetchArtifactStats);
+    // socket.onDbChange("ArtifactMetadata", "*", fetchArtifactStats);
+
+    return () => {
+      socket.offDbChange("Appointment", "*", refreshAppointments);
+      socket.offDbChange("AppointmentStatus", "*", refreshAppointments);
+      socket.offDbChange("Schedule", "*", refreshSchedules);
+      socket.offDbChange("WebsiteAnalytics", "*", refreshWebsiteAnalytics);
+      // socket.offDbChange("CatalogArtifacts", "*", fetchArtifactStats);
+      // socket.offDbChange("ContributionArtifacts", "*", fetchArtifactStats);
+      // socket.offDbChange("ArtifactMetadata", "*", fetchArtifactStats);
+    };
+  }, [socket]);
 
   // Dynamic topItems using real artifact statistics
   const topItems = [

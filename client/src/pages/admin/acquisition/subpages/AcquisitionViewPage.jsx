@@ -143,6 +143,8 @@ const AcquisitionViewPage = () => {
 
   // 🔐 Source of truth for completion (status-based)
   const isCompleted = contributionData?.status === "completed";
+  const isRejected = contributionData?.status === "rejected";
+
 
   // derive gating for Artifact Details tab (status → single source of truth)
   const showArtifactDetails = isCompleted;
@@ -314,7 +316,7 @@ const AcquisitionViewPage = () => {
     // Server infers user from session; no need to pass sender ids
     messaging.sendUserMessage(conversationId, text.trim());
   };
-
+  console.log(messages);
   /* ---------------- Submit / server calls ---------------- */
 
   const handleSubmit = async () => {
@@ -393,6 +395,22 @@ const AcquisitionViewPage = () => {
     if (st === "completed") sStep = 5;
     setStep(Math.max(tStep, sStep));
   }, [timeline, contributionData?.status]);
+
+function checkShouldTrigger(messages) {
+  const hasAcceptNo = messages.some(m =>
+    (m.message ?? "").split("\n").map(l => l.trim()).includes("• Accept MOA: No")
+  );
+
+  const hasMoaErrorsYes = messages.some(m =>
+    (m.message ?? "").split("\n").map(l => l.trim()).includes("• MOA errors: Yes")
+  );
+
+  return hasAcceptNo || hasMoaErrorsYes;
+}
+
+
+const overrideMoa = checkShouldTrigger(messages);
+
 
   const donatorInformation = contributor
     ? [
@@ -510,11 +528,28 @@ const AcquisitionViewPage = () => {
         status: "completed",
         responseMessage: "Marked completed by staff.",
       });
+       updateStep(id, 6)
       await fetchContribution();
       setActiveDocument("Overview");
     } catch (e) {
       console.error("Failed to mark as completed:", e);
       alert("Failed to complete the contribution. Please check server logs.");
+    }
+  };
+
+
+    const markCanceled = async () => {
+    try {
+      const id = contributionData?.contribution_id;
+      await axiosClient.patch(`/auth/contributions/${id}/status`, {
+        status: "rejected",
+        responseMessage: "Marked rejcted by staff.",
+      });
+      await fetchContribution();
+      setActiveDocument("Overview");
+    } catch (e) {
+      console.error("Failed to mark as rejected:", e);
+      alert("Failed to reject the contribution. Please check server logs.");
     }
   };
 
@@ -734,10 +769,13 @@ const AcquisitionViewPage = () => {
                         <div className="flex flex-col gap-y-2">
                           <span className="text-xl font-semibold">Override Form Controls:</span>
                           <div className="flex gap-3 flex-wrap">
+                            {overrideMoa && (
+                              <>
                             <StyledButton
                               className="w-50 mt-5"
                               buttonColor="bg-[#6F3FFF]"
                               onClick={() => settleMoa()}
+                              disabled={isCompleted || isRejected}
                             >
                               Settle MOA
                             </StyledButton>
@@ -745,16 +783,21 @@ const AcquisitionViewPage = () => {
                               className="w-50 mt-5"
                               buttonColor="bg-emerald-600"
                               onClick={markCompleted}
-                              disabled={isCompleted}
+                              disabled={isCompleted || isRejected}
                               title={isCompleted ? "Already completed" : "Mark as completed"}
                             >
                               {isCompleted ? "Completed" : "Mark Completed"}
                             </StyledButton>
+                            </>
+                            )}
                             <StyledButton
                               className="w-50 mt-5"
                               buttonColor="bg-red-500"
+                              onClick={markCanceled}
+                              disabled={isRejected || isCompleted}
+                              title={isRejected ? "Already rejected" : "Mark as rejected"}
                             >
-                              Cancel Contribution
+                              {isCompleted ? "Cancel Contribution" : "Cancelled"}
                             </StyledButton>
                           </div>
                         </div>

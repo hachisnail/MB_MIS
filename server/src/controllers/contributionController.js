@@ -392,6 +392,15 @@ export const updateContributionStatus = async (req, res) => {
       // afterUpdate hook on Contributions will assign collection_number
     }
 
+    if (status === "rejected") {
+      // Treat rejected as closed: disable writes by closing sessions
+      await ContributionSessions.update(
+        { is_active: false, closed_at: now },
+        { where: { contribution_id: id, is_active: true } }
+      );
+      // No catalog sync or collection number for rejected
+    }
+
     // Build and send email (unchanged behavior)
     const artifactName = contribution.ContributionArtifact?.title || "your artifact";
     const typeWord = contribution.contribution_type === "donation" ? "donation" : "lending";
@@ -761,9 +770,9 @@ export const openContributionSessionByToken = async (req, res) => {
     securityHeaders(res);
     const now = new Date();
 
-    const isContributionCompleted = (c) => {
+    const isContributionClosed = (c) => {
       const t = c?.ContributionTimeline;
-      return c?.status === "completed" || !!t?.completed_at;
+      return c?.status === "completed" || c?.status === "rejected" || !!t?.completed_at;
     };
 
     // ---------- 1) Cookie path (prefer if present) ----------
@@ -826,7 +835,7 @@ export const openContributionSessionByToken = async (req, res) => {
             ],
           });
 
-          if (contribution && isContributionCompleted(contribution)) {
+          if (contribution && isContributionClosed(contribution)) {
             const gi = asJson(session.guest_identity) || {};
             await session.update({
               last_seen_at: now,
@@ -913,7 +922,7 @@ export const openContributionSessionByToken = async (req, res) => {
     }
 
     // Inactive/expired session — if completed, allow read-only timeline
-    if (isContributionCompleted(contribution)) {
+    if (isContributionClosed(contribution)) {
       const gi = asJson(session.guest_identity) || {};
       await session.update({
         last_seen_at: now,

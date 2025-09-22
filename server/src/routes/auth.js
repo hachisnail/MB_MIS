@@ -48,7 +48,7 @@ import {
 } from "../controllers/artifactMetadataController.js";
 
 import {
-  createMaintenanceReport, getLatestMaintenanceReportByContribution,
+  createMaintenanceReport, getLatestMaintenanceReportByContribution, getAllMaintenanceReportsByContribution,
 } from "../controllers/maintenanceReportController.js";
 
 import {
@@ -282,6 +282,14 @@ router.get(
   requireAuth,
   requireRole([1, 2, 5]),
   getLatestMaintenanceReportByContribution
+);
+
+// NEW: Get all maintenance reports for a contribution
+router.get(
+  "/contributions/:id/maintenance/reports",
+  requireAuth,
+  requireRole([1, 2, 5]),
+  getAllMaintenanceReportsByContribution
 );
 
 // Update artifact location

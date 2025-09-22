@@ -76,3 +76,21 @@ export const getLatestMaintenanceReportByContribution = async (req, res) => {
     return res.status(500).json({ message: "Failed to fetch report." });
   }
 };
+
+// NEW: Get all maintenance reports for a contribution
+export const getAllMaintenanceReportsByContribution = async (req, res) => {
+  try {
+    const contributionId = Number(req.params.id);
+    if (!contributionId) return res.status(400).json({ message: "Invalid contribution id." });
+
+    const reports = await MaintenanceReports.findAll({
+      where: { contribution_id: contributionId },
+      order: [["date_start", "DESC"], ["id", "DESC"]],
+    });
+
+    return res.json(reports || []);
+  } catch (err) {
+    console.error("[getAllMaintenanceReportsByContribution] error:", err);
+    return res.status(500).json({ message: "Failed to fetch maintenance reports." });
+  }
+};

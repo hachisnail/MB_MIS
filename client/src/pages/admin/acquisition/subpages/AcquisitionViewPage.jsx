@@ -478,13 +478,20 @@ const overrideMoa = checkShouldTrigger(messages);
       label: img,
     })) || [];
 
-  const attachedFiles =
-    artifact?.documents?.map((doc, idx) => ({
-      key: idx.toString(),
-      filename: doc,
-      category: "file",
-      url: `${SERVER_URL}/uploads/private/files/${doc}`,
-    })) || [];
+const attachedFiles = (artifact?.documents ?? []).map((doc, idx) => {
+  const lower = (doc || "").toLowerCase();
+  const isImage = /\.(jpg|jpeg|png|gif|bmp|webp)$/i.test(lower);
+
+  return {
+    key: String(idx),
+    filename: doc || `File ${idx + 1}`,
+    category: "file",
+    url: isImage
+      ? `${SERVER_URL}/uploads/private/pictures/${doc}`
+      : `${SERVER_URL}/uploads/private/files/${doc}`,
+  };
+});
+
 
   const artifactInfo = artifact
     ? [

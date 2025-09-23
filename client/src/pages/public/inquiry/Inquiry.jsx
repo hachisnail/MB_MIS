@@ -94,6 +94,7 @@ export default function Inquiry() {
   const [suggestion, setSuggestion] = useState("");
 
   const [isCompleted, setIsCompleted] = useState(false);
+  const [isRejected, setIsRejected] = useState(false);
 
   // RHF
   const methods = useForm({
@@ -220,19 +221,23 @@ const sess = res?.data?.session;
 const sessionActive = (sess?.is_active ?? true);
 
 const statusCompleted = contrib?.status === "completed";
+const statusRejected = contrib?.status === "rejected";
 const timelineCompleted = !!contrib?.ContributionTimeline?.completed_at;
 
 // Only completed if status is completed OR (timeline shows completed AND session is inactive)
 const completed = statusCompleted || (timelineCompleted && !sessionActive);
+setIsRejected(!!statusRejected);
+
 setIsCompleted(completed);
 
 const serverRequiresOtp = !!res.data?.requires_otp;
 
-if (completed) {
+if (completed || statusRejected) {
   // read-only display: skip OTP & disable writes
   setRequiresOtp(false);
   setWriteEnabled(false);
   setShowView("completed");
+  setShowView(statusRejected ? "rejected" : "completed");
 } else {
   setRequiresOtp(serverRequiresOtp);
   setWriteEnabled(!serverRequiresOtp);
@@ -650,7 +655,7 @@ const handleSubmitStep3 = async () => {
   return (
     <div className="w-screen h-screen overflow-y-scroll flex flex-col items-center justify-center ">
       {/* OTP Gate */}
-      {!isCompleted && !writeEnabled && requiresOtp && (
+      {!isCompleted && !isRejected && !writeEnabled && requiresOtp && (
         <div className="w-[45rem] h-fit shadow-md shadow-gray-600 flex flex-col items-center px-10 pb-2 pt-10">
           <>
             {otpInput ? (
@@ -721,7 +726,7 @@ const handleSubmitStep3 = async () => {
       )}
 
       {/* Everything below is fully gated by OTP */}
-      {(((writeEnabled && !requiresOtp) || isCompleted) && sessionData?.contribution) && (
+       {(((writeEnabled && !requiresOtp) || isCompleted || isRejected) && sessionData?.contribution) && (
         <>
           {/* Contract preview */}
           {showView === "document" && (
@@ -751,6 +756,8 @@ const handleSubmitStep3 = async () => {
                       setShowView(
                         isCompleted
                           ? "completed" 
+                          : isRejected
+                          ? "rejected"
                        : hasPendingAt
                           ? "moasettle"
                           : hasMoasSetteledAt
@@ -1180,7 +1187,8 @@ const handleSubmitStep3 = async () => {
               </div>
             </div>
           )}
-                   {/* Completed (read-only) */}
+
+          {/* Completed (read-only) */}
           {showView === "completed" && (
             <div className="w-full max-w-4xl gap-y-10 justify-center h-full flex flex-col items-center px-2">
               <TimelineHeader />
@@ -1204,6 +1212,27 @@ const handleSubmitStep3 = async () => {
             </div>
           )}
 
+          {showView === "rejected" && (
+          <div className="w-full max-w-4xl gap-y-10 justify-center h-full flex flex-col items-center px-2">
+            <TimelineHeader />
+            <DonorTimeline
+              timelineData={
+                sessionData?.contribution?.ContributionTimeline ||
+                sessionData?.contribution?.contributiontimeline
+              }
+            />
+            <div className="w-full flex bg-white shadow-md shadow-gray-500 rounded-xl p-8 gap-x-5 items-center">
+              <div className="shrink-0 mt-1">
+                <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M9 9L39 39M39 9L9 39" stroke="black" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </div>
+              <span className="font-semibold">
+                This transaction was <b>cancelled</b>. Your contribution attempt was cancelled. The timeline remains visible for your reference.
+              </span>
+            </div>
+          </div>
+          )}
         </>
       )}
     </div>

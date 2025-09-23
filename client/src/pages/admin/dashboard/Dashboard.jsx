@@ -591,7 +591,7 @@ const Dashboard = () => {
 
   const walkIn = [
     { label: "Appointment", path: "/admin/appointment/walk-ins/" },
-    { label: "Donation", path: "/admin/dashboard" },
+    { label: "Donation", path: "/about/support/contribution-form" },
   ];
 
   return (
@@ -658,7 +658,7 @@ const Dashboard = () => {
                 const path =
                   label === "Appointment"
                     ? "/admin/appointment/walk-ins/"
-                    : "/admin/acquisition/add-artifact";
+                    : "/about/support/contribution-form";
 
                 return (
                   <button

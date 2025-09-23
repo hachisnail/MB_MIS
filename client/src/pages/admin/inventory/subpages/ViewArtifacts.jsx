@@ -307,12 +307,20 @@ export default function ViewArtifacts() {
     label: img || `Image ${idx + 1}`,
   }));
 
-  const attachedFiles = (artifact?.documents ?? []).map((doc, idx) => ({
+const attachedFiles = (artifact?.documents ?? []).map((doc, idx) => {
+  const lower = (doc || "").toLowerCase();
+  const isImage = /\.(jpg|jpeg|png|gif|bmp|webp)$/i.test(lower);
+
+  return {
     key: String(idx),
     filename: doc || `File ${idx + 1}`,
     category: "file",
-    url: `${SERVER_URL}/uploads/private/files/${doc}`,
-  }));
+    url: isImage
+      ? `${SERVER_URL}/uploads/private/pictures/${doc}`
+      : `${SERVER_URL}/uploads/private/files/${doc}`,
+  };
+});
+
 
   // donor info
   const donatorInformation = contributor

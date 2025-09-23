@@ -146,8 +146,13 @@ const AcquisitionViewPage = () => {
     return 0;
   };
 
-  // derive gating for Artifact Details tab
-  const showArtifactDetails = step === 5; // completed
+  // 🔐 Source of truth for completion (status-based)
+  const isCompleted = contributionData?.status === "completed";
+  const isRejected = contributionData?.status === "rejected";
+
+
+  // derive gating for Artifact Details tab (status → single source of truth)
+  const showArtifactDetails = isCompleted;
   const tabsToShow = showArtifactDetails
     ? ALL_TABS
     : ["Overview", "Document", "Transaction"];
@@ -340,7 +345,7 @@ const AcquisitionViewPage = () => {
     if (!conversationId || !text.trim()) return;
     messaging.sendUserMessage(conversationId, text.trim());
   };
-
+  console.log(messages);
   /* ---------------- Submit / server calls ---------------- */
 
   const handleSubmit = async () => {
@@ -411,11 +416,29 @@ const AcquisitionViewPage = () => {
   };
 
   useEffect(() => {
-    if (timeline) {
-      const stepIndex = mapTimelineStep(timeline);
-      setStep(stepIndex);
-    }
-  }, [timeline]);
+    const tStep = mapTimelineStep(timeline || {});
+    let sStep = 0;
+    const st = contributionData?.status;
+    if (st === "approved") sStep = 2;
+    if (st === "completed") sStep = 5;
+    setStep(Math.max(tStep, sStep));
+  }, [timeline, contributionData?.status]);
+
+function checkShouldTrigger(messages) {
+  const hasAcceptNo = messages.some(m =>
+    (m.message ?? "").split("\n").map(l => l.trim()).includes("• Accept MOA: No")
+  );
+
+  const hasMoaErrorsYes = messages.some(m =>
+    (m.message ?? "").split("\n").map(l => l.trim()).includes("• MOA errors: Yes")
+  );
+
+  return hasAcceptNo || hasMoaErrorsYes;
+}
+
+
+const overrideMoa = checkShouldTrigger(messages);
+
 
   const donatorInformation = contributor
     ? [
@@ -483,13 +506,20 @@ const AcquisitionViewPage = () => {
       label: img,
     })) || [];
 
-  const attachedFiles =
-    artifact?.documents?.map((doc, idx) => ({
-      key: idx.toString(),
-      filename: doc,
-      category: "file",
-      url: `${SERVER_URL}/uploads/private/files/${doc}`,
-    })) || [];
+const attachedFiles = (artifact?.documents ?? []).map((doc, idx) => {
+  const lower = (doc || "").toLowerCase();
+  const isImage = /\.(jpg|jpeg|png|gif|bmp|webp)$/i.test(lower);
+
+  return {
+    key: String(idx),
+    filename: doc || `File ${idx + 1}`,
+    category: "file",
+    url: isImage
+      ? `${SERVER_URL}/uploads/private/pictures/${doc}`
+      : `${SERVER_URL}/uploads/private/files/${doc}`,
+  };
+});
+
 
   const artifactInfo = artifact
     ? [
@@ -524,6 +554,39 @@ const AcquisitionViewPage = () => {
     { label: "Date Submitted", value: submittedDate || "Not Provided" },
     { label: "Time", value: submittedTime || "Not Provided" },
   ];
+
+  // NEW: complete action (status-based)
+  const markCompleted = async () => {
+    try {
+      const id = contributionData?.contribution_id;
+      await axiosClient.patch(`/auth/contributions/${id}/status`, {
+        status: "completed",
+        responseMessage: "Marked completed by staff.",
+      });
+       updateStep(id, 6)
+      await fetchContribution();
+      setActiveDocument("Overview");
+    } catch (e) {
+      console.error("Failed to mark as completed:", e);
+      alert("Failed to complete the contribution. Please check server logs.");
+    }
+  };
+
+
+    const markCanceled = async () => {
+    try {
+      const id = contributionData?.contribution_id;
+      await axiosClient.patch(`/auth/contributions/${id}/status`, {
+        status: "rejected",
+        responseMessage: "Marked rejcted by staff.",
+      });
+      await fetchContribution();
+      setActiveDocument("Overview");
+    } catch (e) {
+      console.error("Failed to mark as rejected:", e);
+      alert("Failed to reject the contribution. Please check server logs.");
+    }
+  };
 
   if (loading) {
     return (
@@ -739,21 +802,37 @@ const AcquisitionViewPage = () => {
                       // --- Conversation timeline + input ---
                       <>
                         <div className="flex flex-col gap-y-2">
-                          <span className="text-xl font-semibold">Overide Form Controls:</span>
-                          <div className="flex gap-3">
+                          <span className="text-xl font-semibold">Override Form Controls:</span>
+                          <div className="flex gap-3 flex-wrap">
+                            {overrideMoa && (
+                              <>
                             <StyledButton
                               className="w-50 mt-5"
                               buttonColor="bg-[#6F3FFF]"
                               onClick={() => settleMoa()}
+                              disabled={isCompleted || isRejected}
                             >
                               Settle MOA
                             </StyledButton>
                             <StyledButton
                               className="w-50 mt-5"
-                              buttonColor="bg-red-500"
-                              // onClick={handleSubmit} // TODO: cancel flow if needed
+                              buttonColor="bg-emerald-600"
+                              onClick={markCompleted}
+                              disabled={isCompleted || isRejected}
+                              title={isCompleted ? "Already completed" : "Mark as completed"}
                             >
-                              Cancel Contribution
+                              {isCompleted ? "Completed" : "Mark Completed"}
+                            </StyledButton>
+                            </>
+                            )}
+                            <StyledButton
+                              className="w-50 mt-5"
+                              buttonColor="bg-red-500"
+                              onClick={markCanceled}
+                              disabled={isRejected || isCompleted}
+                              title={isRejected ? "Already rejected" : "Mark as rejected"}
+                            >
+                              {isCompleted ? "Cancel Contribution" : "Cancelled"}
                             </StyledButton>
                           </div>
                         </div>

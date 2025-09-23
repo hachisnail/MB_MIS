@@ -230,6 +230,10 @@ const Router = () => {
             <>
               <Route path="inventory" element={<Inventory />} />
               <Route path="inventory/:encoded" element={<ViewArtifacts />} />
+                            <Route
+                path="inventory/:encoded/view"
+                element={<FilePreviewer />}
+              />
             </>
           )}
 

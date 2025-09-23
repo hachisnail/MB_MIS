@@ -1,5 +1,6 @@
 // src/controllers/maintenanceReportController.js
 import { MaintenanceReports } from "../models/MaintenanceReports.js";
+import { createLog } from "../services/logService.js";
 
 export const createMaintenanceReport = async (req, res) => {
   try {
@@ -47,6 +48,29 @@ export const createMaintenanceReport = async (req, res) => {
       img_before,
       img_after,
     });
+
+    // Log maintenance report creation (admin-side only)
+    if (req.session?.user) {
+      const userId = req.session.user.id;
+      const username = req.session.user.username || 'Admin';
+      
+      await createLog(
+        'create',
+        'MAINTENANCE_REPORT',
+        `Maintenance report created for contribution #${contributionId} by ${person_responsible}`,
+        userId,
+        null,
+        {
+          report_id: saved.id,
+          contribution_id: contributionId,
+          person_responsible,
+          action_taken,
+          date_start,
+          date_end
+        },
+        `${username} created maintenance report #${saved.id} for contribution #${contributionId}`
+      );
+    }
 
     return res.json({
       id: saved.id,

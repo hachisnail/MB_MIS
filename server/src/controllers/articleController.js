@@ -4,6 +4,7 @@ import { mainDb as sequelize } from '../models/authModels.js';
 import Article from '../models/Article.js';
 import User from '../models/Users.js';
 import { assignArchiveNumbers } from '../services/archiveNumbering.js';
+import { createLog } from '../services/logService.js';
 
 /* --------------------------- helpers --------------------------- */
 const toDateOrNull = (v) => (v ? new Date(v) : null);
@@ -72,6 +73,28 @@ export const createArticle = async (req, res) => {
 
     if (normalizedStatus === 'posted') {
       await assignArchiveNumbers(article, t);
+    }
+
+    // Log article creation (admin-side only)
+    if (req.session?.user) {
+      const userId = req.session.user.id;
+      const username = req.session.user.username || 'Admin';
+      
+      await createLog(
+        'create',
+        'ARTICLE',
+        `New article "${title}" created with status: ${normalizedStatus}`,
+        userId,
+        null,
+        {
+          article_id: article.article_id,
+          title,
+          status: normalizedStatus,
+          article_category,
+          author
+        },
+        `${username} created article #${article.article_id}: "${title}"`
+      );
     }
 
     await t.commit();
@@ -241,6 +264,9 @@ export const updateArticle = async (req, res) => {
       }
     }
 
+    // Capture before state for logging
+    const beforeState = current.toJSON();
+
     await current.update(fieldsToSet, {
       fields: Object.keys(fieldsToSet),
       transaction: t,
@@ -249,6 +275,23 @@ export const updateArticle = async (req, res) => {
 
     if (becomingPosted && !(current.volume != null && current.sequence_number != null)) {
       await assignArchiveNumbers(current, t);
+    }
+
+    // Log article update (admin-side only)
+    if (req.session?.user && Object.keys(fieldsToSet).length > 0) {
+      const userId = req.session.user.id;
+      const username = req.session.user.username || 'Admin';
+      const changedFields = Object.keys(fieldsToSet).join(', ');
+      
+      await createLog(
+        'update',
+        'ARTICLE',
+        `Article "${current.title}" updated - fields changed: ${changedFields}`,
+        userId,
+        beforeState,
+        current.toJSON(),
+        `${username} updated article #${current.article_id}: "${current.title}"`
+      );
     }
 
     await t.commit();

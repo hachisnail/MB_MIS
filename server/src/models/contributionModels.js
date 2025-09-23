@@ -3,6 +3,7 @@ import { DataTypes } from "sequelize";
 import { mainDb } from "../configs/databases.js";
 import { ArtifactMetadata } from "./ArtifactMetadata.js";
 import { CatalogArtifact } from "./CatalogArtifact.js";
+import { addDbChangeHooks } from "../hooks/emitDbChangeHooks.js";
 
 /* ---------------- Models ---------------- */
 
@@ -322,6 +323,16 @@ Contributions.afterUpdate(async (contrib, options) => {
     console.error("Contributions.afterUpdate outer error:", e);
   }
 });
+
+/* ---------------- Socket Hooks ---------------- */
+
+// Add socket hooks for real-time updates
+addDbChangeHooks(Contributors, "Contributors");
+addDbChangeHooks(Contributions, "Contributions");
+addDbChangeHooks(LendingDetails, "LendingDetails");
+addDbChangeHooks(ContributionArtifacts, "ContributionArtifacts");
+addDbChangeHooks(ContributionTimelines, "ContributionTimelines");
+addDbChangeHooks(ContributionSessions, "ContributionSessions");
 
 export { ArtifactMetadata };
 export default {

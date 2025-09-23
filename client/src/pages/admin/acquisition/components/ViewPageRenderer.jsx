@@ -499,6 +499,7 @@ export function OptionsPanel({
   saving = false,
   saveDisabled = false,
   completeDisabled = false,
+  editDisabled = false,
 
   confirmOnEdit = true,
   confirmOnSave = true,
@@ -585,7 +586,7 @@ export function OptionsPanel({
           {/* Edit */}
           <OptionButton
             onClick={handleEditClick}
-            disabled={disabled}
+            disabled={disabled || editDisabled}
             label={"Edit Data"}
             icon={
               <svg

@@ -291,10 +291,10 @@ const ArticleContents = () => {
             {/* Left */}
             <div className="flex flex-col items-end justify-center px-4 py-3 gap-3">
               <div className="flex gap-2 mr-2">
-                <img src={MSBLogo} alt="MSB Logo" className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 lg:w-14 lg:h-14" />
-                <img src={seal} alt="Seal" className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 lg:w-14 lg:h-14" />
+                <img src={MSBLogo} alt="MSB Logo" className="w-20 h-20" />
+                <img src={seal} alt="Seal" className="w-20 h-20" />
               </div>
-              <div className="text-[11px] sm:text-sm md:text-base lg:text-lg leading-snug tracking-wide items-end text-right">
+              <div className="text-xl sm:text-2xl leading-snug tracking-wide items-end text-right">
                 <div className="font-semibold">The Provincial Government of</div>
                 <div className="font-semibold">Camarines Norte</div>
                 <div>Museum, Archives and Shrine</div>
@@ -306,6 +306,7 @@ const ArticleContents = () => {
             <div className="px-4 sm:px-6 py-4 border-x-[3px] border-black">
               <div className="border-t-[2px] border-black mb-3" />
               <div className="font-semibold text-lg sm:text-2xl md:text-3xl lg:text-4xl leading-tight">
+                <span>
                 Museo{" "}
                 <span
                   className="font-bold"
@@ -314,9 +315,10 @@ const ArticleContents = () => {
                   B
                 </span>
                 ulawan News
+                </span>
               </div>
               <div className="mt-2 font-bold leading-none tracking-tight text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl">
-                <span className="break-words">{articleName || article.title}</span>
+                <span className="break-words ">{articleName || article.title}</span>
               </div>
               <div className="mt-3 text-base sm:text-lg md:text-xl lg:text-2xl">
                 {article.author || "N/A"}
@@ -326,7 +328,7 @@ const ArticleContents = () => {
 
             {/* Right */}
             <div className="flex flex-col items-start justify-center px-4 py-3 gap-1 text-left">
-              <div className="font-semibold italic text-lg sm:text-xl md:text-2xl lg:text-3xl">
+              <div className="font-semibold italic text-lg sm:text-5xl ">
                 {article.upload_date
                   ? new Date(article.upload_date).toLocaleDateString("en-US", { weekday: "long" })
                   : "—"}
@@ -356,9 +358,9 @@ const ArticleContents = () => {
       <div className="w-screen h-auto min-h-[79rem] mx-auto font-hina">
         <div
           className="
-            max-w-[140rem] 3xl:max-w-[120rem] mx-auto text-[3rem]
+            max-w-[120rem] 3xl:max-w-[120rem] mx-auto text-[3rem]
 
-            /* 🔽 Big YouTube embeds ONLY on the public article page */
+            /*  Big YouTube embeds ONLY on the public article page */
             [&_.youtube-video]:w-full
             [&_.youtube-video]:mx-auto
             [&_.youtube-video]:!max-w-[42rem]    /* ~672px base */
@@ -404,7 +406,7 @@ const ArticleContents = () => {
         >
           {article.images ? (
             <div className="flex justify-center p-[2rem]">
-              <div className="w-[48rem] max-w-[90vw] h-[28rem] border border-gray-200 rounded overflow-hidden flex items-center justify-center">
+              <div className="w-[48rem] max-w-[80vw] h-[28rem] border border-gray-200 rounded overflow-hidden flex items-center justify-center">
                 <img
                   src={article.images.startsWith("http") ? article.images : `${UPLOAD_PATH}${article.images}`}
                   alt="Article Thumbnail"
@@ -417,7 +419,7 @@ const ArticleContents = () => {
             </div>
           ) : null}
 
-          <div className="p-10 prose max-w-none relative break-words">
+          <div className="p-10 prose max-w-none relative break-words border-b">
             {article.description ? (
               <div
                 className="editor-content-preview"
@@ -468,7 +470,7 @@ const ArticleContents = () => {
       {/* Related Articles */}
       <div className="w-full flex justify-center mt-16 mb-24 px-6">
         <div className="w-full max-w-[140rem]">
-          <h2 className="text-4xl font-bold mb-6">Related Articles</h2>
+          <h2 className="text-4xl font-bold mb-6">Popular Articles</h2>
           {related.length === 0 ? (
             <p className="text-gray-500 text-2xl">No related articles found.</p>
           ) : (

@@ -598,9 +598,9 @@ const Dashboard = () => {
     <div className="w-full flex flex-col gap-y-3 pt-5 3xl:pt-15 pb-1 px-1 h-full overflow-scroll">
       <div className="flex justify-between">
         <span className="text-5xl font-bold font-hind">
-          Welcome {user.username}!
+          Welcome {user.fname +" "+user.lname}!
         </span>
-        <SearchBar />
+        {/* <SearchBar /> */}
       </div>
 
       <div className="w-full h-[36rem] flex gap-x-5">

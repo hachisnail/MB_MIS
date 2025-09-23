@@ -596,6 +596,9 @@ const attachedFiles = (artifact?.documents ?? []).map((doc, idx) => {
     );
   }
 
+  const isMetaDataCompleted = metadataPercent === 100;
+  // console.log(isMetaDataCompleted)
+
   return (
     <>
       <div className="flex flex-col justify-center gap-y-3 w/full h-full items-center">
@@ -1021,8 +1024,9 @@ const attachedFiles = (artifact?.documents ?? []).map((doc, idx) => {
                           }
                         }}
                         // buttons availability
+                        editDisabled={isEditingMeta}
                         saveDisabled={!isEditingMeta}
-                        completeDisabled={isEditingMeta}
+                        completeDisabled={!isMetaDataCompleted }
                       />
                     </div>
 

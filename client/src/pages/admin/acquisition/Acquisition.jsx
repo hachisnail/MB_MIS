@@ -16,6 +16,7 @@ import TimelineDatePicker from "@/features/TimelineDatePicker";
 import Toast from "@/features/Toast";
 import axiosClient from "@/lib/axiosClient";
 import useToast from "@/components/commons";
+import { useSocketClient } from "@/context/authContext";
 
 
 
@@ -82,6 +83,7 @@ const Acquisition = () => {
   ];
 
   const { toastConfig, showToast, hideToast } = useToast();
+  const socket = useSocketClient();
 
   // --- Donor de-dupe helpers ---
   const norm = (s) => (s ?? "").toString().trim().toLowerCase();
@@ -217,6 +219,35 @@ const Acquisition = () => {
     fetchAcquisitons();
     fetchSummary();
   }, [activeTab, statusFilter]);
+
+  // Socket listeners for real-time updates
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleContributionChange = () => {
+      console.log("[Socket] Contribution data changed, refreshing...");
+      fetchAcquisitons();
+      fetchSummary();
+    };
+
+    // Listen for all contribution-related model changes
+    socket.onDbChange("Contributors", "*", handleContributionChange);
+    socket.onDbChange("Contributions", "*", handleContributionChange);
+    socket.onDbChange("LendingDetails", "*", handleContributionChange);
+    socket.onDbChange("ContributionArtifacts", "*", handleContributionChange);
+    socket.onDbChange("ContributionTimelines", "*", handleContributionChange);
+    socket.onDbChange("ContributionSessions", "*", handleContributionChange);
+
+    return () => {
+      // Clean up socket listeners
+      socket.offDbChange("Contributors", "*", handleContributionChange);
+      socket.offDbChange("Contributions", "*", handleContributionChange);
+      socket.offDbChange("LendingDetails", "*", handleContributionChange);
+      socket.offDbChange("ContributionArtifacts", "*", handleContributionChange);
+      socket.offDbChange("ContributionTimelines", "*", handleContributionChange);
+      socket.offDbChange("ContributionSessions", "*", handleContributionChange);
+    };
+  }, [socket]);
 
   const fetchAcquisitons = async () => {
     try {

@@ -4,6 +4,7 @@ import { MaintenanceSessions } from "../models/MaintenanceSessions.js";
 import { MaintenanceReports } from "../models/MaintenanceReports.js";
 import { Contributions } from "../models/contributionModels.js";
 import { CatalogArtifact } from "../models/CatalogArtifact.js";
+import { createLog } from "../services/logService.js";
 
 /* ---------- helpers ---------- */
 const parseArray = (raw, fallback = []) => {
@@ -43,6 +44,26 @@ export async function startMaintenanceSession(req, res) {
       contribution_id: id,
       started_by: userId,
     });
+
+    // Log maintenance session start (admin-side only)
+    if (req.session?.user) {
+      const sessionUserId = req.session.user.id;
+      const username = req.session.user.username || 'Admin';
+      
+      await createLog(
+        'create',
+        'MAINTENANCE_SESSION',
+        `Maintenance session started for contribution #${id}`,
+        sessionUserId,
+        null,
+        {
+          session_id: session.id,
+          contribution_id: id,
+          started_by: userId
+        },
+        `${username} started maintenance session #${session.id} for contribution #${id}`
+      );
+    }
 
     return res.status(201).json(session);
   } catch (err) {
@@ -146,6 +167,28 @@ export async function completeMaintenanceSession(req, res) {
     // Close the session
     session.completed_at = new Date();
     await session.save({ transaction: t });
+
+    // Log maintenance session completion (admin-side only)
+    if (req.session?.user) {
+      const sessionUserId = req.session.user.id;
+      const username = req.session.user.username || 'Admin';
+      
+      await createLog(
+        'update',
+        'MAINTENANCE_SESSION',
+        `Maintenance session completed for contribution #${id} - final location: ${body.finalLocation}`,
+        sessionUserId,
+        { completed_at: null },
+        {
+          session_id: session.id,
+          contribution_id: id,
+          completed_at: session.completed_at,
+          final_location: body.finalLocation,
+          report_id: report.id
+        },
+        `${username} completed maintenance session #${session.id} for contribution #${id}`
+      );
+    }
 
     await t.commit();
     return res.status(201).json({ session, report });

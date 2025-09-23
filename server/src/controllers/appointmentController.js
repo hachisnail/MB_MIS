@@ -71,10 +71,33 @@ export const createAppointment = async (req, res, next) => {
     });
 
     // Create the corresponding AppointmentStatus record
-    await AppointmentStatus.create({
+    const appointmentStatus = await AppointmentStatus.create({
       appointment_id: appointment.appointment_id,
       status: status || 'PENDING', // Use status from body or default to PENDING
     });
+
+    // Log the appointment creation (only if this is from admin side)
+    if (req.session?.user) {
+      const userId = req.session.user.id;
+      const username = req.session.user.username || 'Admin';
+      const visitorName = `${first_name} ${last_name}`;
+      
+      await createLog(
+        'create',
+        'APPOINTMENT',
+        `New appointment created for ${visitorName} with purpose: ${purpose_of_visit}`,
+        userId,
+        null,
+        {
+          appointment_id: appointment.appointment_id,
+          visitor_name: visitorName,
+          purpose_of_visit,
+          preferred_date,
+          status: status || 'PENDING'
+        },
+        `${username} created appointment #${appointment.appointment_id} for ${visitorName}`
+      );
+    }
 
     res.status(201).json({
       message: 'Appointment created successfully',

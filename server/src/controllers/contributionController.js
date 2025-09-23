@@ -220,6 +220,29 @@ export const createContribution = async (req, res) => {
       related_image_urls: JSON.stringify(relatedImageUrls || []),
     });
 
+    // Log contribution creation (admin-side only)
+    if (req.session?.user) {
+      const userId = req.session.user.id;
+      const username = req.session.user.username || 'Admin';
+      const contributorName = `${firstName} ${lastName}`;
+      
+      await createLog(
+        'create',
+        'CONTRIBUTION',
+        `New ${type} contribution created for ${contributorName} - artifact: "${artifactTitle}"`,
+        userId,
+        null,
+        {
+          contribution_id: contribution.contribution_id,
+          contributor_name: contributorName,
+          contribution_type: type,
+          artifact_title: artifactTitle,
+          status: 'pending'
+        },
+        `${username} created ${type} contribution #${contribution.contribution_id} for ${contributorName}`
+      );
+    }
+
     return res.status(201).json({
       message: "Contribution submitted successfully",
       contribution_id: contribution.contribution_id,

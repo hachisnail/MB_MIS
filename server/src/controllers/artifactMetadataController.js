@@ -7,6 +7,7 @@ import {
   buildJoinedRecordByContributionId,
   listCatalogArtifacts,
 } from "../services/catalogSyncService.js";
+import { createLog } from "../services/logService.js";
 
 import fs from "fs/promises";
 import path from "path";
@@ -86,9 +87,31 @@ export async function upsertArtifactMetadataDraft(req, res) {
     delete fields.metadata_completed;
     delete fields.inventory_synced_at;
 
+    // Get existing metadata for logging
+    const existingMeta = await ArtifactMetadata.findOne({ where: { artifact_id } });
+    const beforeState = existingMeta ? existingMeta.toJSON() : null;
+
     await ArtifactMetadata.upsert({ artifact_id, ...fields });
 
     const updated = await ArtifactMetadata.findOne({ where: { artifact_id } });
+
+    // Log metadata draft update (admin-side only)
+    if (req.session?.user && Object.keys(fields).length > 0) {
+      const userId = req.session.user.id;
+      const username = req.session.user.username || 'Admin';
+      const changedFields = Object.keys(fields).join(', ');
+      
+      await createLog(
+        existingMeta ? 'update' : 'create',
+        'ARTIFACT_METADATA',
+        `Artifact metadata draft ${existingMeta ? 'updated' : 'created'} for contribution #${contribution_id} - fields: ${changedFields}`,
+        userId,
+        beforeState,
+        updated.toJSON(),
+        `${username} ${existingMeta ? 'updated' : 'created'} metadata draft for contribution #${contribution_id}`
+      );
+    }
+
     return res.json({ ok: true, metadata: updated });
   } catch (err) {
     console.error("upsertArtifactMetadataDraft error:", err);
@@ -127,6 +150,9 @@ export async function completeArtifactMetadata(req, res) {
       return res.json({ ok: true, status: "already_completed_resynced", metadata: fresh });
     }
 
+    // Capture before state for logging
+    const beforeState = meta.toJSON();
+
     // Pull a fresh snapshot for validation (outside tx read would also be fine)
     const snapshot = meta.toJSON();
     const check = validateRequired(snapshot);
@@ -153,6 +179,23 @@ export async function completeArtifactMetadata(req, res) {
     await copyFirstArtifactImage(contribution_id);
 
     const fresh = await ArtifactMetadata.findOne({ where: { artifact_id } });
+
+    // Log metadata completion (admin-side only)
+    if (req.session?.user) {
+      const userId = req.session.user.id;
+      const username = req.session.user.username || 'Admin';
+      
+      await createLog(
+        'update',
+        'ARTIFACT_METADATA',
+        `Artifact metadata completed for contribution #${contribution_id} - collection number: ${fresh.collection_number}`,
+        userId,
+        beforeState,
+        fresh.toJSON(),
+        `${username} completed metadata for contribution #${contribution_id}`
+      );
+    }
+
     return res.json({ ok: true, status: "completed_and_synced", metadata: fresh });
   } catch (err) {
     try { await tx.rollback(); } catch {}

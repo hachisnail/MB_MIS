@@ -271,11 +271,11 @@ if (serverRequiresOtp) {
 useEffect(() => {
   fetchSession();
   // Setup polling interval (e.g., every 10 seconds)
-  const interval = setInterval(() => {
-    fetchSession();
-  }, 5000);
-  return () => clearInterval(interval); // cleanup on unmount
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // const interval = setInterval(() => {
+  //   fetchSession();
+  // }, 5000);
+  // return () => clearInterval(interval); // cleanup on unmount
+  // // eslint-disable-next-line react-hooks/exhaustive-deps
 }, [token]);
 
 

@@ -3,19 +3,20 @@ import { useNavigate } from 'react-router-dom';
 import { useForm, Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
+import Calendar from 'react-calendar';
+import 'react-calendar/dist/Calendar.css';
 import Toast from '@/features/Toast';
 import usePrompt from '@/hooks/usePrompt';
 import ConfirmationModal from '@/components/modals/ConfirmationModal';
+import axiosClient from '@/lib/axiosClient';
 import {
   FormInput,
   DropdownInput,
   ContactNumberInput,
   EmailInput,
-  DateInput,
   FileInput,
 } from '@/features/FormUtilities';
 import { TypedDropdown, useAddressLogic } from '@/features/AddressDropdownSystem';
-import MultiLineInput from '@/features/MultiLineInput';
 
 const initialFormData = {
   // Donor details
@@ -102,6 +103,58 @@ const page3Schema = yup.object({
 const SectionTitle = ({ children }) => (
   <h2 className="text-3xl font-semibold text-gray-900 mb-4">{children}</h2>
 );
+
+// Custom DateInput component using React Calendar
+const ReactCalendarInput = ({ control, name, error = "", className = "", minDate, maxDate, placeholder = "Select date" }) => {
+  const [showCalendar, setShowCalendar] = useState(false);
+
+  return (
+    <Controller
+      name={name}
+      control={control}
+      render={({ field }) => {
+        const value = field.value;
+        const displayValue = value ? value.toLocaleDateString() : "";
+
+        return (
+          <div className={`relative ${className}`}>
+            <input
+              type="text"
+              value={displayValue}
+              readOnly
+              onClick={() => setShowCalendar(!showCalendar)}
+              placeholder={placeholder}
+              className={`border rounded-2xl px-2 py-3 text-xl w-full cursor-pointer ${error ? "border-red-600" : "border-black"
+                } focus:outline-none`}
+              style={{
+                boxShadow: "inset 0 1px 1px rgba(1, 1, 1, 0.50)",
+              }}
+            />
+
+            <span className="text-red-600 text-md h-6 pl-2 block">
+              {error?.message || ""}
+            </span>
+
+            {showCalendar && (
+              <div className="absolute z-50 top-12 bg-white border rounded-2xl shadow-lg p-2">
+                <Calendar
+                  onChange={(date) => {
+                    field.onChange(date);
+                    setShowCalendar(false);
+                  }}
+                  value={value}
+                  minDate={minDate}
+                  maxDate={maxDate}
+                  className="react-calendar-custom"
+                />
+              </div>
+            )}
+          </div>
+        );
+      }}
+    />
+  );
+};
 
 const AddArtifact = () => {
   const navigate = useNavigate();
@@ -421,9 +474,107 @@ const AddArtifact = () => {
     setShowConfirmModal(false);
     setIsSubmitting(true);
     try {
-      // Frontend-only: no backend call. Simulate success.
-      await new Promise((res) => setTimeout(res, 400));
-      // Clear form to initial
+      const formData = getCurrentFormData();
+
+      // Step 1: Upload files if any exist
+      let uploadedFiles = {
+        artifactImages: [],
+        artifactRelatedImages: [],
+        artifactDocuments: []
+      };
+
+      const hasFiles =
+        (formData.artifactImages?.files?.length || 0) > 0 ||
+        (formData.artifactRelatedImages?.files?.length || 0) > 0 ||
+        (formData.artifactDocuments?.files?.length || 0) > 0;
+
+      if (hasFiles) {
+        const fileFormData = new FormData();
+
+        // Add category parameter to match contribution form
+        fileFormData.append("category", "private");
+
+        // Add all files to FormData
+        formData.artifactImages?.files?.forEach((file) => {
+          fileFormData.append('files', file);
+        });
+        formData.artifactRelatedImages?.files?.forEach((file) => {
+          fileFormData.append('files', file);
+        });
+        formData.artifactDocuments?.files?.forEach((file) => {
+          fileFormData.append('files', file);
+        });
+
+        // Upload files
+        const uploadResponse = await axiosClient.post('/auth/contribution/files', fileFormData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+
+        const allUploadedFiles = uploadResponse.data.files || [];
+
+        // Distribute uploaded files back to their respective categories
+        let fileIndex = 0;
+        const artifactImagesCount = formData.artifactImages?.files?.length || 0;
+        const relatedImagesCount = formData.artifactRelatedImages?.files?.length || 0;
+
+        uploadedFiles.artifactImages = allUploadedFiles.slice(fileIndex, fileIndex + artifactImagesCount);
+        fileIndex += artifactImagesCount;
+
+        uploadedFiles.artifactRelatedImages = allUploadedFiles.slice(fileIndex, fileIndex + relatedImagesCount);
+        fileIndex += relatedImagesCount;
+
+        uploadedFiles.artifactDocuments = allUploadedFiles.slice(fileIndex);
+      }
+
+      // Step 2: Prepare contribution payload
+      const contributionPayload = {
+        // Donor information
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        birthDate: formData.birthDate,
+        sex: formData.sex,
+        email: formData.email,
+        contact: formData.contact,
+        organization: formData.organization,
+
+        // Address
+        street: formData.street,
+        barangay: formData.barangay,
+        city: formData.city,
+        province: formData.province,
+
+        // Contribution type
+        type: formData.type,
+        lendingReason: formData.lendingReason,
+        lendDuration: formData.lendDuration,
+        lendConditions: formData.lendConditions,
+        lendLiabilities: formData.lendLiabilities,
+
+        // Artifact details
+        artifactTitle: formData.artifactTitle,
+        artifactDescription: formData.artifactDescription,
+        narrative: formData.narrative,
+        acquisitionDetails: formData.acquisitionDetails,
+        additionalInfo: formData.additionalInfo,
+
+        // Uploaded files
+        artifactImages: uploadedFiles.artifactImages,
+        artifactRelatedImages: uploadedFiles.artifactRelatedImages,
+        artifactDocuments: uploadedFiles.artifactDocuments,
+
+        // URL fields (if any)
+        imageUrls: formData.artifactImages?.url ? [formData.artifactImages.url] : [],
+        relatedImageUrls: formData.artifactRelatedImages?.url ? [formData.artifactRelatedImages.url] : [],
+        documentUrls: formData.artifactDocuments?.url ? [formData.artifactDocuments.url] : [],
+
+        // Admin submission - no captcha needed
+        category: 'private'
+      };
+
+      // Step 3: Submit contribution
+      const response = await axiosClient.post('/auth/contribution', contributionPayload);
+
+      // Step 4: Success - clear form and show success message
       page1Form.reset(initialFormData);
       page2Form.reset(initialFormData);
       page3Form.reset(initialFormData);
@@ -437,9 +588,17 @@ const AddArtifact = () => {
       setIsDirty(false);
       setHasUserInteracted(false);
 
-      showToast('Artifact contribution captured successfully (frontend only).', 'success');
-    } catch (e) {
-      showToast('Submission failed locally. Please try again.', 'error');
+      showToast('Artifact contribution submitted successfully!', 'success');
+
+      // Optional: Navigate back to acquisition page after a delay
+      setTimeout(() => {
+        navigate('/admin/acquisition');
+      }, 2000);
+
+    } catch (error) {
+      console.error('Submission error:', error);
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to submit contribution. Please try again.';
+      showToast(errorMessage, 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -519,11 +678,13 @@ const AddArtifact = () => {
                 <label className="block text-base font-medium text-gray-700 mb-2">
                   Birth Date
                 </label>
-                <DateInput
+                <ReactCalendarInput
                   control={page1Form.control}
                   name="birthDate"
                   error={page1Form.formState.errors.birthDate || ""}
                   className="w-full"
+                  maxDate={new Date()}
+                  placeholder="Select birth date"
                 />
               </div>
 
@@ -667,20 +828,23 @@ const AddArtifact = () => {
             {page1Form.watch("type") === "lending" && (
               <div className="space-y-4">
                 <div>
-                  <MultiLineInputField
-                    label="Reason for Lending *"
+                  <label className="block text-base font-medium text-gray-700 mb-2">
+                    Reason for Lending <span className="text-red-500">*</span>
+                  </label>
+                  <textarea
                     placeholder="Explain the reason for lending"
                     value={page1Form.watch("lendingReason") || ""}
-                    onChange={(value) => page1Form.setValue("lendingReason", value)}
-                    maxChars={500}
-                    minRows={4}
-                    className="w-full"
+                    onChange={(e) => page1Form.setValue("lendingReason", e.target.value)}
+                    rows={3}
+                    className={`border rounded-2xl px-2 py-3 text-xl w-full resize-none ${page1Form.formState.errors.lendingReason ? "border-red-600" : "border-black"
+                      } focus:outline-none`}
+                    style={{
+                      boxShadow: "inset 0 1px 1px rgba(1, 1, 1, 0.50)",
+                    }}
                   />
-                  {page1Form.formState.errors.lendingReason && (
-                    <span className="text-red-600 text-sm mt-1 block">
-                      {page1Form.formState.errors.lendingReason.message}
-                    </span>
-                  )}
+                  <span className="text-red-600 text-md h-6 pl-2">
+                    {page1Form.formState.errors.lendingReason?.message || ""}
+                  </span>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
@@ -688,7 +852,7 @@ const AddArtifact = () => {
                     <label className="block text-base font-medium text-gray-700 mb-2">
                       Lend From <span className="text-red-500">*</span>
                     </label>
-                    <DateInput
+                    <ReactCalendarInput
                       control={page1Form.control}
                       name="lendDuration.from"
                       error={page1Form.formState.errors.lendDuration?.from || ""}
@@ -701,7 +865,7 @@ const AddArtifact = () => {
                     <label className="block text-base font-medium text-gray-700 mb-2">
                       Lend To <span className="text-red-500">*</span>
                     </label>
-                    <DateInput
+                    <ReactCalendarInput
                       control={page1Form.control}
                       name="lendDuration.to"
                       error={page1Form.formState.errors.lendDuration?.to || ""}
@@ -721,37 +885,43 @@ const AddArtifact = () => {
                 </div>
 
                 <div>
-                  <MultiLineInputField
-                    label="Conditions"
+                  <label className="block text-base font-medium text-gray-700 mb-2">
+                    Conditions
+                  </label>
+                  <textarea
                     placeholder="Provide any conditions for lending"
                     value={page1Form.watch("lendConditions") || ""}
-                    onChange={(value) => page1Form.setValue("lendConditions", value)}
-                    maxChars={300}
-                    minRows={3}
-                    className="w-full"
+                    onChange={(e) => page1Form.setValue("lendConditions", e.target.value)}
+                    rows={3}
+                    className={`border rounded-2xl px-2 py-3 text-xl w-full resize-none ${page1Form.formState.errors.lendConditions ? "border-red-600" : "border-black"
+                      } focus:outline-none`}
+                    style={{
+                      boxShadow: "inset 0 1px 1px rgba(1, 1, 1, 0.50)",
+                    }}
                   />
-                  {page1Form.formState.errors.lendConditions && (
-                    <span className="text-red-600 text-sm mt-1 block">
-                      {page1Form.formState.errors.lendConditions.message}
-                    </span>
-                  )}
+                  <span className="text-red-600 text-md h-6 pl-2">
+                    {page1Form.formState.errors.lendConditions?.message || ""}
+                  </span>
                 </div>
 
                 <div>
-                  <MultiLineInputField
-                    label="Liabilities"
+                  <label className="block text-base font-medium text-gray-700 mb-2">
+                    Liabilities
+                  </label>
+                  <textarea
                     placeholder="Specify liabilities, if any"
                     value={page1Form.watch("lendLiabilities") || ""}
-                    onChange={(value) => page1Form.setValue("lendLiabilities", value)}
-                    maxChars={300}
-                    minRows={3}
-                    className="w-full"
+                    onChange={(e) => page1Form.setValue("lendLiabilities", e.target.value)}
+                    rows={3}
+                    className={`border rounded-2xl px-2 py-3 text-xl w-full resize-none ${page1Form.formState.errors.lendLiabilities ? "border-red-600" : "border-black"
+                      } focus:outline-none`}
+                    style={{
+                      boxShadow: "inset 0 1px 1px rgba(1, 1, 1, 0.50)",
+                    }}
                   />
-                  {page1Form.formState.errors.lendLiabilities && (
-                    <span className="text-red-600 text-sm mt-1 block">
-                      {page1Form.formState.errors.lendLiabilities.message}
-                    </span>
-                  )}
+                  <span className="text-red-600 text-md h-6 pl-2">
+                    {page1Form.formState.errors.lendLiabilities?.message || ""}
+                  </span>
                 </div>
               </div>
             )}
@@ -786,27 +956,39 @@ const AddArtifact = () => {
             <label className="block text-base font-medium text-gray-700 mb-2">
               Artifact Description
             </label>
-            <MultiLineInput
-              value={page2Form.watch("artifactDescription") || ""}
-              onChange={(value) => page2Form.setValue("artifactDescription", value)}
+            <textarea
               placeholder="Describe the artifact..."
+              value={page2Form.watch("artifactDescription") || ""}
+              onChange={(e) => page2Form.setValue("artifactDescription", e.target.value)}
               rows={6}
-              theme="light"
-              error={page2Form.formState.errors.artifactDescription?.message}
+              className={`border rounded-2xl px-2 py-3 text-xl w-full resize-none ${page2Form.formState.errors.artifactDescription ? "border-red-600" : "border-black"
+                } focus:outline-none`}
+              style={{
+                boxShadow: "inset 0 1px 1px rgba(1, 1, 1, 0.50)",
+              }}
             />
+            <span className="text-red-600 text-md h-6 pl-2">
+              {page2Form.formState.errors.artifactDescription?.message || ""}
+            </span>
           </div>
           <div>
             <label className="block text-base font-medium text-gray-700 mb-2">
               Narrative
             </label>
-            <MultiLineInput
-              value={page2Form.watch("narrative") || ""}
-              onChange={(value) => page2Form.setValue("narrative", value)}
+            <textarea
               placeholder="Provide story/background of the artifact..."
+              value={page2Form.watch("narrative") || ""}
+              onChange={(e) => page2Form.setValue("narrative", e.target.value)}
               rows={6}
-              theme="light"
-              error={page2Form.formState.errors.narrative?.message}
+              className={`border rounded-2xl px-2 py-3 text-xl w-full resize-none ${page2Form.formState.errors.narrative ? "border-red-600" : "border-black"
+                } focus:outline-none`}
+              style={{
+                boxShadow: "inset 0 1px 1px rgba(1, 1, 1, 0.50)",
+              }}
             />
+            <span className="text-red-600 text-md h-6 pl-2">
+              {page2Form.formState.errors.narrative?.message || ""}
+            </span>
           </div>
         </div>
 
@@ -815,27 +997,39 @@ const AddArtifact = () => {
             <label className="block text-base font-medium text-gray-700 mb-2">
               Acquisition Details
             </label>
-            <MultiLineInput
-              value={page2Form.watch("acquisitionDetails") || ""}
-              onChange={(value) => page2Form.setValue("acquisitionDetails", value)}
+            <textarea
               placeholder="Details about acquisition..."
+              value={page2Form.watch("acquisitionDetails") || ""}
+              onChange={(e) => page2Form.setValue("acquisitionDetails", e.target.value)}
               rows={6}
-              theme="light"
-              error={page2Form.formState.errors.acquisitionDetails?.message}
+              className={`border rounded-2xl px-2 py-3 text-xl w-full resize-none ${page2Form.formState.errors.acquisitionDetails ? "border-red-600" : "border-black"
+                } focus:outline-none`}
+              style={{
+                boxShadow: "inset 0 1px 1px rgba(1, 1, 1, 0.50)",
+              }}
             />
+            <span className="text-red-600 text-md h-6 pl-2">
+              {page2Form.formState.errors.acquisitionDetails?.message || ""}
+            </span>
           </div>
           <div>
             <label className="block text-base font-medium text-gray-700 mb-2">
               Additional Info
             </label>
-            <MultiLineInput
-              value={page2Form.watch("additionalInfo") || ""}
-              onChange={(value) => page2Form.setValue("additionalInfo", value)}
+            <textarea
               placeholder="Any other relevant information..."
+              value={page2Form.watch("additionalInfo") || ""}
+              onChange={(e) => page2Form.setValue("additionalInfo", e.target.value)}
               rows={6}
-              theme="light"
-              error={page2Form.formState.errors.additionalInfo?.message}
+              className={`border rounded-2xl px-2 py-3 text-xl w-full resize-none ${page2Form.formState.errors.additionalInfo ? "border-red-600" : "border-black"
+                } focus:outline-none`}
+              style={{
+                boxShadow: "inset 0 1px 1px rgba(1, 1, 1, 0.50)",
+              }}
             />
+            <span className="text-red-600 text-md h-6 pl-2">
+              {page2Form.formState.errors.additionalInfo?.message || ""}
+            </span>
           </div>
         </div>
       </div>
@@ -1036,7 +1230,7 @@ const AddArtifact = () => {
             <div className="bg-gray-50 p-3 rounded-md text-sm max-h-96 overflow-y-auto">
               <SummaryBlock />
             </div>
-            <p className="text-sm text-gray-600">This is a frontend-only form. No data will be sent to the server.</p>
+            <p className="text-sm text-gray-600">This will submit the contribution to the backend for processing.</p>
           </div>
         }
         type="question"

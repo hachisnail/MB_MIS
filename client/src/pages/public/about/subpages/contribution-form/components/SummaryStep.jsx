@@ -1,5 +1,6 @@
 import React, { useMemo } from "react";
 import Viewport from "../../../../../../features/Viewport";
+import SubmitButton from "../../../../../../features/SubmitButton";
 
 function SectionCard({ title, children }) {
   return (
@@ -58,7 +59,7 @@ function FileGroup({ title, group }) {
   );
 }
 
-const SummaryStep = ({ initialData, onBack, onConfirm }) => {
+const SummaryStep = ({ initialData, onBack, onConfirm, isSubmitting = false }) => {
   const address = useMemo(() => {
     const parts = [
       initialData?.street,
@@ -79,10 +80,10 @@ const SummaryStep = ({ initialData, onBack, onConfirm }) => {
     const fmt = (d) =>
       d
         ? d.toLocaleDateString(undefined, {
-            year: "numeric",
-            month: "short",
-            day: "2-digit",
-          })
+          year: "numeric",
+          month: "short",
+          day: "2-digit",
+        })
         : null;
 
     if (from && to) return `${fmt(from)} — ${fmt(to)}`;
@@ -108,84 +109,86 @@ const SummaryStep = ({ initialData, onBack, onConfirm }) => {
           </div>
         </div>
 
-     <Viewport
-        sizes={{
+        <Viewport
+          sizes={{
             lg: { width: 500, height: 545 },
             xl: { width: 675, height: 545 },
             "2xl": { width: 700, height: 545 },
             "3xl": { width: 820, height: 545 },
-          }}     
-     >
-        {/* Now all sections stacked vertically like a receipt */}
-    <div className="w-full h-fit rounded-2xl border border-gray-200 shadow-md bg-white p-[1rem]">
-        <div className="flex flex-col gap-6">
-        <SectionCard title="Arrangement / Details">
-            <Field label="Type" value={typeLabel} />
-            {initialData?.type === "lending" && (
-              <>
-                <Field label="Lend Duration" value={lendRange} />
-                <Field label="Lending Conditions" value={initialData?.lendConditions} multiline />
-                <Field label="Liabilities" value={initialData?.lendLiabilities} multiline />
-                <Field label="Reason for Lending" value={initialData?.lendingReason} multiline />
-              </>
-            )}
-          </SectionCard>
+          }}
+        >
+          {/* Now all sections stacked vertically like a receipt */}
+          <div className="w-full h-fit rounded-2xl border border-gray-200 shadow-md bg-white p-[1rem]">
+            <div className="flex flex-col gap-6">
+              <SectionCard title="Arrangement / Details">
+                <Field label="Type" value={typeLabel} />
+                {initialData?.type === "lending" && (
+                  <>
+                    <Field label="Lend Duration" value={lendRange} />
+                    <Field label="Lending Conditions" value={initialData?.lendConditions} multiline />
+                    <Field label="Liabilities" value={initialData?.lendLiabilities} multiline />
+                    <Field label="Reason for Lending" value={initialData?.lendingReason} multiline />
+                  </>
+                )}
+              </SectionCard>
 
-        
-          <SectionCard title="Personal Info">
-            <Field
-              label="Name"
-              value={`${initialData?.firstName || ""} ${initialData?.lastName || ""}`.trim()}
-            />
-            <Field
-              label="Birthdate"
-              value={
-                initialData?.birthDate
-                  ? new Date(initialData.birthDate).toLocaleDateString()
-                  : ""
-              }
-            />
-            <Field label="Sex" value={initialData?.sex} />
-            <Field label="Contact" value={initialData?.contact} />
-            <Field label="Email" value={initialData?.email} />
-            <Field label="Organization" value={initialData?.organization} />
-            <Field label="Address" value={address} multiline />
-          </SectionCard>
 
-          
+              <SectionCard title="Personal Info">
+                <Field
+                  label="Name"
+                  value={`${initialData?.firstName || ""} ${initialData?.lastName || ""}`.trim()}
+                />
+                <Field
+                  label="Birthdate"
+                  value={
+                    initialData?.birthDate
+                      ? new Date(initialData.birthDate).toLocaleDateString()
+                      : ""
+                  }
+                />
+                <Field label="Sex" value={initialData?.sex} />
+                <Field label="Contact" value={initialData?.contact} />
+                <Field label="Email" value={initialData?.email} />
+                <Field label="Organization" value={initialData?.organization} />
+                <Field label="Address" value={address} multiline />
+              </SectionCard>
 
-          <SectionCard title="Artifact Details">
-            <Field label="Title" value={initialData?.artifactTitle} />
-            <Field label="Description" value={initialData?.artifactDescription} multiline />
-            <Field label="Acquisition Details" value={initialData?.acquisitionDetails} multiline />
-            <Field label="Additional Info" value={initialData?.additionalInfo} multiline />
-            <Field label="Narrative / Story" value={initialData?.narrative} multiline />
-          </SectionCard>
 
-          <SectionCard title="Files">
-            <FileGroup title="Artifact Images" group={initialData?.artifactImages} />
-            <FileGroup title="Related Images" group={initialData?.artifactRelatedImages} />
-            <FileGroup title="Documents / Research" group={initialData?.artifactDocuments} />
-          </SectionCard>
-        </div>
-        </div>
-</Viewport>
+
+              <SectionCard title="Artifact Details">
+                <Field label="Title" value={initialData?.artifactTitle} />
+                <Field label="Description" value={initialData?.artifactDescription} multiline />
+                <Field label="Acquisition Details" value={initialData?.acquisitionDetails} multiline />
+                <Field label="Additional Info" value={initialData?.additionalInfo} multiline />
+                <Field label="Narrative / Story" value={initialData?.narrative} multiline />
+              </SectionCard>
+
+              <SectionCard title="Files">
+                <FileGroup title="Artifact Images" group={initialData?.artifactImages} />
+                <FileGroup title="Related Images" group={initialData?.artifactRelatedImages} />
+                <FileGroup title="Documents / Research" group={initialData?.artifactDocuments} />
+              </SectionCard>
+            </div>
+          </div>
+        </Viewport>
         {/* Footer buttons */}
         <div className="w-full h-15 flex justify-between mt-4">
           <button
             type="button"
             onClick={() => onBack(initialData)}
-            className="w-44 h-15 rounded-md bg-black text-white text-2xl hover:bg-gray-800"
+            className="w-44 h-15 rounded-md bg-black text-white text-2xl hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={isSubmitting}
           >
             Previous
           </button>
-          <button
-            type="button"
+          <SubmitButton
             onClick={onConfirm}
-            className="w-64 h-15 rounded-2xl bg-black text-white text-2xl hover:bg-gray-800"
+            isLoading={isSubmitting}
+            loadingText="Submitting..."
+            className="w-64 h-15 rounded-2xl"
           >
             Confirm &amp; Submit
-          </button>
+          </SubmitButton>
         </div>
       </div>
     </div>

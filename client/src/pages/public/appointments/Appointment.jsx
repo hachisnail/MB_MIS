@@ -19,7 +19,7 @@ import NoticeStep from "./components/NoticeStep";
 import PersonalInfoStep from "./components/PersonalInfoStep";
 import VisitDetailsStep from "./components/VisitDetailsStep";
 import ScheduleStep from "./components/ScheduleStep";
-import ReviewStep from "./components/ReviewStep"; 
+import ReviewStep from "./components/ReviewStep";
 
 const initialFormData = {
   firstName: "",
@@ -66,6 +66,7 @@ const Appointment = () => {
   const [viewedDate, setViewedDate] = useState(new Date());
 
   const [toast, setToast] = useState({ type: "info", message: "" });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const showToast = useCallback((message, type = "info") => {
     setToast({ type, message });
@@ -307,6 +308,11 @@ const Appointment = () => {
 
   // Submit logic
   const handleSubmitFinal = useCallback(async () => {
+    // Prevent multiple submissions
+    if (isSubmitting) return;
+
+    setIsSubmitting(true);
+
     try {
       showToast("Submitting appointment...", "info");
 
@@ -401,8 +407,10 @@ const Appointment = () => {
       } else {
         setApiError("Failed to submit appointment. Please try again.");
       }
+    } finally {
+      setIsSubmitting(false);
     }
-  }, [confirmClear, formData, showToast]);
+  }, [confirmClear, formData, showToast, isSubmitting]);
 
   // Only render the active step to avoid setState during render in other steps
   const renderStep = () => {
@@ -465,6 +473,7 @@ const Appointment = () => {
             formData={formData}
             onBack={handleBack}
             onConfirm={handleSubmitFinal}
+            isSubmitting={isSubmitting}
           />
         );
       default:

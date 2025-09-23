@@ -50,6 +50,7 @@ const ContributionForm = ({ user }) => {
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
   const [apiError, setApiError] = useState(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const recaptchaRef = useRef(null);
 
   // Unsaved changes guard
@@ -91,6 +92,11 @@ const ContributionForm = ({ user }) => {
   }, []);
 
   const handleSubmitFinal = useCallback(async () => {
+    // Prevent multiple submissions
+    if (isSubmitting) return;
+
+    setIsSubmitting(true);
+
     try {
       let captchaToken = null;
       const hasPrivateFiles =
@@ -129,11 +135,11 @@ const ContributionForm = ({ user }) => {
       const relatedImages = uploadedFiles.slice(
         formData.artifactImages.files.length,
         formData.artifactImages.files.length +
-          formData.artifactRelatedImages.files.length
+        formData.artifactRelatedImages.files.length
       );
       const artifactDocuments = uploadedFiles.slice(
         formData.artifactImages.files.length +
-          formData.artifactRelatedImages.files.length
+        formData.artifactRelatedImages.files.length
       );
 
       await axiosClient.post("/auth/contribution", {
@@ -151,8 +157,10 @@ const ContributionForm = ({ user }) => {
     } catch (err) {
       setApiError(err.response?.data?.message || err.message);
       setShowSubmitConfirm(false);
+    } finally {
+      setIsSubmitting(false);
     }
-  }, [formData, confirmClear]);
+  }, [formData, confirmClear, isSubmitting]);
 
   // Only pass the fields DonorsStep actually uses (stable identity)
   const donorsInitial = useMemo(() => {
@@ -261,6 +269,7 @@ const ContributionForm = ({ user }) => {
         initialData={formData}
         onBack={handleBack}
         onConfirm={() => setShowSubmitConfirm(true)}
+        isSubmitting={isSubmitting}
       />
     );
 

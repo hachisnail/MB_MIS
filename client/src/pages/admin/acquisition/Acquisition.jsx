@@ -347,7 +347,7 @@ const filteredAcquisitions = acquisitions.filter((item) => {
           ]}
           button={{
             label: "Add new acquisition",
-            onClick: () => navigate("/admin/acquisition/add-artifact"),
+            onClick: () => navigate("/about/support/contribution-form"),
           }}
         />
 

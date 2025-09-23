@@ -48,8 +48,14 @@ import {
 } from "../controllers/artifactMetadataController.js";
 
 import {
-  createMaintenanceReport, getLatestMaintenanceReportByContribution,
+  createMaintenanceReport, getLatestMaintenanceReportByContribution, getAllMaintenanceReportsByContribution,
 } from "../controllers/maintenanceReportController.js";
+
+import {
+  startMaintenanceSession,
+  getOpenMaintenanceSession,
+  completeMaintenanceSession,
+} from "../controllers/maintenanceSessionController.js";
 
 import { forcePrivateCategory } from "../middlewares/forcePrivateCategory.js";
 import ConversationController from "../controllers/conversationController.js";
@@ -58,6 +64,7 @@ import { SummarizerManager } from "node-summarizer";
 
 // ✅ inventory controller
 import { getInventoryList } from "../controllers/inventoryController.js";
+import { mainDb } from "../configs/databases.js";
 
 const router = express.Router();
 
@@ -227,6 +234,31 @@ router.get("/inventory", async (req, res, next) => {
 });
 router.get("/auth/inventory", getInventoryList);
 
+router.post(
+  "/contributions/:id/maintenance/start",
+  requireAuth,
+  requireRole([1, 2, 5]),
+  startMaintenanceSession
+);
+
+router.get(
+  "/contributions/:id/maintenance/open",
+  requireAuth,
+  requireRole([1, 2, 5]),
+  getOpenMaintenanceSession
+);
+
+router.post(
+  "/contributions/:id/maintenance/complete",
+  requireAuth,
+  requireRole([1, 2, 5]),
+  upload.fields([
+    { name: "imgBefore", maxCount: 10 },
+    { name: "imgAfter",  maxCount: 10 },
+  ]),
+  multerErrorHandler,
+  completeMaintenanceSession
+);
 
 
 // (Optional) Back-compat if your client still calls /api/inventory directly
@@ -250,6 +282,48 @@ router.get(
   requireAuth,
   requireRole([1, 2, 5]),
   getLatestMaintenanceReportByContribution
+);
+
+// NEW: Get all maintenance reports for a contribution
+router.get(
+  "/contributions/:id/maintenance/reports",
+  requireAuth,
+  requireRole([1, 2, 5]),
+  getAllMaintenanceReportsByContribution
+);
+
+// Update artifact location
+router.patch(
+  "/contributions/:id/location",
+  requireAuth,
+  requireRole([1, 2, 5]),
+  async (req, res) => {
+    const { id } = req.params;
+    const { location } = req.body;
+
+    if (!location || !location.trim()) {
+      return res.status(400).json({ message: "Location is required" });
+    }
+
+    try {
+      // Import CatalogArtifact model for this route
+      const { CatalogArtifact } = await import("../models/CatalogArtifact.js");
+      
+      const [affectedRows] = await CatalogArtifact.update(
+        { current_location: location.trim() },
+        { where: { contribution_id: parseInt(id) } }
+      );
+
+      if (affectedRows === 0) {
+        return res.status(404).json({ message: "Artifact not found" });
+      }
+
+      res.json({ message: "Location updated successfully", location: location.trim() });
+    } catch (error) {
+      console.error("[Update Location] error:", error);
+      res.status(500).json({ message: "Failed to update location", error: error.message });
+    }
+  }
 );
 
 export default router;

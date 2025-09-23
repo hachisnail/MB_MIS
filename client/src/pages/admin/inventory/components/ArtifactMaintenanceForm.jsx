@@ -136,15 +136,48 @@ const DamageCarousel = ({ items = [] }) => {
  *  value: {
  *    status?: string,
  *    maintenanceDescription?: string,
- *    damageImages?: Array<{ src: string, name?: string, description?: string }>
+ *    damageImages?: Array<{ src: string, name?: string, description?: string }>,
+ *    currentLocation?: string
  *  }
+ *  onChange?: function to handle location changes
+ *  contributionId?: string for API calls
  */
-export default function ArtifactMaintenanceForm({ value = {} }) {
+export default function ArtifactMaintenanceForm({ 
+  value = {}, 
+  onChange, 
+  contributionId,
+  onLocationUpdate 
+}) {
   const meta = {
     status: "",
     maintenanceDescription: "",
     damageImages: [],
+    currentLocation: "",
     ...value,
+  };
+
+  const locationOptions = [
+    { value: "On Display", label: "On Display" },
+    { value: "In Storage", label: "In Storage" },
+  ];
+
+  const handleLocationChange = async (newLocation) => {
+    if (!contributionId || !onLocationUpdate) return;
+    
+    try {
+      await onLocationUpdate(contributionId, newLocation);
+      
+      // Update local state if onChange is provided
+      if (onChange) {
+        onChange({
+          ...meta,
+          currentLocation: newLocation
+        });
+      }
+    } catch (error) {
+      console.error("Failed to update location:", error);
+      alert("Failed to update artifact location. Please try again.");
+    }
   };
 
   return (
@@ -164,6 +197,25 @@ export default function ArtifactMaintenanceForm({ value = {} }) {
               Status hasn&apos;t been set yet
             </span>
           )}
+        </div>
+
+        {/* Location Dropdown */}
+        <div className="flex items-center gap-3 flex-wrap mt-4">
+          <span className="text-[#555555] font-hind font-bold text-2xl">
+            Location:
+          </span>
+          <select
+            value={meta.currentLocation || ""}
+            onChange={(e) => handleLocationChange(e.target.value)}
+            className="px-4 py-2 text-lg border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white min-w-[200px]"
+          >
+            <option value="">Select location...</option>
+            {locationOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 

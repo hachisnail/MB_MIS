@@ -102,7 +102,7 @@ const Articles = () => {
       >
         {/* Overlay for search/filter bar, positioned absolutely within the background image div */}
         <div className="absolute inset-0 flex justify-center items-center">
-          <div className="grid grid-cols-3 w-[90%] max-w-6xl h-15">
+          <div className="grid grid-cols-2 w-[90%] max-w-6xl h-15">
             {/* Keyword Input */}
               <div className="flex items-center justify-center bg-white text-black border-r border-black">
               <input
@@ -146,7 +146,7 @@ const Articles = () => {
             </div>
 
             {/* Municipality Dropdown */}
-            <div className="relative flex items-center justify-center bg-white text-black border-r border-black">
+            {/* <div className="relative flex items-center justify-center bg-white text-black border-r border-black">
               <select
                 className="w-full h-full px-4 text-4xl lg:text-5xl bg-transparent appearance-none focus:outline-none"
                 value={municipality}
@@ -174,7 +174,7 @@ const Articles = () => {
                   />
                 </svg>
               </div>
-            </div>
+            </div> */}
 
             
           </div>

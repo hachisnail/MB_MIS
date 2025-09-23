@@ -183,7 +183,7 @@ app.get(
       const kind = payload.type?.toLowerCase();
       const fileMap = {
         donation: "DONATION-FORM.docx",
-        lend: "LEND-FORM.docx",
+        lending: "LEND-FORM.docx",
       };
       const templateFile = fileMap[kind];
       if (!templateFile) {

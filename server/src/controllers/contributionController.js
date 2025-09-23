@@ -392,6 +392,15 @@ export const updateContributionStatus = async (req, res) => {
       // afterUpdate hook on Contributions will assign collection_number
     }
 
+    if (status === "rejected") {
+      // Treat rejected as closed: disable writes by closing sessions
+      await ContributionSessions.update(
+        { is_active: false, closed_at: now },
+        { where: { contribution_id: id, is_active: true } }
+      );
+      // No catalog sync or collection number for rejected
+    }
+
     // Build and send email (unchanged behavior)
     const artifactName = contribution.ContributionArtifact?.title || "your artifact";
     const typeWord = contribution.contribution_type === "donation" ? "donation" : "lending";
@@ -761,33 +770,61 @@ export const openContributionSessionByToken = async (req, res) => {
     securityHeaders(res);
     const now = new Date();
 
-    // 1) Try cookie first — if valid, return content immediately (no OTP)
+    const isContributionClosed = (c) => {
+      const t = c?.ContributionTimeline;
+      return c?.status === "completed" || c?.status === "rejected" || !!t?.completed_at;
+    };
+
+    // ---------- 1) Cookie path (prefer if present) ----------
     const gcRaw = req.cookies?.[GUEST_COOKIE_NAME];
     if (gcRaw) {
       const payload = verifyGuestCookie(gcRaw);
       if (payload) {
+        // NOTE: allow fetching even if session became inactive/expired, so we can show read-only for completed.
         const session = await ContributionSessions.findOne({
-          where: { session_id: payload.sid, contribution_id: payload.cid, is_active: true },
+          where: { session_id: payload.sid, contribution_id: payload.cid },
         });
 
-        if (session && (!session.link_expires_at || session.link_expires_at >= now)) {
-          await session.update({
-            last_seen_at: now,
-            magic_link_used_at: session.magic_link_used_at || now,
-          });
+        if (session) {
+          // If still active + not expired -> normal flow (read+write)
+          if (
+            session.is_active &&
+            (!session.link_expires_at || session.link_expires_at >= now)
+          ) {
+            await session.update({
+              last_seen_at: now,
+              magic_link_used_at: session.magic_link_used_at || now,
+            });
 
-          const gi = asJson(session.guest_identity) || {};
-          const baseSession = {
-            session_id: session.session_id,
-            read_enabled: true,
-            write_enabled: true,
-            guest_identity: gi,
-            link_expires_at: session.link_expires_at,
-            otp_verified_at: session.otp_verified_at,
-            created_at: session.created_at,
-            ttl_minutes: READ_WRITE_TTL_MIN,
-          };
+            const gi = asJson(session.guest_identity) || {};
+            const baseSession = {
+              session_id: session.session_id,
+              read_enabled: true,  // or false in token path
+              write_enabled: true, // or false in token path
+              is_active: session.is_active,     // <-- add this line
+              guest_identity: gi,               // or { email_hint: ... } in token path
+              link_expires_at: session.link_expires_at,
+              otp_verified_at: session.otp_verified_at,
+              created_at: session.created_at,
+              ttl_minutes: READ_WRITE_TTL_MIN,
+            };
 
+
+            const contribution = await Contributions.findOne({
+              where: { contribution_id: session.contribution_id },
+              include: [
+                { model: Contributors, attributes: ["first_name", "last_name", "email"] },
+                { model: ContributionArtifacts, attributes: ["title", "description"] },
+                { model: ContributionTimelines },
+                { model: Contracts },
+              ],
+            });
+            if (!contribution) return res.status(404).json({ message: "Contribution not found" });
+
+            return res.json({ session: baseSession, contribution });
+          }
+
+          // If inactive/expired, but contribution is completed -> return read-only (friendly timeline)
           const contribution = await Contributions.findOne({
             where: { contribution_id: session.contribution_id },
             include: [
@@ -797,49 +834,55 @@ export const openContributionSessionByToken = async (req, res) => {
               { model: Contracts },
             ],
           });
-          if (!contribution) return res.status(404).json({ message: "Contribution not found" });
 
-          return res.json({ session: baseSession, contribution });
+          if (contribution && isContributionClosed(contribution)) {
+            const gi = asJson(session.guest_identity) || {};
+            await session.update({
+              last_seen_at: now,
+              magic_link_used_at: session.magic_link_used_at || now,
+            });
+
+            const baseSession = {
+              session_id: session.session_id,
+              read_enabled: true,
+              write_enabled: false, // read-only
+              guest_identity: { email_hint: maskEmail(gi?.email) },
+              link_expires_at: session.link_expires_at,
+              otp_verified_at: null,
+              created_at: session.created_at,
+              ttl_minutes: 0,
+            };
+
+            return res.json({
+              session: baseSession,
+              requires_otp: false,
+              readonly: true,
+              completed: true,
+              contribution,
+            });
+          }
         }
+
+        // Cookie present but unusable (and not completed) -> clear it and fall through
         res.clearCookie(GUEST_COOKIE_NAME, cookieOptions());
       } else {
+        // Bad cookie -> clear and fall through
         res.clearCookie(GUEST_COOKIE_NAME, cookieOptions());
       }
     }
 
-    // 2) Fall back to magic link token
+    // ---------- 2) Magic-link token path ----------
     const token = req.params.token || req.query.token;
     if (!token) return res.status(400).json({ message: "Missing token or cookie" });
 
+    // Allow lookup even if session turned inactive: we may still show read-only if completed.
     const session = await ContributionSessions.findOne({
-      where: { magic_token_hash: sha256hex(token), is_active: true },
+      where: { magic_token_hash: sha256hex(token) },
     });
 
-    if (!session || (session.link_expires_at && session.link_expires_at < now)) {
+    if (!session) {
       return res.status(401).json({ message: "Link invalid or expired" });
     }
-
-    await session.update({
-      last_seen_at: now,
-      magic_link_used_at: session.magic_link_used_at || now,
-    });
-
-    // ❌ removed ensureOtpActiveAndMaybeSend
-    // OTP must now be requested explicitly by the client
-
-    const gi = asJson(session.guest_identity) || {};
-    const baseSession = {
-      session_id: session.session_id,
-      read_enabled: false,
-      write_enabled: false,
-      guest_identity: {
-        email_hint: maskEmail(gi?.email),
-      },
-      link_expires_at: session.link_expires_at,
-      otp_verified_at: session.otp_verified_at,
-      created_at: session.created_at,
-      ttl_minutes: READ_WRITE_TTL_MIN,
-    };
 
     const contribution = await Contributions.findOne({
       where: { contribution_id: session.contribution_id },
@@ -852,16 +895,73 @@ export const openContributionSessionByToken = async (req, res) => {
     });
     if (!contribution) return res.status(404).json({ message: "Contribution not found" });
 
-    return res.json({
-      session: baseSession,
-      requires_otp: true,
-      contribution,
-    });
+    // Active + not expired -> normal OTP-gated flow (read but no write until OTP)
+    if (session.is_active && (!session.link_expires_at || session.link_expires_at >= now)) {
+      await session.update({
+        last_seen_at: now,
+        magic_link_used_at: session.magic_link_used_at || now,
+      });
+
+      const gi = asJson(session.guest_identity) || {};
+      const baseSession = {
+        session_id: session.session_id,
+        read_enabled: false,
+        write_enabled: false,
+        guest_identity: { email_hint: maskEmail(gi?.email) },
+        link_expires_at: session.link_expires_at,
+        otp_verified_at: session.otp_verified_at,
+        created_at: session.created_at,
+        ttl_minutes: READ_WRITE_TTL_MIN,
+      };
+
+      return res.json({
+        session: baseSession,
+        requires_otp: true,
+        contribution,
+      });
+    }
+
+    // Inactive/expired session — if completed, allow read-only timeline
+    if (isContributionClosed(contribution)) {
+      const gi = asJson(session.guest_identity) || {};
+      await session.update({
+        last_seen_at: now,
+        magic_link_used_at: session.magic_link_used_at || now,
+      });
+
+      const baseSession = {
+        session_id: session.session_id,
+        read_enabled: true,
+        write_enabled: false,
+        guest_identity: { email_hint: maskEmail(gi?.email) },
+        link_expires_at: session.link_expires_at,
+        otp_verified_at: null,
+        created_at: session.created_at,
+        ttl_minutes: 0,
+      };
+
+      return res.json({
+        session: baseSession,
+        requires_otp: false,
+        readonly: true,
+        completed: true,
+        contribution,
+      });
+    }
+
+    // Not completed and session not valid anymore
+    return res.status(401).json({ message: "Link invalid or expired" });
   } catch (err) {
     console.error("openContributionSessionByToken error:", err);
     return res.status(500).json({ message: "Server error" });
   }
 };
+
+
+
+
+
+
 
 export const sendContributionSessionOtp = async (req, res) => {
   try {

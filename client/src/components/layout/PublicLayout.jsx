@@ -12,6 +12,7 @@ const PublicLayout = () => {
 
   const hiddenPaths = [
     '/login',
+    '/scan',
     '/login/forgot-password',
     '/recover',
     '/recover/success',

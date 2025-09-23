@@ -143,6 +143,10 @@ const ArticleEditorForm = () => {
   const bypassBlockRef = useRef(false);         // used to skip the custom blocker
   const [isSaving, setIsSaving] = useState(false); // true while submit/save is running
 
+  // Add with other useState hooks
+  const [showValidationModal, setShowValidationModal] = useState(false);
+  const [validationMsg, setValidationMsg] = useState("");
+
   // Dirty suppression
   const suppressDirtyRef = useRef(false);
   const markDirty = () => {
@@ -271,6 +275,7 @@ const ArticleEditorForm = () => {
     if (Object.keys(newErrors).length > 0) {
       console.log("[Save] validation failed", newErrors);
       setErrors(newErrors);
+      openValidationAlert(newErrors);
       return false;
     }
 
@@ -371,6 +376,7 @@ const ArticleEditorForm = () => {
     if (Object.keys(newErrors).length > 0) {
       console.log("[Submit] validation failed", newErrors);
       setErrors(newErrors);
+      openValidationAlert(newErrors);
       return;
     }
 
@@ -686,6 +692,7 @@ const ArticleEditorForm = () => {
     });
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
+      openValidationAlert(newErrors);
     } else {
       setShowSubmitConfirm(true);
     }
@@ -876,6 +883,54 @@ const ArticleEditorForm = () => {
   );
   /* ======================================================== */
 
+
+  // Map validator keys to labels and element ids to focus/scroll
+const FIELD_LABELS = {
+  title: ["Title", "title"],
+  selectedDate: ["Date", "selectedDate"],
+  author: ["Author", "author"],
+  category: ["Category", "category"],
+  content_type: ["Type", "contentType"],
+  status: ["Status", "status"],
+  description: ["Body", "body-editor"], // matches containerId we pass to RTE
+  uploadPeriodStart: ["Schedule Start Date", "uploadPeriodStart"],
+  uploadPeriodEnd: ["Schedule End Date", "uploadPeriodEnd"],
+};
+
+const openValidationAlert = (errorsObj) => {
+  const missing = Object.keys(errorsObj);
+  if (!missing.length) return;
+
+  const labels = missing
+    .map((k) => FIELD_LABELS[k]?.[0] || k)
+    .join(", ");
+
+  setValidationMsg(
+    `Please complete the required field${missing.length > 1 ? "s" : ""}: ${labels}.`
+  );
+  setShowValidationModal(true);
+
+  // Scroll/focus to the first missing field
+  const firstKey = missing[0];
+  const domId = FIELD_LABELS[firstKey]?.[1];
+
+  setTimeout(() => {
+    if (!domId) return;
+
+    const el =
+      document.getElementById(domId) ||
+      document.getElementById("body-editor") ||
+      document.querySelector(`[name="${domId}"]`);
+
+    if (el?.scrollIntoView) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+    if (typeof el?.focus === "function") {
+      el.focus({ preventScroll: true });
+    }
+  }, 0);
+};
+
   return (
     <>
       {/* Main layout */}
@@ -1055,6 +1110,7 @@ const ArticleEditorForm = () => {
                   setEditorText(text);
                   markDirty();
                 }}
+                containerId="body-editor"
               />
 
               {/* Caption */}
@@ -1583,6 +1639,14 @@ const ArticleEditorForm = () => {
         type="info"
       />
 
+      <PopupModal
+          isOpen={showValidationModal}
+          onClose={() => setShowValidationModal(false)}
+          title="Missing required fields"
+          message={validationMsg}
+          buttonText="Got it"
+          type="warning"
+        />
       {/* === Leave modal using your Modal / design (Save / Don’t Save / Cancel) === */}
       <Modal
         isOpen={showLeaveDialog}

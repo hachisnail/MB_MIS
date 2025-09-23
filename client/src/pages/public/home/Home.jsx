@@ -1,4 +1,4 @@
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import bgImage1 from "@/assets/06-AfternoonMealOfTheWorker 1.svg";
 import na1 from "@/assets/visit_us.svg";
 import na2 from "@/assets/support_us.svg";
@@ -6,11 +6,10 @@ import block1 from "@/assets/block1.svg";
 import block2 from "@/assets/block2.png";
 import { scrollToElementById } from "@/components/commons";
 import { ScrollButton } from "../../../features/Utilities";
-import { useNavigate } from "react-router-dom";
 
 import { socialLinks } from "../../../components/commons";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import axios from "axios";
 import CalendarComponent from "../../../features/CalendarComponent";
 
@@ -20,6 +19,7 @@ const UPLOAD_PATH = `${SERVER_ORIGIN}/uploads/pictures/`;
 
 const Home = () => {
   const navigate = useNavigate();
+
   const SocialLink = ({ href, name, iconPath, viewBox }) => (
     <a
       href={href}
@@ -48,15 +48,12 @@ const Home = () => {
       </div>
     </a>
   );
+
   const [articles, setArticles] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const todayStr = new Date().toISOString().split("T")[0];
-  const todaysArticles = articles.filter(
-    (a) => a.upload_date && a.upload_date.split("T")[0] === todayStr
-  );
 
-  // const learnMore = { current: null };
+  const todayStr = new Date().toISOString().split("T")[0];
 
   useEffect(() => {
     fetchArticles();
@@ -65,9 +62,7 @@ const Home = () => {
   const fetchArticles = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(
-        `${SERVER_ORIGIN}/api/auth/public-articles`
-      );
+      const response = await axios.get(`${SERVER_ORIGIN}/api/auth/public-articles`);
       setArticles(response.data);
       setLoading(false);
     } catch (err) {
@@ -81,21 +76,41 @@ const Home = () => {
     return btoa(encodedString);
   };
 
-  let displayArticles = todaysArticles;
-  if (displayArticles.length === 0) {
-    // Find the soonest future date
-    const futureArticles = articles
-      .filter((a) => a.upload_date && a.upload_date.split("T")[0] > todayStr)
-      .sort((a, b) => a.upload_date.localeCompare(b.upload_date));
-    if (futureArticles.length > 0) {
-      const nextDate = futureArticles[0].upload_date.split("T")[0];
-      displayArticles = futureArticles.filter(
-        (a) => a.upload_date.split("T")[0] === nextDate
-      );
+  // ---------- NEW: Event-only helpers for "What's On?" ----------
+  const toISODate = (d) => {
+    if (!d) return "";
+    try {
+      return new Date(d).toISOString().split("T")[0];
+    } catch {
+      return "";
+    }
+  };
+
+  // only events
+  const eventArticles = useMemo(
+    () => articles.filter((a) => String(a.content_type || "").toLowerCase() === "event"),
+    [articles]
+  );
+
+  // today's events
+  const todaysEvents = useMemo(
+    () => eventArticles.filter((a) => toISODate(a.upload_date) === todayStr),
+    [eventArticles, todayStr]
+  );
+
+  // pick today's events, otherwise the soonest future date's events
+  let displayEvents = todaysEvents;
+  if (displayEvents.length === 0) {
+    const futureEvents = eventArticles
+      .filter((a) => toISODate(a.upload_date) > todayStr)
+      .sort((a, b) => toISODate(a.upload_date).localeCompare(toISODate(b.upload_date)));
+    if (futureEvents.length > 0) {
+      const nextDate = toISODate(futureEvents[0].upload_date);
+      displayEvents = futureEvents.filter((a) => toISODate(a.upload_date) === nextDate);
     }
   }
-
-  displayArticles = displayArticles.slice(0, 2);
+  displayEvents = displayEvents.slice(0, 2);
+  // -------------------------------------------------------------
 
   return (
     <div className="overflow-y-scroll snap-y snap-mandatory h-fit w-full">
@@ -128,7 +143,7 @@ const Home = () => {
 
             <div className="w-fit h-fit text-2xl flex gap-x-5 my-10 sm:my-20">
               <button
-                onClick={(e) => {
+                onClick={() => {
                   scrollToElementById("learn_more", 0);
                 }}
                 className="w-48 h-16 bg-white hover:outline-1 hover:outline-black flex items-center justify-center font-medium text-black transition duration-300 hover:shadow-lg cursor-pointer outline-1 outline-white"
@@ -170,9 +185,7 @@ const Home = () => {
                   <path d="M215.7 499.2C267 435 384 279.4 384 192C384 86 298 0 192 0S0 86 0 192c0 87.4 117 243 168.3 307.2c12.3 15.3 35.1 15.3 47.4 0zM192 128a64 64 0 1 1 0 128 64 64 0 1 1 0-128z" />
                 </svg>
                 <div>
-                  <span className="block text-xl font-bold">
-                    Museum Location
-                  </span>
+                  <span className="block text-xl font-bold">Museum Location</span>
                   <span className="text-md font-normal leading-tight">
                     Camarines Norte Provincial Capitol Grounds, Daet Philippines
                   </span>
@@ -236,10 +249,7 @@ const Home = () => {
           <div className="h-[50rem] w-fit relative">
             <img src={block1} alt="" className="z-25 min-w-fit h-[50rem]" />
             <div className="absolute top-25 h-[43.5rem] w-[67.5rem] p-15 right-0 z-50">
-              {/* <span>this text should be manually aligned</span>
-               */}
               <div
-                // import dynamic picture as background image
                 style={{ backgroundImage: `url(${bgImage1})` }}
                 className="w-full h-full bg-cover bg-center bg-no-repeat "
               ></div>
@@ -274,11 +284,6 @@ const Home = () => {
               <div className="w-full h-fit">
                 <CalendarComponent />
               </div>
-
-              {/* <div className="w-full h-[45rem] bg-black rounded-md p-5 flex items-center justify-center">
-
-                <span className="text-white">Calendar componenet</span>
-              </div> */}
             </div>
           </div>
 
@@ -293,15 +298,13 @@ const Home = () => {
               <span className="text-8xl font-hina">Whats On?</span>
             </div>
 
+            {/* ---------- CHANGED: Use displayEvents (events only) ---------- */}
             <div className="w-[55rem] h-full flex flex-col justify-start gap-y-5">
-              {displayArticles.length > 0 ? (
-                displayArticles.map((article, idx) => (
+              {displayEvents.length > 0 ? (
+                displayEvents.map((article) => (
                   <NavLink
                     key={article.article_id}
-                    to={`/article/${encoded(
-                      article.article_id,
-                      article.title
-                    )}`}
+                    to={`/article/${encoded(article.article_id, article.title)}`}
                     className="w-[33rem] mx-auto h-[20rem] md:w-[55rem] md:h-[30rem] bg-cover bg-center bg-no-repeat rounded-lg shadow-lg hover:opacity-90 transition"
                     style={{ backgroundImage: `url('${article.images}')` }}
                     title={article.title}
@@ -333,6 +336,7 @@ const Home = () => {
                 </>
               )}
             </div>
+            {/* ------------------------------------------------------------- */}
           </div>
         </div>
 
@@ -399,10 +403,7 @@ const Home = () => {
                 return (
                   <NavLink
                     key={index}
-                    to={`/article/${encoded(
-                      article.article_id,
-                      article.title
-                    )}`}
+                    to={`/article/${encoded(article.article_id, article.title)}`}
                     className="w-full h-full transition duration-300"
                   >
                     <div className="w-full h-full flex flex-col xl:flex-row gap-4 bg-black/50 p-3 rounded-lg">

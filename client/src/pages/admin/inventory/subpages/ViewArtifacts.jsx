@@ -107,11 +107,7 @@ function maintenanceFromReport(r) {
 /* ----------------------------------------- */
 const TABS = ["Artifact Information", "Maintenance Report"];
 
-function InventoryTabs({
-  labels = TABS,
-  active,
-  onChange,
-}) {
+function InventoryTabs({ labels = TABS, active, onChange }) {
   return (
     <div className="w-full h-full flex items-end justify-end gap-3 mb-4">
       {labels.map((label) => (
@@ -135,7 +131,7 @@ function InventoryTabs({
 export default function ViewArtifacts() {
   const location = useLocation();
   const { setExtraBlockContent } = useOutletContext();
-  
+
   // data state
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -189,11 +185,7 @@ export default function ViewArtifacts() {
     if (typeof setExtraBlockContent === "function") {
       if (contributionData) {
         setExtraBlockContent(
-          <InventoryTabs
-            labels={TABS}
-            active={activeTab}
-            onChange={setActiveTab}
-          />
+          <InventoryTabs labels={TABS} active={activeTab} onChange={setActiveTab} />
         );
       } else {
         setExtraBlockContent(null);
@@ -221,17 +213,19 @@ export default function ViewArtifacts() {
           const reportsRes = await axiosClient.get(
             `/auth/contributions/${data?.contribution_id}/maintenance/reports`
           );
-          const existingReports = (reportsRes.data || []).map(r => mapLatestToEditor(r, SERVER_URL));
-          
-          // If no reports exist, create one empty report
-          if (existingReports.length === 0) {
-            setMaintenanceReports([createEmptyReport()]);
-          } else {
-            setMaintenanceReports(existingReports);
-          }
+          const existingReports = (reportsRes.data || []).map((r) =>
+            mapLatestToEditor(r, SERVER_URL)
+          );
+
+          // 👉 If no reports exist, DON'T pre-create any form
+          setMaintenanceReports(existingReports);
         } catch (inner) {
-          console.warn("[maintenance/reports] not found:", inner?.response?.data || inner?.message);
-          setMaintenanceReports([createEmptyReport()]);
+          console.warn(
+            "[maintenance/reports] not found:",
+            inner?.response?.data || inner?.message
+          );
+          // 👉 Keep empty. User must click Start Maintenance.
+          setMaintenanceReports([]);
         }
 
         // Latest maintenance (optional) - for the maintenance viewer
@@ -242,7 +236,10 @@ export default function ViewArtifacts() {
           const r = latest.data;
           setMaintenance(maintenanceFromReport(r));
         } catch (inner) {
-          console.warn("[maintenance/latest] not found:", inner?.response?.data || inner?.message);
+          console.warn(
+            "[maintenance/latest] not found:",
+            inner?.response?.data || inner?.message
+          );
           setMaintenance(maintenanceFromReport(null));
         }
 
@@ -261,7 +258,10 @@ export default function ViewArtifacts() {
           setMetadata(m);
         } catch (inner) {
           if (inner?.response?.status !== 404) {
-            console.warn("[metadata] fetch failed:", inner?.response?.data || inner?.message);
+            console.warn(
+              "[metadata] fetch failed:",
+              inner?.response?.data || inner?.message
+            );
           }
           setMetadata(null);
         }
@@ -274,13 +274,18 @@ export default function ViewArtifacts() {
           setIsMaintenanceActive(!!sessionRes.data);
         } catch (inner) {
           if (inner?.response?.status !== 204) {
-            console.warn("[maintenance session] check failed:", inner?.response?.data || inner?.message);
+            console.warn(
+              "[maintenance session] check failed:",
+              inner?.response?.data || inner?.message
+            );
           }
           setIsMaintenanceActive(false);
         }
       } catch (e) {
         console.error("Error fetching contribution:", e);
-        setError(e?.response?.data?.message || e?.message || "Failed to load contribution");
+        setError(
+          e?.response?.data?.message || e?.message || "Failed to load contribution"
+        );
         setContributionData(null);
       } finally {
         setLoading(false);
@@ -290,7 +295,9 @@ export default function ViewArtifacts() {
 
   // --------------------- Derived, null-safe accessors ---------------------
   const artifact =
-    contributionData?.ContributionArtifact ?? contributionData?.contributionartifact ?? null;
+    contributionData?.ContributionArtifact ??
+    contributionData?.contributionartifact ??
+    null;
 
   const contributor =
     contributionData?.Contributor ?? contributionData?.contributor ?? null;
@@ -307,20 +314,19 @@ export default function ViewArtifacts() {
     label: img || `Image ${idx + 1}`,
   }));
 
-const attachedFiles = (artifact?.documents ?? []).map((doc, idx) => {
-  const lower = (doc || "").toLowerCase();
-  const isImage = /\.(jpg|jpeg|png|gif|bmp|webp)$/i.test(lower);
+  const attachedFiles = (artifact?.documents ?? []).map((doc, idx) => {
+    const lower = (doc || "").toLowerCase();
+    const isImage = /\.(jpg|jpeg|png|gif|bmp|webp)$/i.test(lower);
 
-  return {
-    key: String(idx),
-    filename: doc || `File ${idx + 1}`,
-    category: "file",
-    url: isImage
-      ? `${SERVER_URL}/uploads/private/pictures/${doc}`
-      : `${SERVER_URL}/uploads/private/files/${doc}`,
-  };
-});
-
+    return {
+      key: String(idx),
+      filename: doc || `File ${idx + 1}`,
+      category: "file",
+      url: isImage
+        ? `${SERVER_URL}/uploads/private/pictures/${doc}`
+        : `${SERVER_URL}/uploads/private/files/${doc}`,
+    };
+  });
 
   // donor info
   const donatorInformation = contributor
@@ -352,23 +358,26 @@ const attachedFiles = (artifact?.documents ?? []).map((doc, idx) => {
     }
 
     try {
-      await axiosClient.post(`/auth/contributions/${contributionData.contribution_id}/maintenance/start`);
+      await axiosClient.post(
+        `/auth/contributions/${contributionData.contribution_id}/maintenance/start`
+      );
       setIsMaintenanceActive(true);
-      
-      // Add a new empty report for the new maintenance session
+
+      // 👉 Add a new empty report ONLY when maintenance starts
       const newReport = createEmptyReport();
-      setMaintenanceReports(prev => [...prev, newReport]);
-      
+      setMaintenanceReports((prev) => [...prev, newReport]);
+
       alert("Maintenance session started successfully!");
-      
+
       // Refresh the maintenance status
-      setMaintenance(prev => ({
+      setMaintenance((prev) => ({
         ...prev,
-        status: "In Maintenance"
+        status: "In Maintenance",
       }));
     } catch (error) {
       console.error("Failed to start maintenance:", error);
-      const message = error?.response?.data?.message || "Failed to start maintenance session";
+      const message =
+        error?.response?.data?.message || "Failed to start maintenance session";
       alert(message);
     }
   };
@@ -377,30 +386,30 @@ const attachedFiles = (artifact?.documents ?? []).map((doc, idx) => {
   const handleLocationUpdate = async (contributionId, newLocation) => {
     try {
       await axiosClient.patch(`/auth/contributions/${contributionId}/location`, {
-        location: newLocation
+        location: newLocation,
       });
-      
+
       // Update local state to reflect the change
-      setContributionData(prev => {
+      setContributionData((prev) => {
         if (!prev) return prev;
-        
+
         const artifact = prev.ContributionArtifact || prev.contributionartifact;
         if (artifact) {
           return {
             ...prev,
             ContributionArtifact: {
               ...artifact,
-              current_location: newLocation
+              current_location: newLocation,
             },
             contributionartifact: {
               ...artifact,
-              current_location: newLocation
-            }
+              current_location: newLocation,
+            },
           };
         }
         return prev;
       });
-      
+
       console.log(`Location updated to: ${newLocation}`);
     } catch (error) {
       console.error("Failed to update location:", error);
@@ -410,23 +419,22 @@ const attachedFiles = (artifact?.documents ?? []).map((doc, idx) => {
 
   // --------------------- Report Management ---------------------
   const updateReport = (index, updatedReport) => {
-    setMaintenanceReports(prev => 
-      prev.map((report, i) => i === index ? updatedReport : report)
+    setMaintenanceReports((prev) =>
+      prev.map((report, i) => (i === index ? updatedReport : report))
     );
   };
 
   const handleReportEdit = (index) => {
-    setMaintenanceReports(prev =>
-      prev.map((report, i) => 
-        i === index ? { ...report, isSubmitted: false } : report
-      )
+    setMaintenanceReports((prev) =>
+      prev.map((report, i) => (i === index ? { ...report, isSubmitted: false } : report))
     );
   };
 
   // --------------------- Validation (report) ---------------------
   const validateForm = (d) => {
     const errors = {};
-    if (!d.personResponsible?.trim()) errors.personResponsible = "Person responsible is required";
+    if (!d.personResponsible?.trim())
+      errors.personResponsible = "Person responsible is required";
     if (!d.actionTaken?.trim()) errors.actionTaken = "Action taken is required";
     if (!d.dateStart) errors.dateStart = "Start date is required";
     if (!d.dateEnd) errors.dateEnd = "End date is required";
@@ -450,7 +458,8 @@ const attachedFiles = (artifact?.documents ?? []).map((doc, idx) => {
     const anyDimProvided = dims.some((r) => r?.L || r?.W || r?.H);
     if (anyDimProvided) {
       const incomplete = dims.some((r) => !(r?.L && r?.W && r?.H));
-      if (incomplete) errors.dimensions = "Please complete L/W/H for each dimension row you added.";
+      if (incomplete)
+        errors.dimensions = "Please complete L/W/H for each dimension row you added.";
     }
 
     return errors;
@@ -461,7 +470,9 @@ const attachedFiles = (artifact?.documents ?? []).map((doc, idx) => {
     const newErrors = validateForm(reportData);
     if (Object.keys(newErrors).length > 0) {
       setReportErrors(newErrors);
-      alert("Please fix errors:\n" + Object.values(newErrors).map((m) => `• ${m}`).join("\n"));
+      alert(
+        "Please fix errors:\n" + Object.values(newErrors).map((m) => `• ${m}`).join("\n")
+      );
       return;
     }
 
@@ -504,18 +515,16 @@ const attachedFiles = (artifact?.documents ?? []).map((doc, idx) => {
 
       // Maintenance session completed - update status
       setIsMaintenanceActive(false);
-      
+
       // Update maintenance status to reflect final location
-      setMaintenance(prev => ({
+      setMaintenance((prev) => ({
         ...prev,
-        status: reportData.finalLocation || "Completed"
+        status: reportData.finalLocation || "Completed",
       }));
 
       // Mark the report as submitted
-      setMaintenanceReports(prev =>
-        prev.map(report => 
-          report === reportData ? { ...report, isSubmitted: true } : report
-        )
+      setMaintenanceReports((prev) =>
+        prev.map((report) => (report === reportData ? { ...report, isSubmitted: true } : report))
       );
 
       setReportErrors({});
@@ -554,35 +563,35 @@ const attachedFiles = (artifact?.documents ?? []).map((doc, idx) => {
     <div className="w-full h-full flex flex-col gap-6">
       {/* ====================== ARTIFACT INFORMATION ====================== */}
       {activeTab === "Artifact Information" && (
-          <ArtifactDetailsShell
-            left={
-              <>
-                <div className="absolute left-0 -top-[12rem] w-full h-[12rem] bg-black flex items-start justify-end pl-10 pb-5 pt-4 overflow-hidden flex-col">
-                  <span className="text-white text-3xl font-bold text-left break-words line-clamp-3 max-w-[38rem]">
-                    {artifact?.title || "Artifact Title"}
-                  </span>
-                  <Breadcrumb hideTitle={true} overrideTheme="text-white" />
-                </div>
-                
-                <RenderArtifactImageAndDonatorInfo
-                  donatorInformation={donatorInformation}
-                  artifactImg={artifactImg}
-                />
+        <ArtifactDetailsShell
+          left={
+            <>
+              <div className="absolute left-0 -top-[12rem] w-full h-[12rem] bg-black flex items-start justify-end pl-10 pb-5 pt-4 overflow-hidden flex-col">
+                <span className="text-white text-3xl font-bold text-left break-words line-clamp-3 max-w-[38rem]">
+                  {artifact?.title || "Artifact Title"}
+                </span>
+                <Breadcrumb hideTitle={true} overrideTheme="text-white" />
+              </div>
 
-                <div className="absolute left-0 -bottom-[1.2rem] w-full h-[1.2rem] bg-black" />
-              </>
-            }
-            middle={
-              <ArtifactMaintenanceForm 
-                value={{
-                  ...maintenance,
-                  currentLocation: artifact?.current_location || ""
-                }} 
-                onChange={setMaintenance}
-                contributionId={contributionData?.contribution_id}
-                onLocationUpdate={handleLocationUpdate}
+              <RenderArtifactImageAndDonatorInfo
+                donatorInformation={donatorInformation}
+                artifactImg={artifactImg}
               />
-            }
+
+              <div className="absolute left-0 -bottom-[1.2rem] w-full h-[1.2rem] bg-black" />
+            </>
+          }
+          middle={
+            <ArtifactMaintenanceForm
+              value={{
+                ...maintenance,
+                currentLocation: artifact?.current_location || "",
+              }}
+              onChange={setMaintenance}
+              contributionId={contributionData?.contribution_id}
+              onLocationUpdate={handleLocationUpdate}
+            />
+          }
           right={
             <div className="w-full h-full flex flex-col gap-4 relative pl-20 pr-15 overflow-hidden">
               <div className="flex-1 min-h-0 rounded-lg border border-gray-300 p-6 flex flex-col">
@@ -693,8 +702,8 @@ const attachedFiles = (artifact?.documents ?? []).map((doc, idx) => {
                 onClick={handleStartMaintenance}
                 disabled={isMaintenanceActive}
                 className={`px-6 py-3 rounded-lg text-lg font-bold ${
-                  isMaintenanceActive 
-                    ? "bg-gray-400 text-gray-600 cursor-not-allowed" 
+                  isMaintenanceActive
+                    ? "bg-gray-400 text-gray-600 cursor-not-allowed"
                     : "bg-white text-black hover:bg-gray-400"
                 }`}
               >
@@ -704,19 +713,30 @@ const attachedFiles = (artifact?.documents ?? []).map((doc, idx) => {
 
             {/* Multiple Reports Container */}
             <div className="h-[57rem] 3xl:h-[74rem] overflow-scroll col-span-1 flex-1 px-1 sm:px-2 pt-4">
-              {maintenanceReports.map((report, index) => (
-                <MaintenanceReportCard
-                  key={index}
-                  title={`Report ${index + 1}`}
-                  report={report}
-                  onChange={(updatedReport) => updateReport(index, updatedReport)}
-                  defaultOpen={index === maintenanceReports.length - 1} // Open the latest report
-                  errors={reportErrors}
-                  isSubmitted={report.isSubmitted}
-                  onEdit={() => handleReportEdit(index)}
-                  onSubmit={handleReportSubmit}
-                />
-              ))}
+              {maintenanceReports.length === 0 ? (
+                <div className="w-full h-full flex items-center justify-center">
+                  <div className="text-center text-neutral-600">
+                    <p className="text-xl font-semibold">No maintenance reports yet</p>
+                    <p>
+                      Click <span className="font-bold">Start Maintenance</span> to create one.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                maintenanceReports.map((report, index) => (
+                  <MaintenanceReportCard
+                    key={index}
+                    title={`Report ${index + 1}`}
+                    report={report}
+                    onChange={(updatedReport) => updateReport(index, updatedReport)}
+                    defaultOpen={index === maintenanceReports.length - 1} // Open the latest report
+                    errors={reportErrors}
+                    isSubmitted={report.isSubmitted}
+                    onEdit={() => handleReportEdit(index)}
+                    onSubmit={handleReportSubmit}
+                  />
+                ))
+              )}
             </div>
           </div>
         </div>
@@ -732,7 +752,9 @@ function CellLabel({ children }) {
 function CellValue({ children }) {
   return (
     <div className="text-sm text-neutral-900 whitespace-pre-wrap">
-      {children?.toString()?.trim() ? children : (
+      {children?.toString()?.trim() ? (
+        children
+      ) : (
         <span className="italic text-neutral-500">Not provided</span>
       )}
     </div>

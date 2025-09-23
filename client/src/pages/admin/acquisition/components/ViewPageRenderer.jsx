@@ -1,28 +1,25 @@
-import { useState, useEffect, useRef, Fragment } from "react";
+// src/pages/admin/acquisition/components/ViewPageRenderer.jsx
+import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { handlePreview } from "../../../../components/commons";
 import { ImageCarousel } from "../../../../features/Utilities";
 import ContextMenu from "../../../../components/modals/ContextMenu";
-import { formatDate } from "../../appointments/components/dateUtils";
 import ImageViewerModal from "../../../../features/ImageViewerModal";
 import { InfoModal } from "../../../../features/InfoModal";
 import NoImagePlaceholder from "../../../../features/Utilities";
 import { handleImageError } from "../../../../features/Utilities";
 import ConfirmationModal from "@/components/modals/ConfirmationModal";
 
-
-const SERVER_URL = import.meta.env.VITE_SERVER_URL;
-
+/* =========================
+ *  Lending Reason
+ * ========================= */
 export function RenderLendingReason({ lendingReason = [] }) {
   return (
     <div className="w-full min-h-fit h-full border border-gray-400 gap-y-5 rounded-lg flex flex-col p-8">
       <span className="text-4xl font-semibold">Reason for Lending</span>
       <div className="max-h-[33.5rem] h-full gap-y-6 flex flex-col overflow-auto">
         {lendingReason.map(({ label, value }) => (
-          <div
-            key={label}
-            className="w-full flex flex-col h-fit text-2xl font-medium"
-          >
+          <div key={label} className="w-full flex flex-col h-fit text-2xl font-medium">
             <span>{label}</span>
             <span className="text-blue-500">{value}</span>
           </div>
@@ -32,31 +29,13 @@ export function RenderLendingReason({ lendingReason = [] }) {
   );
 }
 
+/* =========================
+ *  Artifact Image + Donor
+ * ========================= */
 export function RenderArtifactImageAndDonatorInfo({
   donatorInformation = [],
   artifactImg = [],
 }) {
-  const [currentIndex, setCurrentIndex] = useState(0);
-
-  const getImage = (index) => {
-    if (!artifactImg.length) return null;
-    return artifactImg[(index + artifactImg.length) % artifactImg.length];
-  };
-
-  const handlePrev = () => {
-    setCurrentIndex(
-      (prev) => (prev - 1 + artifactImg.length) % artifactImg.length
-    );
-  };
-
-  const handleNext = () => {
-    setCurrentIndex((prev) => (prev + 1) % artifactImg.length);
-  };
-
-  const sideImages = Array.from({ length: 4 }, (_, i) =>
-    getImage(currentIndex + i + 1)
-  );
-
   return (
     <div className="w-full max-w-[58rem] just h-full flex flex-col gap-y-5 px-5">
       <ImageCarousel
@@ -94,6 +73,9 @@ export function DonatorInfoSection({
   );
 }
 
+/* =========================
+ *  Generic Info Section
+ * ========================= */
 export const InfoSection = ({
   title,
   items = [],
@@ -107,42 +89,25 @@ export const InfoSection = ({
 
   const handleClick = (label, value, idx) => {
     if (idx === 0) return;
-
     const displayValue = value || "Not provided";
     if (displayValue === "Not provided") return;
-
     setModalContent({ label, value: displayValue });
   };
 
   return (
-    <div
-      className={`w-full h-full flex flex-col pl-20 gap-y-3 ${containerClassName}`}
-    >
-      {/* Section Title */}
+    <div className={`w-full h-full flex flex-col pl-20 gap-y-3 ${containerClassName}`}>
       <span className={`text-4xl font-bold ${titleClassName}`}>{title}</span>
 
-      {/* Items */}
       {items.map(({ label, value }, idx) => {
         const displayValue = value || "Not provided";
         return (
-          <div
-            key={idx}
-            className={`flex flex-col text-xl ${
-              idx === 0 ? "h-fit" : itemHeight
-            }`}
-          >
+          <div key={idx} className={`flex flex-col text-xl ${idx === 0 ? "h-fit" : itemHeight}`}>
             <span className={labelClassName}>{label}</span>
             <div
-              className={`w-full ${
-                idx === 0 ? "h-fit" : "h-full"
-              } pl-5 overflow-hidden cursor-pointer`}
+              className={`w-full ${idx === 0 ? "h-fit" : "h-full"} pl-5 overflow-hidden cursor-pointer`}
               onClick={() => handleClick(label, value, idx)}
             >
-              <span
-                className={`${valueClassName} ${
-                  idx === 0 ? "h-fit" : itemHeight
-                }`}
-              >
+              <span className={`${valueClassName} ${idx === 0 ? "h-fit" : itemHeight}`}>
                 {displayValue}
               </span>
             </div>
@@ -150,7 +115,6 @@ export const InfoSection = ({
         );
       })}
 
-      {/* Reusable Modal */}
       <InfoModal
         isOpen={!!modalContent}
         onClose={() => setModalContent(null)}
@@ -161,6 +125,9 @@ export const InfoSection = ({
   );
 };
 
+/* =========================
+ *  Related Docs / Images
+ * ========================= */
 export function RenderRelatedDocs({
   relatedImages = [],
   attachedFiles = [],
@@ -177,14 +144,12 @@ export function RenderRelatedDocs({
   const navigate = useNavigate();
   const location = useLocation();
 
-  /** Pagination for images **/
   const itemsPerPage = 3;
   const paginatedImages = relatedImages.slice(
     (imageCurrentPage - 1) * itemsPerPage,
     imageCurrentPage * itemsPerPage
   );
 
-  /** Pagination for files **/
   const fileItemsPerPage = 4;
   const paginatedFiles = attachedFiles.slice(
     (fileCurrentPage - 1) * fileItemsPerPage,
@@ -194,13 +159,9 @@ export function RenderRelatedDocs({
   return (
     <div className={`w-full flex gap-x-5 ${containerHeight}`}>
       {/* image container */}
-      <div
-        className={`h-full flex flex-col items-center rounded-xl pb-4 shadow-sm shadow-gray-400 ${imageBoxWidth}`}
-      >
+      <div className={`h-full flex flex-col items-center rounded-xl pb-4 shadow-sm shadow-gray-400 ${imageBoxWidth}`}>
         <div className="h-fit w-full flex flex-col items-center rounded-t-xl justify-center bg-[#1D1911]">
-          <span className="my-3 text-white text-xl font-semibold">
-            Related Images
-          </span>
+          <span className="my-3 text-white text-xl font-semibold">Related Images</span>
           <div className="h-5 w-full bg-white rounded-t-xl"></div>
         </div>
 
@@ -225,7 +186,7 @@ export function RenderRelatedDocs({
                   />
                 ) : (
                   <div className="flex items-center justify-center w-full h-full bg-gray-200 rounded-xl">
-                    <NoImagePlaceholder className="bg-gray-500"/>
+                    <NoImagePlaceholder className="bg-gray-500" />
                   </div>
                 )}
               </div>
@@ -239,15 +200,12 @@ export function RenderRelatedDocs({
       </div>
 
       {/* file container */}
-      <div
-        className={`h-full flex flex-col items-center rounded-xl pb-4 shadow-sm shadow-gray-600 ${fileBoxWidth}`}
-      >
+      <div className={`h-full flex flex-col items-center rounded-xl pb-4 shadow-sm shadow-gray-600 ${fileBoxWidth}`}>
         <div className="h-fit w-full flex flex-col items-center rounded-t-xl justify-center bg-[#1D1911]">
-          <span className="my-3 text-white text-xl font-semibold">
-            Attached Files
-          </span>
+          <span className="my-3 text-white text-xl font-semibold">Attached Files</span>
           <div className="h-5 w-full bg-white rounded-t-xl"></div>
         </div>
+
         <div className="w-[calc(100%-2rem)] p-2 gap-y-1 h-full flex flex-col overflow-y-scroll rounded-lg shadow-[inset_0_8px_12px_rgba(0,0,0,0.25),inset_0_-8px_12px_rgba(0,0,0,0.50)]">
           {paginatedFiles.length > 0 ? (
             paginatedFiles.map(({ key, filename, category, url }, i) => (
@@ -259,19 +217,10 @@ export function RenderRelatedDocs({
                     label: "Preview",
                     onClick: () => {
                       const fileType = filename.split(".").pop().toLowerCase();
-                      handlePreview(
-                        navigate,
-                        `${location.pathname}/view`,
-                        url,
-                        filename,
-                        fileType
-                      );
+                      handlePreview(navigate, `${location.pathname}/view`, url, filename, fileType);
                     },
                   },
-                  {
-                    label: "Download",
-                    onClick: () => window.open(url, "_blank"),
-                  },
+                  { label: "Download", onClick: () => window.open(url, "_blank") },
                 ]}
               >
                 <div className="flex w-full rounded-2xl py-4 px-2 border border-gray-400 flex-col items-center cursor-pointer hover:scale-105 transition-transform">
@@ -295,11 +244,7 @@ export function RenderRelatedDocs({
                   >
                     {filename}
                   </p>
-                  {category && (
-                    <p className="text-md capitalize text-gray-500">
-                      {category}
-                    </p>
-                  )}
+                  {category && <p className="text-md capitalize text-gray-500">{category}</p>}
                 </div>
               </ContextMenu>
             ))
@@ -309,7 +254,6 @@ export function RenderRelatedDocs({
         </div>
       </div>
 
-      {/* Modal */}
       {isModalOpen && (
         <ImageViewerModal
           images={relatedImages}
@@ -321,24 +265,25 @@ export function RenderRelatedDocs({
   );
 }
 
+/* =========================
+ *  Preview About
+ * ========================= */
 export function PreviewAbout({ previewAbout = [] }) {
   return (
     <div className="w-full h-fit gap-y-4 flex flex-wrap border-y border-[#9B9B9B] py-10 ">
       {previewAbout.map(({ label, value }, idx) => (
-        <div
-          key={idx}
-          className={`${idx === 0 ? "w-full" : "w-1/2"} h-fit flex flex-col `}
-        >
+        <div key={idx} className={`${idx === 0 ? "w-full" : "w-1/2"} h-fit flex flex-col `}>
           <span className="text-[#666666] text-xl ">{label}</span>
-          <span className="text-white capitalize text-2xl font-semibold 3xl:text-3xl">
-            {value}
-          </span>
+          <span className="text-white capitalize text-2xl font-semibold 3xl:text-3xl">{value}</span>
         </div>
       ))}
     </div>
   );
 }
 
+/* =========================
+ *  Artifact Image Gallery
+ * ========================= */
 export function ArtifactImageGallery({
   artifactImg = [],
   onActiveDocumentChange = () => {},
@@ -352,7 +297,6 @@ export function ArtifactImageGallery({
 
   return (
     <div className="w-full h-fit flex flex-col gap-y-5">
-      {/* First image */}
       <div className="w-full h-[34rem] 3xl:h-[45rem] bg-white rounded-2xl overflow-hidden flex items-center justify-center ">
         {artifactImg.length > 0 ? (
           <img
@@ -366,16 +310,13 @@ export function ArtifactImageGallery({
         )}
       </div>
 
-      {/* Thumbnails + button */}
       <div className="w-full h-[7rem] flex gap-x-2 mt-2">
         {[...Array(3)].map((_, i) => {
-          const img = artifactImg[i + 1]; // start from 2nd image
+          const img = artifactImg[i + 1];
           return (
             <div
               key={i}
-              className={`${
-                !img && "border-black border-3 flex flex-col"
-              } w-[7rem] h-[7rem] rounded-full bg-white overflow-hidden flex items-center justify-center text-center`}
+              className={`${!img && "border-black border-3 flex flex-col"} w-[7rem] h-[7rem] rounded-full bg-white overflow-hidden flex items-center justify-center text-center`}
             >
               {img ? (
                 <img
@@ -391,32 +332,31 @@ export function ArtifactImageGallery({
           );
         })}
 
-        {/* If there are more than 4 total images → show +N */}
         {artifactImg.length > 4 && (
           <div className="w-[7rem] h-[7rem] rounded-full bg-white flex items-center justify-center text-lg font-semibold text-[#1D1911]">
             +{artifactImg.length - 4}
           </div>
         )}
 
-        {/* Button */}
         <button
           onClick={() => handleSetActiveDocument("Document")}
           className="w-[16rem] shadow-sm shadow-gray-200 h-[7rem] px-10 rounded-l-full rounded-r-full bg-white flex items-center justify-center cursor-pointer hover:bg-gray-100 transition"
         >
-          <span className="font-bold text-2xl text-[#1D1911]">
-            Click to View Full Document
-          </span>
+          <span className="font-bold text-2xl text-[#1D1911]">Click to View Full Document</span>
         </button>
       </div>
     </div>
   );
 }
 
+/* =========================
+ *  Artifact Info Grid
+ * ========================= */
 export function ArtifactInfoGrid({ artifactInfo = [] }) {
   return (
     <div className="w-full h-fit pt-10 pb-15 border-b border-[#9B9B9B] flex flex-wrap gap-2">
       {artifactInfo.map(({ label, value }, idx) => {
-        if (idx === 0) return null; // skip first item
+        if (idx === 0) return null;
 
         const adjIdx = idx - 1;
         const row = Math.floor(adjIdx / 2);
@@ -426,14 +366,12 @@ export function ArtifactInfoGrid({ artifactInfo = [] }) {
         return (
           <div
             key={idx}
-            className={`w-[calc(50%-3px)] h-50 flex flex-col items-center font-hind justify-center p-3 ${
-              isDark ? "bg-[#1C1B19]" : "bg-[#0D0E0E]"
-            }`}
+            className={`w-[calc(50%-3px)] h-50 flex flex-col items-center font-hind justify-center p-3 ${isDark ? "bg-[#1C1B19]" : "bg-[#0D0E0E]"}`}
           >
             <span className="text-[#CDC469] max-w-full max-h-1/2 font-bold text-center break-words">
               {label}
             </span>
-            <span className="text-white max-w-full max-h-1/2 text-center font-medium break-words">
+            <span className="text-white max-w-full max-h-1/2 text-center font-medium break-words overflow-hidden">
               {value}
             </span>
           </div>
@@ -443,13 +381,15 @@ export function ArtifactInfoGrid({ artifactInfo = [] }) {
   );
 }
 
+/* =========================
+ *  Transaction Description
+ * ========================= */
 export function TransactionDescription({
   transactionDescription = [],
   user = { fname: "", lname: "" },
 }) {
   return (
     <div className="w-full h-fit border-y py-8 border-[#9B9B9B] flex flex-col">
-      {/* Transaction details */}
       <div className="flex w-full h-fit pb-8">
         {transactionDescription.map(({ label, value }, idx) => (
           <div key={idx} className="flex flex-col w-1/2">
@@ -459,7 +399,6 @@ export function TransactionDescription({
         ))}
       </div>
 
-      {/* Current manager */}
       <div className="w-full flex flex-col">
         <span className="text-xl">Current Manager</span>
         <span className="text-2xl font-semibold capitalize">
@@ -470,7 +409,10 @@ export function TransactionDescription({
   );
 }
 
-
+/* =========================
+ *  Options Panel
+ *  (with confirmation before saving to inventory)
+ * ========================= */
 const OptionButton = ({ icon, label, onClick, disabled = false, title }) => (
   <button
     type="button"
@@ -490,7 +432,6 @@ const OptionButton = ({ icon, label, onClick, disabled = false, title }) => (
   </button>
 );
 
-
 export function OptionsPanel({
   onEdit,
   onSave,
@@ -501,6 +442,7 @@ export function OptionsPanel({
   completeDisabled = false,
   editDisabled = false,
 
+  // confirmation toggles
   confirmOnEdit = true,
   confirmOnSave = true,
   confirmOnComplete = true,
@@ -513,6 +455,7 @@ export function OptionsPanel({
   saveConfirmTitle = "Save changes?",
   saveConfirmMessage = "This will write your changes as a draft to Artifact Metadata.",
 
+  // EXACT prompt requested
   completeConfirmTitle = "Finalize metadata?",
   completeConfirmMessage =
     "Mark metadata as complete and save to inventory?\nThis will generate/lock the collection number (if not set) and finalize the record.",
@@ -549,38 +492,27 @@ export function OptionsPanel({
   };
 
   const handleEditClick = () => {
-    if (disabled) return;
-    if (confirmOnEdit) {
-      setAskEdit(true);
-    } else {
-      callEdit();
-    }
+    if (disabled || editDisabled) return;
+    if (confirmOnEdit) setAskEdit(true);
+    else callEdit();
   };
 
   const handleSaveClick = () => {
     if (disabled || saving || saveDisabled) return;
-    if (confirmOnSave) {
-      setAskSave(true);
-    } else {
-      callSave();
-    }
+    if (confirmOnSave) setAskSave(true);
+    else callSave();
   };
 
   const handleCompleteClick = () => {
     if (disabled || completeDisabled) return;
-    if (confirmOnComplete) {
-      setAskComplete(true);
-    } else {
-      callComplete();
-    }
+    if (confirmOnComplete) setAskComplete(true);
+    else callComplete();
   };
 
   return (
     <>
       <div className="w-[12rem] flex-none h-full rounded-xl bg-[#1D1911] p-3 flex flex-col gap-3">
-        <span className="block text-white text-lg font-bold text-center">
-          Options
-        </span>
+        <span className="block text-white text-lg font-bold text-center">Options</span>
 
         <div className="flex-1 min-h-0 flex flex-col gap-3">
           {/* Edit */}
@@ -589,14 +521,7 @@ export function OptionsPanel({
             disabled={disabled || editDisabled}
             label={"Edit Data"}
             icon={
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="w-5 h-5 text-white"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M12 20h9" />
                 <path d="M16.5 3.5a2 2 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5Z" />
               </svg>
@@ -610,35 +535,21 @@ export function OptionsPanel({
             title={saveDisabled ? "Nothing to save" : undefined}
             label={saving ? "Saving…" : "Save Changes"}
             icon={
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="w-5 h-5 text-white"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M17 3H7a2 2 0 0 0-2 2v14l4-2 4 2 4-2 4 2V7l-4-4Z" />
                 <path d="M8 7h8v4H8z" />
               </svg>
             }
           />
 
-          {/* Complete */}
+          {/* Complete → CONFIRM FIRST */}
           <OptionButton
             onClick={handleCompleteClick}
             disabled={disabled || completeDisabled}
             title={completeDisabled ? "Save changes first" : undefined}
             label={"Data Complete\nSave to Inventory"}
             icon={
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="w-5 h-5 text-white"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M3 7h18M3 12h18M3 17h18" />
                 <path d="M7 7v14M17 7v14" />
               </svg>
@@ -675,13 +586,12 @@ export function OptionsPanel({
         theme={confirmTheme}
       />
 
-      {/* Confirm: Complete */}
+      {/* Confirm: Complete → proceed to inventory only after confirm */}
       <ConfirmationModal
         isOpen={askComplete}
         onClose={() => setAskComplete(false)}
         onConfirm={() => {
           setAskComplete(false);
-          // guard again in case state changed while modal open
           if (!completeDisabled) callComplete();
         }}
         title={completeConfirmTitle}
@@ -692,4 +602,3 @@ export function OptionsPanel({
     </>
   );
 }
-

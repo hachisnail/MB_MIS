@@ -268,10 +268,16 @@ if (serverRequiresOtp) {
 
   /* ===================== Effects ===================== */
   // Fetch on mount / token change
-  useEffect(() => {
+useEffect(() => {
+  fetchSession();
+  // Setup polling interval (e.g., every 10 seconds)
+  const interval = setInterval(() => {
     fetchSession();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token]);
+  }, 5000);
+  return () => clearInterval(interval); // cleanup on unmount
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [token]);
+
 
   // Reset OTP gate UI on token change
   useEffect(() => {

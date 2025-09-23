@@ -1,7 +1,8 @@
 // ./components/ReviewStep.jsx
 import { format } from "date-fns";
+import SubmitButton from "../../../../features/SubmitButton";
 
-const ReviewStep = ({ formData, onBack, onConfirm }) => {
+const ReviewStep = ({ formData, onBack, onConfirm, isSubmitting = false }) => {
   const fileItems = Array.isArray(formData.requestLetterUpload)
     ? formData.requestLetterUpload
     : [];
@@ -139,17 +140,18 @@ const ReviewStep = ({ formData, onBack, onConfirm }) => {
           <button
             type="button"
             onClick={() => onBack({})}
-            className="w-44 h-15 rounded-md bg-black text-white text-2xl hover:bg-gray-800"
+            className="w-44 h-15 rounded-md bg-black text-white text-2xl hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={isSubmitting}
           >
             Previous
           </button>
-          <button
-            type="button"
+          <SubmitButton
             onClick={onConfirm}
-            className="w-44 h-15 rounded-md bg-black text-white text-2xl hover:bg-gray-800"
+            isLoading={isSubmitting}
+            loadingText="Submitting..."
           >
             Submit Appointment
-          </button>
+          </SubmitButton>
         </div>
       </div>
     </div>

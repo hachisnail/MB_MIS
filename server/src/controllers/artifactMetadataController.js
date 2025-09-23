@@ -1,5 +1,5 @@
 // server/src/controllers/artifactMetadataController.js
-import { Op } from "sequelize";
+import { mainDb } from "../configs/databases.js";
 import { ContributionArtifacts } from "../models/contributionModels.js";
 import ArtifactMetadata from "../models/ArtifactMetadata.js";
 import {
@@ -11,9 +11,9 @@ import { createLog } from "../services/logService.js";
 
 import fs from "fs/promises";
 import path from "path";
-import { UPLOAD_BASE_DIR} from "../middlewares/multerMiddleware.js"
+import { UPLOAD_BASE_DIR } from "../middlewares/multerMiddleware.js";
 
-// ---------- helpers ----------
+/* ---------- helpers ---------- */
 function pickNonBlank(body, keys) {
   const out = {};
   for (const k of keys) {
@@ -25,6 +25,7 @@ function pickNonBlank(body, keys) {
   return out;
 }
 
+// Simple MB-YYYY-00001 generator used on completion (hook also guards uniqueness)
 function generateCollectionNumber(artifact_id) {
   const yy = new Date().getFullYear();
   const n = String(artifact_id).padStart(5, "0");
@@ -36,7 +37,15 @@ async function getArtifactIdByContributionId(contribution_id) {
   return art?.artifact_id ?? null;
 }
 
-// ---------- routes (match your auth.js) ----------
+// Validate required fields before allowing completion
+function validateRequired(meta) {
+  // Adjust required fields to your policy
+  const required = ["curatorial_description"];
+  const missing = required.filter((k) => !meta?.[k] || String(meta[k]).trim() === "");
+  return { ok: missing.length === 0, missing };
+}
+
+/* ---------- routes (match your auth.js) ---------- */
 
 // GET /api/auth/contributions/:id/metadata
 export async function getArtifactMetadataByContribution(req, res) {
@@ -113,18 +122,30 @@ export async function upsertArtifactMetadataDraft(req, res) {
 // POST /api/auth/contributions/:id/metadata/complete
 // idempotent: if already completed, just re-sync inventory
 export async function completeArtifactMetadata(req, res) {
+  const tx = await mainDb.transaction();
   try {
     const contribution_id = Number(req.params.id);
     const artifact_id = await getArtifactIdByContributionId(contribution_id);
-    if (!artifact_id) return res.status(404).json({ error: "Contribution not found" });
+    if (!artifact_id) {
+      await tx.rollback();
+      return res.status(404).json({ error: "Contribution not found" });
+    }
 
-    let meta = await ArtifactMetadata.findOne({ where: { artifact_id } });
-    if (!meta) meta = await ArtifactMetadata.create({ artifact_id, metadata_completed: false });
+    // Ensure a metadata row exists (inside tx)
+    let meta = await ArtifactMetadata.findOne({ where: { artifact_id }, transaction: tx, lock: tx.LOCK.UPDATE });
+    if (!meta) {
+      meta = await ArtifactMetadata.create(
+        { artifact_id, metadata_completed: false },
+        { transaction: tx }
+      );
+    }
 
+    // If already completed → refresh catalog + touch inventory_synced_at
     if (meta.metadata_completed) {
-      // already finalized → refresh catalog + touch inventory_synced_at
-      await upsertCatalogArtifact(contribution_id);
-      await meta.update({ inventory_synced_at: new Date() });
+      await upsertCatalogArtifact(contribution_id, tx);
+      await meta.update({ inventory_synced_at: new Date() }, { transaction: tx });
+      await tx.commit();
+
       const fresh = await ArtifactMetadata.findOne({ where: { artifact_id } });
       return res.json({ ok: true, status: "already_completed_resynced", metadata: fresh });
     }
@@ -132,13 +153,29 @@ export async function completeArtifactMetadata(req, res) {
     // Capture before state for logging
     const beforeState = meta.toJSON();
 
+    // Pull a fresh snapshot for validation (outside tx read would also be fine)
+    const snapshot = meta.toJSON();
+    const check = validateRequired(snapshot);
+    if (!check.ok) {
+      await tx.rollback();
+      return res.status(422).json({
+        ok: false,
+        error: "metadata_incomplete",
+        missing_fields: check.missing,
+      });
+    }
+
+    // Mark completed + set inventory_synced_at + assign collection_number if missing
     const updates = { metadata_completed: true, inventory_synced_at: new Date() };
     if (!meta.collection_number) updates.collection_number = generateCollectionNumber(artifact_id);
-    await meta.update(updates);
+    await meta.update(updates, { transaction: tx });
 
-    await upsertCatalogArtifact(contribution_id);
+    // Upsert catalog inside the same tx (guard in service ensures only completed meta publishes)
+    await upsertCatalogArtifact(contribution_id, tx);
 
-    // copy the first artifact image
+    await tx.commit();
+
+    // Copy the first artifact image AFTER commit (filesystem side effect)
     await copyFirstArtifactImage(contribution_id);
 
     const fresh = await ArtifactMetadata.findOne({ where: { artifact_id } });
@@ -160,8 +197,8 @@ export async function completeArtifactMetadata(req, res) {
     }
 
     return res.json({ ok: true, status: "completed_and_synced", metadata: fresh });
-    
   } catch (err) {
+    try { await tx.rollback(); } catch {}
     console.error("completeArtifactMetadata error:", err);
     return res.status(500).json({ error: "Failed to finalize metadata" });
   }
@@ -198,6 +235,7 @@ export async function listPublicCatalogArtifacts(req, res) {
   }
 }
 
+/* ---------- private: media copy ---------- */
 
 async function copyFirstArtifactImage(contribution_id) {
   const artifact = await ContributionArtifacts.findOne({
@@ -221,7 +259,6 @@ async function copyFirstArtifactImage(contribution_id) {
   if (!Array.isArray(images) || images.length === 0) return;
 
   const firstImage = images[0];
-
   const src = path.join(UPLOAD_BASE_DIR, "private/pictures", firstImage);
   const dest = path.join(UPLOAD_BASE_DIR, "pictures", firstImage);
 
@@ -233,3 +270,11 @@ async function copyFirstArtifactImage(contribution_id) {
     console.error(`[copyFirstArtifactImage] Failed to copy ${firstImage}:`, err);
   }
 }
+
+export default {
+  getArtifactMetadataByContribution,
+  upsertArtifactMetadataDraft,
+  completeArtifactMetadata,
+  previewCatalogRecord,
+  listPublicCatalogArtifacts,
+};

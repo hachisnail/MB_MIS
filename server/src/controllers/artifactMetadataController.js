@@ -8,6 +8,10 @@ import {
   listCatalogArtifacts,
 } from "../services/catalogSyncService.js";
 
+import fs from "fs/promises";
+import path from "path";
+import { UPLOAD_BASE_DIR} from "../middlewares/multerMiddleware.js"
+
 // ---------- helpers ----------
 function pickNonBlank(body, keys) {
   const out = {};
@@ -108,8 +112,12 @@ export async function completeArtifactMetadata(req, res) {
 
     await upsertCatalogArtifact(contribution_id);
 
+    // copy the first artifact image
+    await copyFirstArtifactImage(contribution_id);
+
     const fresh = await ArtifactMetadata.findOne({ where: { artifact_id } });
     return res.json({ ok: true, status: "completed_and_synced", metadata: fresh });
+    
   } catch (err) {
     console.error("completeArtifactMetadata error:", err);
     return res.status(500).json({ error: "Failed to finalize metadata" });
@@ -144,5 +152,41 @@ export async function listPublicCatalogArtifacts(req, res) {
   } catch (err) {
     console.error("listPublicCatalogArtifacts error:", err);
     return res.status(500).json({ error: "Failed to load catalog" });
+  }
+}
+
+
+async function copyFirstArtifactImage(contribution_id) {
+  const artifact = await ContributionArtifacts.findOne({
+    where: { contribution_id },
+    attributes: ["images"],
+  });
+
+  if (!artifact || !artifact.images) {
+    console.log(`[copyFirstArtifactImage] No images found for contribution ${contribution_id}`);
+    return;
+  }
+
+  let images;
+  try {
+    images = JSON.parse(artifact.images);
+  } catch (err) {
+    console.error(`[copyFirstArtifactImage] Failed to parse images JSON:`, err);
+    return;
+  }
+
+  if (!Array.isArray(images) || images.length === 0) return;
+
+  const firstImage = images[0];
+
+  const src = path.join(UPLOAD_BASE_DIR, "private/pictures", firstImage);
+  const dest = path.join(UPLOAD_BASE_DIR, "pictures", firstImage);
+
+  try {
+    await fs.mkdir(path.dirname(dest), { recursive: true });
+    await fs.copyFile(src, dest);
+    console.log(`[copyFirstArtifactImage] Copied ${firstImage} → ${dest}`);
+  } catch (err) {
+    console.error(`[copyFirstArtifactImage] Failed to copy ${firstImage}:`, err);
   }
 }

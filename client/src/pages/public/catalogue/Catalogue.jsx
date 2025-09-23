@@ -1,34 +1,29 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, Fragment } from "react";
 import { Link, NavLink } from "react-router-dom";
 import axios from "axios";
 
-// --- tabs ---
+import { Transition } from "@headlessui/react";
+
 const tabs = ["Latest", "Temporary", "All"];
 
-// --- env + paths ---
-const BASE_URL = import.meta.env.VITE_API_BASE_URL;                  // e.g. http://localhost:5000/api
-const SERVER_ORIGIN = BASE_URL?.replace(/\/api$/, "");               // -> http://localhost:5000
-const UPLOAD_PUBLIC = `${SERVER_ORIGIN}/uploads/pictures/`;          // public images
-const UPLOAD_PRIVATE = `${SERVER_ORIGIN}/uploads/private/pictures/`; // fallback if needed
+const BASE_URL = import.meta.env.VITE_API_BASE_URL; 
+const SERVER_ORIGIN = BASE_URL?.replace(/\/api$/, "");
+const UPLOAD_PUBLIC = `${SERVER_ORIGIN}/uploads/pictures/`; 
+const UPLOAD_PRIVATE = `${SERVER_ORIGIN}/uploads/private/pictures/`; 
 
-// Encode (ID :: Title) into base64 for routes
 const encodeForRoute = (id, title) => btoa(`${id}::${title ?? ""}`);
 
-/** Coerce a value into an array of strings.
- * Handles: real arrays, JSON-stringified arrays, comma-separated strings.
- */
+
 const coerceList = (val) => {
   if (Array.isArray(val)) return val.filter(Boolean);
   if (typeof val === "string") {
     const s = val.trim();
-    // Try JSON parse first
     try {
       const parsed = JSON.parse(s);
       if (Array.isArray(parsed)) return parsed.filter(Boolean);
     } catch {}
-    // Fallback: split by comma
     return s
-      .replace(/^\[|\]$/g, "") // strip brackets if someone sent them
+      .replace(/^\[|\]$/g, "") 
       .split(",")
       .map((x) => x.trim().replace(/^"|"$/g, "")) // strip quotes
       .filter(Boolean);
@@ -77,6 +72,81 @@ const prettyDate = (d) => {
   }
 };
 
+const DisplayCatalog = ({ open, onClose, data }) => {
+  return (
+    <div
+      className={`fixed inset-0 z-50 flex items-center justify-center overflow-hidden ${
+        open ? "pointer-events-auto" : "pointer-events-none"
+      }`}
+    >
+      {/* Overlay */}
+      <div
+        className={`absolute inset-0 w-full h-full bg-black/80 transition-opacity duration-300 ${
+          open ? "opacity-100" : "opacity-0"
+        }`}
+        onClick={onClose}
+      />
+
+      {/* Left block */}
+      <Transition
+        as={Fragment}
+        show={open}
+        enter="transform transition duration-700"
+        enterFrom="-translate-x-full translate-y-[15%] opacity-0"
+        enterTo="translate-x-0 opacity-100"
+        leave="transform transition duration-500"
+        leaveFrom="translate-x-0 translate-y-[15%] opacity-100"
+        leaveTo="-translate-x-full translate-y-[15%] opacity-0"
+      >
+        <div className="absolute top-1/2 left-[16.7%] flex justify-end -translate-y-1/2 w-1/3 h-1/2 shadow-lg text-white overflow-y-auto">
+          {data ? (
+            <img
+              src={getPrimaryImage(data)}
+              alt={data.title || "Artifact"}
+              className="h-full"
+            />
+          ) : (
+            <p className="text-white">No image</p>
+          )}
+        </div>
+      </Transition>
+
+      {/* Right block */}
+      <Transition
+        as={Fragment}
+        show={open}
+        enter="transform transition duration-700"
+        enterFrom="translate-x-full translate-y-[15%] opacity-0"
+        enterTo="translate-x-0 opacity-100"
+        leave="transform transition duration-500"
+        leaveFrom="translate-x-0 translate-y-[15%] opacity-100"
+        leaveTo="translate-x-full translate-y-[15%] opacity-0"
+      >
+        <div className="absolute top-1/2 right-[16.7%] -translate-y-1/2 w-1/3 h-1/2 bg-neutral-700 shadow-lg flex flex-col p-4 items-start justify-center">
+          {data ? (
+            <>
+            <h1 className="text-xl text-white">Title:</h1>
+              <h2 className="text-2xl font-bold text-white">{data.title}</h2>
+              <p className="mt-2 text-white">{data.culture || "Unknown culture"}</p>
+              <p className="mt-2 text-white">{data.provenance || "No provenance info"}</p>
+              <p className="mt-2 text-white">{data.donor_description || "No donor desc"}</p>
+              <p className="mt-2 text-white">{data.curatorial_description || "No curatoral desc"}</p>
+
+
+            </>
+          ) : (
+            <p>No data</p>
+          )}
+        </div>
+      </Transition>
+    </div>
+  );
+};
+
+
+
+
+
 const Catalogue = () => {
   const [activeTab, setActiveTab] = useState("Latest");
   const [loading, setLoading] = useState(false);
@@ -90,16 +160,22 @@ const Catalogue = () => {
   // Data straight from catalog_artifacts
   const [artifacts, setArtifacts] = useState([]);
 
+  const [open, setOpen] = useState(false);
+  const [selectedArtifact, setSelectedArtifact] = useState(null);
+
+
   useEffect(() => {
     const fetchCatalog = async () => {
       try {
         setLoading(true);
         setError("");
 
-        // using /api/auth/public-artifacts per your router
-        const { data } = await axios.get(`${SERVER_ORIGIN}/api/auth/public-artifacts`, {
-          params: { hasImages: "1", limit: 400 },
-        });
+        const { data } = await axios.get(
+          `${SERVER_ORIGIN}/api/auth/public-artifacts`,
+          {
+            params: { hasImages: "1", limit: 400 },
+          }
+        );
 
         setArtifacts(Array.isArray(data) ? data : []);
       } catch (err) {
@@ -129,7 +205,8 @@ const Catalogue = () => {
         a.provenance?.toLowerCase().includes(kw);
 
       const matchCulture = !cul || (a.culture || "").toLowerCase() === cul;
-      const matchLocation = !loc || (a.current_location || "").toLowerCase().includes(loc);
+      const matchLocation =
+        !loc || (a.current_location || "").toLowerCase().includes(loc);
 
       return matchKW && matchCulture && matchLocation;
     });
@@ -138,16 +215,26 @@ const Catalogue = () => {
   // Tabs
   const visible = useMemo(() => {
     if (activeTab === "All") {
-      return filtered.slice().sort((a, b) => new Date(b.updated_at || 0) - new Date(a.updated_at || 0));
+      return filtered
+        .slice()
+        .sort(
+          (a, b) => new Date(b.updated_at || 0) - new Date(a.updated_at || 0)
+        );
     }
 
     if (activeTab === "Temporary") {
       // Heuristic: show likely loans/temporary exhibits
       const temp = filtered.filter((a) => {
-        const txt = `${a.acquisition_history || ""} ${a.provenance || ""}`.toLowerCase();
+        const txt = `${a.acquisition_history || ""} ${
+          a.provenance || ""
+        }`.toLowerCase();
         return txt.includes("loan") || txt.includes("temporary");
       });
-      return temp.slice().sort((a, b) => new Date(b.updated_at || 0) - new Date(a.updated_at || 0));
+      return temp
+        .slice()
+        .sort(
+          (a, b) => new Date(b.updated_at || 0) - new Date(a.updated_at || 0)
+        );
     }
 
     // Latest (default) — top N by updated_at
@@ -178,11 +265,13 @@ const Catalogue = () => {
         </div>
 
         <div className="w-full">
-          <span className="text-white text-8xl font-semibold">Current Collections</span>
+          <span className="text-white text-8xl font-semibold">
+            Current Collections
+          </span>
         </div>
 
         {/* Filters (optional) */}
-        <div className="flex gap-3 flex-wrap">
+        {/* <div className="flex gap-3 flex-wrap">
           <input
             value={keyword}
             onChange={(e) => setKeyword(e.target.value)}
@@ -201,19 +290,19 @@ const Catalogue = () => {
             placeholder="Location"
             className="px-4 py-2 rounded border border-gray-400 bg-white/95 text-black w-[18rem] max-w-full"
           />
-        </div>
+        </div> */}
 
         {/* Tabs */}
-        <div className="flex mt-6 items-center space-x-5 mb-4">
+        <div className="flex mt-6 items-center gap-x-5 mb-10">
           {tabs.map((label) => (
             <button
               key={label}
               onClick={() => setActiveTab(label)}
-              className={`text-2xl text-white font-semibold pb-2 cursor-pointer focus:outline-none ${
+              className={` text-white pb-2 cursor-pointer focus:outline-none ${
                 activeTab === label ? "border-b-2" : ""
               }`}
             >
-              {label}
+              <span className="text-3xl font-semibold"> {label}</span>
             </button>
           ))}
         </div>
@@ -228,29 +317,45 @@ const Catalogue = () => {
               {visible.map((row) => {
                 const img = getPrimaryImage(row);
                 const dateShow =
-                  row.metadata_updated_at || row.updated_at || row.created_at || row.date_of_creation;
+                  row.metadata_updated_at ||
+                  row.updated_at ||
+                  row.created_at ||
+                  row.date_of_creation;
                 const encoded = encodeForRoute(
                   row.contribution_id ?? row.artifact_id ?? row.catalog_id,
                   row.title
                 );
 
                 return (
-                  <Link
-                    key={row.catalog_id ?? `${row.contribution_id}-${row.artifact_id}`}
-                    to={`/catalog/${encoded}`}
-                    className="flex flex-col items-center text-center hover:opacity-90 transition overflow-hidden"
+                  <div
+                  onClick={() => {
+                    setOpen(!open)
+                    setSelectedArtifact(row)
+                    }}
+                    key={
+                      row.catalog_id ??
+                      `${row.contribution_id}-${row.artifact_id}`
+                    }
+                    // to={`/catalog/${encoded}`}
+                    className="group flex flex-col items-center text-center hover:opacity-90 overflow-hidden  hover:scale-108 transition-transform"
                   >
-                    <div className="w-full aspect-square overflow-hidden bg-gray-700 flex items-center justify-center rounded">
+                    <div className="relative w-full aspect-square overflow-hidden bg-gray-700 flex items-center justify-center rounded">
                       {img ? (
                         <img
                           src={img}
                           alt={row.title || "Artifact"}
-                          className="w-full h-full object-cover duration-300 hover:scale-105 transition-transform"
+                          className="w-full h-full object-cover"
                           onError={(e) => {
-                            // try the private path as a fallback if filename
-                            const src = e.currentTarget.getAttribute("src") || "";
-                            if (!/^https?:\/\//i.test(src) && src.startsWith(UPLOAD_PUBLIC)) {
-                              e.currentTarget.src = src.replace(UPLOAD_PUBLIC, UPLOAD_PRIVATE);
+                            const src =
+                              e.currentTarget.getAttribute("src") || "";
+                            if (
+                              !/^https?:\/\//i.test(src) &&
+                              src.startsWith(UPLOAD_PUBLIC)
+                            ) {
+                              e.currentTarget.src = src.replace(
+                                UPLOAD_PUBLIC,
+                                UPLOAD_PRIVATE
+                              );
                             } else {
                               e.currentTarget.style.display = "none";
                               e.currentTarget.parentElement.innerHTML =
@@ -261,26 +366,29 @@ const Catalogue = () => {
                       ) : (
                         <div className="text-gray-300 text-xl">No Image</div>
                       )}
-                    </div>
 
-                    {/* Meta */}
-                    <p className="text-[#F05454] text-base uppercase mt-2">
-                      {row.culture || row.provenance || "—"}
-                    </p>
-                    <h2 className="text-[#E5D2AC] italic text-[3rem] font-semibold mt-1 line-clamp-2">
-                      {row.title || "Untitled Artifact"}
-                    </h2>
-                    <p className="text-gray-400 text-base mt-1">
-                      {row.collection_number ? `#${row.collection_number}` : "\u00A0"}
-                    </p>
-                    <p className="text-gray-500 text-base mt-1">{prettyDate(dateShow)}</p>
-                  </Link>
+                      <div className="absolute bottom-0 left-0 w-full h-35 ">
+                        <div
+                          className="w-full h-full bg-neutral-700 flex flex-col justify-center opacity-100 scale-100 group-hover:opacity-0 group-hover:scale-95 transition-all duration-300"
+                        >
+                          <p className="text-[#F05454]  text-xl uppercase mt-2"> {row.culture || row.provenance || "—"} </p>
+                          <h2 className="text-[#E5D2AC] italic text-4xl font-semibold mt-1 line-clamp-2 truncate"> {row.title || "Untitled Artifact"} </h2>
+                          
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 );
               })}
             </div>
           )}
         </div>
       </div>
+    <DisplayCatalog 
+      open={open} 
+      onClose={() => setOpen(false)} 
+      data={selectedArtifact} 
+    />
     </div>
   );
 };

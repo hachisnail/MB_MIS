@@ -4,7 +4,7 @@ import path from "path";
 import { requireCaptchaVerification } from "../services/captchaService.js";
 
 const VALID_CATEGORIES = ["files", "pictures", "uncategorized", "private"];
-const UPLOAD_BASE_DIR =
+export const UPLOAD_BASE_DIR =
   process.env.UPLOAD_BASE_DIR || path.join(process.cwd(), "..", "uploads");
 
 const ensureDir = (dir) => {

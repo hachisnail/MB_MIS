@@ -226,7 +226,7 @@ router.post("/contributions/:id/metadata/complete", requireAuth, requireRole([1]
 router.get("/catalog/preview/:id", openLimiter, previewCatalogRecord);
 router.get("/public-artifacts", listPublicCatalogArtifacts);
 
-// ✅ Inventory route
+// Inventory route
 router.get("/inventory", async (req, res, next) => {
   const nowIso = new Date().toISOString();
   console.log(`[Route] HIT GET /api/auth/inventory @ ${nowIso}`);

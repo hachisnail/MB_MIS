@@ -177,11 +177,7 @@ const PublicNav = ({ theme = "light" }) => {
             label="About"
             title="Learn About Museo Bulawan"
             dropdownKey="about"
-            anchorpoints={[
-              { label: "Latest News", value: "about_more" },
-              { label: "Upcoming Events", value: "upcoming" },
-              { label: "Past Events", value: "past" },
-            ]}
+
           />
         )}
       </div>

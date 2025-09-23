@@ -125,14 +125,12 @@ const DisplayCatalog = ({ open, onClose, data }) => {
         <div className="absolute top-1/2 right-[16.7%] -translate-y-1/2 w-1/3 h-1/2 bg-neutral-700 shadow-lg flex flex-col p-4 items-start justify-center">
           {data ? (
             <>
-            <h1 className="text-xl text-white">Title:</h1>
-              <h2 className="text-2xl font-bold text-white">{data.title}</h2>
-              <p className="mt-2 text-white">{data.culture || "Unknown culture"}</p>
-              <p className="mt-2 text-white">{data.provenance || "No provenance info"}</p>
-              <p className="mt-2 text-white">{data.donor_description || "No donor desc"}</p>
-              <p className="mt-2 text-white">{data.curatorial_description || "No curatoral desc"}</p>
-
-
+            <h1 className="text-xl text-white justify">Title:</h1>
+              <h2 className="text-2xl font-bold text-white justify">{data.title}</h2>
+              <p className="mt-2 text-white justify">{data.culture || "Unknown culture"}</p>
+              <p className="mt-2 text-white justify">{data.provenance || "No provenance info"}</p>
+              <p className="mt-2 text-white justify">{data.donor_description || "No donor desc"}</p>
+              <p className="mt-2 text-white justify">{data.curatorial_description || "No curatoral desc"}</p>
             </>
           ) : (
             <p>No data</p>

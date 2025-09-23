@@ -371,7 +371,7 @@ export function ArtifactInfoGrid({ artifactInfo = [] }) {
             <span className="text-[#CDC469] max-w-full max-h-1/2 font-bold text-center break-words">
               {label}
             </span>
-            <span className="text-white max-w-full max-h-1/2 text-center font-medium break-words">
+            <span className="text-white max-w-full max-h-1/2 text-center font-medium break-words overflow-hidden">
               {value}
             </span>
           </div>

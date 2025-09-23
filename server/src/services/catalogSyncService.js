@@ -1,9 +1,6 @@
-// services/catalogSyncService.js
-import {
-  Contributions,
-  ContributionArtifacts,
-  ArtifactMetadata,
-} from "../models/contributionModels.js";
+// server/src/services/catalogSyncService.js
+import { Contributions, ContributionArtifacts } from "../models/contributionModels.js";
+import ArtifactMetadata from "../models/ArtifactMetadata.js";
 import { CatalogArtifact } from "../models/CatalogArtifact.js";
 import { Op } from "sequelize";
 
@@ -29,7 +26,6 @@ function asJson(v) {
   if (!s) return null;
   try { return JSON.parse(s); } catch { return null; }
 }
-
 function parseArtifactFiles(artifact) {
   if (!artifact) return null;
   const a = artifact.dataValues || artifact;
@@ -46,18 +42,12 @@ function parseArtifactFiles(artifact) {
 
 // ---- core joiner ----
 export async function buildJoinedRecordByContributionId(contribution_id, t = null) {
-  const artifact = await ContributionArtifacts.findOne({
-    where: { contribution_id },
-    transaction: t,
-  });
+  const artifact = await ContributionArtifacts.findOne({ where: { contribution_id }, transaction: t });
   if (!artifact) return null;
 
-  const meta = await ArtifactMetadata.findOne({
-    where: { artifact_id: artifact.artifact_id },
-    transaction: t,
-  });
-
+  const meta = await ArtifactMetadata.findOne({ where: { artifact_id: artifact.artifact_id }, transaction: t });
   const a = parseArtifactFiles(artifact);
+
   return {
     contribution_id,
     artifact_id: artifact.artifact_id,
@@ -86,6 +76,10 @@ export async function buildJoinedRecordByContributionId(contribution_id, t = nul
     excavation_site: meta?.excavation_site ?? null,
     acquisition_history: meta?.acquisition_history ?? null,
     metadata_updated_at: meta?.updated_at ?? null,
+
+    // NEW flags
+    metadata_completed: meta?.metadata_completed ?? false,
+    inventory_synced_at: meta?.inventory_synced_at ?? null,
   };
 }
 
@@ -106,7 +100,7 @@ export async function upsertCatalogArtifact(contribution_id, t = null) {
     additional_info: joined.additional_info,
     narrative: joined.narrative,
 
-    // stringify arrays for storage
+    // store arrays as JSON strings
     images: JSON.stringify(joined.images || []),
     documents: JSON.stringify(joined.documents || []),
     related_images: JSON.stringify(joined.related_images || []),
@@ -125,21 +119,16 @@ export async function upsertCatalogArtifact(contribution_id, t = null) {
     metadata_updated_at: joined.metadata_updated_at,
   };
 
-  const existing = await CatalogArtifact.findOne({
-    where: { contribution_id },
-    transaction: t,
-  });
-
+  const existing = await CatalogArtifact.findOne({ where: { contribution_id }, transaction: t });
   if (existing) {
     await existing.update(payload, { transaction: t });
     return existing;
   }
-
   const created = await CatalogArtifact.create(payload, { transaction: t });
   return created;
 }
 
-// (Optional) simple list/search for public catalog
+// (Optional) public list/search
 export async function listCatalogArtifacts({ q, limit = 20, offset = 0 }) {
   const where = {};
   if (q) {

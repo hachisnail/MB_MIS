@@ -1,3 +1,4 @@
+// client/src/pages/admin/acquisition/views/AcquisitionViewPage.jsx
 import { useLocation, useOutletContext } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
 import axiosClient from "@/lib/axiosClient";
@@ -117,6 +118,10 @@ const AcquisitionViewPage = () => {
   // ---- saved metadata % (from artifact_metadata table) ----
   const [metadataPercent, setMetadataPercent] = useState(0);
 
+  // NEW: lock/edit flags
+  const [isEditingMeta, setIsEditingMeta] = useState(false);
+  const [hasExistingMeta, setHasExistingMeta] = useState(null); // null until fetched
+
   const SERVER_URL = import.meta.env.VITE_SERVER_URL;
   const { user } = useAuth();
 
@@ -141,11 +146,8 @@ const AcquisitionViewPage = () => {
     return 0;
   };
 
-  // 🔐 Source of truth for completion (status-based)
-  const isCompleted = contributionData?.status === "completed";
-
-  // derive gating for Artifact Details tab (status → single source of truth)
-  const showArtifactDetails = isCompleted;
+  // derive gating for Artifact Details tab
+  const showArtifactDetails = step === 5; // completed
   const tabsToShow = showArtifactDetails
     ? ALL_TABS
     : ["Overview", "Document", "Transaction"];
@@ -213,10 +215,10 @@ const AcquisitionViewPage = () => {
 
   // Guard: if user somehow lands on "Artifact Details" before completion, send back to Overview
   useEffect(() => {
-    if (activeDocument === "Artifact Details" && !isCompleted) {
+    if (activeDocument === "Artifact Details" && !showArtifactDetails) {
       setActiveDocument("Overview");
     }
-  }, [activeDocument, isCompleted]);
+  }, [activeDocument, showArtifactDetails]);
 
   useEffect(() => {
     if (location.pathname.includes("lending")) {
@@ -238,24 +240,49 @@ const AcquisitionViewPage = () => {
     (async () => {
       try {
         const { data } = await axiosClient.get(`/auth/contributions/${id}/metadata`);
-        setPendingMeta({
-          collectionNumber: data.collection_number ?? "",
-          age: data.date_of_creation ?? "",
-          culture: data.culture ?? "",
-          provenance: data.provenance ?? "",
-          location: data.current_location ?? "",
-          discovery: data.discovery_details ?? "",
-          excavationSite: data.excavation_site ?? "",
-          acquisitionHistory: data.acquisition_history ?? "",
-        });
-        setCuratorialDesc(data.curatorial_description ?? "");
-        // percent strictly from saved server state
-        setMetadataPercent(computeSavedMetadataPercent(data));
+
+        const exists = !!data;
+        setHasExistingMeta(exists);
+        setIsEditingMeta(!exists); // editable if no row; read-only if row exists
+
+        if (exists) {
+          setPendingMeta({
+            collectionNumber: data.collection_number ?? "",
+            age: data.date_of_creation ?? "",
+            culture: data.culture ?? "",
+            provenance: data.provenance ?? "",
+            location: data.current_location ?? "",
+            discovery: data.discovery_details ?? "",
+            excavationSite: data.excavation_site ?? "",
+            acquisitionHistory: data.acquisition_history ?? "",
+          });
+          setCuratorialDesc(data.curatorial_description ?? "");
+          // percent strictly from saved server state
+          setMetadataPercent(computeSavedMetadataPercent(data));
+        } else {
+          // ensure clean slate when nothing exists
+          setPendingMeta((prev) => ({
+            ...prev,
+            collectionNumber: "",
+          }));
+          setCuratorialDesc((prev) => prev || "");
+          setMetadataPercent(0);
+        }
       } catch (e) {
         console.error("Failed to load metadata:", e);
+        // fail-safe: allow editing if we can't confirm
+        setHasExistingMeta(false);
+        setIsEditingMeta(true);
       }
     })();
   }, [contributionData?.contribution_id]);
+
+  // when navigating into Artifact Details, re-apply default editing based on existence
+  useEffect(() => {
+    if (activeDocument === "Artifact Details" && hasExistingMeta !== null) {
+      setIsEditingMeta(!hasExistingMeta);
+    }
+  }, [activeDocument, hasExistingMeta]);
 
   /* ---------------- Messaging (via messaging client) ---------------- */
 
@@ -311,7 +338,6 @@ const AcquisitionViewPage = () => {
 
   const sendMessage = (text) => {
     if (!conversationId || !text.trim()) return;
-    // Server infers user from session; no need to pass sender ids
     messaging.sendUserMessage(conversationId, text.trim());
   };
 
@@ -384,15 +410,12 @@ const AcquisitionViewPage = () => {
     }
   };
 
-  // ✅ Status-overlay for progress (status can't be behind the timeline)
   useEffect(() => {
-    const tStep = mapTimelineStep(timeline || {});
-    let sStep = 0;
-    const st = contributionData?.status;
-    if (st === "approved") sStep = 2;
-    if (st === "completed") sStep = 5;
-    setStep(Math.max(tStep, sStep));
-  }, [timeline, contributionData?.status]);
+    if (timeline) {
+      const stepIndex = mapTimelineStep(timeline);
+      setStep(stepIndex);
+    }
+  }, [timeline]);
 
   const donatorInformation = contributor
     ? [
@@ -502,22 +525,6 @@ const AcquisitionViewPage = () => {
     { label: "Time", value: submittedTime || "Not Provided" },
   ];
 
-  // NEW: complete action (status-based)
-  const markCompleted = async () => {
-    try {
-      const id = contributionData?.contribution_id;
-      await axiosClient.patch(`/auth/contributions/${id}/status`, {
-        status: "completed",
-        responseMessage: "Marked completed by staff.",
-      });
-      await fetchContribution();
-      setActiveDocument("Overview");
-    } catch (e) {
-      console.error("Failed to mark as completed:", e);
-      alert("Failed to complete the contribution. Please check server logs.");
-    }
-  };
-
   if (loading) {
     return (
       <div className="w-full h-full flex items-center justify-center">
@@ -575,7 +582,7 @@ const AcquisitionViewPage = () => {
                     <div className="w-full h-fit flex flex-col gap-y-10">
                       <div className="flex justify-between w-full h-fit items-center">
                         <span className="text-4xl font-bold text-white">
-                          {isCompleted ? "Artifact Data Status" : "Timeline"}
+                          {step === 5 ? "Artifact Data Status" : "Timeline"}
                         </span>
                         <button
                           onClick={() => setActiveDocument("Transaction")}
@@ -584,7 +591,7 @@ const AcquisitionViewPage = () => {
                           Click For Full View
                         </button>
                       </div>
-                      {isCompleted ? (
+                      {step === 5 ? (
                         <Timeline
                           variant="percent"
                           percent={metadataPercent}
@@ -729,11 +736,11 @@ const AcquisitionViewPage = () => {
                         </div>
                       </form>
                     ) : (
-                      // --- Conversation timeline + admin override controls ---
+                      // --- Conversation timeline + input ---
                       <>
                         <div className="flex flex-col gap-y-2">
-                          <span className="text-xl font-semibold">Override Form Controls:</span>
-                          <div className="flex gap-3 flex-wrap">
+                          <span className="text-xl font-semibold">Overide Form Controls:</span>
+                          <div className="flex gap-3">
                             <StyledButton
                               className="w-50 mt-5"
                               buttonColor="bg-[#6F3FFF]"
@@ -743,22 +750,13 @@ const AcquisitionViewPage = () => {
                             </StyledButton>
                             <StyledButton
                               className="w-50 mt-5"
-                              buttonColor="bg-emerald-600"
-                              onClick={markCompleted}
-                              disabled={isCompleted}
-                              title={isCompleted ? "Already completed" : "Mark as completed"}
-                            >
-                              {isCompleted ? "Completed" : "Mark Completed"}
-                            </StyledButton>
-                            <StyledButton
-                              className="w-50 mt-5"
                               buttonColor="bg-red-500"
+                              // onClick={handleSubmit} // TODO: cancel flow if needed
                             >
                               Cancel Contribution
                             </StyledButton>
                           </div>
                         </div>
-
                         <div className="w-full h-full justify-between p-2 bg-white shadow-[inset_0_6px_6px_rgba(0,0,0,0.8),inset_0_-6px_6px_rgba(0,0,0,0.3)] rounded-xl flex flex-col">
                           <ConversationTimeline
                             items={messages.map((m) => toTimelineItem(m, user))}
@@ -819,7 +817,7 @@ const AcquisitionViewPage = () => {
               />
             )}
 
-            {/* Artifact Details (only reachable when completed due to gating) */}
+            {/* Artifact Details (only reachable when step === 5 due to gating) */}
             {activeDocument === "Artifact Details" && showArtifactDetails && (
               <ArtifactDetailsShell
                 left={
@@ -842,7 +840,8 @@ const AcquisitionViewPage = () => {
                 middle={
                   <ArtifactMetadataForm
                     value={pendingMeta}
-                    onChange={setPendingMeta}
+                    onChange={isEditingMeta ? setPendingMeta : () => {}}
+                    readOnly={!isEditingMeta}
                   />
                 }
                 right={
@@ -851,19 +850,22 @@ const AcquisitionViewPage = () => {
                       <div className="mt-3 gap-6 flex w-full h-full flex-col ">
                         <span className="text-4xl font-bold">Curatorial Description</span>
 
-                        <MultiLineInputField
-                          placeholder="Enter staff-facing curatorial description…"
-                          mode="hard"
-                          value={curatorialDesc}
-                          onChange={setCuratorialDesc}
-                          heightClass="h-full 2xl:h-[23rem]"
-                          maxChars={8000}
-                        />
+                        {/* lock textarea when not editing */}
+                        <div className={!isEditingMeta ? "pointer-events-none opacity-80" : ""}>
+                          <MultiLineInputField
+                            placeholder="Enter staff-facing curatorial description…"
+                            mode="hard"
+                            value={curatorialDesc}
+                            onChange={isEditingMeta ? setCuratorialDesc : () => {}}
+                            heightClass="h-full 2xl:h-[23rem]"
+                            maxChars={8000}
+                          />
+                        </div>
                       </div>
 
                       <OptionsPanel
                         onEdit={() => {
-                          // optional: toggle edit mode
+                          setIsEditingMeta(true);
                         }}
                         onSave={async () => {
                           try {
@@ -883,6 +885,7 @@ const AcquisitionViewPage = () => {
                             });
 
                             const { data } = await axiosClient.get(`/auth/contributions/${id}/metadata`);
+                            setHasExistingMeta(!!data);
                             setPendingMeta({
                               collectionNumber: data.collection_number ?? "",
                               age: data.date_of_creation ?? "",
@@ -895,6 +898,8 @@ const AcquisitionViewPage = () => {
                             });
                             setCuratorialDesc(data.curatorial_description ?? "");
                             setMetadataPercent(computeSavedMetadataPercent(data));
+
+                            setIsEditingMeta(false); // lock after save
                           } catch (e) {
                             console.error("[Options] Save Changes failed:", e);
                             alert("Failed to save metadata. Check console for details.");
@@ -907,6 +912,7 @@ const AcquisitionViewPage = () => {
 
                             // Refresh local copy
                             const { data } = await axiosClient.get(`/auth/contributions/${id}/metadata`);
+                            setHasExistingMeta(!!data);
                             setPendingMeta({
                               collectionNumber: data.collection_number ?? "",
                               age: data.date_of_creation ?? "",
@@ -920,6 +926,7 @@ const AcquisitionViewPage = () => {
                             setCuratorialDesc(data.curatorial_description ?? "");
                             setMetadataPercent(computeSavedMetadataPercent(data));
 
+                            setIsEditingMeta(false); // lock after finalize
                             alert("Metadata finalized. Collection number will appear when the contribution is completed.");
                           } catch (e) {
                             const status = e?.response?.status;
@@ -934,6 +941,9 @@ const AcquisitionViewPage = () => {
                             console.error("[Options] Complete failed:", e);
                           }
                         }}
+                        // buttons availability
+                        saveDisabled={!isEditingMeta}
+                        completeDisabled={isEditingMeta}
                       />
                     </div>
 

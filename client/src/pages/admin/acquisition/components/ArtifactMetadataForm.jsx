@@ -26,12 +26,12 @@ const RowField = ({
 );
 
 /**
- * Controlled form. Parent owns state via `value` and `onChange`.
- * No internal state/useEffect → avoids update-depth loops & flicker.
+ * Controlled form, now with readOnly toggle for locking fields.
  */
 export default function ArtifactMetadataForm({
   value = {},
   onChange = () => {},
+  readOnly = false, // pass true to lock fields
 }) {
   const meta = {
     collectionNumber: "",
@@ -65,12 +65,14 @@ export default function ArtifactMetadataForm({
             value={meta.age}
             onChange={set("age")}
             placeholder="e.g., Pre-Hispanic Philippines (Iron Age) Approx. 12th–14th century CE"
+            disabled={readOnly}
           />
           <RowField
             label="Culture / Civilization"
             value={meta.culture}
             onChange={set("culture")}
             placeholder="e.g., Pre-colonial Philippine…"
+            disabled={readOnly}
           />
         </div>
       </div>
@@ -84,12 +86,14 @@ export default function ArtifactMetadataForm({
             value={meta.provenance}
             onChange={set("provenance")}
             placeholder="Excavated near…"
+            disabled={readOnly}
           />
           <RowField
             label="Current Location"
             value={meta.location}
             onChange={set("location")}
             placeholder="National Museum of the Philippines (Manila)"
+            disabled={readOnly}
           />
         </div>
       </div>
@@ -103,18 +107,21 @@ export default function ArtifactMetadataForm({
             value={meta.discovery}
             onChange={set("discovery")}
             placeholder="Found in 1987 by local farmers…"
+            disabled={readOnly}
           />
           <RowField
             label="Excavation Site"
             value={meta.excavationSite}
             onChange={set("excavationSite")}
             placeholder="Barangay Tulay na Lupa, Labo, Camarines Norte"
+            disabled={readOnly}
           />
           <RowField
             label="Acquisition History"
             value={meta.acquisitionHistory}
             onChange={set("acquisitionHistory")}
             placeholder="Donated to the National Museum in 1990…"
+            disabled={readOnly}
           />
         </div>
       </div>

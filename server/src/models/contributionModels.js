@@ -1,7 +1,10 @@
+// server/src/models/contributionModels.js
 import { DataTypes } from "sequelize";
 import { mainDb } from "../configs/databases.js";
 import { ArtifactMetadata } from "./ArtifactMetadata.js";
-// ---------------- Models ----------------
+import { CatalogArtifact } from "./CatalogArtifact.js";
+
+/* ---------------- Models ---------------- */
 
 export const Contributors = mainDb.define(
   "Contributors",
@@ -126,7 +129,7 @@ export const ContributionTimelines = mainDb.define(
     submitted_at: { type: DataTypes.DATE, allowNull: true },
     under_review_at: { type: DataTypes.DATE, allowNull: true },
     approved_at: { type: DataTypes.DATE, allowNull: true },
-    pending_at: { type: DataTypes.DATE, allowNull: true }, // New column added
+    pending_at: { type: DataTypes.DATE, allowNull: true },
     moa_settled_at: { type: DataTypes.DATE, allowNull: true },
     on_delivery_at: { type: DataTypes.DATE, allowNull: true },
     completed_at: { type: DataTypes.DATE, allowNull: true },
@@ -159,12 +162,19 @@ export const ContributionSessions = mainDb.define(
         const raw = this.getDataValue("guest_identity");
         if (!raw) return null;
         if (typeof raw === "object") return raw;
-        try { return JSON.parse(raw); } catch { return null; }
+        try {
+          return JSON.parse(raw);
+        } catch {
+          return null;
+        }
       },
       set(val) {
         if (val == null) return this.setDataValue("guest_identity", null);
-        try { this.setDataValue("guest_identity", JSON.stringify(val)); }
-        catch { this.setDataValue("guest_identity", null); }
+        try {
+          this.setDataValue("guest_identity", JSON.stringify(val));
+        } catch {
+          this.setDataValue("guest_identity", null);
+        }
       },
     },
     scopes: { type: DataTypes.JSON, allowNull: true, defaultValue: [] },
@@ -187,61 +197,7 @@ export const ContributionSessions = mainDb.define(
   }
 );
 
-// -------- NEW: CatalogArtifacts (materialized join for public display) --------
-export const CatalogArtifacts = mainDb.define(
-  "CatalogArtifacts",
-  {
-    catalog_id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
-
-    // keys
-    artifact_id: { type: DataTypes.INTEGER, allowNull: false, unique: true },
-    contribution_id: { type: DataTypes.INTEGER, allowNull: false },
-
-    // titles / descriptions
-    title: { type: DataTypes.STRING(255), allowNull: false },
-    donor_description: { type: DataTypes.TEXT, allowNull: true },
-    curatorial_description: { type: DataTypes.TEXT, allowNull: true },
-    display_description: { type: DataTypes.TEXT, allowNull: true },
-
-    // acquisition / narrative
-    acquisition_details: { type: DataTypes.TEXT, allowNull: true },
-    additional_info: { type: DataTypes.TEXT, allowNull: true },
-    narrative: { type: DataTypes.TEXT, allowNull: true },
-
-    // files / media (JSON-encoded as TEXT)
-    images: { type: DataTypes.TEXT, allowNull: true },
-    documents: { type: DataTypes.TEXT, allowNull: true },
-    related_images: { type: DataTypes.TEXT, allowNull: true },
-    image_urls: { type: DataTypes.TEXT, allowNull: true },
-    document_urls: { type: DataTypes.TEXT, allowNull: true },
-    related_image_urls: { type: DataTypes.TEXT, allowNull: true },
-
-    // metadata
-    collection_number: { type: DataTypes.STRING(64), allowNull: true, unique: true },
-    date_of_creation: { type: DataTypes.STRING(255), allowNull: true },
-    culture: { type: DataTypes.STRING(512), allowNull: true },
-    provenance: { type: DataTypes.STRING(512), allowNull: true },
-    current_location: { type: DataTypes.STRING(255), allowNull: true },
-    discovery_details: { type: DataTypes.STRING(512), allowNull: true },
-    excavation_site: { type: DataTypes.STRING(255), allowNull: true },
-    acquisition_history: { type: DataTypes.STRING(1024), allowNull: true },
-    metadata_updated_at: { type: DataTypes.DATE, allowNull: true },
-
-    // catalog flags
-    published: { type: DataTypes.BOOLEAN, defaultValue: true },
-
-    created_at: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
-    updated_at: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
-  },
-  {
-    tableName: "catalog_artifacts",
-    timestamps: true,
-    createdAt: "created_at",
-    updatedAt: "updated_at",
-  }
-);
-
-// ---------------- Associations ----------------
+/* ---------------- Associations ---------------- */
 
 // Users → Contributions
 Contributors.hasMany(Contributions, { foreignKey: "contributor_id", onDelete: "CASCADE" });
@@ -274,18 +230,18 @@ ArtifactMetadata.belongsTo(ContributionArtifacts, {
   as: "Artifact",
 });
 
-// Artifact ↔ Catalog (1:1 via artifact_id) — materialized view
-ContributionArtifacts.hasOne(CatalogArtifacts, {
+// Artifact ↔ Catalog (materialized view; 1:1 via artifact_id)
+ContributionArtifacts.hasOne(CatalogArtifact, {
   foreignKey: "artifact_id",
   as: "Catalog",
   onDelete: "CASCADE",
 });
-CatalogArtifacts.belongsTo(ContributionArtifacts, {
+CatalogArtifact.belongsTo(ContributionArtifacts, {
   foreignKey: "artifact_id",
   as: "Artifact",
 });
 
-// ---------------- Hooks ----------------
+/* ---------------- Hooks ---------------- */
 
 // Seed timeline on contribution create
 Contributions.afterCreate(async (contrib, options) => {
@@ -317,13 +273,12 @@ async function generateCollectionNumber(artifactId, t) {
   }
 }
 
-// Note: catalog upsert happens in controllers (to avoid heavy logic in hooks)
-
 // When a contribution is marked completed → ensure metadata exists & set collection_number
+// NOTE: Inventory sync is handled by metadata completion, not status completion
 Contributions.afterUpdate(async (contrib, options) => {
   try {
     if (contrib.changed("status") && contrib.status === "completed") {
-      const t = options?.transaction || await mainDb.transaction();
+      const t = options?.transaction || (await mainDb.transaction());
       const ownedTx = !options?.transaction;
 
       try {
@@ -344,26 +299,31 @@ Contributions.afterUpdate(async (contrib, options) => {
           lock: t?.LOCK?.UPDATE,
         });
 
-        if (!meta.collection_number) {
+        if (!meta.collection_number && meta.metadata_completed) {
           const cn = await generateCollectionNumber(artifact.artifact_id, t);
           await meta.update({ collection_number: cn }, { transaction: t });
         }
 
         if (ownedTx) await t.commit();
+        // eslint-disable-next-line no-console
+        console.log(
+          `[STATUS COMPLETION] Contribution ${contrib.contribution_id} marked completed. Collection number will be assigned when metadata is completed.`
+        );
       } catch (err) {
-        try { if (ownedTx) await mainDb.query("ROLLBACK"); } catch {}
+        try {
+          if (ownedTx) await mainDb.query("ROLLBACK");
+        } catch {}
+        // eslint-disable-next-line no-console
         console.error("Contributions.afterUpdate error:", err);
       }
     }
   } catch (e) {
+    // eslint-disable-next-line no-console
     console.error("Contributions.afterUpdate outer error:", e);
   }
 });
 
 export { ArtifactMetadata };
-
-
-
 export default {
   Contributors,
   Contributions,
@@ -372,6 +332,5 @@ export default {
   ContributionTimelines,
   ContributionSessions,
   ArtifactMetadata,
-  CatalogArtifacts,
-  
+  CatalogArtifact,
 };

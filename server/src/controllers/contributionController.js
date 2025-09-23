@@ -382,14 +382,14 @@ export const updateContributionStatus = async (req, res) => {
       { where: { contribution_id: id } }
     );
 
-    // When completing → close sessions & sync inventory
+    // When completing → close sessions (inventory sync now handled by metadata completion)
     if (status === "completed") {
       await ContributionSessions.update(
         { is_active: false, closed_at: now },
         { where: { contribution_id: id, is_active: true } }
       );
-      try { await upsertCatalogArtifact(id); } catch (e) { console.warn(e); }
-      // afterUpdate hook on Contributions will assign collection_number
+      // NOTE: Inventory sync removed - now handled by metadata completion in artifactMetadataController
+      // afterUpdate hook on Contributions will still assign collection_number for backward compatibility
     }
 
     // Build and send email (unchanged behavior)
@@ -535,7 +535,7 @@ export const updateTimelineStep = async (req, res) => {
     timeline[field] = new Date();
     await timeline.save();
 
-    // If completed, flip status, close sessions, and sync inventory
+    // If completed, flip status and close sessions (inventory sync now handled by metadata completion)
     if (field === "completed_at") {
       const now = new Date();
 
@@ -549,8 +549,8 @@ export const updateTimelineStep = async (req, res) => {
         { where: { contribution_id, is_active: true } }
       );
 
-      try { await upsertCatalogArtifact(contribution_id); } catch (e) { console.warn(e); }
-      // afterUpdate hook on Contributions will assign collection_number
+      // NOTE: Inventory sync removed - now handled by metadata completion in artifactMetadataController
+      // afterUpdate hook on Contributions will still assign collection_number for backward compatibility
     }
 
     return res.json({ success: true, timeline });

@@ -112,6 +112,57 @@ const Inventory = () => {
     showToast(date ? `Filtering data for ${date.toLocaleDateString()}` : "Showing all dates", "info");
   }, [showToast]);
 
+  // --- NEW: Export to Excel handler ---
+  const exportExcel = useCallback(async () => {
+    try {
+      setLoading(true);
+
+      // mirror current UI filters in query params
+      const params = new URLSearchParams();
+      if (searchQuery.trim()) params.set("q", searchQuery.trim());
+      if (selectedDate) params.set("date", selectedDate.toISOString().split("T")[0]);
+      if (activeTab) params.set("tab", activeTab);
+      if (artifactFilter === "displayed") params.set("onlyDisplayed", "1");
+
+      const url = `${SERVER_ORIGIN}/api/auth/inventory/export?${params.toString()}`;
+
+      const resp = await axios.get(url, {
+        withCredentials: true,
+        responseType: "blob",
+        headers: { Accept: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" },
+        validateStatus: () => true,
+      });
+
+      if (resp.status !== 200) {
+        try {
+          const text = await resp.data.text();
+          throw new Error(text || `Export failed (${resp.status})`);
+        } catch {
+          throw new Error(`Export failed (${resp.status})`);
+        }
+      }
+
+      const blob = new Blob([resp.data], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+      const link = document.createElement("a");
+      const href = URL.createObjectURL(blob);
+      link.href = href;
+      link.download = `inventory_${new Date().toISOString().slice(0,10)}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(href);
+
+      showToast("Excel exported successfully.", "success");
+    } catch (e) {
+      console.error("[Inventory.jsx] export error:", e);
+      showToast("Export failed. Please try again.", "error");
+    } finally {
+      setLoading(false);
+    }
+  }, [searchQuery, selectedDate, activeTab, artifactFilter, showToast]);
+
   // headers
   const artifactsHeaders = [
     { label: "Title", width: "1fr" },
@@ -269,6 +320,20 @@ const Inventory = () => {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search artifacts"
               />
+            </div>
+
+            {/* Export button */}
+            <div className="ml-auto">
+              <button
+                onClick={exportExcel}
+                disabled={loading}
+                className={`h-full px-4 rounded-lg border-1 text-xl font-semibold 
+                  ${loading ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}
+                  bg-black text-white border-black`}
+                title="Export current view to Excel"
+              >
+                {loading ? "Exporting..." : "Export to Excel"}
+              </button>
             </div>
           </div>
 

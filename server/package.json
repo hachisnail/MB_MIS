@@ -17,6 +17,7 @@
     "crypto": "^1.0.1",
     "docxtemplater": "^3.66.3",
     "dotenv": "^16.5.0",
+    "exceljs": "^4.4.0",
     "express": "^5.1.0",
     "express-rate-limit": "^8.1.0",
     "express-session": "^1.18.1",

@@ -1126,7 +1126,7 @@ const openValidationAlert = (errorsObj) => {
                       disabled={isGeneratingCaption || !editorText.trim()}
                       className="px-4 py-2 bg-purple-600 text-white font-semibold rounded-lg shadow-md hover:bg-purple-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
                     >
-                      {isGeneratingCaption ? "Generating..." : "Generate with AI"}
+                      {isGeneratingCaption ? "Generating..." : "Generate Summary with AI"}
                     </button>
                     <button
                       type="button"
@@ -1134,7 +1134,7 @@ const openValidationAlert = (errorsObj) => {
                       disabled={isSummarizing || !editorText.trim()}
                       className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
                     >
-                      {isSummarizing ? "Summarizing..." : "Summarize with Node"}
+                      {isSummarizing ? "Summarizing..." : "Summarize"}
                     </button>
                   </div>
                 </div>

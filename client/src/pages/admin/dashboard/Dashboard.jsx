@@ -658,7 +658,7 @@ const Dashboard = () => {
                 const path =
                   label === "Appointment"
                     ? "/admin/appointment/walk-ins/"
-                    : "/admin/acquisition/add-artifact3";
+                    : "/admin/acquisition/add-artifact";
 
                 return (
                   <button

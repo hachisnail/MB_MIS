@@ -591,14 +591,14 @@ const Dashboard = () => {
 
   const walkIn = [
     { label: "Appointment", path: "/admin/appointment/walk-ins/" },
-    { label: "Donation", path: "/about/support/contribution-form" },
+    { label: "Donation", path: "/admin/acquisition/add-artifact" },
   ];
 
   return (
     <div className="w-full flex flex-col gap-y-3 pt-5 3xl:pt-15 pb-1 px-1 h-full overflow-scroll">
       <div className="flex justify-between">
         <span className="text-5xl font-bold font-hind">
-          Welcome {user.fname +" "+user.lname}!
+          Welcome {user.fname + " " + user.lname}!
         </span>
         {/* <SearchBar /> */}
       </div>
@@ -658,7 +658,7 @@ const Dashboard = () => {
                 const path =
                   label === "Appointment"
                     ? "/admin/appointment/walk-ins/"
-                    : "/about/support/contribution-form";
+                    : "/admin/acquisition/add-artifact3";
 
                 return (
                   <button

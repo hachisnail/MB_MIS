@@ -1,4 +1,3 @@
-// src/pages/admin/article/components/RichTextEditor.jsx
 import React, { useRef, forwardRef, useImperativeHandle } from "react";
 import { EditorContent, useEditor, BubbleMenu } from "@tiptap/react";
 
@@ -51,10 +50,8 @@ const EnterAsHardBreak = Extension.create({
   addKeyboardShortcuts() {
     return {
       Enter: ({ editor }) => {
-        // keep default inside code blocks
         if (editor.isActive("codeBlock")) return false;
 
-        // if in list and the current paragraph is empty, let default handle it
         const inList = editor.isActive("listItem");
         const { $from } = editor.state.selection;
         const isEmptyParagraph =
@@ -64,7 +61,6 @@ const EnterAsHardBreak = Extension.create({
 
         return editor.commands.setHardBreak();
       },
-      // Shift+Enter stays a hard break (muscle memory)
       "Shift-Enter": ({ editor }) => editor.commands.setHardBreak(),
     };
   },
@@ -81,6 +77,8 @@ const RichTextEditor = forwardRef(
       placeholder = "Start writing your article...",
       initialHTML = "",
       onUpdate,
+      /** NEW: set an outer id so parent can scroll to the body field */
+      containerId,
     },
     ref
   ) => {
@@ -89,7 +87,6 @@ const RichTextEditor = forwardRef(
 
     const editor = useEditor({
       extensions: [
-        // Disable StarterKit’s hardBreak; add our own with a class
         StarterKit.configure({ hardBreak: false }),
         HardBreak.configure({
           keepMarks: true,
@@ -143,8 +140,6 @@ const RichTextEditor = forwardRef(
         if (firstUpdateRef.current) {
           firstUpdateRef.current = false;
         } else {
-          // [DBG] Editor internal update -> mark dirty
-          console.log("[RTE:onUpdate] setIsDirty(true) htmlLen:", html?.length ?? 0, "textLen:", text?.length ?? 0);
           setIsDirty?.(true);
         }
         onUpdate?.({ html, text });
@@ -220,7 +215,6 @@ const RichTextEditor = forwardRef(
           content: [{ type: "paragraph" }],
         }));
         editor.chain().focus().insertContent({ type: "columnBlock", content: emptyColumns }).run();
-        console.log("[RTE:columns] insert empty columns -> setIsDirty(true)");
         setIsDirty?.(true);
         return;
       }
@@ -232,12 +226,11 @@ const RichTextEditor = forwardRef(
       }));
       const columnBlockNode = { type: "columnBlock", content: columnNodes };
       editor.chain().focus().deleteRange({ from, to }).insertContent(columnBlockNode).run();
-      console.log("[RTE:columns] replace selection -> setIsDirty(true)");
       setIsDirty?.(true);
     };
 
     return (
-      <div className="space-y-2">
+      <div className="space-y-2" id={containerId || undefined}>
         <label className={`font-bold ${errors?.description ? "text-red-600" : ""}`}>
           Body {errors?.description && "*"}
         </label>
@@ -292,9 +285,7 @@ const RichTextEditor = forwardRef(
                 editor?.chain().focus().toggleHighlight().run();
                 setIsDirty?.(true);
               }}
-              className={`p-1 border rounded ${
-                editor?.isActive("highlight") ? "bg-white" : ""
-              }`}
+              className={`p-1 border rounded ${editor?.isActive("highlight") ? "bg-white" : ""}`}
               title="Highlight"
             >
               <HighlighterIcon size={11} />
@@ -445,7 +436,6 @@ const RichTextEditor = forwardRef(
               <VideoIcon size={18} />
             </button>
 
-            {/* Hard break button */}
             <button
               type="button"
               onClick={(e) => {
@@ -513,6 +503,9 @@ const RichTextEditor = forwardRef(
           "
           tabIndex={0}
           onClick={() => editor?.commands.focus()}
+          aria-invalid={!!errors?.description}
+          title={errors?.description || ""}
+          id={containerId ? `${containerId}-editor` : undefined}
         >
           {editor && (
             <BubbleMenu
@@ -561,9 +554,7 @@ const RichTextEditor = forwardRef(
                     editor.chain().focus().toggleBold().run();
                     setIsDirty?.(true);
                   }}
-                  className={`p-1 rounded border ${
-                    editor.isActive("bold") ? "bg-neutral-100" : "bg-white"
-                  }`}
+                  className={`p-1 rounded border ${editor.isActive("bold") ? "bg-neutral-100" : "bg-white"}`}
                   title="Bold"
                 >
                   <Bold size={14} />
@@ -574,9 +565,7 @@ const RichTextEditor = forwardRef(
                     editor.chain().focus().toggleItalic().run();
                     setIsDirty?.(true);
                   }}
-                  className={`p-1 rounded border ${
-                    editor.isActive("italic") ? "bg-neutral-100" : "bg-white"
-                  }`}
+                  className={`p-1 rounded border ${editor.isActive("italic") ? "bg-neutral-100" : "bg-white"}`}
                   title="Italic"
                 >
                   <Italic size={14} />
@@ -587,9 +576,7 @@ const RichTextEditor = forwardRef(
                     editor.chain().focus().toggleUnderline().run();
                     setIsDirty?.(true);
                   }}
-                  className={`p-1 rounded border ${
-                    editor.isActive("underline") ? "bg-neutral-100" : "bg-white"
-                  }`}
+                  className={`p-1 rounded border ${editor.isActive("underline") ? "bg-neutral-100" : "bg-white"}`}
                   title="Underline"
                 >
                   <UnderlineIcon size={14} />

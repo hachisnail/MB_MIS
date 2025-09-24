@@ -15,8 +15,8 @@ const ArticlePreview = ({
   municipality,
   barangay,
   category,
-  previewImage,
-  removeThumbnail,
+  previewImage,     // kept for compatibility (not used)
+  removeThumbnail,  // kept for compatibility (not used)
   editorHTML,
 }) => {
   const isEvent = String(contentType || "").toLowerCase() === "event";
@@ -155,15 +155,7 @@ const ArticlePreview = ({
           xl:[&_.youtube-video]:!max-w-[32rem]
         "
       >
-        {previewImage && !removeThumbnail ? (
-          <div className="flex justify-center mb-4">
-            <img
-              src={previewImage}
-              alt="Article thumbnail"
-              className="max-h-64 object-contain"
-            />
-          </div>
-        ) : null}
+        {/* Thumbnail intentionally not displayed in article view */}
 
         <div className="editor-content-preview not-prose max-w-none break-words font-hina">
           {editorHTML ? (

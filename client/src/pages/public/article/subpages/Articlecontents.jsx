@@ -353,7 +353,6 @@ const ArticleContents = () => {
         </div>
       </div>
 
-
       {/* Body */}
       <div className="w-screen h-auto min-h-[79rem] mx-auto font-hina">
         <div
@@ -404,20 +403,7 @@ const ArticleContents = () => {
             2xl:[&_iframe[src*='youtube-nocookie']]:!max-w-[80rem]
           "
         >
-          {article.images ? (
-            <div className="flex justify-center p-[2rem]">
-              <div className="w-[48rem] max-w-[80vw] h-[28rem] border border-gray-200 rounded overflow-hidden flex items-center justify-center">
-                <img
-                  src={article.images.startsWith("http") ? article.images : `${UPLOAD_PATH}${article.images}`}
-                  alt="Article Thumbnail"
-                  className="w-full h-full object-contain"
-                  width={768}
-                  height={448}
-                  loading="eager"
-                />
-              </div>
-            </div>
-          ) : null}
+          {/* Thumbnail intentionally not displayed on the public article page */}
 
           <div className="p-10 prose max-w-none relative break-words border-b">
             {article.description ? (
@@ -432,40 +418,48 @@ const ArticleContents = () => {
         </div>
       </div>
 
+{/* Share Row (simplified) */}
+<div className="w-full flex justify-center mb-6">
+  <div className="flex items-center gap-3 flex-wrap px-4">
+    {/* Native share (or falls back to copy) */}
+    <button
+      data-track-click
+      onClick={handleNativeShare}
+      className="px-4 py-2 rounded-2xl bg-black text-white hover:opacity-90"
+    >
+      Share
+    </button>
 
-      {/* Share Row */}
-      <div className="w-full flex justify-center mb-6">
-        <div className="flex items-center gap-3 flex-wrap px-4">
-          <button data-track-click onClick={handleNativeShare} className="px-4 py-2 rounded-2xl bg-black text-white hover:opacity-90">
-            Share
-          </button>
+    {/* Facebook */}
+    <a
+      target="_blank"
+      rel="noreferrer"
+      href={shareTargets.facebook}
+      className="px-4 py-2 rounded-2xl border hover:bg-gray-50"
+    >
+      Facebook
+    </a>
 
-          <a target="_blank" rel="noreferrer" href={shareTargets.facebook} className="px-4 py-2 rounded-2xl border hover:bg-gray-50">
-            Facebook
-          </a>
-          <a target="_blank" rel="noreferrer" href={shareTargets.x} className="px-4 py-2 rounded-2xl border hover:bg-gray-50">
-            X
-          </a>
-          <a target="_blank" rel="noreferrer" href={shareTargets.linkedin} className="px-4 py-2 rounded-2xl border hover:bg-gray-50">
-            LinkedIn
-          </a>
-          <a target="_blank" rel="noreferrer" href={shareTargets.reddit} className="px-4 py-2 rounded-2xl border hover:bg-gray-50">
-            Reddit
-          </a>
-          <a target="_blank" rel="noreferrer" href={shareTargets.telegram} className="px-4 py-2 rounded-2xl border hover:bg-gray-50">
-            Telegram
-          </a>
-          <a target="_blank" rel="noreferrer" href={shareTargets.whatsapp} className="px-4 py-2 rounded-2xl border hover:bg-gray-50">
-            WhatsApp
-          </a>
-          <button onClick={handleCopy} className="px-4 py-2 rounded-2xl border hover:bg-gray-50">
-            Copy Link
-          </button>
-          <a target="_blank" rel="noreferrer" href={shareTargets.email} className="px-4 py-2 rounded-2xl border hover:bg-gray-50">
-            Email
-          </a>
-        </div>
-      </div>
+    {/* X (Twitter) */}
+    <a
+      target="_blank"
+      rel="noreferrer"
+      href={shareTargets.x}
+      className="px-4 py-2 rounded-2xl border hover:bg-gray-50"
+    >
+      X
+    </a>
+
+    {/* Copy link */}
+    <button
+      onClick={handleCopy}
+      className="px-4 py-2 rounded-2xl border hover:bg-gray-50"
+    >
+      Copy Link
+    </button>
+  </div>
+</div>
+
 
       {/* Related Articles */}
       <div className="w-full flex justify-center mt-16 mb-24 px-6">

@@ -71,7 +71,7 @@ import { upload, multerErrorHandler } from "../middlewares/multerMiddleware.js";
 import { SummarizerManager } from "node-summarizer";
 
 // ✅ inventory controller
-import { getInventoryList } from "../controllers/inventoryController.js";
+import { getInventoryList, exportInventoryExcel } from "../controllers/inventoryController.js";
 
 const router = express.Router();
 
@@ -238,6 +238,12 @@ router.get("/inventory", async (req, res, next) => {
   }
 });
 router.get("/auth/inventory", getInventoryList);
+
+// ✅ NEW: Inventory Excel Export
+// GET /api/auth/inventory/export?q=...&date=YYYY-MM-DD&tab=artifacts|acquired|borrowing&onlyDisplayed=1
+// Add guards if you want this limited to admins:
+// router.get("/inventory/export", requireAuth, requireRole([1,2,5]), exportInventoryExcel);
+router.get("/inventory/export", exportInventoryExcel);
 
 // ---- Maintenance ----
 router.post("/contributions/:id/maintenance/start", requireAuth, requireRole([1, 2, 5]), startMaintenanceSession);

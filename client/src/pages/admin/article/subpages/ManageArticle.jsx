@@ -115,6 +115,9 @@ const ArticleEditorForm = () => {
   const [barangay, setBarangay] = useState("");
 
   const thumbnailInputRef = useRef(null);
+  const [showImageSizeModal, setShowImageSizeModal] = useState(false);
+  const [imageSizeMsg, setImageSizeMsg] = useState("");
+
   const [isDirty, setIsDirty] = useState(false);
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
   const [errors, setErrors] = useState({});
@@ -768,12 +771,25 @@ const ArticleEditorForm = () => {
     markDirty();
   };
 
-  const handleCustomThumbnailChange = (e) => {
+const handleCustomThumbnailChange = (e) => {
+  const file = e.target.files[0];
+  if (file) {
+    const maxSize = 5 * 1024 * 1024; // 5MB in bytes
+
+    if (file.size > maxSize) {
+      setImageSizeMsg("The selected image exceeds the 5MB limit. Please choose a smaller file.");
+      setShowImageSizeModal(true);
+      e.target.value = ""; // Clear the input so user can select again
+      return; // Stop here — don't continue
+    }
+
     if (removeThumbnail) setRemoveThumbnail(false);
     handleThumbnailChange(e);
     setHasThumbnail(!!e.target.files && e.target.files.length > 0);
     if (e.target.files && e.target.files.length > 0) markDirty();
-  };
+  }
+};
+
 
   // reviewer cancel → navigate; the blocker will intercept if dirty
   const handleCancelClick = () => {
@@ -1134,7 +1150,7 @@ const openValidationAlert = (errorsObj) => {
                       disabled={isSummarizing || !editorText.trim()}
                       className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
                     >
-                      {isSummarizing ? "Summarizing..." : "Summarize with Node"}
+                      {isSummarizing ? "Summarizing..." : "Summarize"}
                     </button>
                   </div>
                 </div>
@@ -1637,6 +1653,15 @@ const openValidationAlert = (errorsObj) => {
         message="Setting status to Posted will permanently assign archive numbers (Vol./No.). After that, content type and scheduling window can no longer be changed. Continue?"
         buttonText="Continue"
         type="info"
+      />
+
+      <PopupModal
+        isOpen={showImageSizeModal}
+        onClose={() => setShowImageSizeModal(false)}
+        title="Image Too Large"
+        message={imageSizeMsg}
+        buttonText="Got it"
+        type="warning"
       />
 
       <PopupModal

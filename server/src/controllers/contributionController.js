@@ -483,12 +483,78 @@ export const updateContributionStatus = async (req, res) => {
       interactionLink = `${baseClientUrl}/acquisition/inquiry/${encodeURIComponent(token)}`;
     }
 
-    let emailHtml = `
-      <p>Dear ${contribution.Contributor.first_name},</p>
-      <p>Your <b>${typeWord}</b> request for the artifact <b>"${artifactName}"</b> has been <b>${status}</b>.</p>
-      <p>Message from our team:</p>
-      <blockquote>${responseMessage || ""}</blockquote>
-    `;
+let emailHtml = `
+  <div style="font-family: 'Hina Mincho', 'Times New Roman', serif; background-color: #1a1a1a; color: #f4f4f4; padding: 40px 0;">
+    <div style="max-width: 640px; margin: 0 auto; background-color: #111; border: 1px solid #333; border-radius: 12px; overflow: hidden;">
+
+      <!-- Header -->
+      <div style="background-color: #0b3d91; text-align: center; padding: 20px;">
+        <img src="https://mis.museobulawan.com/assets/logo.png" alt="Museo Bulawan Logo" width="70" height="70" style="border-radius: 50%; margin-bottom: 10px;" />
+        <h2 style="margin: 0; font-size: 22px; color: #fff; letter-spacing: 1px;">Museo Bulawan</h2>
+        <p style="margin: 5px 0 0; font-size: 14px; color: #ddd;">Preserving the Heritage of Camarines Norte</p>
+      </div>
+
+      <!-- Body -->
+      <div style="padding: 30px; background-color: #1e1e1e;">
+        <p style="font-size: 16px;">Dear <b>${contribution.Contributor.first_name}</b>,</p>
+
+        <p style="font-size: 16px; line-height: 1.7;">
+          Your <b style="color: #f2c94c;">${typeWord}</b> request for the artifact 
+          <b style="color: #f2c94c;">"${artifactName}"</b> has been 
+          <b style="text-transform: capitalize; color: ${
+            status === "approved" ? "#90ee90" : status === "rejected" ? "#e57373" : "#f2c94c"
+          };">${status}</b>.
+        </p>
+
+        ${
+          responseMessage
+            ? `
+              <p style="font-weight: bold; margin-top: 20px;">Message from our team:</p>
+              <blockquote style="border-left: 4px solid #f2c94c; margin: 10px 0; padding-left: 15px; color: #ccc; font-style: italic;">
+                ${responseMessage}
+              </blockquote>
+            `
+            : ""
+        }
+
+        ${
+          interactionLink
+            ? `
+              <div style="margin: 30px 0; text-align: center;">
+                <a href="${interactionLink}" target="_blank" rel="noreferrer"
+                  style="display: inline-block; background-color: #f2c94c; color: #000; text-decoration: none; 
+                         padding: 12px 25px; border-radius: 6px; font-weight: bold; letter-spacing: 0.5px;">
+                  Open Interaction Portal
+                </a>
+                <p style="font-size: 12px; color: #aaa; margin-top: 8px;">
+                  This link remains active until your transaction is completed or expires in 14 days.
+                </p>
+              </div>
+            `
+            : ""
+        }
+
+        <p style="margin-top: 25px; line-height: 1.6;">
+          We deeply appreciate your effort in helping us preserve the cultural identity of the Camariteños.
+        </p>
+
+        <p style="margin-top: 20px;">
+          Best regards,<br/>
+          <b style="color: #f2c94c;">Museo Bulawan Team</b><br/>
+          <span style="font-size: 12px; color: #888;">Camarines Norte State College</span>
+        </p>
+      </div>
+
+      <!-- Footer -->
+      <div style="background-color: #0b3d91; text-align: center; padding: 15px; font-size: 12px; color: #ddd;">
+        <p style="margin: 0;">&copy; ${new Date().getFullYear()} Museo Bulawan. All rights reserved.</p>
+        <p style="margin: 5px 0 0;">This is an automated message. Please do not reply directly.</p>
+      </div>
+    </div>
+  </div>
+`;
+
+
 
     if (interactionLink) {
       emailHtml += `

@@ -1,5 +1,5 @@
 // server/src/models/contributionModels.js
-import { DataTypes } from "sequelize";
+import { DataTypes, Op } from "sequelize";
 import { mainDb } from "../configs/databases.js";
 import { ArtifactMetadata } from "./ArtifactMetadata.js";
 import { CatalogArtifact } from "./CatalogArtifact.js";

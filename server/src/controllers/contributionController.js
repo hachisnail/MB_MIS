@@ -484,33 +484,33 @@ export const updateContributionStatus = async (req, res) => {
     }
 
 let emailHtml = `
-  <div style="font-family: 'Hina Mincho', 'Times New Roman', serif; background-color: #1a1a1a; color: #f4f4f4; padding: 40px 0;">
-    <div style="max-width: 640px; margin: 0 auto; background-color: #111; border: 1px solid #333; border-radius: 12px; overflow: hidden;">
+  <div style="font-family: 'Hina Mincho', 'Times New Roman', serif; background-color: #ffffff; color: #333; padding: 40px 0;">
+    <div style="max-width: 640px; margin: 0 auto; background-color: #ffffff; border: 1px solid #E8C26A; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
 
       <!-- Header -->
-      <div style="background-color: #0b3d91; text-align: center; padding: 20px;">
-        <img src="https://mis.museobulawan.com/assets/logo.png" alt="Museo Bulawan Logo" width="70" height="70" style="border-radius: 50%; margin-bottom: 10px;" />
-        <h2 style="margin: 0; font-size: 22px; color: #fff; letter-spacing: 1px;">Museo Bulawan</h2>
-        <p style="margin: 5px 0 0; font-size: 14px; color: #ddd;">Preserving the Heritage of Camarines Norte</p>
+      <div style="background-color: #3E2F1C; text-align: center; padding: 25px;">
+
+        <h2 style="margin: 0; font-size: 22px; color: #E8C26A; letter-spacing: 1px;">Museo Bulawan</h2>
+        <p style="margin: 5px 0 0; font-size: 14px; color: #F5E7C1;">Preserving the Heritage of Camarines Norte</p>
       </div>
 
       <!-- Body -->
-      <div style="padding: 30px; background-color: #1e1e1e;">
+      <div style="padding: 30px;">
         <p style="font-size: 16px;">Dear <b>${contribution.Contributor.first_name}</b>,</p>
 
         <p style="font-size: 16px; line-height: 1.7;">
-          Your <b style="color: #f2c94c;">${typeWord}</b> request for the artifact 
-          <b style="color: #f2c94c;">"${artifactName}"</b> has been 
+          Your <b style="color: #3E2F1C;">${typeWord}</b> request for the artifact 
+          <b style="color: #C19A3D;">"${artifactName}"</b> has been 
           <b style="text-transform: capitalize; color: ${
-            status === "approved" ? "#90ee90" : status === "rejected" ? "#e57373" : "#f2c94c"
+            status === "approved" ? "#3E8E41" : status === "rejected" ? "#D9534F" : "#C19A3D"
           };">${status}</b>.
         </p>
 
         ${
           responseMessage
             ? `
-              <p style="font-weight: bold; margin-top: 20px;">Message from our team:</p>
-              <blockquote style="border-left: 4px solid #f2c94c; margin: 10px 0; padding-left: 15px; color: #ccc; font-style: italic;">
+              <p style="font-weight: bold; margin-top: 20px; color: #3E2F1C;">Message from our team:</p>
+              <blockquote style="border-left: 4px solid #E8C26A; margin: 10px 0; padding-left: 15px; color: #5C4C2E; font-style: italic; background-color: #FFF9E8; border-radius: 6px;">
                 ${responseMessage}
               </blockquote>
             `
@@ -522,11 +522,11 @@ let emailHtml = `
             ? `
               <div style="margin: 30px 0; text-align: center;">
                 <a href="${interactionLink}" target="_blank" rel="noreferrer"
-                  style="display: inline-block; background-color: #f2c94c; color: #000; text-decoration: none; 
+                  style="display: inline-block; background-color: #C19A3D; color: #ffffff; text-decoration: none; 
                          padding: 12px 25px; border-radius: 6px; font-weight: bold; letter-spacing: 0.5px;">
                   Open Interaction Portal
                 </a>
-                <p style="font-size: 12px; color: #aaa; margin-top: 8px;">
+                <p style="font-size: 12px; color: #7a6c4f; margin-top: 8px;">
                   This link remains active until your transaction is completed or expires in 14 days.
                 </p>
               </div>
@@ -534,19 +534,19 @@ let emailHtml = `
             : ""
         }
 
-        <p style="margin-top: 25px; line-height: 1.6;">
-          We deeply appreciate your effort in helping us preserve the cultural identity of the Camariteños.
+        <p style="margin-top: 25px; line-height: 1.6; color: #555;">
+          We sincerely appreciate your contribution to the preservation and celebration of our cultural heritage.
         </p>
 
         <p style="margin-top: 20px;">
           Best regards,<br/>
-          <b style="color: #f2c94c;">Museo Bulawan Team</b><br/>
-          <span style="font-size: 12px; color: #888;">Camarines Norte State College</span>
+          <b style="color: #3E2F1C;">Museo Bulawan Team</b><br/>
+          <span style="font-size: 12px; color: #999;">Camarines Norte State College</span>
         </p>
       </div>
 
       <!-- Footer -->
-      <div style="background-color: #0b3d91; text-align: center; padding: 15px; font-size: 12px; color: #ddd;">
+      <div style="background-color: #F5E7C1; text-align: center; padding: 15px; font-size: 12px; color: #3E2F1C;">
         <p style="margin: 0;">&copy; ${new Date().getFullYear()} Museo Bulawan. All rights reserved.</p>
         <p style="margin: 5px 0 0;">This is an automated message. Please do not reply directly.</p>
       </div>
@@ -556,15 +556,6 @@ let emailHtml = `
 
 
 
-    if (interactionLink) {
-      emailHtml += `
-        <p>You can continue interacting with our museum staff using the following link:</p>
-        <p><a href="${interactionLink}" target="_blank" rel="noreferrer">${interactionLink}</a></p>
-        <p>This link will remain active until your transaction is completed.</p>
-      `;
-    }
-
-    emailHtml += `<p>Best regards,<br/>Museo Bulawan Team</p>`;
 
     const mailOptions = {
       from: process.env.EMAIL_USER,

@@ -5,44 +5,76 @@ export default function MaintenanceReportCard({
   report = {},
   onChange,
   defaultOpen = true,
-  errors = {}, // inline error display support
-  isSubmitted = false, // NEW: indicates if this report was already submitted
-  isReadOnly = false, // NEW: controls if fields are editable
-  onEdit, // NEW: callback when user clicks edit button
-  onSubmit, // NEW: callback when user submits the form
+  errors = {},
+  isSubmitted = false,
+  isReadOnly = false,
+  onEdit,
+  onSubmit,
+  artifactId,
+  sessionId,
 }) {
   const [open, setOpen] = useState(defaultOpen);
-  const [editMode, setEditMode] = useState(!isSubmitted); // Start in edit mode if not submitted
+  const [editMode, setEditMode] = useState(!isSubmitted);
 
-  // normalize incoming report to include dimensions array
+  // local editable copy of the report (so we don't accidentally mutate parent's array)
+  const [formData, setFormData] = useState(report || {});
+
+  // when parent supplies a new `report` prop, update internal formData (for completed reports)
+  useEffect(() => {
+    setFormData(report || {});
+    // keep editMode consistent: if parent says submitted, set editMode accordingly
+    setEditMode(!isSubmitted);
+  }, [report, isSubmitted]);
+
+  // draft persistence only when artifactId && sessionId present (active session)
+  const localKey = artifactId && sessionId ? `maintenanceForm-${artifactId}-${sessionId}` : null;
+
+  useEffect(() => {
+    if (localKey) {
+      try {
+        const saved = localStorage.getItem(localKey);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          setFormData(parsed);
+          if (onChange) onChange(parsed);
+        }
+      } catch {}
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [localKey]);
+
+  useEffect(() => {
+    if (localKey) {
+      try {
+        localStorage.setItem(localKey, JSON.stringify(formData));
+      } catch {}
+    }
+  }, [formData, localKey]);
+
+  // helpers to update formData and notify parent
+  const setField = (key, value) => {
+    if (!editMode) return;
+    const updated = { ...formData, [key]: value };
+    setFormData(updated);
+    if (onChange) onChange(updated);
+  };
+
   const dimsFromLegacy =
-    report.dimensions && Array.isArray(report.dimensions)
-      ? report.dimensions
+    formData.dimensions && Array.isArray(formData.dimensions)
+      ? formData.dimensions
       : [
           {
-            L: report.dimL || "",
-            W: report.dimW || "",
-            H: report.dimH || "",
+            L: formData.dimL || "",
+            W: formData.dimW || "",
+            H: formData.dimH || "",
           },
         ];
 
-  const set = (key, value) => {
-    if (editMode && onChange) {
-      onChange({ ...report, [key]: value });
-    }
-  };
-
   const setDimensions = (nextDims) => {
-    if (editMode && onChange) {
-      onChange({
-        ...report,
-        dimensions: nextDims,
-        // clear legacy keys to avoid confusion
-        dimL: "",
-        dimW: "",
-        dimH: "",
-      });
-    }
+    if (!editMode) return;
+    const updated = { ...formData, dimensions: nextDims, dimL: "", dimW: "", dimH: "" };
+    setFormData(updated);
+    if (onChange) onChange(updated);
   };
 
   const handleEdit = () => {
@@ -52,32 +84,31 @@ export default function MaintenanceReportCard({
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    setEditMode(false);
-    onSubmit && onSubmit(report);
+    // Do not set editMode to false here; let parent control it after successful submit
+    if (onSubmit) onSubmit(formData);
   };
 
   const inputBase = editMode
     ? "w-full bg-transparent outline-none border-b border-neutral-300 focus:border-black px-1 py-0.5 text-lg"
     : "w-full bg-transparent outline-none border-b border-transparent px-1 py-0.5 text-lg text-neutral-700";
-  
+
   const textAreaBase = editMode
     ? "w-full h-[4rem] 3xl:h-[6rem] overflow-y-auto resize-none rounded-md border border-neutral-300 px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-black focus:border-black placeholder:text-neutral-400 text-lg"
     : "w-full h-[4rem] 3xl:h-[6rem] overflow-y-auto resize-none rounded-md border border-transparent px-2 py-1.5 text-lg text-neutral-700 bg-neutral-50";
 
   const toArray = (v) => (v == null ? [] : Array.isArray(v) ? v : [v]);
 
-  // ---- helpers ----
   const updateDimAt = (i, field, value) => {
     if (!editMode) return;
-    const next = dimsFromLegacy.map((d, idx) =>
-      idx === i ? { ...d, [field]: value } : d
-    );
+    const next = dimsFromLegacy.map((d, idx) => (idx === i ? { ...d, [field]: value } : d));
     setDimensions(next);
   };
+
   const addDimRow = () => {
     if (!editMode) return;
     setDimensions([...dimsFromLegacy, { L: "", W: "", H: "" }]);
   };
+
   const removeDimRow = (i) => {
     if (!editMode) return;
     const next = dimsFromLegacy.slice();
@@ -85,13 +116,29 @@ export default function MaintenanceReportCard({
     setDimensions(next.length ? next : [{ L: "", W: "", H: "" }]);
   };
 
-  // format YYYY-MM-DD -> DD/MM/YYYY (shows placeholder if blank)
   const formatDDMMYYYY = (iso) => {
     if (!iso) return "";
     const [y, m, d] = String(iso).split("-");
     if (!y || !m || !d) return iso;
     return `${d.padStart(2, "0")}/${m.padStart(2, "0")}/${y}`;
   };
+
+  // When submitting success, parent will refresh reports / clear draft. This child removes local draft only on explicit submit success if desired.
+  const clearLocalDraft = () => {
+    if (localKey) {
+      try {
+        localStorage.removeItem(localKey);
+      } catch {}
+    }
+  };
+
+  // If the parent tells us this report has been submitted, clear local draft copy
+  useEffect(() => {
+    if (isSubmitted && localKey) {
+      clearLocalDraft();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSubmitted]);
 
   return (
     <section className="bg-white overflow-y-auto mb-4">
@@ -132,8 +179,8 @@ export default function MaintenanceReportCard({
                 <div className="text-lg font-medium text-neutral-800">Person Responsible</div>
                 <input
                   className={inputBase}
-                  value={report.personResponsible || ""}
-                  onChange={(e) => set("personResponsible", e.target.value)}
+                  value={formData.personResponsible || ""}
+                  onChange={(e) => setField("personResponsible", e.target.value)}
                   readOnly={!editMode}
                 />
                 {errors.personResponsible && (
@@ -146,8 +193,8 @@ export default function MaintenanceReportCard({
                 <div className="text-lg font-medium text-neutral-800">Action Taken</div>
                 <input
                   className={inputBase}
-                  value={report.actionTaken || ""}
-                  onChange={(e) => set("actionTaken", e.target.value)}
+                  value={formData.actionTaken || ""}
+                  onChange={(e) => setField("actionTaken", e.target.value)}
                   readOnly={!editMode}
                 />
                 {errors.actionTaken && (
@@ -161,8 +208,8 @@ export default function MaintenanceReportCard({
                 <input
                   type="date"
                   className={`${inputBase} border-0 border-b`}
-                  value={report.dateStart || ""}
-                  onChange={(e) => set("dateStart", e.target.value)}
+                  value={formData.dateStart || ""}
+                  onChange={(e) => setField("dateStart", e.target.value)}
                   readOnly={!editMode}
                 />
                 {errors.dateStart && (
@@ -174,8 +221,8 @@ export default function MaintenanceReportCard({
                 <input
                   type="date"
                   className={`${inputBase} border-0 border-b`}
-                  value={report.dateEnd || ""}
-                  onChange={(e) => set("dateEnd", e.target.value)}
+                  value={formData.dateEnd || ""}
+                  onChange={(e) => setField("dateEnd", e.target.value)}
                   readOnly={!editMode}
                 />
                 {errors.dateEnd && (
@@ -249,8 +296,8 @@ export default function MaintenanceReportCard({
                 <div className="text-lg font-medium text-neutral-800">Storage</div>
                 <input
                   className={inputBase}
-                  value={report.storage || ""}
-                  onChange={(e) => set("storage", e.target.value)}
+                  value={formData.storage || ""}
+                  onChange={(e) => setField("storage", e.target.value)}
                   readOnly={!editMode}
                 />
               </div>
@@ -260,8 +307,8 @@ export default function MaintenanceReportCard({
                 <div className="text-lg font-medium text-neutral-800">Responsible Personnel</div>
                 <input
                   className={inputBase}
-                  value={report.responsiblePersonnel || ""}
-                  onChange={(e) => set("responsiblePersonnel", e.target.value)}
+                  value={formData.responsiblePersonnel || ""}
+                  onChange={(e) => setField("responsiblePersonnel", e.target.value)}
                   readOnly={!editMode}
                 />
               </div>
@@ -272,8 +319,8 @@ export default function MaintenanceReportCard({
                 {editMode ? (
                   <select
                     className={`${inputBase} cursor-pointer`}
-                    value={report.finalLocation || ""}
-                    onChange={(e) => set("finalLocation", e.target.value)}
+                    value={formData.finalLocation || ""}
+                    onChange={(e) => setField("finalLocation", e.target.value)}
                     required
                   >
                     <option value="">Select location</option>
@@ -285,7 +332,7 @@ export default function MaintenanceReportCard({
                   </select>
                 ) : (
                   <div className={inputBase}>
-                    {report.finalLocation || <span className="text-neutral-400">—</span>}
+                    {formData.finalLocation || <span className="text-neutral-400">—</span>}
                   </div>
                 )}
                 {errors.finalLocation && (
@@ -298,8 +345,8 @@ export default function MaintenanceReportCard({
             <RowInline title="Initial Condition Report" hint="baseline when acquired…">
               <textarea
                 className={textAreaBase}
-                value={report.initialCondition || ""}
-                onChange={(e) => set("initialCondition", e.target.value)}
+                value={formData.initialCondition || ""}
+                onChange={(e) => setField("initialCondition", e.target.value)}
                 placeholder="Describe the baseline condition when acquired…"
                 readOnly={!editMode}
               />
@@ -314,8 +361,8 @@ export default function MaintenanceReportCard({
             >
               <textarea
                 className={textAreaBase}
-                value={report.damages || ""}
-                onChange={(e) => set("damages", e.target.value)}
+                value={formData.damages || ""}
+                onChange={(e) => setField("damages", e.target.value)}
                 placeholder="List damages, deterioration, or issues observed…"
                 readOnly={!editMode}
               />
@@ -327,8 +374,8 @@ export default function MaintenanceReportCard({
             <RowInline title="Environmental Factors" hint="(light, humidity, temperature effects)…">
               <textarea
                 className={textAreaBase}
-                value={report.environment || ""}
-                onChange={(e) => set("environment", e.target.value)}
+                value={formData.environment || ""}
+                onChange={(e) => setField("environment", e.target.value)}
                 placeholder="Note environmental conditions affecting the artifact…"
                 readOnly={!editMode}
               />
@@ -342,14 +389,14 @@ export default function MaintenanceReportCard({
               <div className="p-2.5 border-r border-neutral-300">
                 <div className="text-lg font-medium text-neutral-800">Image Before Maintenance</div>
                 <ImageMultiDrop
-                  values={toArray(report.imgBefore)}
-                  onAdd={editMode ? (files) => set("imgBefore", [...toArray(report.imgBefore), ...files]) : undefined}
+                  values={toArray(formData.imgBefore)}
+                  onAdd={editMode ? (files) => setField("imgBefore", [...toArray(formData.imgBefore), ...files]) : undefined}
                   onRemove={editMode ? (idx) => {
-                    const next = [...toArray(report.imgBefore)];
+                    const next = [...toArray(formData.imgBefore)];
                     next.splice(idx, 1);
-                    set("imgBefore", next);
+                    setField("imgBefore", next);
                   } : undefined}
-                  onClearAll={editMode ? () => set("imgBefore", []) : undefined}
+                  onClearAll={editMode ? () => setField("imgBefore", []) : undefined}
                   inputId={`${title}-before`}
                   readOnly={!editMode}
                 />
@@ -357,14 +404,14 @@ export default function MaintenanceReportCard({
               <div className="p-2.5">
                 <div className="text-lg font-medium text-neutral-800">Image After Maintenance</div>
                 <ImageMultiDrop
-                  values={toArray(report.imgAfter)}
-                  onAdd={editMode ? (files) => set("imgAfter", [...toArray(report.imgAfter), ...files]) : undefined}
+                  values={toArray(formData.imgAfter)}
+                  onAdd={editMode ? (files) => setField("imgAfter", [...toArray(formData.imgAfter), ...files]) : undefined}
                   onRemove={editMode ? (idx) => {
-                    const next = [...toArray(report.imgAfter)];
+                    const next = [...toArray(formData.imgAfter)];
                     next.splice(idx, 1);
-                    set("imgAfter", next);
+                    setField("imgAfter", next);
                   } : undefined}
-                  onClearAll={editMode ? () => set("imgAfter", []) : undefined}
+                  onClearAll={editMode ? () => setField("imgAfter", []) : undefined}
                   inputId={`${title}-after`}
                   readOnly={!editMode}
                 />
@@ -377,8 +424,8 @@ export default function MaintenanceReportCard({
             >
               <textarea
                 className={textAreaBase}
-                value={report.preventive || ""}
-                onChange={(e) => set("preventive", e.target.value)}
+                value={formData.preventive || ""}
+                onChange={(e) => setField("preventive", e.target.value)}
                 placeholder="Document preventive measures applied…"
                 readOnly={!editMode}
               />
@@ -390,8 +437,8 @@ export default function MaintenanceReportCard({
             <RowInline title="Remarks/Notes" hint="Enter text…">
               <textarea
                 className={textAreaBase}
-                value={report.remarks || ""}
-                onChange={(e) => set("remarks", e.target.value)}
+                value={formData.remarks || ""}
+                onChange={(e) => setField("remarks", e.target.value)}
                 placeholder="Additional notes…"
                 readOnly={!editMode}
               />
@@ -429,7 +476,7 @@ export default function MaintenanceReportCard({
               <div className="p-2.5 border-r border-neutral-300">
                 <div className="text-lg font-medium text-neutral-800">Person Responsible</div>
                 <div className="text-lg min-h-[1.75rem]">
-                  {report.personResponsible?.trim() || <span className="text-neutral-400">—</span>}
+                  {formData.personResponsible?.trim() || <span className="text-neutral-400">—</span>}
                 </div>
               </div>
 
@@ -437,7 +484,7 @@ export default function MaintenanceReportCard({
               <div className="p-2.5 border-r border-neutral-300">
                 <div className="text-lg font-medium text-neutral-800">Action Taken</div>
                 <div className="text-lg min-h-[1.75rem]">
-                  {report.actionTaken?.trim() || <span className="text-neutral-400">—</span>}
+                  {formData.actionTaken?.trim() || <span className="text-neutral-400">—</span>}
                 </div>
               </div>
 
@@ -445,8 +492,8 @@ export default function MaintenanceReportCard({
               <div className="p-2.5 border-r border-neutral-300">
                 <div className="text-lg font-medium text-neutral-800">Date Start</div>
                 <div className="text-lg min-h-[1.75rem]">
-                  {report.dateStart ? (
-                    formatDDMMYYYY(report.dateStart)
+                  {formData.dateStart ? (
+                    formatDDMMYYYY(formData.dateStart)
                   ) : (
                     <span className="text-neutral-400">dd/mm/yyyy</span>
                   )}
@@ -457,8 +504,8 @@ export default function MaintenanceReportCard({
               <div className="p-2.5">
                 <div className="text-lg font-medium text-neutral-800">Date End</div>
                 <div className="text-lg min-h-[1.75rem]">
-                  {report.dateEnd ? (
-                    formatDDMMYYYY(report.dateEnd)
+                  {formData.dateEnd ? (
+                    formatDDMMYYYY(formData.dateEnd)
                   ) : (
                     <span className="text-neutral-400">dd/mm/yyyy</span>
                   )}
@@ -493,8 +540,8 @@ function SmallLabeledInput({ label, value, onChange, readOnly = false }) {
       <span className="text-sm text-neutral-500">{label}</span>
       <input
         className={`w-12 border-b outline-none px-1 py-0.5 text-lg ${
-          readOnly 
-            ? "border-transparent text-neutral-700 bg-transparent" 
+          readOnly
+            ? "border-transparent text-neutral-700 bg-transparent"
             : "border-neutral-300 focus:border-black"
         }`}
         value={value}
@@ -505,22 +552,23 @@ function SmallLabeledInput({ label, value, onChange, readOnly = false }) {
   );
 }
 
-/* Image uploader */
+/* ImageMultiDrop unchanged (keeps using formData values passed in) */
 function ImageMultiDrop({ values = [], onAdd, onRemove, onClearAll, inputId, readOnly = false }) {
   const [previews, setPreviews] = useState([]);
-
   useEffect(() => {
     const mapped = values
       .map((v) => {
         if (!v) return null;
         if (typeof v === "string") return { url: v, revoke: false };
-        const url = URL.createObjectURL(v);
-        return { url, revoke: true };
+        if (v instanceof Blob) {
+          const url = URL.createObjectURL(v);
+          return { url, revoke: true };
+        }
+        // fallback: skip values that are not string or Blob/File
+        return null;
       })
       .filter(Boolean);
-
     setPreviews(mapped);
-
     return () => {
       mapped.forEach((p) => {
         if (p.revoke) URL.revokeObjectURL(p.url);
@@ -539,7 +587,7 @@ function ImageMultiDrop({ values = [], onAdd, onRemove, onClearAll, inputId, rea
   const handleDrop = (e) => {
     if (readOnly) return;
     e.preventDefault();
-    const files = Array.from(e.dataTransfer.files || []).filter((f) => f.type.startsWith("image/"));
+    const files = dis.from(e.dataTransfer.files || []).filter((f) => f.type.startsWith("image/"));
     if (files.length) onAdd && onAdd(files);
   };
   const handleDragOver = (e) => e.preventDefault();
@@ -547,53 +595,18 @@ function ImageMultiDrop({ values = [], onAdd, onRemove, onClearAll, inputId, rea
   return (
     <div className="space-y-2 mt-1.5">
       {!readOnly && (
-        <div
-          onDrop={handleDrop}
-          onDragOver={handleDragOver}
-          className="h-auto rounded-lg border-2 border-dashed border-neutral-300 p-3 flex items-center justify-between gap-2"
-        >
-          <label htmlFor={inputId} className="cursor-pointer text-lg text-neutral-700 hover:text-black">
-            Upload images
-          </label>
-          {values.length > 0 && (
-            <button
-              type="button"
-              onClick={() => onClearAll && onClearAll()}
-              className="text-lg px-2 py-1 rounded-md bg-neutral-100 hover:bg-neutral-200"
-            >
-              Clear all
-            </button>
-          )}
-          <input
-            id={inputId}
-            type="file"
-            accept="image/*"
-            multiple
-            className="hidden"
-            onChange={handleFileChange}
-          />
+        <div onDrop={handleDrop} onDragOver={handleDragOver} className="h-auto rounded-lg border-2 border-dashed border-neutral-300 p-3 flex items-center justify-between gap-2">
+          <label htmlFor={inputId} className="cursor-pointer text-lg text-neutral-700 hover:text-black">Upload images</label>
+          {values.length > 0 && <button type="button" onClick={() => onClearAll && onClearAll()} className="text-lg px-2 py-1 rounded-md bg-neutral-100 hover:bg-neutral-200">Clear all</button>}
+          <input id={inputId} type="file" accept="image/*" multiple className="hidden" onChange={handleFileChange} />
         </div>
       )}
-
       {previews.length > 0 && (
         <ul className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
           {previews.map((p, idx) => (
             <li key={idx} className="relative group">
-              <img
-                src={p.url}
-                alt={`upload-${idx}`}
-                className="h-[26rem] w-full object-cover rounded-md border border-neutral-200 bg-white"
-              />
-              {!readOnly && (
-                <button
-                  type="button"
-                  onClick={() => onRemove && onRemove(idx)}
-                  className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity text-lg px-1.5 py-0.5 rounded bg-black/70 text-white"
-                  title="Remove"
-                >
-                  Remove
-                </button>
-              )}
+              <img src={p.url} alt={`upload-${idx}`} className="h-[26rem] w-full object-cover rounded-md border border-neutral-200 bg-white" />
+              {!readOnly && <button type="button" onClick={() => onRemove && onRemove(idx)} className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity text-lg px-1.5 py-0.5 rounded bg-black/70 text-white" title="Remove">Remove</button>}
             </li>
           ))}
         </ul>

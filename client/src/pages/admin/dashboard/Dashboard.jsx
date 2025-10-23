@@ -30,6 +30,7 @@ const Dashboard = () => {
   const [appointmentLegendData, setAppointmentLegendData] = useState([]);
   const [isLoadingAppointments, setIsLoadingAppointments] = useState(true);
   const [appointmentError, setAppointmentError] = useState(null);
+  const [showBarAnimation, setShowBarAnimation] = useState(false);
 
   // State for visitor quota data
   const [visitorQuotaData, setVisitorQuotaData] = useState({ current: 0, total: 100, percentage: 0 });
@@ -37,7 +38,18 @@ const Dashboard = () => {
   const [visitorDataError, setVisitorDataError] = useState(null);
 
   // State for pie chart tooltip
-  const [tooltip, setTooltip] = useState({ visible: false, x: 0, y: 0, content: '' });
+  const [donutTooltip, setDonutTooltip] = useState({
+    visible: false,
+    x: 0,
+    y: 0,
+    name: '',
+    value: 0,
+    percentage: 0,
+    color: ''
+  });
+
+  // State for donut chart animation
+  const [showDonutAnimation, setShowDonutAnimation] = useState(false);
 
   // State for schedules and queries data
   const [schedulesTodayData, setSchedulesTodayData] = useState([]);
@@ -54,6 +66,11 @@ const Dashboard = () => {
   });
   const [isLoadingArtifacts, setIsLoadingArtifacts] = useState(true);
   const [artifactError, setArtifactError] = useState(null);
+
+  // Ref for wave animation (no state to avoid re-renders)
+  const waveOffsetRef = useRef(0);
+  const waveAnimationRef = useRef(null);
+  const tooltipTimerRef = useRef(null);
 
   // State for website traffic data
   const [websiteTrafficData, setWebsiteTrafficData] = useState([]);
@@ -357,6 +374,7 @@ const Dashboard = () => {
     try {
       setIsLoadingAppointments(true);
       setAppointmentError(null);
+      setShowBarAnimation(false);
 
       // Fetch all appointments from the server
       const response = await axiosClient.get('/auth/appointment');
@@ -379,6 +397,11 @@ const Dashboard = () => {
       setAppointmentPieData([]);
     } finally {
       setIsLoadingAppointments(false);
+      // Trigger animations after data is loaded
+      setTimeout(() => {
+        setShowBarAnimation(true);
+        setShowDonutAnimation(true);
+      }, 100);
     }
   };
 
@@ -520,6 +543,69 @@ const Dashboard = () => {
     fetchArtifactStats();
     fetchWebsiteTrafficData();
   }, []);
+
+  // Wave animation effect - optimized to not cause re-renders
+  useEffect(() => {
+    let animationFrameId;
+
+    const animateWave = () => {
+      waveOffsetRef.current += 0.015;
+
+      // Directly manipulate SVG paths without triggering React re-renders
+      if (waveAnimationRef.current) {
+        const paths = waveAnimationRef.current.querySelectorAll('.wave-path');
+        paths.forEach((path, index) => {
+          const isSecondary = index === 1;
+          updateWavePath(path, isSecondary);
+        });
+      }
+
+      animationFrameId = requestAnimationFrame(animateWave);
+    };
+
+    animationFrameId = requestAnimationFrame(animateWave);
+
+    return () => {
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+      }
+    };
+  }, [visitorQuotaData.current, visitorQuotaData.total]);
+
+  // Helper function to update wave path
+  const updateWavePath = (pathElement, isSecondary = false) => {
+    const width = 200;
+    const height = 300;
+    const waveAmplitude = 14;
+    const waves = 2;
+    const total = visitorQuotaData.total;
+    const current = visitorQuotaData.current;
+    const pct = Math.max(0, Math.min(1, current / total));
+    const yBase = height * (1 - pct);
+    const samples = 120;
+    const pts = [];
+
+    for (let i = 0; i <= samples; i++) {
+      const x = (i / samples) * width;
+      const position = (i / samples) * waves * 2 * Math.PI;
+
+      if (isSecondary) {
+        const wave = Math.sin(position - waveOffsetRef.current * 0.7) * waveAmplitude * 0.7;
+        const y = yBase + wave + 3;
+        pts.push(`${x.toFixed(2)},${y.toFixed(2)}`);
+      } else {
+        const wave1 = Math.sin(position - waveOffsetRef.current);
+        const wave2 = Math.sin(position * 0.7 - waveOffsetRef.current * 1.2) * 0.5;
+        const wave3 = Math.sin(position * 1.3 - waveOffsetRef.current * 0.8) * 0.3;
+        const combinedWave = waveAmplitude * (wave1 + wave2 + wave3) / 1.8;
+        const y = yBase + combinedWave;
+        pts.push(`${x.toFixed(2)},${y.toFixed(2)}`);
+      }
+    }
+
+    const pathD = `M 0 ${height} L ${pts.join(" L ")} L ${width} ${height} Z`;
+    pathElement.setAttribute('d', pathD);
+  };
 
   // Live updates via socket.io (pattern follows Appointments.jsx)
   useEffect(() => {
@@ -695,14 +781,7 @@ const Dashboard = () => {
         <div className="w-full h-full bg-white rounded-lg shadow-md shadow-gray-400 border border-gray-200 p-4 3xl:p-8 flex flex-col">
           <h3 className="text-2xl 3xl:text-4xl font-bold text-gray-900 mb-5">Appointment Rate</h3>
           <div ref={chartContainerRef} className="flex-1 w-full h-fit">
-            {isLoadingAppointments ? (
-              <div className="flex items-center justify-center h-full">
-                <div className="flex flex-col items-center gap-3">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#654321]"></div>
-                  <span className="text-gray-600">Loading appointment data...</span>
-                </div>
-              </div>
-            ) : appointmentError ? (
+            {appointmentError ? (
               <div className="flex items-center justify-center h-full">
                 <div className="flex flex-col items-center gap-3 text-center">
                   <svg className="w-12 h-12 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -732,7 +811,13 @@ const Dashboard = () => {
                   withXAxis
                   withYAxis
                   withTooltip
-                  barProps={{ radius: 2 }}
+                  barProps={{
+                    radius: 2,
+                    isAnimationActive: true,
+                    animationBegin: 0,
+                    animationDuration: 800,
+                    animationEasing: 'ease-out'
+                  }}
                   xAxisProps={{
                     tickFormatter: (value) => value,
                     style: { fontSize: '12px', fill: '#374151' },
@@ -757,7 +842,7 @@ const Dashboard = () => {
           <div className="w-[25rem] h-auto bg-white rounded-lg shadow-md shadow-gray-400 border border-gray-200 p-4 3xl:p-8 flex flex-col">
             <h3 className="text-2xl 3xl:text-4xl font-bold text-gray-900 mb-6">Schedules Today</h3>
 
-            <div className="flex flex-col gap-8">
+            <div className="flex flex-col gap-5">
               {isLoadingSchedules ? (
                 <div className="flex items-center justify-center py-8">
                   <div className="flex flex-col items-center gap-3">
@@ -843,7 +928,7 @@ const Dashboard = () => {
           <div className="w-[25rem] h-auto bg-gradient-to-b from-[#251B0E] to-[#523d1f] rounded-lg shadow-md shadow-gray-400 border border-gray-200 p-4 3xl:p-8 flex flex-col">
             <h3 className="text-2xl 3xl:text-4xl font-bold text-[#F2A93B] mb-6">Unread Queries</h3>
 
-            <div className="flex flex-col gap-8">
+            <div className="flex flex-col gap-7">
               {isLoadingQueries ? (
                 <div className="flex items-center justify-center py-8">
                   <div className="flex flex-col items-center gap-3">
@@ -952,22 +1037,11 @@ const Dashboard = () => {
               const total = visitorQuotaData.total;
               const current = visitorQuotaData.current;
               const pct = Math.max(0, Math.min(1, current / total)); // clamp 0..1
-
-              // Wave parameters
-              const waveAmplitude = 14; // px
-              const waves = 2; // number of waves across width
               const yBase = height * (1 - pct); // top of liquid
 
-              // Build wave path by sampling points across the width
-              const samples = 80;
-              const pts = [];
-              for (let i = 0; i <= samples; i++) {
-                const x = (i / samples) * width;
-                const y =
-                  yBase + waveAmplitude * Math.sin((i / samples) * waves * 2 * Math.PI);
-                pts.push(`${x.toFixed(2)},${y.toFixed(2)}`);
-              }
-              const pathD = `M 0 ${height} L ${pts.join(" L ")} L ${width} ${height} Z`;
+              // Initial static paths (will be animated by updateWavePath function)
+              const pathD = `M 0 ${height} L 0 ${yBase} L ${width} ${yBase} L ${width} ${height} Z`;
+              const pathD2 = `M 0 ${height} L 0 ${yBase + 3} L ${width} ${yBase + 3} L ${width} ${height} Z`;
 
               return (
                 <div className="relative" style={{ width: width + labelOffset, height }}>
@@ -984,6 +1058,7 @@ const Dashboard = () => {
 
                   {/* Tank with wave fill */}
                   <svg
+                    ref={waveAnimationRef}
                     width={width}
                     height={height}
                     style={{ position: "absolute", left: labelOffset, top: 0 }}
@@ -1012,8 +1087,10 @@ const Dashboard = () => {
                         fill="#ffffff"
                         filter="url(#innerShadow)"
                       />
-                      {/* Liquid with wave top */}
-                      <path d={pathD} fill="#F2A93B" />
+                      {/* Primary liquid wave - will be animated via ref */}
+                      <path className="wave-path" d={pathD} fill="#F2A93B" />
+                      {/* Secondary wave overlay for depth - slightly transparent */}
+                      <path className="wave-path" d={pathD2} fill="#F2A93B" fillOpacity="0.3" />
                     </g>
 
                     {/* Subtle border outline */}
@@ -1062,14 +1139,7 @@ const Dashboard = () => {
 
             {/* Chart */}
             <div className="flex-1 min-h-[300px]">
-              {isLoadingWebsiteTraffic ? (
-                <div className="flex items-center justify-center h-full">
-                  <div className="flex flex-col items-center gap-3">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#8B7355]"></div>
-                    <span className="text-gray-600">Loading website traffic data...</span>
-                  </div>
-                </div>
-              ) : websiteTrafficError ? (
+              {websiteTrafficError ? (
                 <div className="flex items-center justify-center h-full">
                   <div className="flex flex-col items-center gap-3 text-center">
                     <svg className="w-12 h-12 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1101,12 +1171,19 @@ const Dashboard = () => {
                     gridAxis="xy"
                     withXAxis
                     withYAxis
+                    withTooltip
                     type="stacked"
-                    strokeWidth={3}          // make lines thicker
-                    fillOpacity={0.6}        // transparent area fill
+                    strokeWidth={3}
+                    fillOpacity={0.6}
                     curveType="linear"
                     connectNulls={false}
                     withDots={false}
+                    areaProps={{
+                      isAnimationActive: true,
+                      animationBegin: 0,
+                      animationDuration: 1000,
+                      animationEasing: 'ease-in-out'
+                    }}
                     gridProps={{
                       stroke: '#E5E7EB',
                       strokeWidth: 1,
@@ -1115,6 +1192,9 @@ const Dashboard = () => {
                       style: { fontSize: '12px', fill: '#374151' },
                     }}
                     yAxisProps={{
+                      domain: [0, 'auto'],
+                      allowDecimals: false,
+                      tickFormatter: (value) => Math.floor(value),
                       style: { fontSize: '12px', fill: '#374151' },
                     }}
                   />
@@ -1143,12 +1223,19 @@ const Dashboard = () => {
               ))}
             </div>
 
-            {/* Donut Chart (pure CSS to enforce perfect circle) */}
-            <div className="flex-1 flex items-center justify-center">
+            {/* Donut Chart (responsive + fix percent label alignment) */}
+            <div
+              className="flex-1 flex items-center justify-center overflow-visible"
+              style={{ minWidth: 0, minHeight: 0 }}
+            >
               {(() => {
-                const size = 320;
+                // Tweak: Set donut size and ensure proper padding for animation
+                const DONUT_GAP = 28;
+                const chartBoxSize = 256;
+                const size = chartBoxSize;
                 const total = appointmentPieData.reduce((s, i) => s + i.value, 0);
 
+                // Calculate slices
                 let start = 0;
                 const stops = appointmentPieData
                   .map((i) => {
@@ -1160,22 +1247,19 @@ const Dashboard = () => {
                   })
                   .join(", ");
 
-                // Create SVG paths for each slice for better hover detection
                 const slices = [];
                 let currentAngle = 0;
-
                 appointmentPieData.forEach((item, idx) => {
                   const pct = (item.value / total) * 100;
                   const sliceAngle = (pct / 100) * 360;
 
                   if (sliceAngle > 0) {
-                    const startAngle = currentAngle - 90; // Start from top
+                    const startAngle = currentAngle - 90;
                     const endAngle = currentAngle + sliceAngle - 90;
 
                     const outerRadius = size / 2;
-                    const innerRadius = size * 0.28; // Inner radius for donut
+                    const innerRadius = size * 0.28;
 
-                    // Calculate path coordinates
                     const x1 = size / 2 + outerRadius * Math.cos((startAngle * Math.PI) / 180);
                     const y1 = size / 2 + outerRadius * Math.sin((startAngle * Math.PI) / 180);
                     const x2 = size / 2 + outerRadius * Math.cos((endAngle * Math.PI) / 180);
@@ -1195,99 +1279,158 @@ const Dashboard = () => {
                       'Z'
                     ].join(' ');
 
+                    // For each slice, store the mid-angle for label positioning
+                    const labelAngle = currentAngle + sliceAngle / 2 - 90;
+
                     slices.push({
                       path: pathData,
                       color: item.color,
                       name: item.name,
                       value: item.value,
-                      percentage: Math.round(pct)
+                      percentage: Math.round(pct),
+                      labelAngle, // use for label calculation
+                      sliceAngle,
                     });
                   }
 
                   currentAngle += sliceAngle;
                 });
 
-                // percentage labels positioned on the ring
-                let cStart = 0;
-                const labels = appointmentPieData.map((i, idx) => {
-                  const pct = (i.value / total) * 100;
-                  const midPct = cStart + pct / 2;
-                  cStart += pct;
-                  const angle = (midPct / 100) * 360;
-                  const rad = ((angle - 90) * Math.PI) / 180;
-                  // place labels in the middle of the ring thickness
-                  const radius = size * 0.41;
-                  const x = Math.cos(rad) * radius;
-                  const y = Math.sin(rad) * radius;
+                // Place percentage labels using SVG text so they're always centered
+                const percentageLabels = slices.map((slice, idx) => {
+                  const radius = size * 0.395; // Position about halfway in ring
+                  // Compute x/y in SVG coordinates
+                  const rad = (slice.labelAngle * Math.PI) / 180;
+                  const x = size / 2 + radius * Math.cos(rad);
+                  const y = size / 2 + radius * Math.sin(rad) + 5; // +5 for vertical optical centering
+
                   return (
-                    <div
+                    <text
                       key={idx}
+                      x={x}
+                      y={y}
+                      textAnchor="middle"
+                      alignmentBaseline="middle"
+                      fontSize="13.5"
+                      fontWeight="bold"
+                      fill="#fff"
                       style={{
-                        position: "absolute",
-                        left: size / 2 + x,
-                        top: size / 2 + y,
-                        transform: "translate(-50%, -50%)",
-                        fontSize: 14,
-                        fontWeight: 700,
-                        color: "#ffffff",
                         textShadow: "0 1px 2px rgba(0,0,0,0.45)",
-                        whiteSpace: "nowrap",
                         pointerEvents: "none",
+                        userSelect: "none",
+                        fontFamily: "inherit",
+                        dominantBaseline: "middle",
                       }}
                     >
-                      {Math.round(pct)}%
-                    </div>
+                      {slice.percentage}%
+                    </text>
                   );
                 });
 
+                // Donut and animation-friendly wrapper
                 return (
-                  <div className="relative" style={{ width: size, height: size }}>
-                    {/* SVG for interactive slices */}
+                  <div
+                    className="relative flex items-center justify-center"
+                    style={{
+                      width: size + DONUT_GAP,
+                      height: size + DONUT_GAP,
+                      minWidth: size + DONUT_GAP,
+                      minHeight: size + DONUT_GAP,
+                      padding: DONUT_GAP / 2,
+                      boxSizing: "content-box"
+                    }}
+                  >
                     <svg
                       width={size}
                       height={size}
-                      className="absolute inset-0"
-                      style={{ zIndex: 10 }}
+                      className="absolute left-1/2 top-1/2"
+                      style={{
+                        zIndex: 10,
+                        transform: `translate(-50%,-50%)`,
+                        overflow: "visible",
+                        pointerEvents: 'none'
+                      }}
+                      onMouseLeave={() => setDonutTooltip({ ...donutTooltip, visible: false })}
                     >
-                      {slices.map((slice, idx) => (
-                        <path
-                          key={idx}
-                          d={slice.path}
-                          fill={slice.color}
-                          className="cursor-pointer transition-opacity duration-200 hover:opacity-80"
-                          onMouseEnter={(e) => {
-                            const rect = e.currentTarget.getBoundingClientRect();
-                            setTooltip({
-                              visible: true,
-                              x: e.clientX,
-                              y: e.clientY,
-                              content: `${slice.name}: ${slice.value} appointments (${slice.percentage}%)`
-                            });
-                          }}
-                          onMouseMove={(e) => {
-                            setTooltip(prev => ({
-                              ...prev,
-                              x: e.clientX,
-                              y: e.clientY
-                            }));
-                          }}
-                          onMouseLeave={() => {
-                            setTooltip({ visible: false, x: 0, y: 0, content: '' });
-                          }}
-                        />
-                      ))}
+                      <defs>
+                        {slices.map((slice, idx) => (
+                          <clipPath key={`clip-${idx}`} id={`slice-clip-${idx}`}>
+                            <path d={slice.path} />
+                          </clipPath>
+                        ))}
+                      </defs>
+                      <style>
+                        {`
+                          @keyframes drawSlice {
+                            from { stroke-dashoffset: 1000; }
+                            to   { stroke-dashoffset: 0; }
+                          }
+                          @keyframes fadeIn {
+                            from { opacity: 0; }
+                            to   { opacity: 1; }
+                          }
+                          .slice-path {
+                            stroke-dasharray: 1000;
+                            stroke-dashoffset: 1000;
+                            animation: drawSlice 1s ease-out forwards;
+                            fill-opacity: 0;
+                            animation-fill-mode: forwards;
+                          }
+                          .slice-fill {
+                            animation: fadeIn 0.3s ease-out forwards;
+                          }
+                        `}
+                      </style>
+                      {slices.map((slice, idx) => {
+                        const animationDelay = idx * 0.12;
+                        const animationDuration = 0.6;
+
+                        return (
+                          <g key={idx}>
+                            <path
+                              d={slice.path}
+                              fill={slice.color}
+                              className="cursor-pointer transition-opacity duration-200 hover:opacity-80"
+                              style={{
+                                opacity: showDonutAnimation ? 1 : 0,
+                                transform: showDonutAnimation
+                                  ? 'scale(1.07) rotate(0deg)'
+                                  : 'scale(0.85) rotate(-10deg)',
+                                transformOrigin: `${size / 2}px ${size / 2}px`,
+                                transition: `all ${animationDuration}s cubic-bezier(0.34, 1.56, 0.64, 1) ${animationDelay}s`,
+                                pointerEvents: 'all',
+                              }}
+                              onMouseEnter={e => {
+                                if (tooltipTimerRef.current) {
+                                  clearTimeout(tooltipTimerRef.current);
+                                }
+                                const pathRect = e.currentTarget.getBoundingClientRect();
+                                const centerX = pathRect.left + pathRect.width / 2;
+                                const centerY = pathRect.top + pathRect.height / 2;
+                                setDonutTooltip({
+                                  visible: true,
+                                  x: centerX,
+                                  y: centerY,
+                                  name: slice.name,
+                                  value: slice.value,
+                                  percentage: slice.percentage,
+                                  color: slice.color
+                                });
+                              }}
+                              onMouseLeave={() => {
+                                tooltipTimerRef.current = setTimeout(() => {
+                                  setDonutTooltip(prev => ({ ...prev, visible: false }));
+                                }, 300);
+                              }}
+                            />
+                          </g>
+                        );
+                      })}
+                      {/* SVG Percent Labels */}
+                      {percentageLabels}
                     </svg>
 
-                    {/* Fallback background gradient (for visual consistency) */}
-                    <div
-                      className="absolute inset-0 rounded-full pointer-events-none"
-                      style={{
-                        background: `conic-gradient(${stops})`,
-                        zIndex: 1
-                      }}
-                    />
-
-                    {/* Inner cutout */}
+                    {/* Inner hole */}
                     <div
                       className="absolute bg-white rounded-full"
                       style={{
@@ -1297,19 +1440,26 @@ const Dashboard = () => {
                         top: "50%",
                         transform: "translate(-50%, -50%)",
                         boxShadow: "0 0 0 2px #fff",
-                        zIndex: 20
+                        zIndex: 20,
+                        pointerEvents: "none"
                       }}
                     />
 
                     {/* Center total text */}
                     <div
-                      className="absolute inset-0 flex items-center justify-center pointer-events-none"
-                      style={{ left: 0, top: 0, zIndex: 30 }}
+                      className="absolute inset-0 flex items-center justify-center pointer-events-none transition-all duration-700"
+                      style={{
+                        left: 0,
+                        top: 0,
+                        zIndex: 30,
+                        opacity: showDonutAnimation ? 1 : 0,
+                        transform: showDonutAnimation ? 'scale(1)' : 'scale(0.85)'
+                      }}
                     >
                       <div className="flex flex-col items-center">
                         <div
                           style={{
-                            fontSize: 64,
+                            fontSize: 44,
                             lineHeight: 1,
                             fontWeight: 800,
                             color: "#3F2E1B",
@@ -1329,40 +1479,6 @@ const Dashboard = () => {
                         </div>
                       </div>
                     </div>
-
-                    {/* Percentage labels */}
-                    <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 25 }}>{labels}</div>
-
-                    {/* Mantine-style Tooltip */}
-                    {typeof window !== "undefined" &&
-                      createPortal(
-                        <Transition
-                          as={Fragment}
-                          show={tooltip.visible}
-                          enter="transition ease-out duration-200"
-                          enterFrom="opacity-0 translate-y-1"
-                          enterTo="opacity-100 translate-y-0"
-                          leave="transition ease-in duration-150"
-                          leaveFrom="opacity-100 translate-y-0"
-                          leaveTo="opacity-0 translate-y-1"
-                        >
-                          <div
-                            role="tooltip"
-                            style={{
-                              position: "absolute",
-                              top: tooltip.y - 35,
-                              left: tooltip.x,
-                              transform: "translateX(-50%)",
-                              zIndex: 9999,
-                            }}
-                            className="bg-white text-gray-800 text-sm rounded py-1 px-2 whitespace-nowrap pointer-events-none select-none shadow-lg border border-gray-200"
-                          >
-                            {tooltip.content}
-                            <div className="absolute left-1/2 -translate-x-1/2 w-2 h-2 rotate-45 bg-white border-r border-b border-gray-200" style={{ top: '100%', marginTop: '-4px' }}></div>
-                          </div>
-                        </Transition>,
-                        document.body
-                      )}
                   </div>
                 );
               })()}
@@ -1374,6 +1490,61 @@ const Dashboard = () => {
 
       </div>
 
+      {/* Custom Mantine-style Tooltip for Donut Chart */}
+      {donutTooltip.visible && createPortal(
+        <div
+          className="fixed z-[9999]"
+          style={{
+            left: `${donutTooltip.x}px`,
+            top: `${donutTooltip.y - 70}px`,
+            transform: 'translateX(-50%)',
+            pointerEvents: 'auto',
+          }}
+          onMouseEnter={() => {
+            if (tooltipTimerRef.current) {
+              clearTimeout(tooltipTimerRef.current);
+            }
+          }}
+          onMouseLeave={() => {
+            tooltipTimerRef.current = setTimeout(() => {
+              setDonutTooltip(prev => ({ ...prev, visible: false }));
+            }, 300);
+          }}
+        >
+          <div className="bg-white rounded-md shadow-lg border border-gray-200 px-3 py-2 min-w-[160px] animate-in fade-in duration-150">
+            {/* Tooltip Header with Color Indicator */}
+            <div className="flex items-center gap-2 mb-1.5">
+              <div
+                className="w-3 h-3 rounded-full flex-shrink-0"
+                style={{ backgroundColor: donutTooltip.color }}
+              />
+              <span className="text-sm font-semibold text-gray-800 leading-tight">
+                {donutTooltip.name}
+              </span>
+            </div>
+
+            {/* Tooltip Content */}
+            <div className="flex justify-between items-center gap-4 ml-5">
+              <span className="text-xs font-medium text-gray-700">Appointments:</span>
+              <span className="text-sm font-bold text-gray-900">{donutTooltip.value}</span>
+            </div>
+          </div>
+
+          {/* Tooltip Arrow */}
+          <div
+            className="absolute left-1/2 -translate-x-1/2 -bottom-1"
+            style={{
+              width: 0,
+              height: 0,
+              borderLeft: '6px solid transparent',
+              borderRight: '6px solid transparent',
+              borderTop: '6px solid white',
+              filter: 'drop-shadow(0 2px 1px rgba(0,0,0,0.1))'
+            }}
+          />
+        </div>,
+        document.body
+      )}
 
       {/* <div className="w-full h-[30rem] gap-x-10 flex items-center justify-center">
 

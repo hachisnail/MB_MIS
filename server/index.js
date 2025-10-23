@@ -14,7 +14,7 @@ import authRoutes from "./src/routes/auth.js";
 import uploadRoutes from "./src/routes/uploadRoutes.js";
 import { initializeSocket } from "./src/configs/socketServer.js";
 import { requireAuth, requireRole } from "./src/middlewares/authMiddlewares.js";
-import { startArticleScheduler } from "./src/services/scheduler.js";
+import { startArticleScheduler, startAppointmentNoShowScheduler } from "./src/services/scheduler.js";
 import { postEvents, getArticleStats, getNextSuggestions } from "./src/controllers/EngagementController.js";
 
 
@@ -285,14 +285,15 @@ server.listen(PORT, "0.0.0.0", () => {
   console.log(`NODE_ENV: ${process.env.NODE_ENV}`);
 });
 
-// Initialize DBs in the background (log problems but don’t crash the server)
+// Initialize DBs in the background (log problems but don't crash the server)
 (async () => {
   try { await mainDb.authenticate(); } catch (e) { console.error("DB auth (main) failed:", e); }
   try { await logsDb.authenticate(); } catch (e) { console.error("DB auth (logs) failed:", e); }
   try { await sessionStore.sync(); } catch (e) { console.error("Session store sync failed:", e); }
   try { await mainDb.sync(); } catch (e) { console.error("mainDb.sync failed:", e); }
   try { await logsDb.sync(); } catch (e) { console.error("logsDb.sync failed:", e); }
-  try { startArticleScheduler(); } catch (e) { console.error("Scheduler start failed:", e); }
+  try { startArticleScheduler(); } catch (e) { console.error("Article scheduler start failed:", e); }
+  try { startAppointmentNoShowScheduler(); } catch (e) { console.error("Appointment no-show scheduler start failed:", e); }
 })();
 
 export { io };

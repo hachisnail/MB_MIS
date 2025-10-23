@@ -13,6 +13,7 @@ import SummaryStep from "./components/SummaryStep";
 import usePrompt from "../../../../../hooks/usePrompt";
 
 const initialFormData = {
+  isAnonymous: false,
   firstName: "",
   lastName: "",
   birthDate: null,
@@ -165,6 +166,7 @@ const ContributionForm = ({ user }) => {
   // Only pass the fields DonorsStep actually uses (stable identity)
   const donorsInitial = useMemo(() => {
     const {
+      isAnonymous,
       firstName,
       lastName,
       birthDate,
@@ -178,6 +180,7 @@ const ContributionForm = ({ user }) => {
       street,
     } = formData;
     return {
+      isAnonymous,
       firstName,
       lastName,
       birthDate,
@@ -191,6 +194,7 @@ const ContributionForm = ({ user }) => {
       street,
     };
   }, [
+    formData.isAnonymous,
     formData.firstName,
     formData.lastName,
     formData.birthDate,

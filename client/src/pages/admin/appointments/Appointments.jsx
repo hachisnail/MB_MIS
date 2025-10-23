@@ -233,7 +233,7 @@ const Appointments = () => {
     return matchesTab && matchesSearch && matchesStatus;
   });
 
-  
+
   // --- De-dupe helpers ---
   // normalize for safe comparisons
   const norm = (s) => (s || "").trim().toLowerCase();

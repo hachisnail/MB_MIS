@@ -60,8 +60,10 @@ const DayScheduler = ({
     console.log("- Filtered events:", filteredEvents);
 
     // Check if this date is disabled (only affects appointments, not schedules)
-    const isDateDisabled = filteredEvents.some(event => event.title === 'DATE_DISABLED');
+    const disabledEvent = filteredEvents.find(event => event.title === 'DATE_DISABLED');
+    const isDateDisabled = !!disabledEvent;
     console.log("- Is date disabled:", isDateDisabled);
+    console.log("- Disabled event:", disabledEvent);
 
     // Our day runs from 6:00am to 6:00pm
     const dayStart = 6 * 60;
@@ -187,14 +189,16 @@ const DayScheduler = ({
     return (
         <div className={`w-full h-full relative overflow-hidden ${isDateDisabled ? 'bg-red-50' : 'bg-gray-50'
             }`}>
-            {/* Subtle disabled date indicator - only affects background */}
+            {/* Disabled date indicator - bottom right corner */}
             {isDateDisabled && (
-                <div className="absolute top-2 left-20 z-30 bg-red-500 text-white rounded-full px-3 py-1 text-xs font-medium shadow-lg">
-                    <div className="flex items-center space-x-1">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <div className="absolute bottom-4 right-4 z-30 bg-red-500 text-white rounded-lg px-4 py-2 text-sm font-semibold shadow-lg">
+                    <div className="flex items-center space-x-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636m12.728 12.728L18.364 5.636M5.636 18.364l12.728-12.728" />
                         </svg>
-                        <span>Appointments Disabled</span>
+                        <span>
+                            Appointments Disabled{disabledEvent?.description ? ` - ${disabledEvent.description}` : ''}
+                        </span>
                     </div>
                 </div>
             )}

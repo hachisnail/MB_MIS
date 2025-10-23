@@ -132,6 +132,7 @@ const parseArtifactFiles = (artifact) => {
 export const createContribution = async (req, res) => {
   try {
     const {
+      isAnonymous,
       firstName,
       lastName,
       birthDate,
@@ -174,7 +175,20 @@ export const createContribution = async (req, res) => {
       }
     }
 
-    const contributor = await Contributors.create({
+    // Handle anonymous donors - use placeholder values for required fields
+    const contributorData = isAnonymous ? {
+      first_name: "Anonymous",
+      last_name: "Donor",
+      birth_date: null,
+      phone_number: "0000000000",
+      sex: "other",
+      email,
+      organization: null,
+      province: "N/A",
+      city: "N/A",
+      barangay: "N/A",
+      street: "N/A",
+    } : {
       first_name: firstName,
       last_name: lastName,
       birth_date: birthDate,
@@ -186,7 +200,9 @@ export const createContribution = async (req, res) => {
       city,
       barangay,
       street,
-    });
+    };
+
+    const contributor = await Contributors.create(contributorData);
 
     const contribution = await Contributions.create({
       contributor_id: contributor.contributor_id,
@@ -224,7 +240,7 @@ export const createContribution = async (req, res) => {
     if (req.session?.user) {
       const userId = req.session.user.id;
       const username = req.session.user.username || 'Admin';
-      const contributorName = `${firstName} ${lastName}`;
+      const contributorName = isAnonymous ? "Anonymous Donor" : `${firstName} ${lastName}`;
       
       await createLog(
         'create',
@@ -237,7 +253,8 @@ export const createContribution = async (req, res) => {
           contributor_name: contributorName,
           contribution_type: type,
           artifact_title: artifactTitle,
-          status: 'pending'
+          status: 'pending',
+          is_anonymous: isAnonymous || false
         },
         `${username} created ${type} contribution #${contribution.contribution_id} for ${contributorName}`
       );

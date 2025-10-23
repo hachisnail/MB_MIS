@@ -4,14 +4,50 @@ import { timeStringToMinutes, countOverlappingEvents } from './scheduleUtils';
  * Validates if an appointment can be scheduled based on various constraints
  * @param {Object} appointmentData - The appointment data to validate
  * @param {string} appointmentData.date - Date in YYYY-MM-DD format
- * @param {string} appointmentData.startTime - Start time in HH:MM format
- * @param {string} appointmentData.endTime - End time in HH:MM format
+ * @param {string} appointmentData.startTime - Start time in HH:MM format (optional for flexible appointments)
+ * @param {string} appointmentData.endTime - End time in HH:MM format (optional for flexible appointments)
+ * @param {boolean} appointmentData.isFlexibleTime - Whether this is a flexible time appointment
  * @param {Array} existingEvents - Array of existing schedules and appointments
  * @returns {Object} { isValid: boolean, error: string|null }
  */
 export const validateAppointmentSchedule = (appointmentData, existingEvents) => {
-  const { date, startTime, endTime } = appointmentData;
+  const { date, startTime, endTime, isFlexibleTime } = appointmentData;
 
+  // For flexible time appointments, only check if the entire day is disabled
+  if (isFlexibleTime) {
+    // Check if there's a full-day exclusive event (DATE_DISABLED)
+    const fullDayDisabled = existingEvents.find(event => {
+      if (!event.isSchedule || event.date !== date) return false;
+      if (event.availability === 'EXCLUSIVE') {
+        // Check if it's a full day disable (00:00 to 23:59 or similar)
+        const eventStart = timeStringToMinutes(event.startTime);
+        const eventEnd = timeStringToMinutes(event.endTime);
+        const dayStart = timeStringToMinutes('00:00');
+        const dayEnd = timeStringToMinutes('23:59');
+        
+        // If the exclusive event covers the entire day
+        if (eventStart <= dayStart && eventEnd >= dayEnd) {
+          return true;
+        }
+      }
+      return false;
+    });
+
+    if (fullDayDisabled) {
+      return {
+        isValid: false,
+        error: 'This date is not available for appointments. Please choose another date.'
+      };
+    }
+
+    // Flexible time appointments don't conflict with each other or with specific time slots
+    return {
+      isValid: true,
+      error: null
+    };
+  }
+
+  // For fixed-time appointments, perform full validation
   // Validate time constraints (6:00 AM to 6:00 PM)
   const startMinutes = timeStringToMinutes(startTime);
   const endMinutes = timeStringToMinutes(endTime);

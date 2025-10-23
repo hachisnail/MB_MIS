@@ -129,8 +129,7 @@ const Appointment = () => {
     purpose === "School Field Trip" || purpose === "Museum Group Tour";
   const shouldShowTimeOptions = (purpose) =>
     purpose === "School Field Trip" ||
-    purpose === "Museum Group Tour" ||
-    purpose === "Photography or Media Projects";
+    purpose === "Museum Group Tour";
 
   // Availability helpers
   const checkTimeSlotAvailabilityLocal = useCallback(
@@ -212,12 +211,12 @@ const Appointment = () => {
     }
   }, [viewedDate]);
 
-  // React to date changes
+  // React to date changes - only check time slots if time selection is shown
   useEffect(() => {
-    if (formData.selectedDate) {
+    if (formData.selectedDate && shouldShowTimeOptions(formData.purpose)) {
       checkTimeSlotAvailabilityLocal(formData.selectedDate);
     }
-  }, [formData.selectedDate, checkTimeSlotAvailabilityLocal]);
+  }, [formData.selectedDate, formData.purpose, checkTimeSlotAvailabilityLocal]);
 
   useEffect(() => {
     fetchMonthEvents();
@@ -371,10 +370,10 @@ const Appointment = () => {
         preferred_date: formData.selectedDate
           ? format(formData.selectedDate, "yyyy-MM-dd")
           : null,
-        preferred_time: formData.selectedTime,
+        preferred_time: formData.selectedTime || null,
         start_time: startTimeValue,
         end_time: endTimeValue,
-        additional_notes: formData.additionalNotes,
+        additional_notes: formData.additionalNotes || null,
         request_letter_files: uploadedRequestLetterFiles,
         captchaToken: captchaToken,
       };

@@ -134,23 +134,41 @@ const SummaryStep = ({ initialData, onBack, onConfirm, isSubmitting = false }) =
 
 
               <SectionCard title="Personal Info">
-                <Field
-                  label="Name"
-                  value={`${initialData?.firstName || ""} ${initialData?.lastName || ""}`.trim()}
-                />
-                <Field
-                  label="Birthdate"
-                  value={
-                    initialData?.birthDate
-                      ? new Date(initialData.birthDate).toLocaleDateString()
-                      : ""
-                  }
-                />
-                <Field label="Sex" value={initialData?.sex} />
-                <Field label="Contact" value={initialData?.contact} />
-                <Field label="Email" value={initialData?.email} />
-                <Field label="Organization" value={initialData?.organization} />
-                <Field label="Address" value={address} multiline />
+                {initialData?.isAnonymous ? (
+                  /* Anonymous Donor Display */
+                  <>
+                    <div className="w-full text-center py-4">
+                      <p className="text-2xl font-semibold text-gray-700">
+                        Anonymous Donor
+                      </p>
+                      <p className="text-lg text-gray-500 mt-2">
+                        Your personal information will remain private
+                      </p>
+                    </div>
+                    <Field label="Contact Email" value={initialData?.email} />
+                  </>
+                ) : (
+                  /* Regular Donor Display */
+                  <>
+                    <Field
+                      label="Name"
+                      value={`${initialData?.firstName || ""} ${initialData?.lastName || ""}`.trim()}
+                    />
+                    <Field
+                      label="Birthdate"
+                      value={
+                        initialData?.birthDate
+                          ? new Date(initialData.birthDate).toLocaleDateString()
+                          : ""
+                      }
+                    />
+                    <Field label="Sex" value={initialData?.sex} />
+                    <Field label="Contact" value={initialData?.contact} />
+                    <Field label="Email" value={initialData?.email} />
+                    <Field label="Organization" value={initialData?.organization} />
+                    <Field label="Address" value={address} multiline />
+                  </>
+                )}
               </SectionCard>
 
 

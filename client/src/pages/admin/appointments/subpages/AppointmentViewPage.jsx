@@ -411,11 +411,15 @@ export const AppointmentViewPage = ({
       // Before approving, validate the appointment schedule
       if (approveVisit === 'yes' && modalData) {
         try {
+          // Check if this is a flexible time appointment (no specific start_time and end_time)
+          const isFlexibleTime = !modalData.start_time && !modalData.end_time;
+
           // Prepare appointment data for validation
           const appointmentData = {
             date: modalData.preferredDate ? modalData.preferredDate.split('T')[0] : null,
             startTime: modalData.start_time || '09:00',
-            endTime: modalData.end_time || '10:00'
+            endTime: modalData.end_time || '10:00',
+            isFlexibleTime: isFlexibleTime
           };
 
           // Fetch existing schedules and appointments for validation
@@ -424,11 +428,14 @@ export const AppointmentViewPage = ({
             axiosClient.get('/auth/appointment')
           ]);
 
-          // Filter approved appointments for the same date
+          // Filter approved appointments for the same date (excluding the current appointment being approved)
           const approvedAppointments = appointmentsResponse.data.filter(appt => {
             const apptDate = appt.preferred_date ? appt.preferred_date.split('T')[0] : null;
             const status = appt.AppointmentStatus?.status || '';
-            return apptDate === appointmentData.date && status.toUpperCase() === 'APPROVED';
+            const isSameAppointment = appt.appointment_id === modalData.appointmentId;
+            return apptDate === appointmentData.date &&
+              status.toUpperCase() === 'APPROVED' &&
+              !isSameAppointment;
           });
 
           // Combine schedules and approved appointments

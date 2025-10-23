@@ -154,6 +154,29 @@ async function requireOtpVerifiedSession(req, res, next) {
   }
 }
 
+// --- Health Check ---
+app.get("/health", async (req, res) => {
+  try {
+    await mainDb.authenticate();
+    await logsDb.authenticate();
+
+    res.status(200).json({
+      status: "ok",
+      uptime: process.uptime(),
+      timestamp: new Date().toISOString(),
+      db: "connected",
+    });
+  } catch (err) {
+    console.error("Health check failed:", err);
+    res.status(500).json({
+      status: "error",
+      message: "Database connection failed",
+      db: "disconnected",
+      timestamp: new Date().toISOString(),
+    });
+  }
+});
+
 
 PUBLIC_UPLOADS.forEach((cat) => {
   app.use(`/uploads/${cat}`, express.static(path.join(UPLOAD_BASE_DIR, cat)));
@@ -252,6 +275,8 @@ app.get(/^\/uploads\/private\/(.+)$/, requireAuth, requireRole([1, 2]), (req, re
   res.sendFile(normalizedPath);
 });
 
+
+
 app.use("/api", uploadRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/engagement", engagementRoutes);
@@ -270,30 +295,41 @@ app.use((req, res, next) => {
   next();
 });
 
-app.get("/", (req, res) => {
-  res.json({ status: "ok" });
-});
 
 const server = http.createServer(app);
 const io = initializeSocket(server, ALLOWED_ORIGINS);
 const PORT = process.env.PORT;
 
-// Start HTTP server immediately so proxies can reach CORS + /socket.io
+// Start the HTTP server immediately
 server.listen(PORT, "0.0.0.0", () => {
   console.log(`API Server running on port ${PORT}`);
   console.log(`Trust proxy: ${app.get("trust proxy")}`);
   console.log(`NODE_ENV: ${process.env.NODE_ENV}`);
 });
 
-// Initialize DBs in the background (log problems but don't crash the server)
+// --- Initialize DBs and session store in the background ---
 (async () => {
-  try { await mainDb.authenticate(); } catch (e) { console.error("DB auth (main) failed:", e); }
-  try { await logsDb.authenticate(); } catch (e) { console.error("DB auth (logs) failed:", e); }
-  try { await sessionStore.sync(); } catch (e) { console.error("Session store sync failed:", e); }
-  try { await mainDb.sync(); } catch (e) { console.error("mainDb.sync failed:", e); }
-  try { await logsDb.sync(); } catch (e) { console.error("logsDb.sync failed:", e); }
+  // Session store sync (non-blocking)
+  sessionStore.sync().then(() => {
+    console.log("Session store synced");
+  }).catch((e) => console.error("Session store sync failed:", e));
+
+  // Main DB
+  mainDb.authenticate()
+    .then(() => mainDb.sync())
+    .then(() => console.log("mainDb synced"))
+    .catch((e) => console.error("mainDb sync failed:", e));
+
+  // Logs DB
+  logsDb.authenticate()
+    .then(() => logsDb.sync())
+    .then(() => console.log("logsDb synced"))
+    .catch((e) => console.error("logsDb sync failed:", e));
+
+  // Start schedulers (safe to start after server is up)
   try { startArticleScheduler(); } catch (e) { console.error("Article scheduler start failed:", e); }
   try { startAppointmentNoShowScheduler(); } catch (e) { console.error("Appointment no-show scheduler start failed:", e); }
 })();
+
 
 export { io };

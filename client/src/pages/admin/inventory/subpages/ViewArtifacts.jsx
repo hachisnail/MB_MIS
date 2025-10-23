@@ -1,28 +1,20 @@
-// src/pages/admin/inventory/pages/ViewArtifacts.jsx
+// src/pages/admin/inventory/subpages/ViewArtifacts.jsx
 import { useState, useEffect, Fragment } from "react";
 import { useLocation, useOutletContext } from "react-router-dom";
-
-// ✅ same components your Acquisition page uses
 import Breadcrumb from "../../../../components/Breadcrumb";
 import {
   RenderRelatedDocs,
   RenderArtifactImageAndDonatorInfo,
 } from "../../acquisition/components/ViewPageRenderer";
 import ArtifactDetailsShell from "../../acquisition/layouts/ArtifactDetailsShell";
-
-// ✅ maintenance form (read-only view of status + carousel)
 import ArtifactMaintenanceForm from "../components/ArtifactMaintenanceForm";
-
-// local inventory piece
 import MaintenanceReportCard from "../components/MaintenanceReportCard";
-
-// ✅ network + helpers
 import axiosClient from "@/lib/axiosClient";
 import { decodeBase64 } from "@/utils/base64";
+import PopupModal from "@/components/modals/PopupModal";
 
 const SERVER_URL = import.meta.env.VITE_SERVER_URL;
 
-/* ---------------- helpers ---------------- */
 function extractContributionIdFromPath(pathname) {
   const segments = pathname.split("/");
   const last = segments[segments.length - 1] || "";
@@ -32,9 +24,7 @@ function extractContributionIdFromPath(pathname) {
       const [id] = decoded.split(" ");
       if (id) return id;
     }
-  } catch {
-    // Handle error silently
-  }
+  } catch {}
   return last;
 }
 
@@ -59,13 +49,11 @@ const parseMaybeJSON = (raw, fallback) => {
   }
 };
 
-// maps API (snake_case) → editor (camelCase) shape for the MaintenanceReportCard
 const mapLatestToEditor = (r, serverUrl) => {
   const dims = parseMaybeJSON(r?.dimensions, []);
   const before = parseMaybeJSON(r?.img_before, []);
   const after = parseMaybeJSON(r?.img_after, []);
   const imgUrl = (f) => `${serverUrl}/uploads/private/pictures/${f}`;
-
   return {
     id: r?.id || null,
     personResponsible: r?.person_responsible || "",
@@ -87,7 +75,6 @@ const mapLatestToEditor = (r, serverUrl) => {
   };
 };
 
-// Map API report → ArtifactMaintenanceForm's value shape (for read-only viewer)
 function maintenanceFromReport(r) {
   if (!r) return { status: "", maintenanceDescription: "", damageImages: [] };
   const before = parseMaybeJSON(r.img_before, []);
@@ -104,8 +91,25 @@ function maintenanceFromReport(r) {
   };
 }
 
-/* ----------------------------------------- */
 const TABS = ["Artifact Information", "Maintenance Report"];
+
+// localStorage draft helpers
+function draftKey(artifactId, sessionId) {
+  return `maintenanceForm-${artifactId}-${sessionId}`;
+}
+function loadDraft(artifactId, sessionId) {
+  if (!artifactId || !sessionId) return null;
+  const raw = localStorage.getItem(draftKey(artifactId, sessionId));
+  try {
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+function removeDraft(artifactId, sessionId) {
+  if (!artifactId || !sessionId) return;
+  localStorage.removeItem(draftKey(artifactId, sessionId));
+}
 
 function InventoryTabs({ labels = TABS, active, onChange }) {
   return (
@@ -132,24 +136,45 @@ export default function ViewArtifacts() {
   const location = useLocation();
   const { setExtraBlockContent } = useOutletContext();
 
-  // data state
+  // states
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [contributionData, setContributionData] = useState(null);
-
-  // NEW: artifact metadata for sliding panel table
   const [metadata, setMetadata] = useState(null);
-
-  // tabs
   const [activeTab, setActiveTab] = useState("Artifact Information");
 
-  // NEW: Multiple maintenance reports support
+  // completed reports from server
   const [maintenanceReports, setMaintenanceReports] = useState([]);
   const [reportErrors, setReportErrors] = useState({});
 
-  // Helper to create a new empty report
+  // active maintenance session (object returned by server) and draft
+  const [openMaintenanceSession, setOpenMaintenanceSession] = useState(null);
+  const [draftReport, setDraftReport] = useState(null);
+
+  // maintenance viewer (read-only)
+  const [maintenance, setMaintenance] = useState({
+    status: "",
+    maintenanceDescription: "",
+    damageImages: [],
+  });
+
+  // sliding panel open/close
+  const [isPanelOpen, setIsPanelOpen] = useState(false);
+
+  // maintenance session state (whether a session is currently active)
+  const [isMaintenanceActive, setIsMaintenanceActive] = useState(false);
+
+  // modal state
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalConfig, setModalConfig] = useState({
+    title: "",
+    message: "",
+    type: "info",
+    buttonText: "Okay",
+  });
+
   const createEmptyReport = () => ({
-    id: null, // null for new reports, number for existing ones
+    id: null,
     personResponsible: "",
     actionTaken: "",
     dateStart: "",
@@ -168,19 +193,6 @@ export default function ViewArtifacts() {
     isSubmitted: false,
   });
 
-  // maintenance viewer (read-only)
-  const [maintenance, setMaintenance] = useState({
-    status: "",
-    maintenanceDescription: "",
-    damageImages: [],
-  });
-
-  // sliding panel open/close
-  const [isPanelOpen, setIsPanelOpen] = useState(false);
-
-  // maintenance session state
-  const [isMaintenanceActive, setIsMaintenanceActive] = useState(false);
-
   useEffect(() => {
     if (typeof setExtraBlockContent === "function") {
       if (contributionData) {
@@ -194,7 +206,7 @@ export default function ViewArtifacts() {
     }
   }, [setExtraBlockContent, contributionData, activeTab]);
 
-  // --------------------- Fetch ---------------------
+  // fetch function: load contribution, reports, latest, metadata and open session
   useEffect(() => {
     (async () => {
       try {
@@ -204,11 +216,10 @@ export default function ViewArtifacts() {
         const id = extractContributionIdFromPath(location.pathname);
         if (!id) throw new Error("Invalid contribution id in URL");
 
-        // Contribution
         const { data } = await axiosClient.get(`/auth/contributions/${id}`);
         setContributionData(data);
 
-        // Fetch all maintenance reports for this artifact
+        // fetch reports
         try {
           const reportsRes = await axiosClient.get(
             `/auth/contributions/${data?.contribution_id}/maintenance/reports`
@@ -216,34 +227,22 @@ export default function ViewArtifacts() {
           const existingReports = (reportsRes.data || []).map((r) =>
             mapLatestToEditor(r, SERVER_URL)
           );
-
-          // 👉 If no reports exist, DON'T pre-create any form
           setMaintenanceReports(existingReports);
-        } catch (inner) {
-          console.warn(
-            "[maintenance/reports] not found:",
-            inner?.response?.data || inner?.message
-          );
-          // 👉 Keep empty. User must click Start Maintenance.
+        } catch {
           setMaintenanceReports([]);
         }
 
-        // Latest maintenance (optional) - for the maintenance viewer
+        // latest maintenance viewer
         try {
           const latest = await axiosClient.get(
             `/auth/contributions/${data?.contribution_id}/maintenance/latest`
           );
-          const r = latest.data;
-          setMaintenance(maintenanceFromReport(r));
-        } catch (inner) {
-          console.warn(
-            "[maintenance/latest] not found:",
-            inner?.response?.data || inner?.message
-          );
+          setMaintenance(maintenanceFromReport(latest.data));
+        } catch {
           setMaintenance(maintenanceFromReport(null));
         }
 
-        // 🔎 Artifact metadata for sliding-panel table
+        // metadata
         try {
           const metaRes = await axiosClient.get(
             `/auth/contributions/${data?.contribution_id}/metadata`
@@ -256,53 +255,47 @@ export default function ViewArtifacts() {
             joined ||
             null;
           setMetadata(m);
-        } catch (inner) {
-          if (inner?.response?.status !== 404) {
-            console.warn(
-              "[metadata] fetch failed:",
-              inner?.response?.data || inner?.message
-            );
-          }
+        } catch {
           setMetadata(null);
         }
 
-        // Check for active maintenance session
+        // check open session and initialize draft (separate from completed reports)
         try {
           const sessionRes = await axiosClient.get(
             `/auth/contributions/${data?.contribution_id}/maintenance/open`
           );
-          setIsMaintenanceActive(!!sessionRes.data);
-        } catch (inner) {
-          if (inner?.response?.status !== 204) {
-            console.warn(
-              "[maintenance session] check failed:",
-              inner?.response?.data || inner?.message
-            );
+          if (sessionRes.data) {
+            setOpenMaintenanceSession(sessionRes.data);
+            // restore draft from localStorage if present
+            const artifactId = data?.ContributionArtifact?.artifact_id || data?.contributionartifact?.id || data?.contribution_id;
+            const saved = loadDraft(artifactId, sessionRes.data.session_id);
+            setDraftReport(saved || createEmptyReport());
+          } else {
+            setOpenMaintenanceSession(null);
+            setDraftReport(null);
           }
-          setIsMaintenanceActive(false);
+        } catch {
+          setOpenMaintenanceSession(null);
+          setDraftReport(null);
         }
       } catch (e) {
         console.error("Error fetching contribution:", e);
-        setError(
-          e?.response?.data?.message || e?.message || "Failed to load contribution"
-        );
+        setError(e?.response?.data?.message || e?.message || "Failed to load contribution");
         setContributionData(null);
       } finally {
         setLoading(false);
       }
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname]);
 
-  // --------------------- Derived, null-safe accessors ---------------------
+  // derived artifact/contributor
   const artifact =
-    contributionData?.ContributionArtifact ??
-    contributionData?.contributionartifact ??
-    null;
-
+    contributionData?.ContributionArtifact ?? contributionData?.contributionartifact ?? null;
   const contributor =
     contributionData?.Contributor ?? contributionData?.contributor ?? null;
 
-  // adapt images/files for the shared renderers
+  // images/files helpers unchanged...
   const artifactImg = (artifact?.images ?? []).map((img, idx) => ({
     src: `${SERVER_URL}/uploads/private/pictures/${img}`,
     label: `Image ${idx + 1}`,
@@ -317,7 +310,6 @@ export default function ViewArtifacts() {
   const attachedFiles = (artifact?.documents ?? []).map((doc, idx) => {
     const lower = (doc || "").toLowerCase();
     const isImage = /\.(jpg|jpeg|png|gif|bmp|webp)$/i.test(lower);
-
     return {
       key: String(idx),
       filename: doc || `File ${idx + 1}`,
@@ -328,7 +320,6 @@ export default function ViewArtifacts() {
     };
   });
 
-  // donor info
   const donatorInformation = contributor
     ? [
         {
@@ -350,129 +341,125 @@ export default function ViewArtifacts() {
       ]
     : [];
 
-  // --------------------- Start Maintenance Session ---------------------
+  // start maintenance: call start endpoint then refresh open session + draft
   const handleStartMaintenance = async () => {
     if (!contributionData?.contribution_id) {
-      alert("No contribution ID available");
+      setModalConfig({
+        title: "Error",
+        message: "No contribution ID available",
+        type: "danger",
+      });
+      setIsModalOpen(true);
       return;
     }
-
     try {
       await axiosClient.post(
         `/auth/contributions/${contributionData.contribution_id}/maintenance/start`
       );
-      setIsMaintenanceActive(true);
-
-      // 👉 Add a new empty report ONLY when maintenance starts
-      const newReport = createEmptyReport();
-      setMaintenanceReports((prev) => [...prev, newReport]);
-
-      alert("Maintenance session started successfully!");
-
-      // Refresh the maintenance status
-      setMaintenance((prev) => ({
-        ...prev,
-        status: "In Maintenance",
-      }));
+      // after starting, request open session to get session id
+      const sessionRes = await axiosClient.get(
+        `/auth/contributions/${contributionData.contribution_id}/maintenance/open`
+      );
+      if (sessionRes.data) {
+        setOpenMaintenanceSession(sessionRes.data);
+        const artifactId = artifact?.artifact_id || artifact?.id || contributionData?.contribution_id;
+        const saved = loadDraft(artifactId, sessionRes.data.session_id);
+        setDraftReport(saved || createEmptyReport());
+        setIsMaintenanceActive(true);
+        setModalConfig({
+          title: "Success",
+          message: "Maintenance session started successfully.",
+          type: "info",
+        });
+        setIsModalOpen(true);
+      } else {
+        setOpenMaintenanceSession(null);
+        setDraftReport(null);
+        setIsMaintenanceActive(false);
+      }
+      setMaintenance((prev) => ({ ...prev, status: "In Maintenance" }));
     } catch (error) {
       console.error("Failed to start maintenance:", error);
-      const message =
-        error?.response?.data?.message || "Failed to start maintenance session";
-      alert(message);
+      setModalConfig({
+        title: "Error",
+        message: error?.response?.data?.message || "Failed to start maintenance session",
+        type: "danger",
+      });
+      setIsModalOpen(true);
     }
   };
 
-  // --------------------- Location Update Handler ---------------------
   const handleLocationUpdate = async (contributionId, newLocation) => {
     try {
       await axiosClient.patch(`/auth/contributions/${contributionId}/location`, {
         location: newLocation,
       });
-
-      // Update local state to reflect the change
       setContributionData((prev) => {
         if (!prev) return prev;
-
-        const artifact = prev.ContributionArtifact || prev.contributionartifact;
-        if (artifact) {
+        const art = prev.ContributionArtifact || prev.contributionartifact;
+        if (art) {
           return {
             ...prev,
             ContributionArtifact: {
-              ...artifact,
+              ...art,
               current_location: newLocation,
             },
             contributionartifact: {
-              ...artifact,
+              ...art,
               current_location: newLocation,
             },
           };
         }
         return prev;
       });
-
-      console.log(`Location updated to: ${newLocation}`);
     } catch (error) {
       console.error("Failed to update location:", error);
-      throw error; // Re-throw to let the component handle the error display
+      throw error;
     }
   };
 
-  // --------------------- Report Management ---------------------
+  // update existing completed report at index
   const updateReport = (index, updatedReport) => {
-    setMaintenanceReports((prev) =>
-      prev.map((report, i) => (i === index ? updatedReport : report))
-    );
+    setMaintenanceReports((prev) => {
+      const newReports = [...prev];
+      newReports[index] = updatedReport;
+      return newReports;
+    });
   };
 
+  // update draft (session) - separate from maintenanceReports
+  const updateDraft = (updatedDraft) => {
+    setDraftReport(updatedDraft);
+    // persist into localStorage using artifactId and sessionId
+    const artifactId = artifact?.artifact_id || artifact?.id || contributionData?.contribution_id;
+    if (openMaintenanceSession?.session_id) {
+      try {
+        localStorage.setItem(draftKey(artifactId, openMaintenanceSession.session_id), JSON.stringify(updatedDraft));
+      } catch {}
+    }
+  };
+
+  // edit action for completed reports (keeps them editable)
   const handleReportEdit = (index) => {
     setMaintenanceReports((prev) =>
-      prev.map((report, i) => (i === index ? { ...report, isSubmitted: false } : report))
+      prev.map((r, i) => (i === index ? { ...r, isSubmitted: false } : r))
     );
   };
 
-  // --------------------- Validation (report) ---------------------
-  const validateForm = (d) => {
-    const errors = {};
-    if (!d.personResponsible?.trim())
-      errors.personResponsible = "Person responsible is required";
-    if (!d.actionTaken?.trim()) errors.actionTaken = "Action taken is required";
-    if (!d.dateStart) errors.dateStart = "Start date is required";
-    if (!d.dateEnd) errors.dateEnd = "End date is required";
-    if (!d.finalLocation?.trim()) errors.finalLocation = "Final location is required";
-
-    if (d.dateStart && d.dateEnd) {
-      try {
-        const start = new Date(`${d.dateStart}T00:00:00+08:00`);
-        const end = new Date(`${d.dateEnd}T23:59:00+08:00`);
-        if (!(start instanceof Date) || isNaN(start)) errors.dateStart = "Invalid start date";
-        if (!(end instanceof Date) || isNaN(end)) errors.dateEnd = "Invalid end date";
-        if (!errors.dateStart && !errors.dateEnd && end <= start) {
-          errors.dateEnd = "End must be after Start";
-        }
-      } catch {
-        // Handle error silently
-      }
-    }
-
-    const dims = Array.isArray(d.dimensions) ? d.dimensions : [];
-    const anyDimProvided = dims.some((r) => r?.L || r?.W || r?.H);
-    if (anyDimProvided) {
-      const incomplete = dims.some((r) => !(r?.L && r?.W && r?.H));
-      if (incomplete)
-        errors.dimensions = "Please complete L/W/H for each dimension row you added.";
-    }
-
-    return errors;
-  };
-
-  // --------------------- Submit to API (Report) ---------------------
-  const handleReportSubmit = async (reportData) => {
+  // submit report: if draft (sessionId present) treat specially
+  const handleReportSubmit = async (reportData, options = {}) => {
+    const targetSessionId = options.sessionId || openMaintenanceSession?.session_id;
     const newErrors = validateForm(reportData);
     if (Object.keys(newErrors).length > 0) {
       setReportErrors(newErrors);
-      alert(
-        "Please fix errors:\n" + Object.values(newErrors).map((m) => `• ${m}`).join("\n")
-      );
+      setModalConfig({
+        title: "Validation Error",
+        message:
+          "Please fix the following errors:\n" +
+          Object.values(newErrors).map((m) => `• ${m}`).join("\n"),
+        type: "warning",
+      });
+      setIsModalOpen(true);
       return;
     }
 
@@ -513,55 +500,82 @@ export default function ViewArtifacts() {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
-      // Maintenance session completed - update status
+      // If this was a draft for an open session, clear draft and session
+      if (targetSessionId) {
+        const artifactId = artifact?.artifact_id || artifact?.id || contributionData?.contribution_id;
+        removeDraft(artifactId, targetSessionId);
+        setDraftReport(null);
+        setOpenMaintenanceSession(null);
+      }
+
+      // refresh reports from server
+      try {
+        const reportsRes = await axiosClient.get(`/auth/contributions/${id}/maintenance/reports`);
+        if (reportsRes.data) {
+          setMaintenanceReports(reportsRes.data.map((r) => mapLatestToEditor(r, SERVER_URL)));
+        }
+      } catch (err) {
+        console.error("Failed to refresh reports:", err);
+      }
+
       setIsMaintenanceActive(false);
-
-      // Update maintenance status to reflect final location
-      setMaintenance((prev) => ({
-        ...prev,
-        status: reportData.finalLocation || "Completed",
-      }));
-
-      // Mark the report as submitted
-      setMaintenanceReports((prev) =>
-        prev.map((report) => (report === reportData ? { ...report, isSubmitted: true } : report))
-      );
-
       setReportErrors({});
-      alert("Maintenance completed successfully! Artifact location updated.");
+      setModalConfig({
+        title: "Success",
+        message: "Maintenance completed successfully! Artifact location updated.",
+        type: "info",
+      });
+      setIsModalOpen(true);
     } catch (err) {
       console.error("[Report Submit] submit failed", err?.response?.data || err?.message);
-      alert("Failed to save maintenance report.");
+      setModalConfig({
+        title: "Error",
+        message: "Failed to save maintenance report.",
+        type: "danger",
+      });
+      setIsModalOpen(true);
     }
   };
 
-  // --------------------- UI guards ---------------------
-  if (loading) {
-    return (
-      <div className="w-full h-full flex items-center justify-center">
-        <span>Loading…</span>
-      </div>
-    );
-  }
-  if (error) {
-    return (
-      <div className="w-full h-full flex items-center justify-center text-red-600">
-        <span>{error}</span>
-      </div>
-    );
-  }
-  if (!contributionData) {
-    return (
-      <div className="w-full h-full flex items-center justify-center text-2xl text-gray-500">
-        <span>No contribution data found or invalid ID.</span>
-      </div>
-    );
-  }
+  // simple validation used above
+  const validateForm = (d) => {
+    const errors = {};
+    if (!d.personResponsible?.trim())
+      errors.personResponsible = "Person responsible is required";
+    if (!d.actionTaken?.trim()) errors.actionTaken = "Action taken is required";
+    if (!d.dateStart) errors.dateStart = "Start date is required";
+    if (!d.dateEnd) errors.dateEnd = "End date is required";
+    if (!d.finalLocation?.trim()) errors.finalLocation = "Final location is required";
 
-  // --------------------- Render ---------------------
+    if (d.dateStart && d.dateEnd) {
+      try {
+        const start = new Date(`${d.dateStart}T00:00:00+08:00`);
+        const end = new Date(`${d.dateEnd}T23:59:00+08:00`);
+        if (!(start instanceof Date) || isNaN(start)) errors.dateStart = "Invalid start date";
+        if (!(end instanceof Date) || isNaN(end)) errors.dateEnd = "Invalid end date";
+        if (!errors.dateStart && !errors.dateEnd && end <= start) {
+          errors.dateEnd = "End must be after Start";
+        }
+      } catch {}
+    }
+
+    const dims = Array.isArray(d.dimensions) ? d.dimensions : [];
+    const anyDimProvided = dims.some((r) => r?.L || r?.W || r?.H);
+    if (anyDimProvided) {
+      const incomplete = dims.some((r) => !(r?.L && r?.W && r?.H));
+      if (incomplete)
+        errors.dimensions = "Please complete L/W/H for each dimension row you added.";
+    }
+    return errors;
+  };
+
+  // UI guards
+  if (loading) return <div className="w-full h-full flex items-center justify-center"><span>Loading…</span></div>;
+  if (error) return <div className="w-full h-full flex items-center justify-center text-red-600"><span>{error}</span></div>;
+  if (!contributionData) return <div className="w-full h-full flex items-center justify-center text-2xl text-gray-500"><span>No contribution data found or invalid ID.</span></div>;
+
   return (
     <div className="w-full h-full flex flex-col gap-6">
-      {/* ====================== ARTIFACT INFORMATION ====================== */}
       {activeTab === "Artifact Information" && (
         <ArtifactDetailsShell
           left={
@@ -572,21 +586,13 @@ export default function ViewArtifacts() {
                 </span>
                 <Breadcrumb hideTitle={true} overrideTheme="text-white" />
               </div>
-
-              <RenderArtifactImageAndDonatorInfo
-                donatorInformation={donatorInformation}
-                artifactImg={artifactImg}
-              />
-
+              <RenderArtifactImageAndDonatorInfo donatorInformation={donatorInformation} artifactImg={artifactImg} />
               <div className="absolute left-0 -bottom-[1.2rem] w-full h-[1.2rem] bg-black" />
             </>
           }
           middle={
             <ArtifactMaintenanceForm
-              value={{
-                ...maintenance,
-                currentLocation: artifact?.current_location || "",
-              }}
+              value={{ ...maintenance, currentLocation: artifact?.current_location || "" }}
               onChange={setMaintenance}
               contributionId={contributionData?.contribution_id}
               onLocationUpdate={handleLocationUpdate}
@@ -594,76 +600,41 @@ export default function ViewArtifacts() {
           }
           right={
             <div className="w-full h-full flex flex-col gap-4 relative pl-20 pr-15 overflow-hidden">
+              {/* description / docs / sliding panel unchanged */}
               <div className="flex-1 min-h-0 rounded-lg border border-gray-300 p-6 flex flex-col">
                 <span className="text-4xl font-bold">Artifact Description</span>
                 <div className="mt-3 flex-1 min-h-0">
                   <div className="w-full h-full rounded-md border border-gray-300 p-3 overflow-auto bg-white">
                     {artifact?.description && artifact.description.trim() ? (
-                      <p className="whitespace-pre-wrap text-lg text-[#1D1911]">
-                        {artifact.description}
-                      </p>
-                    ) : (
-                      <span className="text-gray-500 italic">Not provided</span>
-                    )}
+                      <p className="whitespace-pre-wrap text-lg text-[#1D1911]">{artifact.description}</p>
+                    ) : (<span className="text-gray-500 italic">Not provided</span>)}
                   </div>
                 </div>
               </div>
-
               <div className="flex-1 min-h-0 flex gap-4">
                 <div className="flex-1 min-h-0 min-w-0">
-                  <RenderRelatedDocs
-                    relatedImages={relatedImages}
-                    attachedFiles={attachedFiles}
-                    containerHeight="h-full"
-                    imageBoxWidth="w-[29rem]"
-                    fileBoxWidth="w-[17rem]"
-                    imgHeight="h-52"
-                  />
+                  <RenderRelatedDocs relatedImages={relatedImages} attachedFiles={attachedFiles} containerHeight="h-full" imageBoxWidth="w-[29rem]" fileBoxWidth="w-[17rem]" imgHeight="h-52" />
                 </div>
               </div>
-
-              {/* Sliding panel -> shows Artifact Metadata as a TABLE */}
-              <div
-                className={`absolute top-0 right-0 w-[calc(100%-5rem)] h-full  bg-white border-2 border-[#1D1911] rounded-l-3xl z-20 transform transition-transform duration-500 ${
-                  isPanelOpen ? "translate-x-0" : "translate-x-full"
-                }`}
-              >
-                <button
-                  onClick={() => setIsPanelOpen((prev) => !prev)}
-                  className={`absolute -bottom-[9.5rem] -translate-y-1/2 ${
-                    isPanelOpen ? "-left-[5rem] w-[5rem]" : "-left-[8rem] w-[8rem]"
-                  } h-[32rem] bg-[#1D1911] rounded-tl-2xl rounded-bl-2xl text-white font-bold shadow-lg z-30 flex items-center justify-center transition-all duration-500`}
-                >
+              <div className={`absolute top-0 right-0 w-[calc(100%-5rem)] h-full  bg-white border-2 border-[#1D1911] rounded-l-3xl z-20 transform transition-transform duration-500 ${isPanelOpen ? "translate-x-0" : "translate-x-full"}`}>
+                <button onClick={() => setIsPanelOpen((prev) => !prev)} className={`absolute -bottom-[9.5rem] -translate-y-1/2 ${isPanelOpen ? "-left-[5rem] w-[5rem]" : "-left-[8rem] w-[8rem]"} h-[32rem] bg-[#1D1911] rounded-tl-2xl rounded-bl-2xl text-white font-bold shadow-lg z-30 flex items-center justify-center transition-all duration-500`}>
                   <div className="flex flex-col items-center justify-center gap-4 transform -rotate-90">
                     {isPanelOpen ? (
                       <span className="flex items-center gap-12 text-3xl font-bold tracking-wide w-[24rem] ">
                         Artifact Information
-                        <span
-                          className={`inline-block transform transition-transform duration-500 ${
-                            isPanelOpen ? "-rotate-90" : "rotate-90"
-                          }`}
-                        >
-                          ⟨
-                        </span>
+                        <span className={`inline-block transform transition-transform duration-500 ${isPanelOpen ? "-rotate-90" : "rotate-90"}`}>⟨</span>
                       </span>
                     ) : (
                       <div className="flex flex-col items-center text-3xl font-hind font-bold leading-tight w-[24rem]">
                         <span className="mb-2">Click to Show</span>
                         <span className="flex items-center gap-12">
                           Artifact Information
-                          <span
-                            className={`inline-block transform transition-transform duration-500 ${
-                              isPanelOpen ? "-rotate-90" : "rotate-90"
-                            }`}
-                          >
-                            ⟨
-                          </span>
+                          <span className={`inline-block transform transition-transform duration-500 ${isPanelOpen ? "-rotate-90" : "rotate-90"}`}>⟨</span>
                         </span>
                       </div>
                     )}
                   </div>
                 </button>
-
                 <div className="w-full h-full flex flex-col p-4 overflow-auto">
                   <ArtifactMetadataTable metadata={metadata} />
                 </div>
@@ -673,10 +644,8 @@ export default function ViewArtifacts() {
         />
       )}
 
-      {/* ====================== MAINTENANCE REPORT TAB ====================== */}
       {activeTab === "Maintenance Report" && (
         <div className="w-full h-full grid grid-cols-[43rem_1fr] items-start relative pr-15">
-          {/* LEFT: black rail */}
           <div className="absolute left-0  -top-[12rem] w-[43rem] h-[12rem] bg-black flex items-start justify-end pl-10 pb-5 pt-4 overflow-hidden flex-col">
             <span className="text-white text-3xl font-bold text-left break-words line-clamp-3 max-w-[38rem]">
               {artifact?.title || "Artifact Title"}
@@ -684,63 +653,78 @@ export default function ViewArtifacts() {
             <Breadcrumb hideTitle={true} overrideTheme="text-white" />
           </div>
           <div className="bg-black h-full">
-            <RenderArtifactImageAndDonatorInfo
-              donatorInformation={donatorInformation}
-              artifactImg={artifactImg}
-            />
+            <RenderArtifactImageAndDonatorInfo donatorInformation={donatorInformation} artifactImg={artifactImg} />
           </div>
           <div className="absolute left-0 -bottom-[1.2rem] w-[43rem] h-[1.2rem] bg-black" />
-
           <div className="relative col-span-1">
             <div className="w-full h-20 rounded-r-2xl bg-[#1D1911] flex items-center justify-between pr-5 pl-12">
-              <span className="text-3xl font-bold font-hind text-white tracking-wide">
-                Maintenance record
-              </span>
-
-              <button
-                type="button"
-                onClick={handleStartMaintenance}
-                disabled={isMaintenanceActive}
-                className={`px-6 py-3 rounded-lg text-lg font-bold ${
-                  isMaintenanceActive
-                    ? "bg-gray-400 text-gray-600 cursor-not-allowed"
-                    : "bg-white text-black hover:bg-gray-400"
-                }`}
-              >
+              <span className="text-3xl font-bold font-hind text-white tracking-wide">Maintenance record</span>
+              <button type="button" onClick={handleStartMaintenance} disabled={isMaintenanceActive} className={`px-6 py-3 rounded-lg text-lg font-bold ${isMaintenanceActive ? "bg-gray-400 text-gray-600 cursor-not-allowed" : "bg-white text-black hover:bg-gray-400"}`}>
                 {isMaintenanceActive ? "Maintenance Active" : "Start Maintenance"}
               </button>
             </div>
 
-            {/* Multiple Reports Container */}
             <div className="h-[57rem] 3xl:h-[74rem] overflow-scroll col-span-1 flex-1 px-1 sm:px-2 pt-4">
-              {maintenanceReports.length === 0 ? (
+              {/* Completed (server) reports */}
+              {maintenanceReports.length === 0 && !openMaintenanceSession ? (
                 <div className="w-full h-full flex items-center justify-center">
                   <div className="text-center text-neutral-600">
                     <p className="text-xl font-semibold">No maintenance reports yet</p>
-                    <p>
-                      Click <span className="font-bold">Start Maintenance</span> to create one.
-                    </p>
+                    <p>Click <span className="font-bold">Start Maintenance</span> to create one.</p>
                   </div>
                 </div>
               ) : (
-                maintenanceReports.map((report, index) => (
-                  <MaintenanceReportCard
-                    key={index}
-                    title={`Report ${index + 1}`}
-                    report={report}
-                    onChange={(updatedReport) => updateReport(index, updatedReport)}
-                    defaultOpen={index === maintenanceReports.length - 1} // Open the latest report
-                    errors={reportErrors}
-                    isSubmitted={report.isSubmitted}
-                    onEdit={() => handleReportEdit(index)}
-                    onSubmit={handleReportSubmit}
-                  />
-                ))
+                <>
+                  {/* Draft/New report form at the top */}
+                  {openMaintenanceSession && (
+                    <MaintenanceReportCard
+                      key={`draft-${openMaintenanceSession.session_id}`}
+                      title={`Report ${maintenanceReports.length + 1}`}
+                      report={draftReport || createEmptyReport()}
+                      onChange={(updatedReport) => updateDraft(updatedReport)}
+                      defaultOpen={true}
+                      errors={reportErrors}
+                      isSubmitted={false}
+                      onEdit={() => {}}
+                      onSubmit={(r) => handleReportSubmit(r, { sessionId: openMaintenanceSession.session_id })}
+                      artifactId={artifact?.artifact_id || artifact?.id || contributionData?.contribution_id}
+                      sessionId={openMaintenanceSession.session_id}
+                    />
+                  )}
+
+                  {/* Completed reports in descending order but with ascending numbers */}
+                  {[...maintenanceReports].slice().reverse().map((report, idx) => {
+                    const reportNumber = idx + 1;  // This makes numbering start from 1 and go up
+                    return (
+                      <MaintenanceReportCard
+                        key={`completed-${reportNumber}-${report.id ?? reportNumber}`}
+                        title={`Report ${reportNumber}`}
+                        report={report}
+                        onChange={(updatedReport) => updateReport(maintenanceReports.length - idx - 1, updatedReport)}
+                        defaultOpen={idx === 0 && !openMaintenanceSession}
+                        errors={reportErrors}
+                        isSubmitted={report.isSubmitted || true}
+                        onEdit={() => handleReportEdit(maintenanceReports.length - idx - 1)}
+                        onSubmit={(r) => handleReportSubmit(r)}
+                      />
+                    );
+                  })}
+                </>
               )}
             </div>
           </div>
         </div>
       )}
+
+      {/* Add the modal component here */}
+      <PopupModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title={modalConfig.title}
+        message={modalConfig.message}
+        type={modalConfig.type}
+        buttonText={modalConfig.buttonText}
+      />
     </div>
   );
 }
@@ -762,10 +746,8 @@ function CellValue({ children }) {
 }
 
 function ArtifactMetadataTable({ metadata }) {
-  // tolerate either snake_case or camelCase from controller/join
   const m = metadata || {};
   const val = (snake, camel) => m?.[snake] ?? m?.[camel] ?? "";
-
   const rows = [
     {
       section: "Basic Information",
@@ -795,17 +777,10 @@ function ArtifactMetadataTable({ metadata }) {
       items: [["Curatorial Description", val("curatorial_description", "curatorialDescription")]],
     },
   ];
-
   return (
     <div className="w-full h-full">
       <div className="text-xl font-bold mb-3">Artifact Metadata</div>
-
-      {!metadata && (
-        <div className="text-sm text-neutral-500 italic">
-          No artifact metadata yet for this contribution.
-        </div>
-      )}
-
+      {!metadata && <div className="text-sm text-neutral-500 italic">No artifact metadata yet for this contribution.</div>}
       {metadata && (
         <div className="overflow-x-auto rounded-lg border border-neutral-200">
           <table className="min-w-full text-left text-sm">
@@ -819,18 +794,12 @@ function ArtifactMetadataTable({ metadata }) {
               {rows.map((group, gi) => (
                 <Fragment key={gi}>
                   <tr className="bg-neutral-100">
-                    <td className="px-4 py-2 font-bold text-neutral-800" colSpan={2}>
-                      {group.section}
-                    </td>
+                    <td className="px-4 py-2 font-bold text-neutral-800" colSpan={2}>{group.section}</td>
                   </tr>
                   {group.items.map(([label, value], ii) => (
                     <tr key={ii} className="border-t border-neutral-200">
-                      <td className="px-4 py-2 align-top">
-                        <CellLabel>{label}</CellLabel>
-                      </td>
-                      <td className="px-4 py-2">
-                        <CellValue>{value}</CellValue>
-                      </td>
+                      <td className="px-4 py-2 align-top"><CellLabel>{label}</CellLabel></td>
+                      <td className="px-4 py-2"><CellValue>{value}</CellValue></td>
                     </tr>
                   ))}
                 </Fragment>

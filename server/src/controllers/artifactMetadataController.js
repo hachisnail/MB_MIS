@@ -13,6 +13,29 @@ import fs from "fs/promises";
 import path from "path";
 import { UPLOAD_BASE_DIR } from "../middlewares/multerMiddleware.js";
 
+
+// Generate acquisition ID: YYYY-0000-0000 (default), increments when processed
+async function generateAcquisitionId(artifact_id) {
+  const year = new Date().getFullYear();
+
+  // Count how many artifacts were completed this year
+  const countThisYear = await ArtifactMetadata.count({
+    where: mainDb.where(mainDb.fn("YEAR", mainDb.col("created_at")), year),
+  });
+
+  // If no artifacts yet → return full zero format
+  if (countThisYear === 0) {
+    return `${year}-0000-0000`;
+  }
+
+  // Otherwise, increment for the next artifact
+  const yearSequence = String(countThisYear).padStart(4, "0");
+  const artifactSequence = String(artifact_id).padStart(4, "0");
+
+  return `${year}-${yearSequence}-${artifactSequence}`;
+}
+
+
 /* ---------- helpers ---------- */
 function pickNonBlank(body, keys) {
   const out = {};
@@ -25,12 +48,48 @@ function pickNonBlank(body, keys) {
   return out;
 }
 
-// Simple MB-YYYY-00001 generator used on completion (hook also guards uniqueness)
-function generateCollectionNumber(artifact_id) {
-  const yy = new Date().getFullYear();
-  const n = String(artifact_id).padStart(5, "0");
-  return `MB-${yy}-${n}`;
+// Helper to build YYYY-XXXX-XXXX acquisition ID
+async function generateCollectionNumber(artifactId, t) {
+  const year = new Date().getFullYear();
+
+  // Count completed artifacts within this year
+  const countThisYear = await ArtifactMetadata.count({
+    where: {
+      metadata_completed: true,
+      created_at: {
+        [Op.gte]: new Date(`${year}-01-01`),
+        [Op.lt]: new Date(`${year + 1}-01-01`),
+      },
+    },
+    transaction: t,
+  });
+
+  // If none are completed yet this year, return base zero format
+  if (countThisYear === 0) {
+    return `${year}-0000-0000`;
+  }
+
+  // Otherwise, build the new sequence
+  const yearSequence = String(countThisYear).padStart(4, "0");
+  const artifactSequence = String(artifactId).padStart(4, "0");
+
+  const base = `${year}-${yearSequence}-${artifactSequence}`;
+  let candidate = base;
+  let suffix = 0;
+
+  // ensure uniqueness in case of duplicates
+  while (true) {
+    const existing = await ArtifactMetadata.findOne({
+      where: { collection_number: candidate },
+      transaction: t,
+      lock: t?.LOCK?.UPDATE,
+    });
+    if (!existing) return candidate;
+    suffix += 1;
+    candidate = `${base}-${String(suffix).padStart(2, "0")}`;
+  }
 }
+
 
 async function getArtifactIdByContributionId(contribution_id) {
   const art = await ContributionArtifacts.findOne({ where: { contribution_id } });
@@ -167,7 +226,8 @@ export async function completeArtifactMetadata(req, res) {
 
     // Mark completed + set inventory_synced_at + assign collection_number if missing
     const updates = { metadata_completed: true, inventory_synced_at: new Date() };
-    if (!meta.collection_number) updates.collection_number = generateCollectionNumber(artifact_id);
+    if (!meta.collection_number)
+      updates.collection_number = await generateAcquisitionId(artifact_id);
     await meta.update(updates, { transaction: tx });
 
     // Upsert catalog inside the same tx (guard in service ensures only completed meta publishes)

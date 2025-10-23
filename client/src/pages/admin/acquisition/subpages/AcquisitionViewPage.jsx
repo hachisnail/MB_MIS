@@ -578,7 +578,7 @@ const attachedFiles = (artifact?.documents ?? []).map((doc, idx) => {
       const id = contributionData?.contribution_id;
       await axiosClient.patch(`/auth/contributions/${id}/status`, {
         status: "rejected",
-        responseMessage: "Marked rejcted by staff.",
+        responseMessage: "Marked rejected by staff.",
       });
       await fetchContribution();
       setActiveDocument("Overview");

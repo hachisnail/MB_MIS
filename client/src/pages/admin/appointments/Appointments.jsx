@@ -519,9 +519,9 @@ const Appointments = () => {
               ]}
             />
           </div>
-          <div className="w-full h-full flex flex-col">
+          <div className="w-full flex flex-col flex-1 min-h-0">
             <TableHeaderContainer headers={headersMap[activeTab]} />
-            <div className="w-full h-[52rem] 3xl:h-[67rem] border-y overflow-y-auto border-gray-400">
+            <div className="w-full flex-1 border-y overflow-y-auto border-gray-400">
               {(activeTab === "forms" || activeTab === "pending") && (
                 <ListRenderer
                   isLoading={loading}

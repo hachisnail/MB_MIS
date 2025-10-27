@@ -227,7 +227,7 @@ const DonorsStep = ({
               <div className="w-full h-full flex flex-col justify-center items-center gap-8">
                 <div className="text-center">
                   <p className="text-3xl font-semibold text-gray-700 mb-3">
-                    Anonymous Donation
+                    Anonymous Donations
                   </p>
                   <p className="text-xl text-gray-600">
                     Your personal information will not be displayed publicly.
@@ -238,17 +238,19 @@ const DonorsStep = ({
                 </div>
 
                 {/* Email Only */}
-                <div className="w-full max-w-2xl flex items-center gap-5">
-                  <label className="min-w-32 text-2xl font-semibold">
-                    Email
-                    <span className="text-red-700"> *</span>
-                  </label>
-                  <EmailInput
-                    control={control}
-                    name="email"
-                    error={errors.email}
-                    className="flex-1"
-                  />
+                <div className="w-full flex justify-center">
+                  <div className="w-[40rem] flex items-baseline gap-5">
+                    <label className="min-w-32 text-2xl font-semibold pt-[0.4rem]">
+                      Email
+                      <span className="text-red-700"> *</span>
+                    </label>
+                    <EmailInput
+                      control={control}
+                      name="email"
+                      error={errors.email}
+                      className="flex-1"
+                    />
+                  </div>
                 </div>
               </div>
             ) : (

@@ -794,9 +794,17 @@ export const sendEmailNotification = async (req, res) => {
     const { recipientEmail, subject, message, status, appointmentDetails } = req.body;
 
     // Basic validation
-    if (!recipientEmail || !subject || !message) {
+    if (!recipientEmail || !subject) {
       return res.status(400).json({ message: 'Missing required email details' });
     }
+
+    // Validate appointmentDetails object
+    if (!appointmentDetails || typeof appointmentDetails !== 'object') {
+      return res.status(400).json({ message: 'Missing or invalid appointment details' });
+    }
+
+    // Ensure message is a string (default to empty string if not provided)
+    const safeMessage = message || '';
 
     // Determine status banner color and text
     let statusBannerColor = '#4CAF50';
@@ -817,228 +825,20 @@ export const sendEmailNotification = async (req, res) => {
       statusMessage = 'Your visit has been marked as <strong style="color: #4CAF50;">COMPLETED</strong>. Thank you for visiting Museo Bulawan!';
     }
 
-    // Build the professional email template
-    const emailHtml = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Museo Bulawan Appointment Update</title>
-      </head>
-      <body style="margin: 0; padding: 0; background-color: #f5f5f5; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
-        <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f5f5; padding: 20px 0;">
-          <tr>
-            <td align="center">
-              <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
-                
-                <!-- Header with Gold Gradient matching homepage -->
-                <tr>
-                  <td style="background: linear-gradient(135deg, #DAB765 0%, #EFBF04 100%); padding: 30px 40px; text-align: center;">
-                    <h1 style="margin: 0; color: #1a1a1a; font-size: 28px; font-weight: bold;">MUSEO BULAWAN</h1>
-                    <p style="margin: 5px 0 0 0; color: #2c2c2c; font-size: 14px; letter-spacing: 1px;">Museum, Archives and Shrine Curation Division</p>
-                  </td>
-                </tr>
-
-                <!-- Status Banner -->
-                <tr>
-                  <td style="padding: 0;">
-                    <div style="background-color: ${statusBannerColor}; color: white; padding: 20px 40px; text-align: center;">
-                      <h2 style="margin: 0; font-size: 24px;">${statusBannerText}</h2>
-                    </div>
-                  </td>
-                </tr>
-
-                <!-- Main Content -->
-                <tr>
-                  <td style="padding: 40px;">
-                    <p style="font-size: 16px; color: #333; line-height: 1.6; margin: 0 0 20px 0;">
-                      Dear <strong>${appointmentDetails.visitorName}</strong>,
-                    </p>
-                    
-                    <p style="font-size: 16px; color: #333; line-height: 1.6; margin: 0 0 25px 0;">
-                      ${statusMessage}
-                    </p>
-
-                    ${status === 'APPROVED' ? `
-                    <!-- Appointment Details Card -->
-                    <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f9f9f9; border-radius: 8px; margin: 0 0 25px 0; border: 2px solid #DAB765;">
-                      <tr>
-                        <td style="padding: 20px;">
-                          <h3 style="margin: 0 0 15px 0; color: #DAB765; font-size: 18px;">📅 Your Appointment Details</h3>
-                          <table width="100%" cellpadding="8" cellspacing="0">
-                            <tr>
-                              <td style="color: #666; font-size: 14px; width: 120px;"><strong>Date:</strong></td>
-                              <td style="color: #333; font-size: 14px;">${appointmentDetails.preferredDate}</td>
-                            </tr>
-                            <tr>
-                              <td style="color: #666; font-size: 14px;"><strong>Time:</strong></td>
-                              <td style="color: #333; font-size: 14px;">${appointmentDetails.preferredTime}</td>
-                            </tr>
-                            <tr>
-                              <td style="color: #666; font-size: 14px;"><strong>Purpose:</strong></td>
-                              <td style="color: #333; font-size: 14px;">${appointmentDetails.purpose}</td>
-                            </tr>
-                            <tr>
-                              <td style="color: #666; font-size: 14px;"><strong>Visitors:</strong></td>
-                              <td style="color: #333; font-size: 14px;">${appointmentDetails.populationCount || 'N/A'}</td>
-                            </tr>
-                          </table>
-                        </td>
-                      </tr>
-                    </table>
-                    ` : ''}
-
-                    <!-- Admin Message -->
-                    <div style="background-color: #FFF9E6; border-left: 4px solid #DAB765; padding: 20px; margin: 0 0 30px 0; border-radius: 4px;">
-                      <h4 style="margin: 0 0 10px 0; color: #DAB765; font-size: 16px;">📨 Message from Museo Bulawan:</h4>
-                      <p style="margin: 0; color: #333; font-size: 15px; line-height: 1.6;">${message}</p>
-                    </div>
-
-                    ${status === 'APPROVED' ? `
-                    <!-- Museum Guidelines -->
-                    <div style="background-color: #FFF9E6; border-radius: 8px; padding: 25px; margin: 0 0 25px 0; border: 2px solid #DAB765;">
-                      <h3 style="margin: 0 0 20px 0; color: #DAB765; font-size: 20px; text-align: center;">📋 MUSEUM VISITOR GUIDELINES</h3>
-                      
-                      <table width="100%" cellpadding="0" cellspacing="0">
-                        <tr>
-                          <td width="50%" style="padding: 8px; vertical-align: top;">
-                            <div style="display: flex; align-items: flex-start;">
-                              <span style="color: #F44336; font-size: 18px; margin-right: 8px;">🚫</span>
-                              <span style="color: #333; font-size: 13px; line-height: 1.5;">Personal videography inside the Museum is not allowed.</span>
-                            </div>
-                          </td>
-                          <td width="50%" style="padding: 8px; vertical-align: top;">
-                            <div style="display: flex; align-items: flex-start;">
-                              <span style="color: #F44336; font-size: 18px; margin-right: 8px;">📷</span>
-                              <span style="color: #333; font-size: 13px; line-height: 1.5;">Taking pictures of artifacts and displays is not allowed.</span>
-                            </div>
-                          </td>
-                        </tr>
-                        <tr>
-                          <td style="padding: 8px; vertical-align: top;">
-                            <div style="display: flex; align-items: flex-start;">
-                              <span style="color: #F44336; font-size: 18px; margin-right: 8px;">🚫</span>
-                              <span style="color: #333; font-size: 13px; line-height: 1.5;">Strictly no touching of exhibits.</span>
-                            </div>
-                          </td>
-                          <td style="padding: 8px; vertical-align: top;">
-                            <div style="display: flex; align-items: flex-start;">
-                              <span style="color: #F44336; font-size: 18px; margin-right: 8px;">🐾</span>
-                              <span style="color: #333; font-size: 13px; line-height: 1.5;">No pets allowed.</span>
-                            </div>
-                          </td>
-                        </tr>
-                        <tr>
-                          <td style="padding: 8px; vertical-align: top;">
-                            <div style="display: flex; align-items: flex-start;">
-                              <span style="color: #F44336; font-size: 18px; margin-right: 8px;">⚠️</span>
-                              <span style="color: #333; font-size: 13px; line-height: 1.5;">Avoid leaning on glass showcases.</span>
-                            </div>
-                          </td>
-                          <td style="padding: 8px; vertical-align: top;">
-                            <div style="display: flex; align-items: flex-start;">
-                              <span style="color: #4CAF50; font-size: 18px; margin-right: 8px;">📝</span>
-                              <span style="color: #333; font-size: 13px; line-height: 1.5;">Registration is mandatory upon entry.</span>
-                            </div>
-                          </td>
-                        </tr>
-                        <tr>
-                          <td style="padding: 8px; vertical-align: top;">
-                            <div style="display: flex; align-items: flex-start;">
-                              <span style="color: #2196F3; font-size: 18px; margin-right: 8px;">🔇</span>
-                              <span style="color: #333; font-size: 13px; line-height: 1.5;">Lower your voices.</span>
-                            </div>
-                          </td>
-                          <td style="padding: 8px; vertical-align: top;">
-                            <div style="display: flex; align-items: flex-start;">
-                              <span style="color: #F44336; font-size: 18px; margin-right: 8px;">🚫</span>
-                              <span style="color: #333; font-size: 13px; line-height: 1.5;">Sitting and lying on the floor is not allowed.</span>
-                            </div>
-                          </td>
-                        </tr>
-                        <tr>
-                          <td style="padding: 8px; vertical-align: top;">
-                            <div style="display: flex; align-items: flex-start;">
-                              <span style="color: #F44336; font-size: 18px; margin-right: 8px;">🏃</span>
-                              <span style="color: #333; font-size: 13px; line-height: 1.5;">Running and playing is not allowed.</span>
-                            </div>
-                          </td>
-                          <td style="padding: 8px; vertical-align: top;">
-                            <div style="display: flex; align-items: flex-start;">
-                              <span style="color: #F44336; font-size: 18px; margin-right: 8px;">🚭</span>
-                              <span style="color: #333; font-size: 13px; line-height: 1.5;">No smoking of cigarettes or e-cigarettes.</span>
-                            </div>
-                          </td>
-                        </tr>
-                      </table>
-                    </div>
-                    ` : ''}
-
-                    <div style="border-top: 2px solid #f0f0f0; padding-top: 25px; margin-top: 30px;">
-                      <p style="margin: 0 0 15px 0; color: #333; font-size: 15px; line-height: 1.6;">
-                        Thank you for your interest in Museo Bulawan. We look forward to sharing our cultural heritage with you!
-                      </p>
-                      <p style="margin: 0; color: #333; font-size: 15px;">
-                        Best regards,<br>
-                        <strong style="color: #DAB765;">The Museo Bulawan Team</strong>
-                      </p>
-                    </div>
-                  </td>
-                </tr>
-
-                <tr>
-                  <td style="background-color: #2c2c2c; padding: 30px 40px; text-align: center;">
-                    <p style="margin: 0 0 15px 0; color: #DAB765; font-size: 18px; font-weight: bold;">Connect With Us</p>
-                    
-                    <!-- Social Media Links - Simplified Layout -->
-                    <table align="center" cellpadding="0" cellspacing="0" border="0" style="margin: 0 auto 20px auto;">
-                      <tr>
-                        <!-- Facebook -->
-                        <td style="padding: 0 10px;">
-                          <a href="https://www.facebook.com/museobulawancn" target="_blank" style="text-decoration: none; display: block;">
-                            <img src="https://cdn-icons-png.flaticon.com/512/733/733547.png" alt="Facebook" width="40" height="40" style="display: block; border: 0;">
-                          </a>
-                        </td>
-                        
-                        <!-- Instagram -->
-                        <td style="padding: 0 10px;">
-                          <a href="https://www.instagram.com/museobulawanofficial/" target="_blank" style="text-decoration: none; display: block;">
-                            <img src="https://cdn-icons-png.flaticon.com/512/2111/2111463.png" alt="Instagram" width="40" height="40" style="display: block; border: 0;">
-                          </a>
-                        </td>
-                        
-                        <!-- TikTok -->
-                        <td style="padding: 0 10px;">
-                          <a href="https://www.tiktok.com/@museobulawan" target="_blank" style="text-decoration: none; display: block;">
-                            <img src="https://cdn-icons-png.flaticon.com/512/3046/3046121.png" alt="TikTok" width="40" height="40" style="display: block; border: 0;">
-                          </a>
-                        </td>
-                        
-                        <!-- YouTube -->
-                        <td style="padding: 0 10px;">
-                          <a href="https://www.youtube.com/@museobulawanofficial" target="_blank" style="text-decoration: none; display: block;">
-                            <img src="https://cdn-icons-png.flaticon.com/512/1384/1384060.png" alt="YouTube" width="40" height="40" style="display: block; border: 0;">
-                          </a>
-                        </td>
-                      </tr>
-                    </table>
-                    
-                    <!-- Contact Information -->
-                    <p style="margin: 0 0 8px 0; color: #ffffff; font-size: 14px;">📧 museobulawanmis@gmail.com</p>
-                    <p style="margin: 0 0 20px 0; color: #ffffff; font-size: 14px;">📍 Camarines Norte Provincial Capitol Grounds, Daet Philippines</p>
-                    
-                    <p style="margin: 0; color: #999; font-size: 12px; border-top: 1px solid #444; padding-top: 15px;">Museum, Archives and Shrine Curation Division</p>
-                  </td>
-                </tr>
-
-              </table>
-            </td>
-          </tr>
-        </table>
-      </body>
-      </html>
-    `;
+    // Build the professional email template (heavily optimized to prevent Gmail clipping)
+    const emailHtml = `<div style="font-family:serif;background:#fff;color:#333;padding:20px 0"><div style="max-width:600px;margin:0 auto;border:1px solid #E8C26A;border-radius:8px"><div style="background:#3E2F1C;text-align:center;padding:20px"><h2 style="margin:0;font-size:20px;color:#E8C26A">Museo Bulawan</h2><p style="margin:5px 0 0;font-size:13px;color:#F5E7C1">Preserving the Heritage of Camarines Norte</p></div><div style="padding:25px"><p>Dear <b>${appointmentDetails.visitorName}</b>,</p><p style="line-height:1.6">${(() => {
+                if (status === 'APPROVED') {
+                  return `Your appointment request has been <b style="color:#3E8E41">APPROVED</b>. We look forward to welcoming you!`;
+                } else if (status === 'REJECTED') {
+                  return `Your appointment request has been <b style="color:#D9534F">REJECTED</b>.`;
+                } else if (status === 'FAILED') {
+                  return `Your appointment has been <b style="color:#D9534F">CANCELLED</b>.`;
+                } else if (status === 'COMPLETED') {
+                  return `Your visit has been marked as <b style="color:#3E8E41">COMPLETED</b>. Thank you for visiting!`;
+                } else {
+                  return statusMessage;
+                }
+              })()}</p>${status === 'APPROVED' ? `<div style="background:#FBF6EC;border:1px solid #D9B868;margin:15px 0;padding:15px"><h3 style="margin:0 0 8px 0;font-size:15px;color:#C19A3D">📅 Appointment Details</h3><p style="margin:5px 0;font-size:14px"><b>Date:</b> ${appointmentDetails.preferredDate}<br><b>Time:</b> ${appointmentDetails.preferredTime}<br><b>Purpose:</b> ${appointmentDetails.purpose}<br><b>Visitors:</b> ${appointmentDetails.populationCount || 'N/A'}</p></div><div style="background:#FBF6EC;border:1px solid #D9B868;padding:15px;margin:15px 0"><h3 style="margin:0 0 10px 0;color:#C19A3D;font-size:14px;text-align:center">📋 Visitor Guidelines</h3><p style="margin:0;font-size:13px;line-height:1.8">🚫 No videography/photography of artifacts<br>🚫 No touching exhibits<br>🐾 No pets<br>📝 Registration required<br>🔇 Keep voices low<br>🚫 No running or floor sitting<br>🚭 No smoking</p></div>` : ''}${safeMessage && safeMessage.trim() ? `<div style="background:#FFF9E8;border-left:3px solid #E8C26A;padding:15px;margin:15px 0"><h4 style="margin:0 0 5px 0;color:#C19A3D;font-size:14px">📨 Message:</h4><p style="margin:0;color:#665332;font-size:14px">${safeMessage}</p></div>` : ''}<p style="color:#826723;font-size:14px;margin:15px 0 0 0">Thank you for your interest in Museo Bulawan!</p><p style="margin:10px 0 0 0;color:#3D3525">Best regards,<br><b style="color:#C19A3D">The Museo Bulawan Team</b></p></div><div style="background:#F5E7C1;text-align:center;padding:15px;font-size:12px;color:#665332"><p style="margin:0 0 8px 0"><a href="https://museobulawan.online" style="color:#85621A">museobulawan.online</a></p><p style="margin:0 0 8px 0"><span style="margin:0 8px"><img src="https://cdn-icons-png.flaticon.com/512/733/733547.png" alt="FB" width="20" height="20" style="vertical-align:middle"/> <a href="https://facebook.com/museobulawancn" style="color:#3E2F1C">Facebook</a></span> | <span style="margin:0 8px"><img src="https://cdn-icons-png.flaticon.com/512/2111/2111463.png" alt="IG" width="20" height="20" style="vertical-align:middle"/> <a href="https://instagram.com/museobulawanofficial" style="color:#3E2F1C">Instagram</a></span> | <span style="margin:0 8px"><img src="https://cdn-icons-png.flaticon.com/512/3046/3046121.png" alt="TT" width="20" height="20" style="vertical-align:middle"/> <a href="https://tiktok.com/@museobulawan" style="color:#3E2F1C">TikTok</a></span> | <span style="margin:0 8px"><img src="https://cdn-icons-png.flaticon.com/512/1384/1384060.png" alt="YT" width="20" height="20" style="vertical-align:middle"/> <a href="https://youtube.com/@museobulawanofficial" style="color:#3E2F1C">YouTube</a></span></p><p style="margin:0 0 8px 0;font-size:11px">📧 museobulawanmis@gmail.com | 📍 Camarines Norte Provincial Capitol Grounds, Daet</p><p style="font-size:11px;color:#A09068;margin:5px 0 0 0">&copy; ${new Date().getFullYear()} Museo Bulawan. Automated message, do not reply.</p></div></div></div>`;
 
     // Use the sendEmail helper function from emailTransporter
     const emailResult = await sendEmail({

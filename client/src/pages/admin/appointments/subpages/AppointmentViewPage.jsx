@@ -333,14 +333,15 @@ export const AppointmentViewPage = ({
       const emailData = {
         recipientEmail: modalData.email || '',
         subject: `Appointment ${newStatus.toLowerCase()} - Museo Bulawan`,
-        message: message,
+        message: message || '',
         status: newStatus,
         appointmentId: modalData.appointmentId,
         appointmentDetails: {
           visitorName: `${modalData.fromFirstName} ${modalData.fromLastName}`,
           preferredDate: modalData.preferredDate,
           preferredTime: modalData.preferredTime,
-          purpose: modalData.purpose
+          purpose: modalData.purpose,
+          populationCount: modalData.populationCount
         }
       };
 

@@ -122,6 +122,7 @@ const Articles = () => {
                 onChange={(e) => setCategory(e.target.value)}
               >
                 <option value="">Category</option>
+                <option value="Article">Article</option>
                 <option value="Education">Education</option>
                 <option value="Exhibit">Exhibit</option>
                 <option value="Contests">Contests</option>

@@ -62,6 +62,8 @@ import {
   listPublicCatalogArtifacts,
 } from "../controllers/artifactMetadataController.js";
 
+
+
 import { createMaintenanceReport, getLatestMaintenanceReportByContribution, getAllMaintenanceReportsByContribution } from "../controllers/maintenanceReportController.js";
 import { startMaintenanceSession, getOpenMaintenanceSession, completeMaintenanceSession } from "../controllers/maintenanceSessionController.js";
 
@@ -72,6 +74,8 @@ import { SummarizerManager } from "node-summarizer";
 
 // ✅ inventory controller
 import { getInventoryList, exportInventoryExcel } from "../controllers/inventoryController.js";
+import { updateArtifactLocation } from "../controllers/artifactController.js";
+
 
 const router = express.Router();
 
@@ -302,5 +306,11 @@ router.patch("/contributions/:id/location", requireAuth, requireRole([1, 2, 5]),
     res.status(500).json({ message: "Failed to update location", error: error.message });
   }
 });
+
+router.put("/artifact/:contributionId/location", 
+    // Assuming you have a middleware for authentication
+    // authMiddleware, 
+    updateArtifactLocation
+);
 
 export default router;

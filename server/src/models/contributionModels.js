@@ -198,6 +198,47 @@ export const ContributionSessions = mainDb.define(
   }
 );
 
+/* ---------------- NEW MODEL ---------------- */
+
+// Define the model you created in the previous step
+export const ArtifactLocationHistory = mainDb.define(
+    "ArtifactLocationHistory",
+    {
+        history_id: { 
+            type: DataTypes.INTEGER, 
+            primaryKey: true, 
+            autoIncrement: true 
+        },
+        contribution_id: { 
+            type: DataTypes.INTEGER, 
+            allowNull: false, 
+            references: { model: Contributions, key: "contribution_id" },
+        },
+        new_location: { 
+            type: DataTypes.STRING(512), 
+            allowNull: false 
+        },
+        move_reason: { 
+            type: DataTypes.TEXT, 
+            allowNull: false 
+        },
+        moved_by_user_id: { 
+            type: DataTypes.INTEGER, 
+            allowNull: true 
+            // NOTE: Assumes a 'Users' model exists elsewhere for a proper FK
+        },
+        moved_at: { 
+            type: DataTypes.DATE, 
+            defaultValue: DataTypes.NOW,
+            allowNull: false,
+        },
+    },
+    {
+        tableName: "artifact_location_history",
+        timestamps: false,
+    }
+);
+
 /* ---------------- Associations ---------------- */
 
 // Users → Contributions
@@ -219,6 +260,18 @@ ContributionArtifacts.belongsTo(Contributions, { foreignKey: "contribution_id" }
 // Contributions → Sessions
 Contributions.hasOne(ContributionSessions, { foreignKey: "contribution_id", onDelete: "CASCADE" });
 ContributionSessions.belongsTo(Contributions, { foreignKey: "contribution_id" });
+
+// Contributions → LOCATION HISTORY (New Association! 🚀)
+// A contribution (artifact) can have many location changes logged in history.
+Contributions.hasMany(ArtifactLocationHistory, { 
+    foreignKey: "contribution_id", 
+    onDelete: "CASCADE",
+    as: "LocationHistory"
+});
+ArtifactLocationHistory.belongsTo(Contributions, { 
+    foreignKey: "contribution_id",
+    as: "Contribution"
+});
 
 // Artifact ↔ Metadata (1:1 via artifact_id)
 ContributionArtifacts.hasOne(ArtifactMetadata, {
@@ -333,6 +386,7 @@ addDbChangeHooks(LendingDetails, "LendingDetails");
 addDbChangeHooks(ContributionArtifacts, "ContributionArtifacts");
 addDbChangeHooks(ContributionTimelines, "ContributionTimelines");
 addDbChangeHooks(ContributionSessions, "ContributionSessions");
+addDbChangeHooks(ArtifactLocationHistory, "ArtifactLocationHistory");
 
 export { ArtifactMetadata };
 export default {
@@ -342,6 +396,7 @@ export default {
   ContributionArtifacts,
   ContributionTimelines,
   ContributionSessions,
+  ArtifactLocationHistory,
   ArtifactMetadata,
   CatalogArtifact,
 };

@@ -389,34 +389,57 @@ export default function ViewArtifacts() {
     }
   };
 
-  const handleLocationUpdate = async (contributionId, newLocation) => {
+// Inside the parent component where state and handlers are defined
+
+const handleLocationUpdate = async (contributionId, dataToSend) => {
+    // dataToSend is now the clean object: 
+    // { status: "On Display" or "In Storage", detailedLocation: "exhibition1 | middle...", moveReason: "..." }
+    
     try {
-      await axiosClient.patch(`/auth/contributions/${contributionId}/location`, {
-        location: newLocation,
-      });
-      setContributionData((prev) => {
-        if (!prev) return prev;
-        const art = prev.ContributionArtifact || prev.contributionartifact;
-        if (art) {
-          return {
-            ...prev,
-            ContributionArtifact: {
-              ...art,
-              current_location: newLocation,
-            },
-            contributionartifact: {
-              ...art,
-              current_location: newLocation,
-            },
-          };
-        }
-        return prev;
-      });
+        // 1. CHANGE: Update the API endpoint and use HTTP PUT (as defined earlier)
+        // 2. CHANGE: Send the entire 'dataToSend' object in the request body
+        // NOTE: I've changed the endpoint from PATCH to PUT as discussed, and adjusted the path slightly to match the controller
+        const response = await axiosClient.put(`/auth/artifact/${contributionId}/location`, dataToSend); 
+        
+        // Use the status from the request body or the response if your backend sends it back
+        const newStatus = dataToSend.status; 
+
+        // 3. CHANGE: Correctly update the local state with ONLY the high-level status
+        setContributionData((prev) => {
+            if (!prev) return prev;
+            
+            // Normalize access to the artifact data (using the response status)
+            const art = prev.ContributionArtifact || prev.contributionartifact;
+            
+            if (art) {
+                return {
+                    ...prev,
+                    // Use the canonical property name (assuming it's ContributionArtifact for consistency)
+                    ContributionArtifact: {
+                        ...art,
+                        current_location: newStatus, // Use the simple status string
+                    },
+                    // Keep the lowercase property for safety/backward compatibility
+                    contributionartifact: {
+                        ...art,
+                        current_location: newStatus, // Use the simple status string
+                    },
+                };
+            }
+            return prev;
+        });
+
+        // OPTIONAL: Success alert based on response
+        // alert(response.data.message || "Location updated successfully!"); 
+
     } catch (error) {
-      console.error("Failed to update location:", error);
-      throw error;
+        console.error("Failed to update location:", error);
+        // Display the error message from the server if available
+        const errorMsg = error.response?.data?.message || "An unknown error occurred while updating the location.";
+        alert(`Failed to update location: ${errorMsg}`);
+        throw error;
     }
-  };
+};
 
   // update existing completed report at index
   const updateReport = (index, updatedReport) => {

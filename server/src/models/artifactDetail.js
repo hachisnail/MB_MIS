@@ -11,32 +11,43 @@ export const ArtifactLocationHistory = mainDb.define(
             autoIncrement: true 
         },
         
-        // Link to the artifact being moved
         contribution_id: { 
             type: DataTypes.INTEGER, 
             allowNull: false, 
-            // Foreign Key to contributions table (or catalog_artifacts)
         },
 
-        // The full, new location string (e.g., "On Display | Exhibition 1 | Upper Part")
-        new_location: { 
-            type: DataTypes.STRING(512), 
-            allowNull: false 
+        new_location_status: { 
+            type: DataTypes.STRING(50), 
+            allowNull: false // Status is mandatory
         },
+        new_location_area: { 
+            type: DataTypes.STRING(100), 
+            allowNull: true // Can be null if status is 'In Storage' or 'Restoration'
+        },
+        new_location_shelf: { 
+            type: DataTypes.STRING(100), 
+            allowNull: true 
+        },
+        new_location_box: { 
+            type: DataTypes.STRING(100), 
+            allowNull: true 
+        },
+        new_location_pos: { 
+            type: DataTypes.STRING(100), 
+            allowNull: true 
+        },
+        // --- END NEW FIELDS ---
 
-        // The reason provided by the user in the modal
         move_reason: { 
             type: DataTypes.TEXT, 
             allowNull: false 
         },
 
-        // Who performed the move (assuming you have a User model and user ID)
         moved_by_user_id: { 
             type: DataTypes.INTEGER, 
             allowNull: true 
         },
 
-        // The ESSENTIAL timestamp of when the move happened
         moved_at: { 
             type: DataTypes.DATE, 
             defaultValue: DataTypes.NOW,
@@ -45,7 +56,7 @@ export const ArtifactLocationHistory = mainDb.define(
     },
     {
         tableName: "artifact_location_history",
-        timestamps: false, // We use 'moved_at' instead of default Sequelize timestamps
+        timestamps: false, 
     }
 );
 

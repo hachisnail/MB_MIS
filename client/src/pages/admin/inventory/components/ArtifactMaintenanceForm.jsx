@@ -175,22 +175,22 @@ const LocationChangeModal = ({
 const showNestedFields = selectedLocation === "On Display";
 
     // --- NEW LOGIC: Create the Detailed Location String ---
-    const createDetailedLocationString = (main, fields) => {
-        if (main !== "On Display") {
-            // If not "On Display," use the selected main location as the detail (e.g., "In Storage")
-            return main; 
-        }
+    // const createDetailedLocationString = (main, fields) => {
+    //     if (main !== "On Display") {
+    //         // If not "On Display," use the selected main location as the detail (e.g., "In Storage")
+    //         return main; 
+    //     }
         
-        // Format: exhibition1 | middle | Box: asfasf | Pos: asfasfas
-        const parts = [];
-        if (fields.area) parts.push(fields.area);
-        if (fields.shelf) parts.push(fields.shelf);
-        if (fields.storageBox) parts.push(`Box: ${fields.storageBox.trim()}`);
-        if (fields.locationWithinBox) parts.push(`Pos: ${fields.locationWithinBox.trim()}`);
+    //     // Format: exhibition1 | middle | Box: asfasf | Pos: asfasfas
+    //     const parts = [];
+    //     if (fields.area) parts.push(fields.area);
+    //     if (fields.shelf) parts.push(fields.shelf);
+    //     if (fields.storageBox) parts.push(`Box: ${fields.storageBox.trim()}`);
+    //     if (fields.locationWithinBox) parts.push(`Pos: ${fields.locationWithinBox.trim()}`);
         
-        // If "On Display" is selected but no nested fields are filled, return the main status
-        return parts.join(' | ') || main;
-    }
+    //     // If "On Display" is selected but no nested fields are filled, return the main status
+    //     return parts.join(' | ') || main;
+    // }
 
 const handleSubmit = () => {
         const trimmedReason = moveReason.trim();
@@ -211,21 +211,23 @@ const handleSubmit = () => {
              return;
         }
 
-        // 3. Prepare the data to send to the backend
-        const dataToSend = {
-            // HIGH-LEVEL STATUS for catalog_artifacts.current_location
-            status: selectedLocation, 
+      // 3. Prepare the data to send to the backend (THIS IS THE CRITICAL CHANGE)
+          const dataToSend = {
+              // HIGH-LEVEL STATUS for CatalogArtifact.current_location
+              status: selectedLocation, 
             
-            // DETAILED STRING for ArtifactLocationHistory.new_location
-            detailedLocation: createDetailedLocationString(selectedLocation, nestedFields),
-            
-            // REASON for ArtifactLocationHistory.move_reason
-            moveReason: trimmedReason, 
-        };
-              
-        onLocationChange(dataToSend);
-        onClose();
-    };
+              // The backend controller handles parsing/logging these fields separately.
+              area: nestedFields.area || null,
+              shelf: nestedFields.shelf || null,
+              storageBox: nestedFields.storageBox || null,
+              locationWithinBox: nestedFields.locationWithinBox || null,
+              moveReason: trimmedReason, 
+          };
+                  
+          // Call the parent handler with the new structured data
+          onLocationChange(dataToSend);
+          onClose();
+      };
 
     if (!isOpen) return null;
 

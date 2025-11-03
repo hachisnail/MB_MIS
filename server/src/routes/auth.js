@@ -74,7 +74,7 @@ import { SummarizerManager } from "node-summarizer";
 
 // ✅ inventory controller
 import { getInventoryList, exportInventoryExcel } from "../controllers/inventoryController.js";
-import { updateArtifactLocation } from "../controllers/artifactController.js";
+import { updateArtifactLocation, getArtifactLocationHistory } from "../controllers/artifactController.js";
 
 
 const router = express.Router();
@@ -307,10 +307,13 @@ router.patch("/contributions/:id/location", requireAuth, requireRole([1, 2, 5]),
   }
 });
 
-router.put("/artifact/:contributionId/location", 
-    // Assuming you have a middleware for authentication
-    // authMiddleware, 
+router.put("/artifact/:contributionId/location", requireAuth, requireRole([1, 2, 5]),
     updateArtifactLocation
+);
+router.get("/artifact/:contributionId/location/history", 
+    requireAuth,
+    requireRole([1, 2, 5]), 
+    getArtifactLocationHistory
 );
 
 export default router;

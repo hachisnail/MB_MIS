@@ -57,6 +57,7 @@ export const ArtifactLocationHistory = mainDb.define(
     {
         tableName: "artifact_location_history",
         timestamps: false, 
+        id: false,
     }
 );
 

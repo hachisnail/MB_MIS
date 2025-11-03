@@ -101,3 +101,50 @@ export async function updateArtifactLocation(req, res) {
         res.status(500).json({ message: "Failed to update location due to a server error.", error: err.message });
     }
 }
+
+export async function getArtifactLocationHistory(req, res) {
+    const { contributionId } = req.params;
+
+    if (!contributionId) {
+        return res.status(400).json({ message: "Contribution ID is required to fetch history." });
+    }
+
+    try {
+        // Find all history records for the artifact, ordered by creation time (most recent first)
+        const history = await ArtifactLocationHistory.findAll({
+            where: { contribution_id: contributionId },
+            // Order by when the history record was created (newest move first)
+            order: [['moved_at', 'DESC']], 
+            // Include the user who made the move if you have a User model relationship set up
+            // include: [{ model: User, attributes: ['full_name'] }], 
+            
+            // Explicitly select the fields that the frontend needs
+            attributes: [
+                'history_id',
+                'move_reason',
+                'moved_by_user_id', 
+                'new_location_status',
+                'new_location_area',
+                'new_location_shelf',
+                'new_location_box',
+                'new_location_pos',
+                'moved_at' // Timestamp of the move
+            ],
+            raw: true // Return raw data objects for cleaner output
+        });
+
+        if (history.length === 0) {
+            return res.status(200).json({ message: "No location history records found.", history: [] });
+        }
+
+        res.status(200).json({
+            message: "Location history fetched successfully.",
+            history: history
+        });
+
+    } catch (err) {
+        console.error(`[Fetch Location History] Error for ID ${contributionId}:`, err);
+        res.status(500).json({ message: "Failed to fetch location history.", error: err.message });
+    }
+}
+

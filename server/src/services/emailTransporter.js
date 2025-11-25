@@ -2,15 +2,14 @@ import nodemailer from 'nodemailer';
 
 const transporter = nodemailer.createTransport({
   host: 'smtp.gmail.com',
-  port: 465,
-  secure: true,
+  port: 587,
+  secure: false,
   auth: {
     user: process.env.EMAIL_USER || 'museobulawanmis@gmail.com',
     pass: process.env.EMAIL_APP_PASSWORD || 'zabj fmlp fnow rsse'
   },
-  tls: {
-    rejectUnauthorized: false
-  }
+  maxConnections: 5,
+  maxMessages: 100
 });
 
 transporter.verify(function(error, success) {

@@ -38,6 +38,7 @@ import ArtifactMetadataForm from "../components/ArtifactMetadataForm";
 import { OptionsPanel } from "../components/ViewPageRenderer";
 
 import ConversationTimeline from "./ConversationTimeline";
+import CountdownConfirmationModal from "@/components/modals/CountdownConfirmationModal";
 
 import { LoadingSpinner } from "../../../../components/commons";
 import {
@@ -63,10 +64,9 @@ function DocumentTabs({ labels = ALL_TABS, active, onChange }) {
           type="button"
           onClick={() => onChange(label)}
           className={`w-[12rem] h-[3rem] flex items-center justify-center rounded-md border-[3px] text-2xl font-bold cursor-pointer transition-colors
-            ${
-              active === label
-                ? "bg-black border-black text-[#CDC469]"
-                : "border-black text-black hover:bg-gray-300"
+            ${active === label
+              ? "bg-black border-black text-[#CDC469]"
+              : "border-black text-black hover:bg-gray-300"
             }`}
         >
           <span>{label}</span>
@@ -100,6 +100,7 @@ const AcquisitionViewPage = () => {
 
   const [messages, setMessages] = useState([]);
   const [chatText, setChatText] = useState("");
+  const [showCancelModal, setShowCancelModal] = useState(false);
   const tabs = ["Donor", "Artifact Information"];
 
   // --- metadata editing state (UI) ---
@@ -424,70 +425,70 @@ const AcquisitionViewPage = () => {
     setStep(Math.max(tStep, sStep));
   }, [timeline, contributionData?.status]);
 
-function checkShouldTrigger(messages) {
-  const hasAcceptNo = messages.some(m =>
-    (m.message ?? "").split("\n").map(l => l.trim()).includes("• Accept MOA: No")
-  );
+  function checkShouldTrigger(messages) {
+    const hasAcceptNo = messages.some(m =>
+      (m.message ?? "").split("\n").map(l => l.trim()).includes("• Accept MOA: No")
+    );
 
-  const hasMoaErrorsYes = messages.some(m =>
-    (m.message ?? "").split("\n").map(l => l.trim()).includes("• MOA errors: Yes")
-  );
+    const hasMoaErrorsYes = messages.some(m =>
+      (m.message ?? "").split("\n").map(l => l.trim()).includes("• MOA errors: Yes")
+    );
 
-  return hasAcceptNo || hasMoaErrorsYes;
-}
+    return hasAcceptNo || hasMoaErrorsYes;
+  }
 
 
-const overrideMoa = checkShouldTrigger(messages);
+  const overrideMoa = checkShouldTrigger(messages);
 
 
   const donatorInformation = contributor
     ? [
-        {
-          label: "From",
-          value: `${contributor?.first_name} ${contributor?.last_name}`,
-          icon: <From />,
-        },
-        { label: "Email", value: contributor?.email, icon: <Email /> },
-        {
-          label: "Phone Number",
-          value: contributor?.phone_number || "Not provided",
-          icon: <PhoneNumber />,
-        },
-        {
-          label: "Address",
-          value:
-            [contributor?.street, contributor?.barangay, contributor?.city, contributor?.province]
-              .filter(Boolean)
-              .join(", ") || "Not provided",
-          icon: <Address />,
-        },
-        {
-          label: "Organization",
-          value: contributor?.organization || "Not provided",
-          icon: <Organization />,
-        },
-      ]
+      {
+        label: "From",
+        value: `${contributor?.first_name} ${contributor?.last_name}`,
+        icon: <From />,
+      },
+      { label: "Email", value: contributor?.email, icon: <Email /> },
+      {
+        label: "Phone Number",
+        value: contributor?.phone_number || "Not provided",
+        icon: <PhoneNumber />,
+      },
+      {
+        label: "Address",
+        value:
+          [contributor?.street, contributor?.barangay, contributor?.city, contributor?.province]
+            .filter(Boolean)
+            .join(", ") || "Not provided",
+        icon: <Address />,
+      },
+      {
+        label: "Organization",
+        value: contributor?.organization || "Not provided",
+        icon: <Organization />,
+      },
+    ]
     : [];
 
   const lendingReason = lendingDetail
     ? [
-        {
-          label: "Propose duration of the loan:",
-          value: formatDateRange(lendingDetail.duration_from, lendingDetail.duration_to),
-        },
-        {
-          label: "Specific conditions or requirements for handling of the artifact:",
-          value: lendingDetail.lend_conditions || "Not provided",
-        },
-        {
-          label: "Specific liability concerns or requirements regarding the artifact:",
-          value: lendingDetail.lend_liabilities || "Not provided",
-        },
-        {
-          label: "Reason for lending:",
-          value: lendingDetail.lending_reason || "Not provided",
-        },
-      ]
+      {
+        label: "Propose duration of the loan:",
+        value: formatDateRange(lendingDetail.duration_from, lendingDetail.duration_to),
+      },
+      {
+        label: "Specific conditions or requirements for handling of the artifact:",
+        value: lendingDetail.lend_conditions || "Not provided",
+      },
+      {
+        label: "Specific liability concerns or requirements regarding the artifact:",
+        value: lendingDetail.lend_liabilities || "Not provided",
+      },
+      {
+        label: "Reason for lending:",
+        value: lendingDetail.lending_reason || "Not provided",
+      },
+    ]
     : [];
 
   const steps = [
@@ -506,36 +507,36 @@ const overrideMoa = checkShouldTrigger(messages);
       label: img,
     })) || [];
 
-const attachedFiles = (artifact?.documents ?? []).map((doc, idx) => {
-  const lower = (doc || "").toLowerCase();
-  const isImage = /\.(jpg|jpeg|png|gif|bmp|webp)$/i.test(lower);
+  const attachedFiles = (artifact?.documents ?? []).map((doc, idx) => {
+    const lower = (doc || "").toLowerCase();
+    const isImage = /\.(jpg|jpeg|png|gif|bmp|webp)$/i.test(lower);
 
-  return {
-    key: String(idx),
-    filename: doc || `File ${idx + 1}`,
-    category: "file",
-    url: isImage
-      ? `${SERVER_URL}/uploads/private/pictures/${doc}`
-      : `${SERVER_URL}/uploads/private/files/${doc}`,
-  };
-});
+    return {
+      key: String(idx),
+      filename: doc || `File ${idx + 1}`,
+      category: "file",
+      url: isImage
+        ? `${SERVER_URL}/uploads/private/pictures/${doc}`
+        : `${SERVER_URL}/uploads/private/files/${doc}`,
+    };
+  });
 
 
   const artifactInfo = artifact
     ? [
-        { label: "Title/Name of the Artifact:", value: artifact.title || "Not provided" },
-        { label: "Artifact Description:", value: artifact.description || "Not provided" },
-        { label: "How and where was the artifact acquired:", value: artifact.acquisition_details || "Not provided" },
-        { label: "Additional Information:", value: artifact.additional_info || "Not provided" },
-        { label: "Brief narrative or story related to the artifact:", value: artifact.narrative || "Not provided" },
-      ]
+      { label: "Title/Name of the Artifact:", value: artifact.title || "Not provided" },
+      { label: "Artifact Description:", value: artifact.description || "Not provided" },
+      { label: "How and where was the artifact acquired:", value: artifact.acquisition_details || "Not provided" },
+      { label: "Additional Information:", value: artifact.additional_info || "Not provided" },
+      { label: "Brief narrative or story related to the artifact:", value: artifact.narrative || "Not provided" },
+    ]
     : [];
 
   const transactionDescription = contributionData
     ? [
-        { label: "Status", value: contributionData.status },
-        { label: "Last Progress Date", value: formatDate(contributionData.updated_at) },
-      ]
+      { label: "Status", value: contributionData.status },
+      { label: "Last Progress Date", value: formatDate(contributionData.updated_at) },
+    ]
     : [];
 
   const artifactImg =
@@ -563,7 +564,7 @@ const attachedFiles = (artifact?.documents ?? []).map((doc, idx) => {
         status: "completed",
         responseMessage: "Marked completed by staff.",
       });
-       updateStep(id, 6)
+      updateStep(id, 6)
       await fetchContribution();
       setActiveDocument("Overview");
     } catch (e) {
@@ -573,7 +574,7 @@ const attachedFiles = (artifact?.documents ?? []).map((doc, idx) => {
   };
 
 
-    const markCanceled = async () => {
+  const markCanceled = async () => {
     try {
       const id = contributionData?.contribution_id;
       await axiosClient.patch(`/auth/contributions/${id}/status`, {
@@ -582,9 +583,11 @@ const attachedFiles = (artifact?.documents ?? []).map((doc, idx) => {
       });
       await fetchContribution();
       setActiveDocument("Overview");
+      setShowCancelModal(false); // Close modal after success
     } catch (e) {
       console.error("Failed to mark as rejected:", e);
       alert("Failed to reject the contribution. Please check server logs.");
+      setShowCancelModal(false); // Close modal even on error
     }
   };
 
@@ -809,33 +812,33 @@ const attachedFiles = (artifact?.documents ?? []).map((doc, idx) => {
                           <div className="flex gap-3 flex-wrap">
                             {overrideMoa && (
                               <>
-                            <StyledButton
-                              className="w-50 mt-5"
-                              buttonColor="bg-[#6F3FFF]"
-                              onClick={() => settleMoa()}
-                              disabled={isCompleted || isRejected}
-                            >
-                              Settle MOA
-                            </StyledButton>
-                            <StyledButton
-                              className="w-50 mt-5"
-                              buttonColor="bg-emerald-600"
-                              onClick={markCompleted}
-                              disabled={isCompleted || isRejected}
-                              title={isCompleted ? "Already completed" : "Mark as completed"}
-                            >
-                              {isCompleted ? "Completed" : "Mark Completed"}
-                            </StyledButton>
-                            </>
+                                <StyledButton
+                                  className="w-50 mt-5"
+                                  buttonColor="bg-[#6F3FFF]"
+                                  onClick={() => settleMoa()}
+                                  disabled={isCompleted || isRejected}
+                                >
+                                  Settle MOA
+                                </StyledButton>
+                                <StyledButton
+                                  className="w-50 mt-5"
+                                  buttonColor="bg-emerald-600"
+                                  onClick={markCompleted}
+                                  disabled={isCompleted || isRejected}
+                                  title={isCompleted ? "Already completed" : "Mark as completed"}
+                                >
+                                  {isCompleted ? "Completed" : "Mark Completed"}
+                                </StyledButton>
+                              </>
                             )}
                             <StyledButton
                               className="w-50 mt-5"
                               buttonColor="bg-red-500"
-                              onClick={markCanceled}
+                              onClick={() => setShowCancelModal(true)}
                               disabled={isRejected || isCompleted}
                               title={isRejected ? "Already rejected" : "Mark as rejected"}
                             >
-                              {isCompleted ? "Cancel Contribution" : "Cancelled"}
+                              {isRejected ? "Rejected" : "Cancel Contribution"}
                             </StyledButton>
                           </div>
                         </div>
@@ -922,7 +925,7 @@ const attachedFiles = (artifact?.documents ?? []).map((doc, idx) => {
                 middle={
                   <ArtifactMetadataForm
                     value={pendingMeta}
-                    onChange={isEditingMeta ? setPendingMeta : () => {}}
+                    onChange={isEditingMeta ? setPendingMeta : () => { }}
                     readOnly={!isEditingMeta}
                   />
                 }
@@ -938,7 +941,7 @@ const attachedFiles = (artifact?.documents ?? []).map((doc, idx) => {
                             placeholder="Enter staff-facing curatorial description…"
                             mode="hard"
                             value={curatorialDesc}
-                            onChange={isEditingMeta ? setCuratorialDesc : () => {}}
+                            onChange={isEditingMeta ? setCuratorialDesc : () => { }}
                             heightClass="h-full 2xl:h-[23rem]"
                             maxChars={8000}
                           />
@@ -1026,7 +1029,7 @@ const attachedFiles = (artifact?.documents ?? []).map((doc, idx) => {
                         // buttons availability
                         editDisabled={isEditingMeta}
                         saveDisabled={!isEditingMeta}
-                        completeDisabled={!isMetaDataCompleted }
+                        completeDisabled={!isMetaDataCompleted}
                       />
                     </div>
 
@@ -1049,6 +1052,18 @@ const attachedFiles = (artifact?.documents ?? []).map((doc, idx) => {
           </>
         )}
       </div>
+
+      {/* Countdown Confirmation Modal for Cancellation */}
+      <CountdownConfirmationModal
+        isOpen={showCancelModal}
+        onClose={() => setShowCancelModal(false)}
+        onConfirm={markCanceled}
+        title="Cancel Contribution?"
+        message="Are you sure you want to reject/cancel this contribution? This action will mark the contribution as rejected and cannot be undone."
+        type="warning"
+        theme="light"
+        countdown={5}
+      />
     </>
   );
 };

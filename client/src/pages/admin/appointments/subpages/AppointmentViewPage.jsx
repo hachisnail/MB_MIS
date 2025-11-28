@@ -479,7 +479,7 @@ export const AppointmentViewPage = ({
         return;
       }
       setConfirmModalTitle('Confirm Action');
-      setConfirmModalMessage(`Are you sure you want to ${approveVisit === 'yes' ? 'approve' : 'reject'} this appointment?`);
+      setConfirmModalMessage(`Are you sure you want to ${approveVisit === 'yes' ? 'approve' : 'decline'} this appointment?`);
       setConfirmAction(() => executeAppointmentAction); // Set the function to be called on confirm
       setShowConfirmModal(true);
     } else if (isApproved) {
@@ -498,7 +498,7 @@ export const AppointmentViewPage = ({
         }
       }
       setConfirmModalTitle('Confirm Action');
-      setConfirmModalMessage(`Are you sure you want to ${approveVisit === 'cancel' ? 'cancel' : 'mark as arrived'} this appointment?`);
+      setConfirmModalMessage(`Are you sure you want to ${approveVisit === 'cancel' ? 'cancel this appointment' : 'mark this visitor as arrived'}?`);
       setConfirmAction(() => executeAppointmentAction);
       setShowConfirmModal(true);
     }
@@ -646,7 +646,7 @@ export const AppointmentViewPage = ({
               {isPending && (
                 <>
                   <div className="mb-10">
-                    <div className="text-2xl font-medium mb-6">Approve Visit?</div>
+                    <div className="text-2xl font-medium mb-6">Approve or Decline?</div>
                     <div className="flex gap-8">
                       <button
                         onClick={() => {
@@ -654,11 +654,11 @@ export const AppointmentViewPage = ({
                           setApprovalError(false);
                         }}
                         className={`px-16 py-4 text-2xl rounded-md font-medium transition-colors ${approveVisit === 'yes'
-                          ? 'bg-purple-600 text-white'
+                          ? 'bg-green-600 text-white'
                           : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                           }`}
                       >
-                        Yes
+                        Approve
                       </button>
                       <button
                         onClick={() => {
@@ -666,22 +666,22 @@ export const AppointmentViewPage = ({
                           setApprovalError(false);
                         }}
                         className={`px-16 py-4 text-2xl rounded-md font-medium transition-colors ${approveVisit === 'no'
-                          ? 'bg-gray-600 text-white'
+                          ? 'bg-red-600 text-white'
                           : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                           }`}
                       >
-                        No
+                        Decline
                       </button>
                     </div>
                     {approvalError && (
                       <div className="text-2xl text-red-500 mt-4 text-center font-medium">
-                        Please select Yes or No before continuing.
+                        Please select Approve or Decline before continuing.
                       </div>
                     )}
                   </div>
 
                   <div className="mb-10">
-                    <div className="text-2xl font-medium mb-4">Leave a message</div>
+                    <div className="text-2xl font-medium mb-4">Message</div>
                     <textarea
                       className={`w-full p-6 border ${messageError ? 'border-red-500' : 'border-gray-300'
                         } rounded-md h-[180px] resize-none text-xl`}
@@ -692,7 +692,7 @@ export const AppointmentViewPage = ({
                           setMessageError(false);
                         }
                       }}
-                      placeholder="Enter message here (required)"
+                      placeholder="Enter your message here (required)"
                     />
                     {messageError && (
                       <div className="text-2xl text-red-500 mt-3 font-medium">
@@ -700,7 +700,7 @@ export const AppointmentViewPage = ({
                       </div>
                     )}
                     <div className="text-xl text-gray-500 mt-4">
-                      This will automatically send to{' '}
+                      Email will be sent to{' '}
                       <span className="text-blue-600 font-medium">{modalData.email || 'the visitor'}</span>
                     </div>
                   </div>
@@ -710,76 +710,49 @@ export const AppointmentViewPage = ({
               {isApproved && (
                 <>
                   <div className="mb-6">
-                    <div className="text-2xl mb-3">Appointment Action</div>
-                    <div className="flex gap-6">
-                      <StyledButton
+                    <div className="text-2xl mb-4 font-medium">Action</div>
+                    <div className="flex gap-8">
+                      <button
                         onClick={() => {
                           setApproveVisit('cancel');
                           setActionError(false);
                           setMessageError(false);
                         }}
-                        buttonColor={approveVisit === 'cancel' ? 'bg-red-600' : 'bg-gray-200'}
-                        hoverColor={approveVisit === 'cancel' ? 'hover:bg-red-700' : 'hover:bg-gray-300'}
-                        textColor={approveVisit === 'cancel' ? 'text-white' : 'text-gray-800'}
-                        className="px-10 py-3 text-lg"
+                        className={`px-16 py-4 text-2xl rounded-md font-medium transition-colors ${approveVisit === 'cancel'
+                          ? 'bg-red-600 text-white'
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                          }`}
                       >
-                        Cancel
-                      </StyledButton>
-                      <StyledButton
+                        Cancel Appointment
+                      </button>
+                      <button
                         onClick={() => {
                           setApproveVisit('arrive');
                           setActionError(false);
                           setMessageError(false);
                         }}
-                        buttonColor={approveVisit === 'arrive' ? 'bg-green-600' : 'bg-gray-200'}
-                        hoverColor={approveVisit === 'arrive' ? 'hover:bg-green-700' : 'hover:bg-gray-300'}
-                        textColor={approveVisit === 'arrive' ? 'text-white' : 'text-gray-800'}
-                        className="px-10 py-3 text-lg"
+                        className={`px-16 py-4 text-2xl rounded-md font-medium transition-colors ${approveVisit === 'arrive'
+                          ? 'bg-green-600 text-white'
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                          }`}
                       >
-                        Arrive
-                      </StyledButton>
+                        Visitor Arrived
+                      </button>
                     </div>
                     {actionError && (
                       <div className="text-xl text-red-500 mt-3">
-                        Please select Cancel or Arrive before continuing.
+                        Please select an action before continuing.
                       </div>
                     )}
                   </div>
 
-                  {approveVisit === 'cancel' && (
-                    <div className="mb-6">
-                      <div className="text-2xl mb-3">Cancellation Message</div>
-                      <textarea
-                        className={`w-full p-4 border ${messageError ? 'border-red-500' : 'border-gray-300'
-                          } rounded-md min-h-[120px] max-h-[160px] overflow-y-auto resize-none text-lg`}
-                        value={message}
-                        onChange={(e) => {
-                          setMessage(e.target.value);
-                          if (e.target.value.trim()) {
-                            setMessageError(false);
-                          }
-                        }}
-                        placeholder="Enter cancellation reason (required)"
-                      />
-                      {messageError && (
-                        <p className="text-xl text-red-500 mt-2">
-                          Please enter a cancellation reason.
-                        </p>
-                      )}
-                      <div className="text-xl text-gray-500 mt-3">
-                        This will automatically send to{' '}
-                        {modalData.email || 'the visitor'}
-                      </div>
-                    </div>
-                  )}
-
                   {approveVisit === 'arrive' && (
-                    <div className="mb-4 bg-gray-50 p-4 rounded-lg border border-gray-200">
-                      <h4 className="text-2xl font-bold mb-4">Attendance Details</h4>
+                    <div className="mb-6 bg-gray-50 p-4 rounded-lg border border-gray-200">
+                      <h4 className="text-2xl font-bold mb-4">Attendance</h4>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 mb-4">
                         <div>
-                          <div className="text-gray-600 text-lg mb-2">Expected Visitors:</div>
+                          <div className="text-gray-600 text-lg mb-2">Expected:</div>
                           <div className="text-3xl font-semibold text-blue-600">
                             {modalData.populationCount || '0'}
                           </div>
@@ -820,33 +793,46 @@ export const AppointmentViewPage = ({
                           )}
                         </div>
                       </div>
-
-                      <div className="mt-2">
-                        <div className="text-lg font-medium mb-2">Completion Message</div>
-                        <textarea
-                          className="w-full p-3 border border-gray-300 rounded-md min-h-[65px] max-h-[100px] overflow-y-auto resize-none text-base"
-                          value={message}
-                          onChange={(e) => setMessage(e.target.value)}
-                          placeholder="Enter completion message (optional)"
-                        />
-                        <div className="text-base text-gray-500 mt-2">
-                          This will automatically send to{' '}
-                          <span className="text-blue-600 font-medium">{modalData.email || 'the visitor'}</span>
-                        </div>
-                      </div>
-
-                      <div className="text-base text-gray-600 mt-3 bg-blue-50 p-3 rounded-md border-l-4 border-blue-400">
-                        <span className="font-medium">Instructions:</span> Enter the number of visitors who actually attended. Click "All Present" if everyone arrived as expected.
-                      </div>
                     </div>
                   )}
+
+                  <div className="mb-6">
+                    <div className="text-2xl mb-3 font-medium">
+                      {approveVisit === 'cancel' ? 'Cancellation Message' : 'Message'}
+                    </div>
+                    <textarea
+                      className={`w-full p-4 border ${messageError ? 'border-red-500' : 'border-gray-300'
+                        } rounded-md min-h-[120px] max-h-[160px] overflow-y-auto resize-none text-lg`}
+                      value={message}
+                      onChange={(e) => {
+                        setMessage(e.target.value);
+                        if (e.target.value.trim()) {
+                          setMessageError(false);
+                        }
+                      }}
+                      placeholder={approveVisit === 'cancel' 
+                        ? 'Enter cancellation reason (required)'
+                        : 'Enter message (optional)'}
+                    />
+                    {messageError && (
+                      <p className="text-xl text-red-500 mt-2">
+                        {approveVisit === 'cancel' 
+                          ? 'Please enter a cancellation reason.'
+                          : 'Please enter a message.'}
+                      </p>
+                    )}
+                    <div className="text-xl text-gray-500 mt-3">
+                      Email will be sent to{' '}
+                      <span className="text-blue-600 font-medium">{modalData.email || 'the visitor'}</span>
+                    </div>
+                  </div>
                 </>
               )}
 
               {isRejected && (
                 <div className="mb-8 text-center">
                   <div className="px-8 py-6 bg-gray-100 rounded-lg text-gray-700 text-xl">
-                    This appointment has been rejected. No further actions are available.
+                    This appointment has been declined. No further actions are available.
                   </div>
                 </div>
               )}

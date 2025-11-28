@@ -179,7 +179,7 @@ const PersonalInfoStep = ({
 
                         {/* Email & Phone */}
                         <div className="w-full h-fit flex">
-                            <label className="min-w-40 text-2xl font-semibold">Contact</label>
+                            <label className="min-w-40 text-2xl font-semibold">Email</label>
                             <div className="w-full flex justify-between">
                                 <div className="w-[32rem] flex justify-end">
                                     <EmailInput

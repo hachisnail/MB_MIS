@@ -16,7 +16,10 @@ import { useForm, FormProvider } from "react-hook-form";
 import * as yup from "yup";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { getMessagingClient, toTimelineItem } from "@/lib/messagingClient";
-import QRHandler from "./components/QRHandler"; 
+import QRHandler from "./components/QRHandler";
+import ConfirmationModal from "@/components/modals/ConfirmationModal";
+import ConfirmDialog from "@/components/modals/ConfirmDialog";
+import CountdownConfirmationModal from "@/components/modals/CountdownConfirmationModal";
 
 /* ===================== Validation Schema ===================== */
 /* Step 1 required, Step 2 optional,
@@ -95,6 +98,14 @@ export default function Inquiry() {
 
   const [isCompleted, setIsCompleted] = useState(false);
   const [isRejected, setIsRejected] = useState(false);
+
+  // Modal states
+  const [showMoaRejectModal, setShowMoaRejectModal] = useState(false);
+  const [showMoaAcceptModal, setShowMoaAcceptModal] = useState(false);
+  const [showStep2SubmitModal, setShowStep2SubmitModal] = useState(false);
+  const [showDeliveryConfirmModal, setShowDeliveryConfirmModal] = useState(false);
+  const [showDeliveryRejectModal, setShowDeliveryRejectModal] = useState(false);
+  const [showConfirmDeliveryModal, setShowConfirmDeliveryModal] = useState(false);
 
   // RHF
   const methods = useForm({
@@ -547,9 +558,8 @@ useEffect(() => {
       const hasErrors = satisfied === "yes"; // yes => there ARE errors
 
       if (acceptMoa === "yes" && !hasErrors) {
-        // Accept + NO errors -> MOA is settled now
-        await moaSettledAt();
-        setShowView("moasettle");
+        // Accept + NO errors -> show confirmation modal
+        setShowMoaAcceptModal(true);
         return;
       }
 
@@ -559,16 +569,14 @@ useEffect(() => {
         return;
       }
 
-      // accept_moa === "no" -> mark pending and show waiting screen
-      await postPendingAt(getValues());
-      setShowView("moasettle");
+      // accept_moa === "no" -> show rejection modal
+      setShowMoaRejectModal(true);
       return;
     }
 
     if (formStep === 2) {
-      // Step 2 optional -> submit now (still pending until admins resolve)
-      await postPendingAt(getValues());
-      setShowView("moasettle");
+      // Step 2 optional -> show submit confirmation modal
+      setShowStep2SubmitModal(true);
       return;
     }
   };
@@ -604,7 +612,6 @@ useEffect(() => {
     }
   };
 
-// Replace your current handleSubmitStep3 with:
 const handleSubmitStep3 = async () => {
   const ok = await trigger([
     "accept_delivery",
@@ -614,14 +621,59 @@ const handleSubmitStep3 = async () => {
   if (!ok) return;
 
   const values = getValues();
-  await postDeliverySection(values);
-
+  
   if (values.accept_delivery === "yes") {
-    await postDeliveryAt();          
-    setShowView("onDelivery");       
+    // Show confirmation modal for delivery acceptance
+    setShowDeliveryConfirmModal(true);
   } else {
-    setShowView("conversation");     
+    // Show confirmation modal for delivery rejection
+    setShowDeliveryRejectModal(true);
   }
+};
+
+// Handler for confirmed delivery acceptance
+const handleConfirmedDeliveryAccept = async () => {
+  const values = getValues();
+  await postDeliverySection(values);
+  await postDeliveryAt();          
+  setShowDeliveryConfirmModal(false);
+  setShowView("onDelivery");       
+};
+
+// Handler for confirmed delivery rejection
+const handleConfirmedDeliveryReject = async () => {
+  const values = getValues();
+  await postDeliverySection(values);
+  setShowDeliveryRejectModal(false);
+  setShowView("conversation");     
+};
+
+// Handler for confirmed MOA acceptance (no errors)
+const handleConfirmedMoaAccept = async () => {
+  setShowMoaAcceptModal(false);
+  await moaSettledAt();
+  setShowView("moasettle");
+};
+
+// Handler for confirmed MOA rejection
+const handleConfirmedMoaReject = async () => {
+  setShowMoaRejectModal(false);
+  await postPendingAt(getValues());
+  setShowView("moasettle");
+};
+
+// Handler for confirmed Step 2 submission
+const handleConfirmedStep2Submit = async () => {
+  setShowStep2SubmitModal(false);
+  await postPendingAt(getValues());
+  setShowView("moasettle");
+};
+
+// Handler for confirmed delivery in conversation view
+const handleConfirmedConversationDelivery = async () => {
+  setShowConfirmDeliveryModal(false);
+  await postDeliveryAt();
+  setShowView("onDelivery");
 };
 
 
@@ -1140,10 +1192,7 @@ const handleSubmitStep3 = async () => {
                 </StyledButton>
 
                 <StyledButton
-                  onClick={() => {
-                    postDeliveryAt();
-                    setShowView("onDelivery");
-                  }}
+                  onClick={() => setShowConfirmDeliveryModal(true)}
                   className="h-fit"
                 >
                   Confirm Delivery
@@ -1241,8 +1290,77 @@ const handleSubmitStep3 = async () => {
           )}
         </>
       )}
+
+      {/* MOA Acceptance Modal */}
+      <ConfirmationModal
+        isOpen={showMoaAcceptModal}
+        onClose={() => setShowMoaAcceptModal(false)}
+        onConfirm={handleConfirmedMoaAccept}
+        title="Confirm MOA Acceptance"
+        message="You have accepted all conditions in the MOA with no errors reported. Are you sure you want to proceed with this confirmation?"
+        type="question"
+        theme="light"
+      />
+
+      {/* MOA Rejection Modal */}
+      <ConfirmationModal
+        isOpen={showMoaRejectModal}
+        onClose={() => setShowMoaRejectModal(false)}
+        onConfirm={handleConfirmedMoaReject}
+        title="Confirm MOA Rejection"
+        message={`You have rejected the MOA with the following reason: "${getValues('reason')}". Our team will review your concerns and get back to you. Do you want to proceed?`}
+        type="warning"
+        theme="light"
+      />
+
+      {/* Step 2 Additional Info Modal */}
+      <ConfirmationModal
+        isOpen={showStep2SubmitModal}
+        onClose={() => setShowStep2SubmitModal(false)}
+        onConfirm={handleConfirmedStep2Submit}
+        title="Submit Additional Information"
+        message="You are about to submit additional donor information. Once submitted, our team will review your concerns and the MOA modifications you've requested. Proceed?"
+        type="question"
+        theme="light"
+      />
+
+      {/* Delivery Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showDeliveryConfirmModal}
+        onClose={() => setShowDeliveryConfirmModal(false)}
+        onConfirm={handleConfirmedDeliveryAccept}
+        title="Confirm Delivery"
+        message="You have confirmed that you will personally deliver the artifact. This will proceed to the delivery scheduling step. Are you sure?"
+        type="question"
+        theme="light"
+      />
+
+      {/* Delivery Rejection Modal */}
+      <CountdownConfirmationModal
+        isOpen={showDeliveryRejectModal}
+        onClose={() => setShowDeliveryRejectModal(false)}
+        onConfirm={handleConfirmedDeliveryReject}
+        title="Reject Artifact Delivery"
+        message={`You have indicated you cannot deliver the artifact. Reason: "${getValues('deliveryReason')}". Our team will discuss alternative delivery arrangements with you. Are you certain about this?`}
+        type="danger"
+        theme="light"
+        countdown={3}
+      />
+
+      {/* Conversation View - Confirm Delivery Modal */}
+      <ConfirmationModal
+        isOpen={showConfirmDeliveryModal}
+        onClose={() => setShowConfirmDeliveryModal(false)}
+        onConfirm={handleConfirmedConversationDelivery}
+        title="Confirm Artifact Delivery"
+        message="You are about to confirm the delivery of the artifact. This will advance to the delivery scheduling step where you will receive delivery instructions and a QR code. Ready to proceed?"
+        type="question"
+        theme="light"
+      />
     </div>
   );
 }
+
+
 
 

@@ -14,6 +14,14 @@ import InventortyList from "./components/Inventorylist";
 const BASE_URL = import.meta.env.VITE_API_BASE_URL;         // e.g. http://localhost:5000/api
 const SERVER_ORIGIN = BASE_URL?.replace(/\/api$/, "");       // e.g. http://localhost:5000
 
+const EXPORT_FILTERS = [
+  { value: "", label: "All Items (Current Filters)" },
+  { value: "on display", label: "Only On Display" },
+  { value: "in storage", label: "Only In Storage" },
+  { value: "in maintenance", label: "Only In Maintenance" },
+  // NOTE: You can add more status values if needed
+];
+
 const Inventory = () => {
   const location = useLocation();
   const initialFilter = location.state?.filter || "artifacts";
@@ -22,6 +30,8 @@ const Inventory = () => {
   const [artifactFilter, setArtifactFilter] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedDate, setSelectedDate] = useState(null);
+
+  const [exportStatusFilter, setExportStatusFilter] = useState(EXPORT_FILTERS[0].value);
 
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
@@ -117,12 +127,19 @@ const Inventory = () => {
     try {
       setLoading(true);
 
-      // mirror current UI filters in query params
+// mirror current UI filters in query params
       const params = new URLSearchParams();
-      if (searchQuery.trim()) params.set("q", searchQuery.trim());
-      if (selectedDate) params.set("date", selectedDate.toISOString().split("T")[0]);
-      if (activeTab) params.set("tab", activeTab);
-      if (artifactFilter === "displayed") params.set("onlyDisplayed", "1");
+      // Apply UI filters unless an explicit export filter is set
+      if (exportStatusFilter === EXPORT_FILTERS[0].value) {
+        if (searchQuery.trim()) params.set("q", searchQuery.trim());
+        if (selectedDate) params.set("date", selectedDate.toISOString().split("T")[0]);
+        if (activeTab) params.set("tab", activeTab);
+        if (artifactFilter === "displayed") params.set("onlyDisplayed", "1");
+      }
+      // NEW: Add the specific export status filter if selected
+      if (exportStatusFilter !== EXPORT_FILTERS[0].value) {
+          params.set("exportStatus", exportStatusFilter);
+      }
 
       const url = `${SERVER_ORIGIN}/api/auth/inventory/export?${params.toString()}`;
 
@@ -161,7 +178,7 @@ const Inventory = () => {
     } finally {
       setLoading(false);
     }
-  }, [searchQuery, selectedDate, activeTab, artifactFilter, showToast]);
+  }, [searchQuery, selectedDate, activeTab, artifactFilter, exportStatusFilter, showToast]);
 
   // headers
   const artifactsHeaders = [
@@ -321,6 +338,20 @@ const Inventory = () => {
                 placeholder="Search artifacts"
               />
             </div>
+
+            {/* NEW: Export Status Dropdown */}
+            <select
+                className="h-[3.2rem] px-3 rounded-lg border-1 border-gray-500 text-lg font-semibold cursor-pointer"
+                value={exportStatusFilter}
+                onChange={(e) => setExportStatusFilter(e.target.value)}
+                disabled={loading}
+            >
+                {EXPORT_FILTERS.map((f) => (
+                    <option key={f.value} value={f.value}>
+                        Export: {f.label}
+                    </option>
+                ))}
+            </select>
 
             {/* Export button */}
             <div className="ml-auto">

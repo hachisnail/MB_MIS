@@ -169,7 +169,7 @@ export async function exportInventoryExcel(req, res) {
     );
 
     // 2) Apply same filters the UI uses
-    const { q, date, tab, onlyDisplayed } = req.query;
+    const { q, date, tab, onlyDisplayed, exportStatus } = req.query;
 
     const sameDay = (a, b) => {
       try {
@@ -206,6 +206,37 @@ export async function exportInventoryExcel(req, res) {
 
     if (onlyDisplayed === "1") {
       list = list.filter((r) => (r.display_status || "").toLowerCase().includes("display"));
+    }
+
+// NEW: Explicit exportStatus filter (overrides UI filters if set)
+    if (exportStatus && String(exportStatus).trim()) {
+        const exportNeedle = String(exportStatus).trim().toLowerCase();
+        // Check if a specific filter is requested (not "All Items")
+        if (exportNeedle !== "") {
+            list = list.filter((r) => (r.display_status || "").toLowerCase().includes(exportNeedle));
+            
+            // If an explicit export status is selected, clear other tab filters
+            if (exportNeedle === "in maintenance") {
+                // 'In Maintenance' can be anything (acquired or borrowing)
+                // Do not apply 'acquired' or 'borrowing' tab filters
+            } else if (tab === "acquired" || tab === "borrowing") {
+                // If the user selected a status AND a tab (which is unlikely but possible via URL)
+                // prioritize the status filter, and then re-apply the tab filter
+                if (tab === "acquired") {
+                    list = list.filter((r) => r.contribution_type !== "lending");
+                } else if (tab === "borrowing") {
+                    list = list.filter((r) => r.contribution_type === "lending");
+                }
+            }
+        }
+    } else {
+        // UI Tab filters (only apply if no explicit exportStatus is set)
+        if (tab === "acquired") {
+          list = list.filter((r) => r.contribution_type !== "lending");
+        } else if (tab === "borrowing") {
+          list = list.filter((r) => r.contribution_type === "lending");
+        }
+        // artifacts => no extra filtering
     }
 
     if (tab === "acquired") {
@@ -246,6 +277,7 @@ export async function exportInventoryExcel(req, res) {
     if (date) filters.push(`date=${date}`);
     if (tab && tab !== "artifacts") filters.push(`tab=${tab}`);
     if (onlyDisplayed === "1") filters.push("onlyDisplayed=1");
+    if (exportStatus) filters.push(`exportStatus=${exportStatus}`); // NEW: show exportStatus
     if (filters.length) ws.addRow(["Filters", filters.join(" | ")]);
 
     // Blank spacer BEFORE table

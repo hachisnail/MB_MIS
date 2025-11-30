@@ -47,7 +47,10 @@ export async function updateArtifactLocation(req, res) {
     const t = await mainDb.transaction(); 
 
     try {
-        const userId = req.user ? req.user.id : null; 
+        // The app stores authenticated user info on the session (req.session.user / req.session.userId)
+        // Some controllers previously used `req.user` which is undefined in our session-based auth.
+        // Prefer the session fields so moved_by_user_id is populated correctly.
+        const userId = (req.session && req.session.user && req.session.user.id) || req.session?.userId || null;
 
         // --- 2. Log the Change History (INSERT: Denormalized Snapshot) ---
         // We log ALL location details for a complete, immutable history record.

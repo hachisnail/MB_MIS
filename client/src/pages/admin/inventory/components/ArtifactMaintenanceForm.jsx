@@ -1,4 +1,8 @@
 import React from "react";
+import { useAuth } from "../../../../context/authContext";
+
+
+
 
 /* ---------------- StatusPill (visual status) ---------------- */
 const StatusPill = ({ status }) => {
@@ -141,7 +145,9 @@ const LocationChangeModal = ({
     // State for the main location category (e.g., "On Display")
     const [selectedLocation, setSelectedLocation] = React.useState(currentLocationStatus || "");
     const [moveReason, setMoveReason] = React.useState("");
-    
+      const { user } = useAuth();
+    const userId = user ? user.id : null;
+
     // State for the nested, granular location fields
     const [nestedFields, setNestedFields] = React.useState({
         area: "", 
@@ -212,7 +218,7 @@ const LocationChangeModal = ({
             shelf: nestedFields.shelf || null, 
             storageBox: nestedFields.storageBox || null,
             locationWithinBox: nestedFields.locationWithinBox || null,
-            
+            moved_by_user_id: userId, // Include the user ID making the change
             // Send the reason
             moveReason: trimmedReason, 
         };
@@ -369,7 +375,7 @@ const LocationChangeModal = ({
 
 
 /* ---------------- ArtifactLocationHistoryTable (New Component) ---------------- */
-const ArtifactLocationHistoryTable = ({ contributionId }) => {
+const ArtifactLocationHistoryTable = ({ contributionId, refreshToken = 0 }) => {
     const [history, setHistory] = React.useState([]);
     const [loading, setLoading] = React.useState(true);
     const [error, setError] = React.useState(null);
@@ -449,7 +455,7 @@ React.useEffect(() => {
         };
 
         fetchHistory();
-    }, [contributionId]);
+    }, [contributionId, refreshToken, API_BASE_URL]);
 
     if (loading) {
         return <div className="text-gray-500 italic">Loading location history...</div>;
@@ -459,52 +465,52 @@ React.useEffect(() => {
         return <div className="text-red-500 italic">Error: {error}</div>;
     }
 
-    return (
-        <div className="w-full mt-4">
-            <h4 className="text-2xl font-bold text-gray-800 mb-3">Location Move History</h4>
-            
-            {history.length === 0 ? (
+    const latestItem = history.length > 0 ? history[0] : null;
+
+return (
+    <div className="w-full mt-4">
+
+        {!latestItem ? (
                 <div className="text-gray-500 italic p-4 border rounded-lg bg-white">
                     No location move history has been recorded yet for this artifact.
                 </div>
-            ) : (
-                <div className="overflow-x-auto rounded-lg border border-gray-200">
-                    <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
-                            <tr>
+                ) : (
+                    <div className="overflow-x-auto rounded-lg border border-gray-200">
+                        <table className="min-w-full divide-y divide-gray-200">
+                            <thead className="bg-gray-50">
+                                <tr>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Details</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reason</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Moved By (ID)</th>
-                            </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                            {history.map((item, index) => (
-                                <tr key={item.id || index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                        {formatDate(item.moved_at)}
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                                        <StatusPill status={item.new_location_status} />
-                                    </td>
-                                    <td className="px-6 py-4 text-sm text-gray-700">
-                                        {formatLocation(item)}
-                                    </td>
-                                    <td className="px-6 py-4 text-sm text-gray-700 max-w-xs truncate">
-                                        {item.move_reason}
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                                        {item.moved_by_user_id || 'System/Unknown'}
-                                    </td>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            )}
-        </div>
-    );
+                                </thead>
+                                <tbody className="bg-white divide-y divide-gray-200">
+                                {/* 🚨 RENDER ONLY THE LATEST ITEM 🚨 */}
+                                <tr key={latestItem.id} className={'bg-white'}>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                {formatDate(latestItem.moved_at)}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                                <StatusPill status={latestItem.new_location_status} />
+                                </td>
+                                <td className="px-6 py-4 text-sm text-gray-700">
+                                {formatLocation(latestItem)}
+                                </td>
+                                <td className="px-6 py-4 text-sm text-gray-700 max-w-xs truncate">
+                                {latestItem.move_reason}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                                {latestItem.moved_by_user_id || 'System/Unknown'}
+                                </td>
+                                </tr>
+                                </tbody>
+                                </table>
+                                </div>
+                                )}
+                                </div>
+                                );
 }
 
 
@@ -518,6 +524,8 @@ export default function ArtifactMaintenanceForm({
     onLocationUpdate 
 }) {
     const [isModalOpen, setIsModalOpen] = React.useState(false); 
+    // Local token to force the history table to re-fetch after updates
+    const [historyRefreshToken, setHistoryRefreshToken] = React.useState(0);
 
     // 🚀 FIX: Ensure meta pulls all structured location fields from the value prop
     // This is CRITICAL for displaying the current data on page refresh.
@@ -559,6 +567,8 @@ export default function ArtifactMaintenanceForm({
                     location_pos_in_box: newLocation.locationWithinBox,
                 });
             }
+            // 3. Trigger a refresh for the history table so it fetches the latest record we just inserted
+            setHistoryRefreshToken((t) => t + 1);
             setIsModalOpen(false); // Close modal on success
             
             // 💡 IMPORTANT: To refresh the history table immediately, 
@@ -606,7 +616,7 @@ export default function ArtifactMaintenanceForm({
                             <StatusPill status={meta.currentLocationStatus} />
                         ) : (
                             <span className="text-gray-500 italic text-xl">
-                                Location Status Not Set
+                               
                             </span>
                         )}
                         
@@ -655,7 +665,7 @@ export default function ArtifactMaintenanceForm({
                     )}
                     
                     {/* 🚀 NEW: Location History Table */}
-                    <ArtifactLocationHistoryTable contributionId={contributionId} />
+                    <ArtifactLocationHistoryTable contributionId={contributionId} refreshToken={historyRefreshToken} />
                 </div>
             </div>
 

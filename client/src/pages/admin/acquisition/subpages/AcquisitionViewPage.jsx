@@ -622,12 +622,15 @@ const AcquisitionViewPage = () => {
     <>
       {/* Loading overlay for override actions */}
       {isLoadingOverride && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-8 shadow-lg flex flex-col items-center gap-4">
-            <LoadingSpinner />
-            <span className="text-gray-700 font-semibold">Processing action...</span>
+        <div className="fixed inset-0 bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-5 shadow-lg flex items-center space-x-3">
+            <div className="w-10 h-10 bg-[#9590FF] rounded-full p-1">
+              <LoadingSpinner />
+            </div>
+            <span className="text-gray-700 font-medium">Processing action...</span>
           </div>
         </div>
+
       )}
 
       <div className="flex flex-col justify-center gap-y-3 w/full h-full items-center">

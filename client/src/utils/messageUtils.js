@@ -31,8 +31,8 @@ export function mapMessageToLane(msg, currentUser) {
       (msg.text || msg.message)?.length > 140
         ? "lg"
         : (msg.text || msg.message)?.length > 60
-        ? "md"
-        : "sm",
+          ? "md"
+          : "sm",
     createdAt: msg.created_at || msg.createdAt,
   };
 }

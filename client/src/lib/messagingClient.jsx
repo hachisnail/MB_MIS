@@ -25,7 +25,7 @@ class MessagingClient {
       s.onReconnect
         ? s.onReconnect(cb)
         : (s.io && s.io.on && s.io.on("reconnect", cb)) ||
-          (on && on("reconnect", cb));
+        (on && on("reconnect", cb));
 
     onConnect(() => {
       this._rejoinAll();
@@ -142,15 +142,15 @@ class MessagingClient {
     });
   }
 
-// send a guest-safe "system-like" note (queued if offline)
-sendClientSystemNote(conversationId, text, meta = null) {
-  const room = `conversation:${conversationId}`;
-  this._send("clientSystemNote", {
-    room,
-    text: String(text || "").trim(),
-    meta,
-  });
-}
+  // send a guest-safe "system-like" note (queued if offline)
+  sendClientSystemNote(conversationId, text, meta = null) {
+    const room = `conversation:${conversationId}`;
+    this._send("clientSystemNote", {
+      room,
+      text: String(text || "").trim(),
+      meta,
+    });
+  }
 
 
   // only for admins; server will authorize again
@@ -191,7 +191,7 @@ sendClientSystemNote(conversationId, text, meta = null) {
     else this.socket.off?.("message", handler);
     this._handlers.delete(handler);
   }
-  
+
 
   dispose() {
     for (const h of this._handlers) this.offMessage(h);

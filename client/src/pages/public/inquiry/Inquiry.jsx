@@ -107,6 +107,9 @@ export default function Inquiry() {
   const [showDeliveryRejectModal, setShowDeliveryRejectModal] = useState(false);
   const [showConfirmDeliveryModal, setShowConfirmDeliveryModal] = useState(false);
 
+  // Conversation context: "pending-rejection" or "delivery-alternative" or null
+  const [conversationContext, setConversationContext] = useState(null);
+
   // RHF
   const methods = useForm({
     defaultValues: {
@@ -151,15 +154,20 @@ export default function Inquiry() {
   const setupConversation = async (session) => {
     try {
       const cid = session.contribution.contribution_id;
+      console.log("[setupConversation] Setting up for contribution:", cid);
 
       const { data: convo } = await axiosClient.get(
         `/auth/conversations/by-contribution/${cid}`
       );
+      console.log("[setupConversation] Got conversation:", convo.conversation_id);
+
       setConversationId(convo.conversation_id);
 
       const { data: history } = await axiosClient.get(
         `/auth/conversations/${convo.conversation_id}/messages`
       );
+      console.log("[setupConversation] Loaded messages count:", history.length);
+
       setMessages(
         history.map((raw) => ({
           message_id: raw.message_id ?? raw.id ?? null,
@@ -176,7 +184,11 @@ export default function Inquiry() {
 
       return convo.conversation_id;
     } catch (err) {
-      console.error("Guest socket setup failed:", err);
+      console.error("[setupConversation] Failed:", err);
+      // Clear on error to prevent stale data
+      setMessages([]);
+      setConversationId(null);
+      return null;
     }
   };
 
@@ -204,7 +216,7 @@ export default function Inquiry() {
     }
   };
 
-    const hasTransportingAt =
+  const hasTransportingAt =
     !!sessionData?.contribution?.ContributionTimeline?.on_delivery_at;
 
 
@@ -215,50 +227,95 @@ export default function Inquiry() {
       const seq = ++fetchSeq.current;
       if (!token) throw new Error("Missing token");
       setLoading(true);
+      console.log("[fetchSession] Starting fetch with token:", token?.substring(0, 10) + "...", "seq:", seq);
 
       const res = await axiosClient.get(`/auth/contributions/session/open`, {
         params: { token },
       });
 
       // Ignore stale results
-      if (seq !== fetchSeq.current) return;
+      console.log("[fetchSession] Response received, seq:", seq, "current seq:", fetchSeq.current, "contribution:", res.data?.contribution?.contribution_id);
+      if (seq !== fetchSeq.current) {
+        console.log("[fetchSession] IGNORING STALE - seq", seq, "!== current", fetchSeq.current);
+        return;
+      }
 
+      console.log("[fetchSession] Processing fresh result for contribution:", res.data?.contribution?.contribution_id);
+      console.log("[fetchSession] Response data:", { requires_otp: res.data?.requires_otp, session: res.data?.session });
       setSessionData(res.data);
 
-const contrib = res?.data?.contribution;
-const sess = res?.data?.session;
+      const contrib = res?.data?.contribution;
+      const sess = res?.data?.session;
 
-// default to "active" if backend doesn't send it yet
-const sessionActive = (sess?.is_active ?? true);
+      // default to "active" if backend doesn't send it yet
+      const sessionActive = (sess?.is_active ?? true);
 
-const statusCompleted = contrib?.status === "completed";
-const statusRejected = contrib?.status === "rejected";
-const timelineCompleted = !!contrib?.ContributionTimeline?.completed_at;
+      const statusCompleted = contrib?.status === "completed";
+      const statusRejected = contrib?.status === "rejected";
+      const timelineCompleted = !!contrib?.ContributionTimeline?.completed_at;
+      const hasPendingAt = !!contrib?.ContributionTimeline?.pending_at;
+      const hasMoasSetteledAt = !!contrib?.ContributionTimeline?.moa_settled_at;
+      const hasTransportingAt = !!contrib?.ContributionTimeline?.on_delivery_at;
 
-// Only completed if status is completed OR (timeline shows completed AND session is inactive)
-const completed = statusCompleted || (timelineCompleted && !sessionActive);
-setIsRejected(!!statusRejected);
+      // Only completed if status is completed OR (timeline shows completed AND session is inactive)
+      const completed = statusCompleted || (timelineCompleted && !sessionActive);
+      setIsRejected(!!statusRejected);
 
-setIsCompleted(completed);
+      setIsCompleted(completed);
 
-const serverRequiresOtp = !!res.data?.requires_otp;
+      const serverRequiresOtp = !!res.data?.requires_otp;
+      console.log("[fetchSession] serverRequiresOtp:", serverRequiresOtp, "otp_verified_at:", sess?.otp_verified_at);
 
-if (completed || statusRejected) {
-  // read-only display: skip OTP & disable writes
-  setRequiresOtp(false);
-  setWriteEnabled(false);
-  setShowView("completed");
-  setShowView(statusRejected ? "rejected" : "completed");
-} else {
-  setRequiresOtp(serverRequiresOtp);
-  setWriteEnabled(!serverRequiresOtp);
-}
+      if (completed || statusRejected) {
+        // read-only display: skip OTP & disable writes
+        setRequiresOtp(false);
+        setWriteEnabled(false);
+        setShowView("completed");
+        // 🔧 Show conversation even if rejected, so donor can see admin response
+        setShowView(statusRejected ? "conversation" : "completed");
+      } else if (hasPendingAt && !hasMoasSetteledAt) {
+        // 🔧 Pending MOA rejection - show conversation (only on first load)
+        console.log("[fetchSession] Pending MOA rejection - showing conversation");
+        setShowView((prev) => prev === "document" ? "conversation" : prev);
+        setConversationContext("pending-rejection");
+        setRequiresOtp(serverRequiresOtp);
+        if (!serverRequiresOtp) {
+          setWriteEnabled(true);
+        } else {
+          setWriteEnabled(false);
+        }
+      } else if (hasMoasSetteledAt) {
+        // 🔧 MOA settled - show delivery or onDelivery (only on first load)
+        console.log("[fetchSession] MOA settled - showing delivery/onDelivery");
+        setShowView((prev) => {
+          if (prev === "document" || prev === "timeline") {
+            return hasTransportingAt ? "onDelivery" : "delivery";
+          }
+          return prev;
+        });
+        setRequiresOtp(serverRequiresOtp);
+        if (!serverRequiresOtp) {
+          setWriteEnabled(true);
+        } else {
+          setWriteEnabled(false);
+        }
+      } else {
+        // 🔧 Always update requiresOtp based on server response
+        setRequiresOtp(serverRequiresOtp);
+        if (!serverRequiresOtp) {
+          // If server says OTP already verified, enable writes
+          setWriteEnabled(true);
+        } else {
+          // Otherwise, disable writes until OTP is verified
+          setWriteEnabled(false);
+        }
+      }
 
-if (serverRequiresOtp) {
-  setOtpInput(true);
-  setOtpCode("");
-  setErrorMessage("");
-}
+      if (serverRequiresOtp) {
+        setOtpInput(true);
+        setOtpCode("");
+        setErrorMessage("");
+      }
 
       setError(null);
 
@@ -279,24 +336,30 @@ if (serverRequiresOtp) {
 
   /* ===================== Effects ===================== */
   // Fetch on mount / token change
-useEffect(() => {
-  fetchSession();
-  // Setup polling interval (e.g., every 10 seconds)
-  // const interval = setInterval(() => {
-  //   fetchSession();
-  // }, 5000);
-  // return () => clearInterval(interval); // cleanup on unmount
-  // // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [token]);
+  useEffect(() => {
+    fetchSession();
+    // Setup polling interval (e.g., every 10 seconds)
+    // const interval = setInterval(() => {
+    //   fetchSession();
+    // }, 5000);
+    // return () => clearInterval(interval); // cleanup on unmount
+    // // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
 
 
   // Reset OTP gate UI on token change
   useEffect(() => {
+    // 🔧 Clear old cookie to prevent stale session lookup
+    document.cookie = `guest_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;`;
+
     setWriteEnabled(false);
     setRequiresOtp(true);
     setOtpInput(true);
     setOtpCode("");
     setErrorMessage("");
+    setMessages([]);  // 🔧 Clear old messages when token changes
+    setConversationId(null);  // 🔧 Clear old conversation
+    setSessionData(null);  // 🔧 Clear old session data
   }, [token]);
 
   // Join conversation only after OTP is verified
@@ -308,21 +371,41 @@ useEffect(() => {
     const guestId = sessionData.session.guest_identity.guest_id;
     const cid = sessionData.contribution.contribution_id;
 
-    messaging.joinConversation(conversationId, {
-      guestId,
-      contributionId: cid,
-    });
+    // 🔧 Set guestId in socket auth BEFORE joining conversation
+    // This ensures socket authenticates as guest, not admin (prevents cookie hijacking)
+    // We MUST await this before joining to prevent premature disconnect
+    const setupGuestAuth = async () => {
+      const socketClient = messaging.socket;
+      if (socketClient?.setGuestId) {
+        console.log("[Conversation] Setting guestId before joining...");
+        await socketClient.setGuestId(guestId);
+        console.log("[Conversation] GuestId set, socket ready");
+      }
+
+      console.log("[Conversation] Joining with guestId:", guestId, "contributionId:", cid, "isConnected:", messaging.isConnected());
+      messaging.joinConversation(conversationId, {
+        guestId,
+        contributionId: cid,
+      });
+    };
+
+    setupGuestAuth();
 
     const off = messaging.onMessage((msg) => {
+      // 🔧 Only add messages for current conversation (compare as strings to handle both string and number)
+      if (String(msg.conversation_id) !== String(conversationId)) {
+        console.warn("[messaging] Ignoring message for wrong conversation:", msg.conversation_id, "expected:", conversationId);
+        return;
+      }
+
+      console.log("[messaging] Got message for conversation:", conversationId, "message:", msg.message);
       setMessages((prev) => {
-        const key = `${msg.message_id ?? ""}-${msg.created_at ?? ""}-${
-          msg.message ?? ""
-        }`;
+        const key = `${msg.message_id ?? ""}-${msg.created_at ?? ""}-${msg.message ?? ""
+          }`;
         if (
           prev.some(
             (p) =>
-              `${p.message_id ?? ""}-${p.created_at ?? ""}-${
-                p.message ?? ""
+              `${p.message_id ?? ""}-${p.created_at ?? ""}-${p.message ?? ""
               }` === key
           )
         )
@@ -345,11 +428,25 @@ useEffect(() => {
   ]);
 
   // If user lands on delivery view and it's already submitted, move on
-useEffect(() => {
-  if (showView === "delivery" && hasDelivery) {
-    setShowView(hasTransportingAt ? "onDelivery" : "conversation");
-  }
-}, [showView, hasDelivery, hasTransportingAt]);
+  useEffect(() => {
+    if (showView === "delivery" && hasDelivery) {
+      setShowView(hasTransportingAt ? "onDelivery" : "conversation");
+    }
+  }, [showView, hasDelivery, hasTransportingAt]);
+
+  // 🔧 Show conversation view if messages were loaded (e.g., after page refresh)
+  // BUT only if we're coming from page load, not from user clicking "Previous"
+  useEffect(() => {
+    // Only auto-show if:
+    // 1. Messages were just loaded (messages.length > 0)
+    // 2. Currently in document view
+    // 3. Not completed/rejected
+    // 4. This is the initial setup (conversationId just got set)
+    if (messages.length > 0 && showView === "document" && !isCompleted && conversationId) {
+      console.log("[Effect] Messages loaded, showing conversation view");
+      setShowView("conversation");
+    }
+  }, [conversationId, isCompleted]); // Only depend on conversationId, not messages.length
   /* ===================== OTP handlers ===================== */
   const handleSendOtp = async () => {
     try {
@@ -388,9 +485,21 @@ useEffect(() => {
 
   /* ===================== Messaging ===================== */
   const sendGuestMessage = (text) => {
-    if (!writeEnabled || requiresOtp) return;
-    if (!conversationId || !text.trim()) return;
-    messaging.sendUserMessage(conversationId, text.trim());
+    if (!writeEnabled) {
+      console.warn("[sendGuestMessage] Write not enabled");
+      return;
+    }
+    if (!conversationId) {
+      console.warn("[sendGuestMessage] No conversation ID");
+      return;
+    }
+    if (!text.trim()) {
+      console.warn("[sendGuestMessage] Empty text");
+      return;
+    }
+    console.log("[sendGuestMessage] Sending message:", text);
+    const guestId = sessionData?.session?.guest_identity?.guest_id;
+    messaging.sendUserMessage(conversationId, text.trim(), { guestId });
   };
 
   /* ===================== UI helpers ===================== */
@@ -465,6 +574,28 @@ useEffect(() => {
       if (!contribution_id) return;
       const step = 4;
       await axiosClient.put("/auth/update-step", { contribution_id, step });
+
+      // 🔧 Create conversation message for MOA approval
+      if (conversationId) {
+        const acceptMoa = getValues("accept_moa");
+        const satisfiedMoa = getValues("satisfied_moa");
+        const messageLines = [
+          "Donor response submitted:",
+          `• Accept MOA: ${acceptMoa === "yes" ? "Yes" : "No"}`,
+          `• MOA errors: ${satisfiedMoa === "yes" ? "Yes" : "No"}`,
+        ];
+
+        try {
+          if (messaging.sendClientSystemNote) {
+            messaging.sendClientSystemNote(conversationId, messageLines.join("\n"));
+          } else {
+            messaging.sendUserMessage(conversationId, messageLines.join("\n"));
+          }
+        } catch (sendErr) {
+          console.error("Failed to send MOA approval message:", sendErr);
+        }
+      }
+
       await fetchSession();
     } catch (error) {
       console.error("Failed to update timeline:", error);
@@ -490,55 +621,22 @@ useEffect(() => {
       const contribution_id = sessionData?.contribution?.contribution_id;
       if (!contribution_id) return;
 
+      // Save donor's MOA response data
+      await axiosClient.post("/auth/contributions/moa-response", {
+        contribution_id,
+        accept_moa: data.accept_moa,
+        satisfied_moa: data.satisfied_moa || null,
+        reason: data.reason || null,
+        name: data.name || null,
+        title: data.title || null,
+        loanStart: data.loanStart || null,
+        loanEnd: data.loanEnd || null,
+      });
+
       const step = 3; // pending
       await axiosClient.put("/auth/update-step", { contribution_id, step });
       await fetchSession();
 
-      if (conversationId) {
-        const includeStep2 = !!(
-          data.name?.trim() ||
-          data.title?.trim() ||
-          data.loanStart ||
-          data.loanEnd
-        );
-
-        const lines = [
-          "Donor response submitted:",
-          `• Accept MOA: ${data.accept_moa === "yes" ? "Yes" : "No"}`,
-          ...(data.accept_moa === "yes"
-            ? [`• MOA errors: ${data.satisfied_moa === "yes" ? "Yes" : "No"}`]
-            : []),
-        ];
-
-        if (data.accept_moa === "no" && data.reason?.trim()) {
-          lines.push(`• Reason: ${data.reason.trim()}`);
-        }
-
-        if (includeStep2) {
-          lines.push(
-            `• Donor: ${data.name?.trim() || "-"}`,
-            `• Artifact: ${data.title?.trim() || "-"}`,
-            `• Loan Start: ${
-              data.loanStart
-                ? new Date(data.loanStart).toLocaleDateString()
-                : "-"
-            }`,
-            `• Loan End: ${
-              data.loanEnd ? new Date(data.loanEnd).toLocaleDateString() : "-"
-            }`
-          );
-        }
-
-        try {
-          if (messaging.sendClientSystemNote) {
-            messaging.sendClientSystemNote(conversationId, lines.join("\n"));
-          } else {
-            messaging.sendUserMessage(conversationId, lines.join("\n"));
-          }
-        } catch (sendErr) {
-          console.error("Failed to send postPendingAt message:", sendErr);
-        }
-      }
     } catch (error) {
       console.error("Failed to update timeline:", error);
     }
@@ -588,8 +686,7 @@ useEffect(() => {
 
       const lines = [
         "Delivery details submitted:",
-        `• Will donor deliver artifact: ${
-          data.accept_delivery === "yes" ? "Yes" : "No"
+        `• Will donor deliver artifact: ${data.accept_delivery === "yes" ? "Yes" : "No"
         }`,
         ...(data.accept_delivery === "no" && data.deliveryReason
           ? [`• Delivery reason: ${data.deliveryReason}`]
@@ -612,69 +709,72 @@ useEffect(() => {
     }
   };
 
-const handleSubmitStep3 = async () => {
-  const ok = await trigger([
-    "accept_delivery",
-    "deliveryReason",
-    "deliverySuggestions",
-  ]);
-  if (!ok) return;
+  const handleSubmitStep3 = async () => {
+    const ok = await trigger([
+      "accept_delivery",
+      "deliveryReason",
+      "deliverySuggestions",
+    ]);
+    if (!ok) return;
 
-  const values = getValues();
-  
-  if (values.accept_delivery === "yes") {
-    // Show confirmation modal for delivery acceptance
-    setShowDeliveryConfirmModal(true);
-  } else {
-    // Show confirmation modal for delivery rejection
-    setShowDeliveryRejectModal(true);
-  }
-};
+    const values = getValues();
 
-// Handler for confirmed delivery acceptance
-const handleConfirmedDeliveryAccept = async () => {
-  const values = getValues();
-  await postDeliverySection(values);
-  await postDeliveryAt();          
-  setShowDeliveryConfirmModal(false);
-  setShowView("onDelivery");       
-};
+    if (values.accept_delivery === "yes") {
+      // Show confirmation modal for delivery acceptance
+      setShowDeliveryConfirmModal(true);
+    } else {
+      // Show confirmation modal for delivery rejection
+      setShowDeliveryRejectModal(true);
+    }
+  };
 
-// Handler for confirmed delivery rejection
-const handleConfirmedDeliveryReject = async () => {
-  const values = getValues();
-  await postDeliverySection(values);
-  setShowDeliveryRejectModal(false);
-  setShowView("conversation");     
-};
+  // Handler for confirmed delivery acceptance
+  const handleConfirmedDeliveryAccept = async () => {
+    const values = getValues();
+    await postDeliverySection(values);
+    await postDeliveryAt();
+    setShowDeliveryConfirmModal(false);
+    setShowView("onDelivery");
+  };
 
-// Handler for confirmed MOA acceptance (no errors)
-const handleConfirmedMoaAccept = async () => {
-  setShowMoaAcceptModal(false);
-  await moaSettledAt();
-  setShowView("moasettle");
-};
+  // Handler for confirmed delivery rejection
+  const handleConfirmedDeliveryReject = async () => {
+    const values = getValues();
+    await postDeliverySection(values);
+    setShowDeliveryRejectModal(false);
+    setConversationContext("delivery-alternative");
+    setShowView("conversation");
+  };
 
-// Handler for confirmed MOA rejection
-const handleConfirmedMoaReject = async () => {
-  setShowMoaRejectModal(false);
-  await postPendingAt(getValues());
-  setShowView("moasettle");
-};
+  // Handler for confirmed MOA acceptance (no errors)
+  const handleConfirmedMoaAccept = async () => {
+    setShowMoaAcceptModal(false);
+    await moaSettledAt();
+    setShowView("delivery");
+  };
 
-// Handler for confirmed Step 2 submission
-const handleConfirmedStep2Submit = async () => {
-  setShowStep2SubmitModal(false);
-  await postPendingAt(getValues());
-  setShowView("moasettle");
-};
+  // Handler for confirmed MOA rejection
+  const handleConfirmedMoaReject = async () => {
+    setShowMoaRejectModal(false);
+    await postPendingAt(getValues());
+    setConversationContext("pending-rejection");
+    setShowView("conversation");
+  };
 
-// Handler for confirmed delivery in conversation view
-const handleConfirmedConversationDelivery = async () => {
-  setShowConfirmDeliveryModal(false);
-  await postDeliveryAt();
-  setShowView("onDelivery");
-};
+  // Handler for confirmed Step 2 submission
+  const handleConfirmedStep2Submit = async () => {
+    setShowStep2SubmitModal(false);
+    await postPendingAt(getValues());
+    setConversationContext("pending-moa-errors");
+    setShowView("conversation");
+  };
+
+  // Handler for confirmed delivery in conversation view
+  const handleConfirmedConversationDelivery = async () => {
+    setShowConfirmDeliveryModal(false);
+    await postDeliveryAt();
+    setShowView("onDelivery");
+  };
 
 
   /* ===================== Early returns ===================== */
@@ -752,9 +852,8 @@ const handleConfirmedConversationDelivery = async () => {
 
                 <div className="h-15 w-fit my-2 flex justify-center items-center">
                   <span
-                    className={`text-2xl ${
-                      errorMessage === "" ? "text-gray-500" : "text-red-500"
-                    } text-center`}
+                    className={`text-2xl ${errorMessage === "" ? "text-gray-500" : "text-red-500"
+                      } text-center`}
                   >
                     {errorMessage ||
                       "Please enter the 6-digit code we sent to your email."}
@@ -784,7 +883,7 @@ const handleConfirmedConversationDelivery = async () => {
       )}
 
       {/* Everything below is fully gated by OTP */}
-       {(((writeEnabled && !requiresOtp) || isCompleted || isRejected) && sessionData?.contribution) && (
+      {(((writeEnabled && !requiresOtp) || isCompleted || isRejected) && sessionData?.contribution) && (
         <>
           {/* Contract preview */}
           {showView === "document" && (
@@ -813,18 +912,10 @@ const handleConfirmedConversationDelivery = async () => {
                     onClick={() =>
                       setShowView(
                         isCompleted
-                          ? "completed" 
+                          ? "completed"
                           : isRejected
-                          ? "rejected"
-                       : hasPendingAt
-                          ? "moasettle"
-                          : hasMoasSetteledAt
-                          ? hasTransportingAt
-                            ? "onDelivery"
-                            : hasDelivery
-                            ? "conversation"
-                            : "delivery"
-                          : "timeline"
+                            ? "rejected"
+                            : "timeline"
                       )
                     }
                     className="h-fit"
@@ -1010,8 +1101,8 @@ const handleConfirmedConversationDelivery = async () => {
             </div>
           )}
 
-          {/* Waiting / settled screen */}
-          {showView === "moasettle" && (
+          {/* Waiting / settled screen - DISABLED: conversation view is used instead for pending cases */}
+          {false && showView === "moasettle" && (
             <div className="w-full max-w-4xl gap-y-10 justify-center h-full flex flex-col items-center px-2">
               <TimelineHeader />
 
@@ -1058,7 +1149,7 @@ const handleConfirmedConversationDelivery = async () => {
                   <StyledButton
                     onClick={() =>
                       setShowView(
-                        hasTransportingAt ? "conversation" : "delivery"
+                        hasTransportingAt ? "onDelivery" : "delivery"
                       )
                     }
                     className="h-fit"
@@ -1146,6 +1237,43 @@ const handleConfirmedConversationDelivery = async () => {
                 }
               />
 
+              {/* Conversation context header */}
+              {conversationContext === "pending-rejection" && (
+                <div className="w-full flex bg-white shadow-md shadow-gray-500 rounded-xl p-6 gap-x-5 items-start">
+                  <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" className="shrink-0 mt-1">
+                    <path d="M4 4L33 11L36 26L26 36L11 33L4 4ZM4 4L19.172 19.172M24 38L38 24L44 30L30 44L24 38ZM26 22C26 24.2091 24.2091 26 22 26C19.7909 26 18 24.2091 18 22C18 19.7909 19.7909 18 22 18C24.2091 18 26 19.7909 26 22Z" stroke="black" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  <div className="flex flex-col gap-2">
+                    <span className="font-semibold text-lg">MOA Rejection - Pending Admin Review</span>
+                    <span className="text-gray-600">Our team is reviewing your MOA rejection concerns. Please wait for updates from the admin through this conversation.</span>
+                  </div>
+                </div>
+              )}
+
+              {conversationContext === "pending-moa-errors" && (
+                <div className="w-full flex bg-white shadow-md shadow-gray-500 rounded-xl p-6 gap-x-5 items-start">
+                  <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" className="shrink-0 mt-1">
+                    <path d="M4 4L33 11L36 26L26 36L11 33L4 4ZM4 4L19.172 19.172M24 38L38 24L44 30L30 44L24 38ZM26 22C26 24.2091 24.2091 26 22 26C19.7909 26 18 24.2091 18 22C18 19.7909 19.7909 18 22 18C24.2091 18 26 19.7909 26 22Z" stroke="black" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  <div className="flex flex-col gap-2">
+                    <span className="font-semibold text-lg">MOA Errors Reported - Pending Admin Review</span>
+                    <span className="text-gray-600">You have reported errors in the MOA. Our team is reviewing your requested modifications. Please discuss the changes with the admin through this conversation.</span>
+                  </div>
+                </div>
+              )}
+
+              {conversationContext === "delivery-alternative" && (
+                <div className="w-full flex bg-white shadow-md shadow-gray-500 rounded-xl p-6 gap-x-5 items-start">
+                  <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" className="shrink-0 mt-1">
+                    <path d="M4 4L33 11L36 26L26 36L11 33L4 4ZM4 4L19.172 19.172M24 38L38 24L44 30L30 44L24 38ZM26 22C26 24.2091 24.2091 26 22 26C19.7909 26 18 24.2091 18 22C18 19.7909 19.7909 18 22 18C24.2091 18 26 19.7909 26 22Z" stroke="black" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  <div className="flex flex-col gap-2">
+                    <span className="font-semibold text-lg">Alternative Delivery Arrangement</span>
+                    <span className="text-gray-600">You indicated you cannot deliver the artifact. Please discuss alternative arrangements with the admin through this conversation.</span>
+                  </div>
+                </div>
+              )}
+
               <div className="w-full h-fit rounded-xl shadow-md shadow-gray-500 flex flex-col p-2">
                 <ConversationTimeline
                   items={messages
@@ -1155,14 +1283,15 @@ const handleConfirmedConversationDelivery = async () => {
                 />
                 <div className="flex gap-2">
                   <input
-                    className="flex w-full border rounded-xl px-3 py-2"
+                    className="flex w-full border rounded-xl px-3 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     value={suggestion}
                     onChange={(e) => setSuggestion(e.target.value)}
-                    placeholder="Type your message..."
+                    placeholder={!writeEnabled ? "Not authorized to send messages" : "Type your message..."}
+                    disabled={!writeEnabled}
                     onKeyDown={(e) => {
                       if (e.key === "Enter" && !e.shiftKey) {
                         e.preventDefault();
-                        if (suggestion.trim()) {
+                        if (suggestion.trim() && writeEnabled) {
                           sendGuestMessage(suggestion.trim());
                           setSuggestion("");
                         }
@@ -1170,9 +1299,10 @@ const handleConfirmedConversationDelivery = async () => {
                     }}
                   />
                   <StyledButton
-                    className="rounded-xl"
+                    className="rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={!writeEnabled}
                     onClick={() => {
-                      if (suggestion.trim()) {
+                      if (suggestion.trim() && writeEnabled) {
                         sendGuestMessage(suggestion.trim());
                         setSuggestion("");
                       }
@@ -1191,12 +1321,14 @@ const handleConfirmedConversationDelivery = async () => {
                   Document
                 </StyledButton>
 
-                <StyledButton
-                  onClick={() => setShowConfirmDeliveryModal(true)}
-                  className="h-fit"
-                >
-                  Confirm Delivery
-                </StyledButton>
+                {hasMoasSetteledAt && (
+                  <StyledButton
+                    onClick={() => setShowConfirmDeliveryModal(true)}
+                    className="h-fit"
+                  >
+                    Confirm Delivery
+                  </StyledButton>
+                )}
               </div>
             </div>
           )}
@@ -1215,19 +1347,19 @@ const handleConfirmedConversationDelivery = async () => {
                   <span className="text-xl">Delivery Instructions:</span>
                 </div>
                 <div className="w-[55rem]">
-                <span className="text-2xl flex flex-col">
-                  • The Museum is open 8:00am to 5:00pm,  Monday to Friday,
-                  and close during holidays.
-                </span>
-                <span className="text-2xl">
-                  • To complete the transaction, please present this unique QR code to a museum staff member. They will scan it to finalize and record the transaction.
-                </span>
+                  <span className="text-2xl flex flex-col">
+                    • The Museum is open 8:00am to 5:00pm,  Monday to Friday,
+                    and close during holidays.
+                  </span>
+                  <span className="text-2xl">
+                    • To complete the transaction, please present this unique QR code to a museum staff member. They will scan it to finalize and record the transaction.
+                  </span>
                 </div>
                 <div className="w-full flex h-80 justify-end">
-                  <QRHandler 
-                  sessionId={sessionId} 
-                  contributionId={sessionData?.contribution?.contribution_id}  
-                  triggerGenerate={hasTransportingAt} 
+                  <QRHandler
+                    sessionId={sessionId}
+                    contributionId={sessionData?.contribution?.contribution_id}
+                    triggerGenerate={hasTransportingAt}
                   />
                 </div>
               </div>
@@ -1256,7 +1388,7 @@ const handleConfirmedConversationDelivery = async () => {
               <div className="w-full flex bg-white shadow-md shadow-gray-500 rounded-xl p-8 gap-x-5 items-center">
                 <div className="shrink-0 mt-1">
                   <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M20 33L12 25L9 28L20 39L41 18L38 15L20 33Z" stroke="black" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M20 33L12 25L9 28L20 39L41 18L38 15L20 33Z" stroke="black" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 </div>
                 <span className="font-semibold">
@@ -1268,25 +1400,25 @@ const handleConfirmedConversationDelivery = async () => {
           )}
 
           {showView === "rejected" && (
-          <div className="w-full max-w-4xl gap-y-10 justify-center h-full flex flex-col items-center px-2">
-            <TimelineHeader />
-            <DonorTimeline
-              timelineData={
-                sessionData?.contribution?.ContributionTimeline ||
-                sessionData?.contribution?.contributiontimeline
-              }
-            />
-            <div className="w-full flex bg-white shadow-md shadow-gray-500 rounded-xl p-8 gap-x-5 items-center">
-              <div className="shrink-0 mt-1">
-                <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M9 9L39 39M39 9L9 39" stroke="black" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
+            <div className="w-full max-w-4xl gap-y-10 justify-center h-full flex flex-col items-center px-2">
+              <TimelineHeader />
+              <DonorTimeline
+                timelineData={
+                  sessionData?.contribution?.ContributionTimeline ||
+                  sessionData?.contribution?.contributiontimeline
+                }
+              />
+              <div className="w-full flex bg-white shadow-md shadow-gray-500 rounded-xl p-8 gap-x-5 items-center">
+                <div className="shrink-0 mt-1">
+                  <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M9 9L39 39M39 9L9 39" stroke="black" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </div>
+                <span className="font-semibold">
+                  This transaction was <b>cancelled</b>. Your contribution attempt was cancelled. The timeline remains visible for your reference.
+                </span>
               </div>
-              <span className="font-semibold">
-                This transaction was <b>cancelled</b>. Your contribution attempt was cancelled. The timeline remains visible for your reference.
-              </span>
             </div>
-          </div>
           )}
         </>
       )}

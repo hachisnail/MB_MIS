@@ -52,6 +52,7 @@ import {
   verifyContributionSessionOtp,
   closeContributionSession,
   completeContributionSession,
+  saveMoaResponse,
 } from "../controllers/contributionController.js";
 
 import {
@@ -202,6 +203,7 @@ router.post("/conversations/:id/messages", requireAuth, async (req, res) => {
 
 // ---- Contributions ----
 router.put("/update-step", updateTimelineStep);
+router.post("/contributions/moa-response", saveMoaResponse);
 router.get("/contract/:contractId", getContract);
 router.post("/set-contract", requireAuth, setContract);
 router.post("/contributions/session/close", closeContributionSession);
@@ -308,12 +310,12 @@ router.patch("/contributions/:id/location", requireAuth, requireRole([1, 2, 5]),
 });
 
 router.put("/artifact/:contributionId/location", requireAuth, requireRole([1, 2, 5]),
-    updateArtifactLocation
+  updateArtifactLocation
 );
-router.get("/artifact/:contributionId/location/history", 
-    requireAuth,
-    requireRole([1, 2, 5]), 
-    getArtifactLocationHistory
+router.get("/artifact/:contributionId/location/history",
+  requireAuth,
+  requireRole([1, 2, 5]),
+  getArtifactLocationHistory
 );
 
 export default router;

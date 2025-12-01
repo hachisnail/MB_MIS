@@ -39,6 +39,7 @@ import { OptionsPanel } from "../components/ViewPageRenderer";
 
 import ConversationTimeline from "./ConversationTimeline";
 import CountdownConfirmationModal from "@/components/modals/CountdownConfirmationModal";
+import ConfirmationModal from "@/components/modals/ConfirmationModal";
 
 import { LoadingSpinner } from "../../../../components/commons";
 import {
@@ -101,6 +102,11 @@ const AcquisitionViewPage = () => {
   const [messages, setMessages] = useState([]);
   const [chatText, setChatText] = useState("");
   const [showCancelModal, setShowCancelModal] = useState(false);
+  const [showSettleModal, setShowSettleModal] = useState(false);
+  const [showCompleteModal, setShowCompleteModal] = useState(false);
+  const [showApproveModal, setShowApproveModal] = useState(false);
+  const [showValidationErrorModal, setShowValidationErrorModal] = useState(false);
+  const [isLoadingOverride, setIsLoadingOverride] = useState(false);
   const tabs = ["Donor", "Artifact Information"];
 
   // --- metadata editing state (UI) ---
@@ -372,7 +378,7 @@ const AcquisitionViewPage = () => {
         console.error("Error in handleSubmit:", error);
       }
     } else {
-      alert("Response message and approve decision is required!");
+      setShowValidationErrorModal(true);
     }
   };
 
@@ -406,6 +412,7 @@ const AcquisitionViewPage = () => {
 
   const settleMoa = async () => {
     try {
+      setIsLoadingOverride(true);
       const contribution_id = contributionData?.contribution_id;
       const step = 4;
       await axiosClient.put("/auth/update-step", { contribution_id, step });
@@ -413,6 +420,8 @@ const AcquisitionViewPage = () => {
       setStep(step);
     } catch (error) {
       console.error("Failed to update timeline:", error);
+    } finally {
+      setIsLoadingOverride(false);
     }
   };
 
@@ -437,8 +446,9 @@ const AcquisitionViewPage = () => {
     return hasAcceptNo || hasMoaErrorsYes;
   }
 
-
-  const overrideMoa = checkShouldTrigger(messages);
+  // Check if transaction is in pending state (donor rejected MOA or reported errors)
+  const hasPendingAt = !!timeline?.pending_at;
+  const overrideMoa = checkShouldTrigger(messages) || hasPendingAt;
 
 
   const donatorInformation = contributor
@@ -559,6 +569,7 @@ const AcquisitionViewPage = () => {
   // NEW: complete action (status-based)
   const markCompleted = async () => {
     try {
+      setIsLoadingOverride(true);
       const id = contributionData?.contribution_id;
       await axiosClient.patch(`/auth/contributions/${id}/status`, {
         status: "completed",
@@ -570,12 +581,15 @@ const AcquisitionViewPage = () => {
     } catch (e) {
       console.error("Failed to mark as completed:", e);
       alert("Failed to complete the contribution. Please check server logs.");
+    } finally {
+      setIsLoadingOverride(false);
     }
   };
 
 
   const markCanceled = async () => {
     try {
+      setIsLoadingOverride(true);
       const id = contributionData?.contribution_id;
       await axiosClient.patch(`/auth/contributions/${id}/status`, {
         status: "rejected",
@@ -588,6 +602,8 @@ const AcquisitionViewPage = () => {
       console.error("Failed to mark as rejected:", e);
       alert("Failed to reject the contribution. Please check server logs.");
       setShowCancelModal(false); // Close modal even on error
+    } finally {
+      setIsLoadingOverride(false);
     }
   };
 
@@ -604,6 +620,16 @@ const AcquisitionViewPage = () => {
 
   return (
     <>
+      {/* Loading overlay for override actions */}
+      {isLoadingOverride && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-8 shadow-lg flex flex-col items-center gap-4">
+            <LoadingSpinner />
+            <span className="text-gray-700 font-semibold">Processing action...</span>
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-col justify-center gap-y-3 w/full h-full items-center">
         {!contributionData ? (
           <div className="w-full h-full flex items-center justify-center text-2xl text-gray-500">
@@ -798,7 +824,13 @@ const AcquisitionViewPage = () => {
                           <StyledButton
                             className="w-50 mt-5"
                             buttonColor="bg-[#6F3FFF]"
-                            onClick={handleSubmit}
+                            onClick={() => {
+                              if (responseMessage !== "" && approved !== null) {
+                                setShowApproveModal(true);
+                              } else {
+                                setShowValidationErrorModal(true);
+                              }
+                            }}
                           >
                             Done
                           </StyledButton>
@@ -815,7 +847,7 @@ const AcquisitionViewPage = () => {
                                 <StyledButton
                                   className="w-50 mt-5"
                                   buttonColor="bg-[#6F3FFF]"
-                                  onClick={() => settleMoa()}
+                                  onClick={() => setShowSettleModal(true)}
                                   disabled={isCompleted || isRejected}
                                 >
                                   Settle MOA
@@ -823,7 +855,7 @@ const AcquisitionViewPage = () => {
                                 <StyledButton
                                   className="w-50 mt-5"
                                   buttonColor="bg-emerald-600"
-                                  onClick={markCompleted}
+                                  onClick={() => setShowCompleteModal(true)}
                                   disabled={isCompleted || isRejected}
                                   title={isCompleted ? "Already completed" : "Mark as completed"}
                                 >
@@ -1053,6 +1085,34 @@ const AcquisitionViewPage = () => {
         )}
       </div>
 
+      {/* Settle MOA Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showSettleModal}
+        onClose={() => setShowSettleModal(false)}
+        onConfirm={() => {
+          settleMoa();
+          setShowSettleModal(false);
+        }}
+        title="Settle MOA"
+        message="Are you sure you want to settle the MOA? This will allow the donor to proceed with the delivery arrangements."
+        type="question"
+        theme="light"
+      />
+
+      {/* Mark Completed Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showCompleteModal}
+        onClose={() => setShowCompleteModal(false)}
+        onConfirm={() => {
+          markCompleted();
+          setShowCompleteModal(false);
+        }}
+        title="Mark as Completed"
+        message="Are you sure you want to mark this contribution as completed? This will finalize the transaction."
+        type="question"
+        theme="light"
+      />
+
       {/* Countdown Confirmation Modal for Cancellation */}
       <CountdownConfirmationModal
         isOpen={showCancelModal}
@@ -1063,6 +1123,36 @@ const AcquisitionViewPage = () => {
         type="warning"
         theme="light"
         countdown={5}
+      />
+
+      {/* Confirmation modal for Approve/Reject decision */}
+      <ConfirmationModal
+        isOpen={showApproveModal}
+        onClose={() => setShowApproveModal(false)}
+        onConfirm={async () => {
+          // Close modal then submit
+          setShowApproveModal(false);
+          await handleSubmit();
+        }}
+        title={approved ? "Confirm Approval" : "Confirm Rejection"}
+        message={
+          approved
+            ? "You are about to approve this donation. This will notify the donor and may trigger MOA creation. Proceed?"
+            : "You are about to reject this donation. This will notify the donor and mark the contribution as rejected. Proceed?"
+        }
+        type="question"
+        theme="light"
+      />
+
+      {/* Validation error modal */}
+      <ConfirmationModal
+        isOpen={showValidationErrorModal}
+        onClose={() => setShowValidationErrorModal(false)}
+        onConfirm={() => setShowValidationErrorModal(false)}
+        title="Missing Information"
+        message="Response message and approve decision are required!"
+        type="question"
+        theme="light"
       />
     </>
   );

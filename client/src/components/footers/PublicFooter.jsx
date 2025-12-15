@@ -131,12 +131,17 @@ const PublicFooter = () => {
                 </NavLink>
               )}
               {flags["about"] && (
-              <NavLink to="/about/support">
+                <NavLink to="/about/support">
+                  <span className="text-2xl underline text-white w-fit">
+                    Contact Us
+                  </span>
+                </NavLink>
+              )}
+              <NavLink to="/feedback" title="Share your feedback about your visit">
                 <span className="text-2xl underline text-white w-fit">
-                  Contact Us
+                  Give Feedback
                 </span>
               </NavLink>
-              )}
             </div>
 
             <div className="w-full h-full flex flex-col gap-y-3 justify-start pl-5 sm:pl-30">

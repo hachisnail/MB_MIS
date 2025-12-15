@@ -12,6 +12,7 @@ import {
   User,
   Config,
   Logs,
+  Feedback,
 } from "../../utils/AdminNavIcons";
 import Logo from "../../assets/LOGO.png";
 
@@ -29,7 +30,7 @@ const AdminNav = ({ isOpen, onClose, onOpen, isSidebarOpen }) => {
   const initials = user.fname.charAt(0) + user.lname.charAt(0);
   const { bg, text } = generateColorFromKey(initials);
 
-  const alwaysVisible = ["dashboard", "configuration"];
+  const alwaysVisible = ["dashboard", "configuration", "feedback"];
 
   const tabItems = [
     {
@@ -41,6 +42,11 @@ const AdminNav = ({ isOpen, onClose, onOpen, isSidebarOpen }) => {
       label: "appointment",
       path: "/admin/appointment",
       icon: <Appointment />,
+    },
+    {
+      label: "feedback",
+      path: "/admin/feedback",
+      icon: <Feedback />,
     },
     {
       label: "schedule",
@@ -86,9 +92,8 @@ const AdminNav = ({ isOpen, onClose, onOpen, isSidebarOpen }) => {
 
   return (
     <div
-      className={`${
-        isSidebarOpen ? "bg-stone-900" : "bg-[#100E09]"
-      } w-full h-full grid grid-cols-1 grid-rows-[4.25rem_1fr_7rem]  `}
+      className={`${isSidebarOpen ? "bg-stone-900" : "bg-[#100E09]"
+        } w-full h-full grid grid-cols-1 grid-rows-[4.25rem_1fr_7rem]  `}
     >
       <div
         className={`w-full h-full flex justify-start items-center pl-3 transition-all duration-300 ease-in-out `}
@@ -152,20 +157,17 @@ const AdminNav = ({ isOpen, onClose, onOpen, isSidebarOpen }) => {
         {/* user info container */}
         <div className="w-full h-47 flex justify-start items-center cursor-pointer border-b border-gray-700">
           <div
-            className={`flex-shrink-0 transition-all duration-300 ease-in-out flex items-center justify-center ${
-              isSidebarOpen ? "ml-5 w-20 h-20" : "ml-2 w-12 h-12"
-            } bg-white rounded-full`}
+            className={`flex-shrink-0 transition-all duration-300 ease-in-out flex items-center justify-center ${isSidebarOpen ? "ml-5 w-20 h-20" : "ml-2 w-12 h-12"
+              } bg-white rounded-full`}
           >
             <div
-              className={`flex-shrink-0 transition-all duration-300 ease-in-out flex items-center justify-center rounded-full ${
-                isSidebarOpen ? "w-[4.5rem] h-[4.5rem]" : "w-11 h-11"
-              }`}
+              className={`flex-shrink-0 transition-all duration-300 ease-in-out flex items-center justify-center rounded-full ${isSidebarOpen ? "w-[4.5rem] h-[4.5rem]" : "w-11 h-11"
+                }`}
               style={{ backgroundColor: bg }}
             >
               <span
-                className={`flex items-center justify-center text-center font-semibold transition-all duration-300 ease-in-out ${
-                  isSidebarOpen ? "text-4xl" : "text-xl"
-                } ${text}`}
+                className={`flex items-center justify-center text-center font-semibold transition-all duration-300 ease-in-out ${isSidebarOpen ? "text-4xl" : "text-xl"
+                  } ${text}`}
               >
                 {firstInitial}
                 {lastInitial}
@@ -174,11 +176,10 @@ const AdminNav = ({ isOpen, onClose, onOpen, isSidebarOpen }) => {
           </div>
 
           <div
-            className={`w-35 ml-5 transition-all duration-300 ease-in-out transform ${
-              isOpen
+            className={`w-35 ml-5 transition-all duration-300 ease-in-out transform ${isOpen
                 ? "flex opacity-100 translate-y-0"
                 : "hidden opacity-0 -translate-y-2"
-            } flex-col overflow-hidden`}
+              } flex-col overflow-hidden`}
           >
             <span className="text-white text-start text-2xl font-semibold">
               {user.fname}
@@ -218,12 +219,10 @@ const AdminNav = ({ isOpen, onClose, onOpen, isSidebarOpen }) => {
                 to={path}
                 title={label.toUpperCase()}
                 className={({ isActive }) =>
-                  `w-full h-16 rounded-md flex items-center hover:border ${
-                    isSidebarOpen ? "px-3 gap-2" : "px-[0.3rem]"
-                  } transition-all duration-300 ease-in-out justify-start overflow-hidden ${
-                    isActive
-                      ? "bg-[#FEF7FF] text-black stroke-black"
-                      : "bg-transparent text-white stroke-white"
+                  `w-full h-16 rounded-md flex items-center hover:border ${isSidebarOpen ? "px-3 gap-2" : "px-[0.3rem]"
+                  } transition-all duration-300 ease-in-out justify-start overflow-hidden ${isActive
+                    ? "bg-[#FEF7FF] text-black stroke-black"
+                    : "bg-transparent text-white stroke-white"
                   }`
                 }
               >

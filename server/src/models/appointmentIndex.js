@@ -2,6 +2,7 @@
 import Visitor from './visitorModels.js';
 import Appointment from './appointmentModels.js';
 import AppointmentStatus from './appointmentStatusModels.js';
+import AppointmentFeedback from './appointmentFeedbackModels.js';
 
 // Define relationships after all models are loaded
 // One visitor has many appointments
@@ -24,9 +25,20 @@ AppointmentStatus.belongsTo(Appointment, {
   foreignKey: 'appointment_id'
 });
 
+// One appointment has many feedback records
+Appointment.hasMany(AppointmentFeedback, { 
+  foreignKey: 'appointment_id',
+  onDelete: 'CASCADE',
+  onUpdate: 'CASCADE'
+});
+AppointmentFeedback.belongsTo(Appointment, { 
+  foreignKey: 'appointment_id'
+});
+
 // Export all models for easy access
 export {
   Visitor,
   Appointment,
-  AppointmentStatus
+  AppointmentStatus,
+  AppointmentFeedback
 };

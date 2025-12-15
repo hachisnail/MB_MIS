@@ -341,8 +341,16 @@ export const AppointmentViewPage = ({
           preferredDate: modalData.preferredDate,
           preferredTime: modalData.preferredTime,
           purpose: modalData.purpose,
-          populationCount: modalData.populationCount
-        }
+          populationCount: modalData.populationCount,
+          appointmentId: modalData.appointmentId
+        },
+        feedbackLink: approveVisit === 'arrive'
+          ? {
+            url: `/feedback`,
+            text: 'Share Your Feedback',
+            display: true
+          }
+          : null
       };
 
       let emailSent = false;
@@ -517,8 +525,14 @@ export const AppointmentViewPage = ({
         <h1 className="text-6xl font-bold text-gray-900">
           {modalData.fromFirstName} {modalData.fromLastName}
         </h1>
-        <div className="text-2xl text-gray-600 font-medium">
-          {modalData.dateSent || "N/A"}
+        <div className="flex items-center gap-x-3">
+          <div className="text-2xl text-gray-600 font-medium">{modalData.dateSent || "N/A"}</div>
+          <button
+            onClick={() => navigate(`/admin/feedback/appointment/${modalData.appointmentId}`)}
+            className="px-4 py-2 bg-white border rounded text-sm"
+          >
+            View Feedbacks
+          </button>
         </div>
       </div>
 
@@ -810,13 +824,13 @@ export const AppointmentViewPage = ({
                           setMessageError(false);
                         }
                       }}
-                      placeholder={approveVisit === 'cancel' 
+                      placeholder={approveVisit === 'cancel'
                         ? 'Enter cancellation reason (required)'
                         : 'Enter message (optional)'}
                     />
                     {messageError && (
                       <p className="text-xl text-red-500 mt-2">
-                        {approveVisit === 'cancel' 
+                        {approveVisit === 'cancel'
                           ? 'Please enter a cancellation reason.'
                           : 'Please enter a message.'}
                       </p>

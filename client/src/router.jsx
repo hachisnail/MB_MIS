@@ -24,6 +24,9 @@ import Login from "./pages/public/login/Login";
 // appointment
 import Appointment from "./pages/public/appointments/Appointment";
 
+// feedback
+import AppointmentFeedbackPage from "./pages/public/feedback/AppointmentFeedbackPage";
+
 
 // article
 import Articles from "./pages/public/article/Articles";
@@ -89,6 +92,9 @@ import UserView from "./pages/admin/user/subpages/ViewUser";
 // system
 import AdminScan from "./pages/admin/AdminScan";
 
+// feedback
+import Feedbacks from "./pages/admin/feedback/Feedbacks";
+
 import FilePreviewer from "@/features/FilePreviewer";
 
 import NoMatch from "@/pages/NoMatch";
@@ -150,19 +156,19 @@ const Router = () => {
     );
   return (
     <>
-    <PresenceReporter />
-    <Routes>
-      
-      {/* Public routes */}
-      <Route element={<PublicLayout />}>
-        {flags["login"] && (
-          <>
-            <Route path="/login" element={<Login onLogin={login} />} />
-            <Route path="/login/forgot-password" element={<RecoverAccount />} />
-          </>
-        )}
+      <PresenceReporter />
+      <Routes>
 
-        {flags["catalogs_public"] && (
+        {/* Public routes */}
+        <Route element={<PublicLayout />}>
+          {flags["login"] && (
+            <>
+              <Route path="/login" element={<Login onLogin={login} />} />
+              <Route path="/login/forgot-password" element={<RecoverAccount />} />
+            </>
+          )}
+
+          {flags["catalogs_public"] && (
             <>
               <Route path="/catalogs" element={<Catalogue />} />
               {/* NEW: single artifact view (expects base64 id in :id) */}
@@ -170,196 +176,203 @@ const Router = () => {
             </>
           )}
 
-        {flags["home"] && (
-          <>
-            <Route path="/home" element={<Home />} />
-            <Route path="/" element={<Home />} />
-          </>
-        )}
+          {flags["home"] && (
+            <>
+              <Route path="/home" element={<Home />} />
+              <Route path="/" element={<Home />} />
+            </>
+          )}
 
-        {flags["appointment_public"] && (
-          <Route path="/appointment" element={<Appointment />} />
-        )}
+          {flags["appointment_public"] && (
+            <Route path="/appointment" element={<Appointment />} />
+          )}
 
-        {flags["articles_public"] && (
-          <>
-            <Route path="/article/:id" element={<Articlecontents />} />
-            <Route path="/articles" element={<Articles />} />
-          </>
-        )}
+          {/* Feedback routes - no flag required */}
+          <Route path="/feedback" element={<AppointmentFeedbackPage />} />
+          <Route path="/feedback/:appointmentId" element={<AppointmentFeedbackPage />} />
 
-        {flags["about"] && (
-          <>
-            <Route path="/about" element={<About />} />
-            <Route path="/about/support" element={<Support />} />
-          </>
-        )}
-        {flags["acquisition_public"] && (
+          {flags["articles_public"] && (
+            <>
+              <Route path="/article/:id" element={<Articlecontents />} />
+              <Route path="/articles" element={<Articles />} />
+            </>
+          )}
+
+          {flags["about"] && (
+            <>
+              <Route path="/about" element={<About />} />
+              <Route path="/about/support" element={<Support />} />
+            </>
+          )}
+          {flags["acquisition_public"] && (
+            <Route
+              path="/about/support/contribution-form"
+              element={<Contribution />}
+            />
+          )}
+
+          {/* flags to be defined */}
+          <Route path="/recover" element={<RecoverAccount />} />
+          <Route path="/recover/:token" element={<RecoverAccount />} />
+          <Route path="/recover/success" element={<RecoverAccount />} />
+          <Route path="/acquisition/inquiry/:token" element={<Inquiry />} />
+
+
+
           <Route
-            path="/about/support/contribution-form"
-            element={<Contribution />}
+            path="/complete-registration/:token"
+            element={<CompleteRegistrationPage />}
           />
-        )}
+          <Route path="/registration-success" element={<RegistrationSuccess />} />
 
-        {/* flags to be defined */}
-        <Route path="/recover" element={<RecoverAccount />} />
-        <Route path="/recover/:token" element={<RecoverAccount />} />
-        <Route path="/recover/success" element={<RecoverAccount />} />
-        <Route path="/acquisition/inquiry/:token" element={<Inquiry />} />
-
-
-
-        <Route
-          path="/complete-registration/:token"
-          element={<CompleteRegistrationPage />}
-        />
-        <Route path="/registration-success" element={<RegistrationSuccess />} />
-
-        {/* meh lmao */}
-        <Route path="/parser" element={<ElectionResultParser />} />
-      </Route>
-
-      {/* Protected routes */}
-      <Route path="/admin" element={<RequireAuth />}>
-      <Route path="/admin/scan" element={<AdminScan />} />
-        <Route element={<AdminLayout />}>
-          <Route index element={<Navigate to="dashboard" replace />} />
-
-          <Route path="dashboard" element={<Dashboard />} />
-          {flags["inventory"] && (
-            <>
-              <Route path="inventory" element={<Inventory />} />
-              <Route path="inventory/:encoded" element={<ViewArtifacts />} />
-                            <Route
-                path="inventory/:encoded/view"
-                element={<FilePreviewer />}
-              />
-            </>
-          )}
-
-          {flags["acquisition"] && (
-            <>
-              <Route path="acquisition" element={<Acquisition />} />
-              <Route
-                path="acquisition/lending/:encoded"
-                element={<AcquisitionViewPage />}
-              />
-              <Route
-                path="acquisition/donation/:encoded"
-                element={<AcquisitionViewPage />}
-              />
-              {/* acquisition/donation/don1/dW5kZWZpbmVk/preview/dW5kZWZpbmVk/ */}
-              <Route
-                path="acquisition/lending/:encoded/view"
-                element={<FilePreviewer />}
-              />
-              <Route
-                path="acquisition/donation/:encoded/view"
-                element={<FilePreviewer />}
-              />
-
-              <Route
-                path="acquisition/add-artifact"
-                element={<AddArtifact />}
-              />
-            </>
-          )}
-          {flags["schedule"] && (
-            <>
-              <Route path="schedule" element={<Schedule />} />
-              <Route path="schedule/add" element={<AddSchedulePage />} />
-            </>
-          )}
-          {flags["article"] && (
-            <>
-              <Route path="article" element={<Article />} />
-              <Route path="article/add-article" element={<ManageArticle />} />
-              <Route
-                path="article/edit-article/:encoded"
-                element={<ManageArticle />}
-              />
-
-              <Route path="article/add-article" element={<ManageArticle />} />
-              <Route path="article/edit-article" element={<ManageArticle />} />
-            </>
-          )}
-
-          {flags["appointment"] && (
-            <>
-              <Route path="appointment" element={<Appointments />} />
-              <Route
-                path="appointment/:encoded"
-                element={<AppointmentViewPage />}
-              />
-              <Route
-                path="appointment/:encoded/view"
-                element={<FilePreviewer />}
-              />
-              <Route
-                path="appointment/walk-ins/"
-                element={<WalkInsPage />}
-              />
-            </>
-          )}
-
-          {flags["schedule"] && (
-            <Route path="schedule/:encoded" element={<AppointmentViewPage />} />
-          )}
-
-          {flags["files"] && (
-            <Route path="preview/:encoded" element={<FilePreviewer />} />
-          )}
-
-          {/* sandbox for testing */}
-          {flags["sandbox"] && (
-            <>
-
-
-              <Route path="dashboard/sandbox/scokets-panel" element={<AdminSocketsPanel />} />
-              <Route path="dashboard/sandbox" element={<FileUploadDownload />} />
-              <Route
-                path="dashboard/sandbox/preview/:encoded"
-                element={<FilePreviewer />}
-              />
-              <Route path="dashboard/sandbox/modal" element={<ModalsTest />} />
-              <Route path="dashboard/sandbox/router-flag" element={<RouteFlagToggle />} />
-              <Route
-                path="dashboard/sandbox/socket-monitor"
-                element={<SocketMonitor />}
-              />
-              <Route path="dashboard/sandbox/playground" element={<Sandbox />} />
-            </>
-          )}
-
-          {/* Admin-only subroutes */}
-          <Route element={<RequireRole role="Admin" />}>
-            {flags["logs"] && (
-              <>
-                <Route path="logs/:encoded" element={<ViewLogs />} />
-                <Route path="logs" element={<Logs />} />
-              </>
-            )}
-            {flags["user"] && (
-              <>
-                <Route path="user/:encoded" element={<UserView />} />
-                <Route path="user" element={<User />} />
-                <Route path="user/add-user" element={<CreateUser />} />
-              </>
-            )}
-            <Route path="config" element={<Configuration />} />
-          </Route>
-
-          <Route path="unauthorized" element={<Unauthorized />} />
+          {/* meh lmao */}
+          <Route path="/parser" element={<ElectionResultParser />} />
         </Route>
-      </Route>
-              <Route path="qr-generate" element={<QrGenerator />} />
-              <Route path="qr-scanner" element={<QrScannerComponent />} />
-      {/* Catch-all & unauthorized */}
-      {flags["down"] && <Route path="*" element={<ServerDown />} />}
 
-      {flags["maintenance"] && <Route path="*" element={<MaintenanceMode />} />}
-      {flags["nomatch"] && <Route path="*" element={<NoMatch />} />}
-    </Routes>
+        {/* Protected routes */}
+        <Route path="/admin" element={<RequireAuth />}>
+          <Route path="/admin/scan" element={<AdminScan />} />
+          <Route element={<AdminLayout />}>
+            <Route index element={<Navigate to="dashboard" replace />} />
+
+            <Route path="dashboard" element={<Dashboard />} />
+            {flags["inventory"] && (
+              <>
+                <Route path="inventory" element={<Inventory />} />
+                <Route path="inventory/:encoded" element={<ViewArtifacts />} />
+                <Route
+                  path="inventory/:encoded/view"
+                  element={<FilePreviewer />}
+                />
+              </>
+            )}
+
+            {flags["acquisition"] && (
+              <>
+                <Route path="acquisition" element={<Acquisition />} />
+                <Route
+                  path="acquisition/lending/:encoded"
+                  element={<AcquisitionViewPage />}
+                />
+                <Route
+                  path="acquisition/donation/:encoded"
+                  element={<AcquisitionViewPage />}
+                />
+                {/* acquisition/donation/don1/dW5kZWZpbmVk/preview/dW5kZWZpbmVk/ */}
+                <Route
+                  path="acquisition/lending/:encoded/view"
+                  element={<FilePreviewer />}
+                />
+                <Route
+                  path="acquisition/donation/:encoded/view"
+                  element={<FilePreviewer />}
+                />
+
+                <Route
+                  path="acquisition/add-artifact"
+                  element={<AddArtifact />}
+                />
+              </>
+            )}
+            {flags["schedule"] && (
+              <>
+                <Route path="schedule" element={<Schedule />} />
+                <Route path="schedule/add" element={<AddSchedulePage />} />
+              </>
+            )}
+            {flags["article"] && (
+              <>
+                <Route path="article" element={<Article />} />
+                <Route path="article/add-article" element={<ManageArticle />} />
+                <Route
+                  path="article/edit-article/:encoded"
+                  element={<ManageArticle />}
+                />
+
+                <Route path="article/add-article" element={<ManageArticle />} />
+                <Route path="article/edit-article" element={<ManageArticle />} />
+              </>
+            )}
+
+            {flags["appointment"] && (
+              <>
+                <Route path="appointment" element={<Appointments />} />
+                <Route
+                  path="appointment/:encoded"
+                  element={<AppointmentViewPage />}
+                />
+                <Route
+                  path="appointment/:encoded/view"
+                  element={<FilePreviewer />}
+                />
+                <Route
+                  path="appointment/walk-ins/"
+                  element={<WalkInsPage />}
+                />
+
+                <Route path="feedback" element={<Feedbacks />} />
+                <Route path="feedback/appointment/:appointmentId" element={<Feedbacks />} />
+              </>
+            )}
+
+            {flags["schedule"] && (
+              <Route path="schedule/:encoded" element={<AppointmentViewPage />} />
+            )}
+
+            {flags["files"] && (
+              <Route path="preview/:encoded" element={<FilePreviewer />} />
+            )}
+
+            {/* sandbox for testing */}
+            {flags["sandbox"] && (
+              <>
+
+
+                <Route path="dashboard/sandbox/scokets-panel" element={<AdminSocketsPanel />} />
+                <Route path="dashboard/sandbox" element={<FileUploadDownload />} />
+                <Route
+                  path="dashboard/sandbox/preview/:encoded"
+                  element={<FilePreviewer />}
+                />
+                <Route path="dashboard/sandbox/modal" element={<ModalsTest />} />
+                <Route path="dashboard/sandbox/router-flag" element={<RouteFlagToggle />} />
+                <Route
+                  path="dashboard/sandbox/socket-monitor"
+                  element={<SocketMonitor />}
+                />
+                <Route path="dashboard/sandbox/playground" element={<Sandbox />} />
+              </>
+            )}
+
+            {/* Admin-only subroutes */}
+            <Route element={<RequireRole role="Admin" />}>
+              {flags["logs"] && (
+                <>
+                  <Route path="logs/:encoded" element={<ViewLogs />} />
+                  <Route path="logs" element={<Logs />} />
+                </>
+              )}
+              {flags["user"] && (
+                <>
+                  <Route path="user/:encoded" element={<UserView />} />
+                  <Route path="user" element={<User />} />
+                  <Route path="user/add-user" element={<CreateUser />} />
+                </>
+              )}
+              <Route path="config" element={<Configuration />} />
+            </Route>
+
+            <Route path="unauthorized" element={<Unauthorized />} />
+          </Route>
+        </Route>
+        <Route path="qr-generate" element={<QrGenerator />} />
+        <Route path="qr-scanner" element={<QrScannerComponent />} />
+        {/* Catch-all & unauthorized */}
+        {flags["down"] && <Route path="*" element={<ServerDown />} />}
+
+        {flags["maintenance"] && <Route path="*" element={<MaintenanceMode />} />}
+        {flags["nomatch"] && <Route path="*" element={<NoMatch />} />}
+      </Routes>
     </>
   );
 };

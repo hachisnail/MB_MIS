@@ -130,6 +130,7 @@ router.get("/logs/:logId", requireAuth, requireRole([1]), fetchLog);
 router.post("/appointment", createAppointment);
 router.post("/appointment/files", upload.array("files", 10), multerErrorHandler, uploadAppointmentFiles);
 router.get("/appointment", getAllAppointments);
+router.get("/appointment-feedback/:id", getAppointmentById); // Public endpoint for feedback form
 router.get("/appointment/stats", requireAuth, getAppointmentStats);
 router.get("/appointment/:id", requireAuth, getAppointmentById);
 router.patch("/appointment/:id/status", requireAuth, updateAppointmentStatus);

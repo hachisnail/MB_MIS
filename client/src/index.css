@@ -359,3 +359,18 @@ input:-webkit-autofill {
 .editor-content-preview [data-text-align="justify"] {
   text-align: justify !important;
 }
+
+/* React Calendar navigation styling for dark backgrounds */
+.react-calendar__navigation {
+  gap: 0.5rem;
+}
+
+.react-calendar__navigation button {
+  color: #ffffff;
+  background: transparent;
+  font-size: 1.2rem;
+}
+
+.react-calendar__navigation button:disabled {
+  color: #9ca3af;
+}

@@ -24,6 +24,8 @@ const routeMeta = [
   { path: "/admin/schedule", title: "Schedules Management" },
   { path: "/admin/schedule/add", title: "Add Schedule / Manage Dates" },
   { path: "/admin/schedule/:encoded", title: "View Appointment from Schedule", theme: "text-gray-800" },
+  { path: "/admin/feedback", title: "Feedbacks Management" },
+  { path: "/admin/feedback/appointment/:appointmentId", title: "Appointment Feedbacks", theme: "text-gray-800" },
   { path: "/admin/article", title: "Articles Management" },
   { path: "/admin/article/add-article", title: "Create a new Article" },
   { path: "/admin/article/edit-article/:encoded", title: "Edit Article" },

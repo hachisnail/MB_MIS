@@ -12,6 +12,7 @@ import { mainDb, logsDb } from "./src/models/authModels.js";
 import sessionStore from "./src/configs/sessionStore.js";
 import authRoutes from "./src/routes/auth.js";
 import uploadRoutes from "./src/routes/uploadRoutes.js";
+import feedbackRoutes from "./src/routes/feedbackRoutes.js";
 import { initializeSocket } from "./src/configs/socketServer.js";
 import { requireAuth, requireRole } from "./src/middlewares/authMiddlewares.js";
 import { startArticleScheduler, startAppointmentNoShowScheduler } from "./src/services/scheduler.js";
@@ -279,6 +280,7 @@ app.get(/^\/uploads\/private\/(.+)$/, requireAuth, requireRole([1, 2]), (req, re
 
 app.use("/api", uploadRoutes);
 app.use("/api/auth", authRoutes);
+app.use("/api/feedback", feedbackRoutes);
 app.use("/api/engagement", engagementRoutes);
 
 // Debug (optional)

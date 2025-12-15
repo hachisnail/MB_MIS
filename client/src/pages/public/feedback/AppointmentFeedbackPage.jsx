@@ -128,16 +128,12 @@ const AppointmentFeedbackPage = () => {
     }
 
     return (
-        <div className="min-h-screen flex flex-col items-center justify-center py-12 px-4">
+        <div className="min-h-screen flex flex-col items-center justify-center py-25 px-4">
             <div className="w-full flex flex-col items-center">
                 {/* Header */}
                 <div className="text-center mb-8">
-                    <h1 className="text-4xl font-bold text-gray-800 mb-2">
-                        📝 Share Your Feedback
-                    </h1>
-                    <p className="text-gray-600">
-                        {isWalkIn ? "Your feedback helps us improve" : "Thank you for visiting us"}
-                    </p>
+
+
 
                     {feedbackData?.appointmentInfo && (
                         <div className="mt-6 bg-blue-50 rounded-lg p-4 text-sm text-gray-700">
@@ -162,7 +158,12 @@ const AppointmentFeedbackPage = () => {
                     />
                 </div>
 
-
+                {/* Footer with Feedback Type */}
+                <footer className="mt-12 text-center text-sm text-gray-500">
+                    <p>Feedback Type: <strong>Appointment Feedback</strong></p>
+                    <p>This form collects feedback about your museum appointment experience, helping us understand your visit and identify areas for improvement.</p>
+                    <p>ISO Standards Compliance: This feedback process adheres to ISO 9241 for user-friendly design and ISO 27001 for data privacy.</p>
+                </footer>
             </div>
         </div>
     );

@@ -828,7 +828,8 @@ export const sendEmailNotification = async (req, res) => {
 
     // Construct the feedback link URL using base64-encoded appointment ID
     const encodedAppointmentId = Buffer.from(appointmentDetails.appointmentId.toString()).toString('base64');
-    const feedbackUrl = `http://localhost:5173/feedback/${encodedAppointmentId}`;
+    const clientBaseUrl = process.env.CLIENT_BASE_URL || 'http://localhost:5173';
+    const feedbackUrl = `${clientBaseUrl}/feedback/appointment/${encodedAppointmentId}`;
 
     // Build the professional email template (heavily optimized to prevent Gmail clipping)
     const emailHtml = `<div style="font-family:serif;background:#fff;color:#333;padding:20px 0"><div style="max-width:600px;margin:0 auto;border:1px solid #E8C26A;border-radius:8px"><div style="background:#3E2F1C;text-align:center;padding:20px"><h2 style="margin:0;font-size:20px;color:#E8C26A">Museo Bulawan</h2><p style="margin:5px 0 0;font-size:13px;color:#F5E7C1">Preserving the Heritage of Camarines Norte</p></div><div style="padding:25px"><p>Dear <b>${appointmentDetails.visitorName}</b>,</p><p style="line-height:1.6">${(() => {

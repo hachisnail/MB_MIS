@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { useForm, Controller,useController } from "react-hook-form";
+import { useForm, Controller, useController } from "react-hook-form";
 import { DayPicker } from "react-day-picker";
 import "react-day-picker/dist/style.css";
 import { Fragment } from "react";
@@ -17,7 +17,7 @@ import {
 export const DateInput = ({
   control,
   name,
-  mode = "single", 
+  mode = "single",
   className = "",
   error = "",
   minDate = new Date(1900, 0, 1),
@@ -39,13 +39,13 @@ export const DateInput = ({
               ? value.toLocaleDateString()
               : ""
             : value?.from && value?.to
-            ? `${value.from.toLocaleDateString()} - ${value.to.toLocaleDateString()}`
-            : "";
+              ? `${value.from.toLocaleDateString()} - ${value.to.toLocaleDateString()}`
+              : "";
 
-            const defaultMonth =
-            mode === "single"
-                ? value || new Date() // today first
-                : value?.from || new Date(); // today first
+        const defaultMonth =
+          mode === "single"
+            ? value || new Date() // today first
+            : value?.from || new Date(); // today first
 
 
         return (
@@ -57,9 +57,8 @@ export const DateInput = ({
               readOnly
               onClick={() => setShowCalendar(!showCalendar)}
               placeholder={placeholder}
-              className={`border p-2 w-full cursor-pointer rounded-2xl ${
-                error ? "border-red-600" : "border-black"
-              } focus:outline-none`}
+              className={`border p-2 w-full cursor-pointer rounded-2xl ${error ? "border-red-600" : "border-black"
+                } focus:outline-none`}
               style={{
                 boxShadow: "inset 0 1px 1px rgba(1, 1, 1, 0.50)",
               }}
@@ -133,11 +132,9 @@ export const FormInput = ({
         })}
         type={type}
         disabled={disabled}
-        className={`border text-xl px-2 py-3 rounded-2xl w-full ${
-          error !== "" ? "border-red-600" : "border-black"
-        } focus:outline-none ${
-          disabled ? "border-gray-400 cursor-not-allowed" : ""
-        }`}
+        className={`border text-xl px-2 py-3 rounded-2xl w-full ${error !== "" ? "border-red-600" : "border-black"
+          } focus:outline-none ${disabled ? "border-gray-400 cursor-not-allowed" : ""
+          }`}
         style={{
           boxShadow: "inset 0 1px 1px rgba(1, 1, 1, 0.50)",
         }}
@@ -173,11 +170,9 @@ export const DropdownInput = ({
             <div className="relative w-full">
               <ListboxButton
                 disabled={disabled}
-                className={`text-xl relative w-full cursor-pointer rounded-2xl border bg-white py-3 pl-3 pr-10 text-left ${
-                  error !== "" ? "border-red-600" : "border-black"
-                } focus:outline-none ${
-                  disabled ? "opacity-50 cursor-not-allowed" : ""
-                }`}
+                className={`text-xl relative w-full cursor-pointer rounded-2xl border bg-white py-3 pl-3 pr-10 text-left ${error !== "" ? "border-red-600" : "border-black"
+                  } focus:outline-none ${disabled ? "opacity-50 cursor-not-allowed" : ""
+                  }`}
                 style={{ boxShadow: "inset 0 1px 1px rgba(1, 1, 1, 0.50)" }}
               >
                 <span className="block truncate">
@@ -215,19 +210,17 @@ export const DropdownInput = ({
                       key={opt.value}
                       value={opt.value}
                       className={({ active: _active }) =>
-                        `relative cursor-pointer select-none py-2 pl-10 pr-4 text-xl ${
-                          _active
-                            ? "bg-blue-100 text-blue-900"
-                            : "text-gray-900"
+                        `relative cursor-pointer select-none py-2 pl-10 pr-4 text-xl ${_active
+                          ? "bg-blue-100 text-blue-900"
+                          : "text-gray-900"
                         }`
                       }
                     >
                       {({ selected }) => (
                         <>
                           <span
-                            className={`text-xl block truncate ${
-                              selected ? "font-medium" : "font-normal"
-                            }`}
+                            className={`text-xl block truncate ${selected ? "font-medium" : "font-normal"
+                              }`}
                           >
                             {opt.label}
                           </span>
@@ -271,25 +264,24 @@ export const ContactNumberInput = ({
   className = "",
 }) => {
   return (
-    <div className="flex h-fit flex-col w-fit">
+    <div className="flex h-fit flex-col w-full">
       <Controller
         control={control}
         name={name}
         render={({ field }) => (
-        <input
-        {...field}
-        value={field.value ?? ""}
-        type="tel"
-        placeholder="Enter contact number"
-        onChange={(e) => {
-            const numeric = e.target.value.replace(/\D/g, "");
-            field.onChange(numeric);
-        }}
-        className={`border rounded-2xl px-2 py-3 text-xl shadow-inner outline-none ${className} ${
-            error !== "" ? "border-red-600" : "border-black"
-        }`}
-        style={{ boxShadow: "inset 0 1px 1px rgba(1, 1, 1, 0.50)" }}
-        />
+          <input
+            {...field}
+            value={field.value ?? ""}
+            type="tel"
+            placeholder="Enter contact number"
+            onChange={(e) => {
+              const numeric = e.target.value.replace(/\D/g, "");
+              field.onChange(numeric);
+            }}
+            className={`border rounded-2xl px-2 py-3 text-xl w-full shadow-inner outline-none ${className} ${error !== "" ? "border-red-600" : "border-black"
+              }`}
+            style={{ boxShadow: "inset 0 1px 1px rgba(1, 1, 1, 0.50)" }}
+          />
 
         )}
       />
@@ -310,12 +302,11 @@ export const EmailInput = ({ control, name, error = "", className = "" }) => {
             value={field.value ?? ""} // ✅ Always controlled
             type="email"
             placeholder="Enter email"
-            className={`border rounded-2xl px-2 py-3 text-lg w-full shadow-inner outline-none ${className} ${
-              error !== "" ? "border-red-600" : "border-black"
-            }`}
-                      style={{
-          boxShadow: "inset 0 1px 1px rgba(1, 1, 1, 0.50)",
-        }}
+            className={`border rounded-2xl px-2 py-3 text-lg w-full shadow-inner outline-none ${className} ${error !== "" ? "border-red-600" : "border-black"
+              }`}
+            style={{
+              boxShadow: "inset 0 1px 1px rgba(1, 1, 1, 0.50)",
+            }}
           />
         )}
       />
@@ -329,7 +320,7 @@ export const EmailInput = ({ control, name, error = "", className = "" }) => {
 export function FileInput({ control, name, className = "" }) {
   const {
     field: { value = { files: [], url: "" }, onChange },
-    fieldState: { error="" },
+    fieldState: { error = "" },
   } = useController({ name, control });
 
   const fileInputRef = useRef(null);
@@ -341,17 +332,17 @@ export function FileInput({ control, name, className = "" }) {
     onChange({ files, url });
   };
 
-const handleFiles = useCallback(
-  (files) => {
-    if (files.length) {
-      const newFiles = Array.from(files);
-      const updatedFiles = [...fileList, ...newFiles]; 
-      setFileList(updatedFiles);
-      updateValue(updatedFiles, urlValue);
-    }
-  },
-  [fileList, urlValue] 
-);
+  const handleFiles = useCallback(
+    (files) => {
+      if (files.length) {
+        const newFiles = Array.from(files);
+        const updatedFiles = [...fileList, ...newFiles];
+        setFileList(updatedFiles);
+        updateValue(updatedFiles, urlValue);
+      }
+    },
+    [fileList, urlValue]
+  );
 
 
   const handleDrop = (e) => {
@@ -393,35 +384,34 @@ const handleFiles = useCallback(
           onChange={handleUrlChange}
           className="border p-2 w-full rounded-2xl text-xl shadow-inner outline-none border-black "
           style={{
-          boxShadow: "inset 0 1px 1px rgba(1, 1, 1, 0.50)",
-        }}
+            boxShadow: "inset 0 1px 1px rgba(1, 1, 1, 0.50)",
+          }}
         />
       </div>
 
 
 
       <div className="flex gap-x-5 mt-2">
-      <div
-        className={`min-w-[10rem] h-[6rem] border rounded-3xl flex flex-col items-center justify-center cursor-pointer p-4 ${
-          dragging ? "border-blue-500 bg-blue-50" : "border-black"
-        }`}
-        onDrop={handleDrop}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onClick={() => fileInputRef.current.click()}
-      >
-        <p className="text-xs">
-          Drag or <span className="text-[#6A60FF]">Choose Files </span>
-        </p>
-        <input
-          type="file"
-          ref={fileInputRef}
-          className="hidden"
-          onChange={handleFileInputChange}
-          multiple
-        />
+        <div
+          className={`min-w-[10rem] h-[6rem] border rounded-3xl flex flex-col items-center justify-center cursor-pointer p-4 ${dragging ? "border-blue-500 bg-blue-50" : "border-black"
+            }`}
+          onDrop={handleDrop}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onClick={() => fileInputRef.current.click()}
+        >
+          <p className="text-xs">
+            Drag or <span className="text-[#6A60FF]">Choose Files </span>
+          </p>
+          <input
+            type="file"
+            ref={fileInputRef}
+            className="hidden"
+            onChange={handleFileInputChange}
+            multiple
+          />
 
-      </div>
+        </div>
 
         {fileList.length > 0 && (
           <ul className=" w-full h-[6rem] flex flex-wrap overflow-y-auto ">
@@ -433,23 +423,23 @@ const handleFiles = useCallback(
                   className="text-red-500 underline ml-2 cursor-pointer"
                   onClick={() => removeFile(i)}
                 >
-                <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="15"
-                height="15"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                >
-                <path d="M4 7l16 0" />
-                <path d="M10 11l0 6" />
-                <path d="M14 11l0 6" />
-                <path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12" />
-                <path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3" />
-                </svg>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="15"
+                    height="15"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M4 7l16 0" />
+                    <path d="M10 11l0 6" />
+                    <path d="M14 11l0 6" />
+                    <path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12" />
+                    <path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3" />
+                  </svg>
 
 
                 </button>
@@ -463,7 +453,7 @@ const handleFiles = useCallback(
 
 
 
-    <span className="text-red-600 text-md h-6 pl-2">{error.message}</span>
+      <span className="text-red-600 text-md h-6 pl-2">{error.message}</span>
 
     </div>
   );
@@ -497,11 +487,10 @@ export const FormField = ({
         type={type}
         disabled={disabled}
         {...register}
-        className={`border-1 bg-[#242424] border-[#373737] rounded-sm text-2xl px-3 py-2 ${
-          error ? "border-red-500" : ""
-        }`}
+        className={`border-1 bg-[#242424] border-[#373737] rounded-sm text-2xl px-3 py-2 ${error ? "border-red-500" : ""
+          }`}
       />
-       <span className="text-red-500 h-6 text-sm">{error.message}</span>
+      <span className="text-red-500 h-6 text-sm">{error.message}</span>
     </div>
   );
 };

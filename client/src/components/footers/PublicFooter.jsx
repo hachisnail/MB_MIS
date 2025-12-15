@@ -1,11 +1,13 @@
 import React from "react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import Logo from "@/assets/LOGO.png";
 import { useRouterFlags } from "@/context/routerFlagProvider";
 import { scrollToElementById } from "@/components/commons";
 
 const PublicFooter = () => {
   const { flags } = useRouterFlags();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   return (
     <div className="w-screen min-h-85 bg-[#1C1B19] py-10 overflow-x-hidden">
@@ -117,7 +119,7 @@ const PublicFooter = () => {
 
               {flags["about"] && (
                 <NavLink to="/about">
-                  <span className="text-2xl underline text-white w-fit">
+                  <span className="text-3xl underline text-white w-fit font-bold">
                     About Us
                   </span>
                 </NavLink>
@@ -125,23 +127,39 @@ const PublicFooter = () => {
 
               {flags["appointment_public"] && (
                 <NavLink to="/appointment">
-                  <span className="text-2xl underline text-white w-fit">
+                  <span className="text-3xl underline text-white w-fit font-bold">
                     Book a Tour
                   </span>
                 </NavLink>
               )}
               {flags["about"] && (
                 <NavLink to="/about/support">
-                  <span className="text-2xl underline text-white w-fit">
+                  <span className="text-3xl underline text-white w-fit font-bold">
                     Contact Us
                   </span>
                 </NavLink>
               )}
-              <NavLink to="/feedback" title="Share your feedback about your visit">
-                <span className="text-2xl underline text-white w-fit">
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (location.pathname === "/") {
+                    // Already on home page, just scroll
+                    scrollToElementById("feedback", 50);
+                  } else {
+                    // Navigate to home and then scroll after a delay
+                    navigate("/");
+                    setTimeout(() => {
+                      scrollToElementById("feedback", 50);
+                    }, 100);
+                  }
+                }}
+                title="Share your feedback about your visit or website"
+                className="w-fit bg-transparent border-none cursor-pointer hover:text-gray-300 transition-colors"
+              >
+                <span className="text-3xl underline text-white w-fit block font-bold">
                   Give Feedback
                 </span>
-              </NavLink>
+              </button>
             </div>
 
             <div className="w-full h-full flex flex-col gap-y-3 justify-start pl-5 sm:pl-30">

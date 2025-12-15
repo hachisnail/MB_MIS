@@ -26,6 +26,7 @@ import Appointment from "./pages/public/appointments/Appointment";
 
 // feedback
 import AppointmentFeedbackPage from "./pages/public/feedback/AppointmentFeedbackPage";
+import WebsiteFeedbackPage from "./pages/public/feedback/WebsiteFeedbackPage";
 
 
 // article
@@ -93,6 +94,7 @@ import UserView from "./pages/admin/user/subpages/ViewUser";
 import AdminScan from "./pages/admin/AdminScan";
 
 // feedback
+import AdminFeedbacks from "./pages/admin/feedback/AdminFeedbacks";
 import Feedbacks from "./pages/admin/feedback/Feedbacks";
 
 import FilePreviewer from "@/features/FilePreviewer";
@@ -188,8 +190,10 @@ const Router = () => {
           )}
 
           {/* Feedback routes - no flag required */}
-          <Route path="/feedback" element={<AppointmentFeedbackPage />} />
-          <Route path="/feedback/:appointmentId" element={<AppointmentFeedbackPage />} />
+
+          <Route path="/feedback/appointment" element={<AppointmentFeedbackPage />} />
+          <Route path="/feedback/appointment/:appointmentId" element={<AppointmentFeedbackPage />} />
+          <Route path="/feedback/website" element={<WebsiteFeedbackPage />} />
 
           {flags["articles_public"] && (
             <>
@@ -310,7 +314,7 @@ const Router = () => {
                   element={<WalkInsPage />}
                 />
 
-                <Route path="feedback" element={<Feedbacks />} />
+                <Route path="feedback" element={<AdminFeedbacks />} />
                 <Route path="feedback/appointment/:appointmentId" element={<Feedbacks />} />
               </>
             )}

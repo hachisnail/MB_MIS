@@ -11,19 +11,12 @@ const schema = yup.object({
   visitor_email: yup
     .string()
     .email("Invalid email")
-    .nullable(),
+    .required("Email is required"),
   visitor_phone: yup
     .string()
-    .nullable()
-    .matches(/^(09|\+639)\d{9}$|^$/, "Invalid phone number format"),
-}).test(
-  'email-or-phone-required',
-  'Either email or phone number is required',
-  function (values) {
-    return (values.visitor_email && values.visitor_email.trim()) ||
-      (values.visitor_phone && values.visitor_phone.trim());
-  }
-);
+    .required("Phone number is required")
+    .matches(/^(09|\+639)\d{9}$/, "Invalid phone number format"),
+});
 
 const PersonalInfoStep = ({ initialData, onNext, onBack, visitorData = {} }) => {
   const {
@@ -77,10 +70,10 @@ const PersonalInfoStep = ({ initialData, onNext, onBack, visitorData = {} }) => 
             </div>
 
             {/* Email & Phone */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-2 gap-6">
               <div>
                 <label className="text-base uppercase tracking-wide text-gray-500 block mb-3 font-semibold">
-                  Email
+                  Email <span className="text-red-500">*</span>
                 </label>
                 <FormInput
                   register={register}
@@ -93,7 +86,7 @@ const PersonalInfoStep = ({ initialData, onNext, onBack, visitorData = {} }) => 
 
               <div>
                 <label className="text-base uppercase tracking-wide text-gray-500 block mb-3 font-semibold">
-                  Phone Number
+                  Phone Number <span className="text-red-500">*</span>
                 </label>
                 <ContactNumberInput
                   control={control}
@@ -102,9 +95,7 @@ const PersonalInfoStep = ({ initialData, onNext, onBack, visitorData = {} }) => 
                 />
               </div>
             </div>
-            <p className="text-base text-gray-500">
-              * Either email or phone number is required for us to respond to your feedback
-            </p>
+
           </div>
         </div>
       </form>

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 
-const questions = [
+const appointmentQuestions = [
   {
     name: "accessibility_booking",
     label: "How easy was it to book your appointment?",
@@ -53,6 +53,59 @@ const questions = [
   },
 ];
 
+const websiteQuestions = [
+  {
+    name: "website_usability",
+    label: "How easy is it to navigate and use the website?",
+    dimension: "Usability & Navigation",
+  },
+  {
+    name: "website_design",
+    label: "How visually appealing is the website design?",
+    dimension: "Design & Aesthetics",
+  },
+  {
+    name: "content_quality",
+    label: "How informative and engaging is the content?",
+    dimension: "Content Quality",
+  },
+  {
+    name: "loading_speed",
+    label: "How fast does the website load?",
+    dimension: "Performance",
+  },
+  {
+    name: "mobile_responsiveness",
+    label: "How well does the website work on mobile devices?",
+    dimension: "Mobile Experience",
+  },
+  {
+    name: "navigation_ease",
+    label: "How intuitive is the website navigation?",
+    dimension: "Usability & Navigation",
+  },
+  {
+    name: "accessibility_features",
+    label: "How accessible is the website for users with disabilities?",
+    dimension: "Accessibility",
+  },
+  {
+    name: "information_accuracy",
+    label: "How accurate and up-to-date is the information provided?",
+    dimension: "Content Quality",
+  },
+  {
+    name: "overall_satisfaction",
+    label: "Overall, how satisfied are you with the website?",
+    dimension: "Overall Experience",
+  },
+  {
+    name: "recommendation_likelihood",
+    label: "How likely are you to recommend this website to others?",
+    dimension: "Overall Experience",
+  },
+];
+
 const StarRating = ({ value, onChange }) => {
   const [hoverValue, setHoverValue] = useState(0);
 
@@ -70,8 +123,8 @@ const StarRating = ({ value, onChange }) => {
         >
           <span
             className={`text-3xl ${star <= (hoverValue || value)
-                ? "text-yellow-400"
-                : "text-gray-300"
+              ? "text-yellow-400"
+              : "text-gray-300"
               } transition-colors duration-150`}
           >
             ★
@@ -82,7 +135,7 @@ const StarRating = ({ value, onChange }) => {
   );
 };
 
-const RatingsStep = ({ initialData, onNext, onBack, ratings = {}, part = 1, comments = "", setComments }) => {
+const RatingsStep = ({ initialData, onNext, onBack, ratings = {}, part = 1, comments = "", setComments, isWebsiteFeedback = false }) => {
   const [localRatings, setLocalRatings] = useState(ratings);
   const [localComments, setLocalComments] = useState(comments || "");
   const [showCommentModal, setShowCommentModal] = useState(false);
@@ -93,6 +146,7 @@ const RatingsStep = ({ initialData, onNext, onBack, ratings = {}, part = 1, comm
   }, [ratings]);
 
   // Get questions for this part
+  const questions = isWebsiteFeedback ? websiteQuestions : appointmentQuestions;
   const startIdx = part === 1 ? 0 : 5;
   const endIdx = part === 1 ? 5 : 10;
   const partQuestions = questions.slice(startIdx, endIdx);
@@ -196,8 +250,8 @@ const RatingsStep = ({ initialData, onNext, onBack, ratings = {}, part = 1, comm
             onClick={handleContinue}
             disabled={!allQuestionsAnswered}
             className={`w-30 h-15 flex items-center justify-center rounded-md text-white text-3xl ${allQuestionsAnswered
-                ? "bg-black hover:bg-gray-800"
-                : "bg-gray-400 cursor-not-allowed"
+              ? "bg-black hover:bg-gray-800"
+              : "bg-gray-400 cursor-not-allowed"
               }`}
           >
             <svg

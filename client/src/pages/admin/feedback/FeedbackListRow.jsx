@@ -1,5 +1,6 @@
 import React from "react";
 import { formatDateForDisplay } from "@/components/commons";
+import { calculateOverallRating, detectFeedbackType } from "./feedbackDimensions";
 
 function StarRating({ rating, size = "sm" }) {
   const filled = Math.floor(rating);
@@ -25,30 +26,22 @@ function StarRating({ rating, size = "sm" }) {
   );
 }
 
-function calculateOverallRating(feedback) {
-  const fields = [
-    "accessibility_booking",
-    "accessibility_availability",
-    "staff_helpfulness",
-    "staff_communication",
-    "facility_cleanliness",
-    "facility_comfort",
-    "process_clarity",
-    "process_timeliness",
-    "service_expectations",
-    "service_quality",
-  ];
-  const values = fields.map(f => feedback[f]).filter(v => v);
-  return values.length > 0 ? values.reduce((a, b) => a + b, 0) / values.length : 0;
-}
-
 export default function FeedbackListRow({ feedback, headers }) {
-  const rating = calculateOverallRating(feedback);
+  // Detect feedback type and calculate rating
+  const feedbackType = detectFeedbackType(feedback);
+  const ratingValue = parseFloat(calculateOverallRating(feedback, feedbackType));
+  const rating = isNaN(ratingValue) ? 0 : ratingValue;
+
   const statusColor = {
     SUBMITTED: "bg-blue-100 text-blue-800",
-    COMPLETED: "bg-green-100 text-green-800",
+    REVIEWED: "bg-green-100 text-green-800",
     RESPONDED: "bg-purple-100 text-purple-800",
     RESOLVED: "bg-gray-100 text-gray-800",
+  };
+
+  const feedbackTypeColor = {
+    appointment: "bg-amber-100 text-amber-800",
+    website: "bg-cyan-100 text-cyan-800",
   };
 
   // Create grid template based on headers widths - use rem for consistency
@@ -69,13 +62,11 @@ export default function FeedbackListRow({ feedback, headers }) {
         <div className="text-xs text-gray-500 truncate">{feedback.visitor_email || feedback.visitor_phone || "-"}</div>
       </div>
 
-      {/* Appointment */}
-      <div className="text-sm text-gray-600 truncate pr-3">
-        {feedback.Appointment ? (
-          <div className="truncate">{feedback.Appointment.purpose_of_visit || "Appointment"}</div>
-        ) : (
-          <span className="text-gray-400">Walk-in</span>
-        )}
+      {/* Feedback Type */}
+      <div className="pr-3">
+        <span className={`px-2 py-1 rounded text-xs font-semibold whitespace-nowrap inline-block ${feedbackTypeColor[feedback.feedback_type] || "bg-gray-100"}`}>
+          {feedback.feedback_type === "website" ? "Website" : "Appointment"}
+        </span>
       </div>
 
       {/* Overall Rating */}
@@ -86,7 +77,7 @@ export default function FeedbackListRow({ feedback, headers }) {
       {/* Status */}
       <div className="pr-3">
         <span className={`px-2 py-1 rounded text-xs font-semibold whitespace-nowrap inline-block ${statusColor[feedback.feedback_status] || "bg-gray-100"}`}>
-          {feedback.feedback_status}
+          {feedback.feedback_status || "Unknown"}
         </span>
       </div>
 

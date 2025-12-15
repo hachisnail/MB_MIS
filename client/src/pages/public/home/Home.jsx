@@ -155,6 +155,14 @@ const Home = () => {
                   BOOK A VISIT
                 </button>
               </NavLink>
+              <button
+                onClick={() => {
+                  scrollToElementById("feedback", 0);
+                }}
+                className="w-48 h-16 bg-transparent hover:outline-1 hover:outline-black flex items-center justify-center outline-1 outline-white text-2xl font-medium text-white transition duration-300 hover:bg-white hover:text-black cursor-pointer"
+              >
+                FEEDBACK
+              </button>
             </div>
 
             <div className="ml-11 w-fit flex flex-col gap-y-5">
@@ -568,9 +576,208 @@ const Home = () => {
 
         <ScrollButton
           pt="-500"
-          title="Footer"
-          targetId="support"
+          title="Your Voice Matters"
+          targetId="feedback"
           direction="right"
+        />
+      </section>
+
+      {/* Feedback Section */}
+      <section
+        id="feedback"
+        className="snap-start pt-15 w-full bg-[#1C1B19] min-h-screen h-auto px-30 flex flex-col justify-center items-center"
+      >
+        <ScrollButton
+          pt="0"
+          title="Support Us"
+          targetId="support"
+          direction="left"
+          textColor="text-gray-300"
+          hoverTextColor="hover:text-gray-600"
+        />
+
+        <div className="w-full max-w-6xl mx-auto py-20">
+          {/* Header */}
+          <div className="text-center mb-20">
+            <div className="flex items-center justify-center w-full text-[#EFBF04] mb-6">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="40"
+                height="1"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+              <span className="text-lg font-hind font-extralight px-4 pt-1 tracking-wide">
+                MAKE YOUR VOICE HEARD
+              </span>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="40"
+                height="1"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+            </div>
+            <h2 className="text-7xl font-hina font-bold mb-6 text-[#FCE6BC]">Your Voice Matters</h2>
+            <p className="text-xl leading-relaxed max-w-3xl mx-auto text-gray-300">
+              Help us improve our services and create better experiences for all visitors.
+              Share your feedback about your museum visit or our website.
+            </p>
+          </div>
+
+          {/* Feedback Cards Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 mb-16">
+            {/* Appointment Feedback Card */}
+            <NavLink
+              to="/feedback/appointment"
+              className="group"
+            >
+              <div className="bg-[#FCE6BC] h-full flex flex-col p-12 rounded-none shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-2">
+                {/* Icon */}
+                <div className="mb-8 flex justify-center">
+                  <div className="w-20 h-20 flex items-center justify-center bg-white rounded-none border-2 border-[#1C1B19] group-hover:bg-[#1C1B19] transition-colors duration-300">
+                    <svg
+                      className="w-10 h-10 text-[#1C1B19] group-hover:text-[#FCE6BC] transition-colors duration-300"
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
+                      <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                      <line x1="16" y1="2" x2="16" y2="6" />
+                      <line x1="8" y1="2" x2="8" y2="6" />
+                      <line x1="3" y1="10" x2="21" y2="10" />
+                      <polyline points="10 14 12 16 14 14" />
+                    </svg>
+                  </div>
+                </div>
+
+                {/* Content */}
+                <h3 className="text-3xl font-hind font-bold mb-4 text-[#1C1B19]">
+                  Appointment Feedback
+                </h3>
+                <p className="text-lg leading-relaxed mb-8 text-gray-700 flex-grow">
+                  Share your experience from your museum visit. Help us understand what we do well and where we can improve.
+                </p>
+
+                {/* Button */}
+                <div className="flex items-center gap-3 text-[#1C1B19] font-hind font-semibold group-hover:gap-5 transition-all duration-300">
+                  <span>Give Feedback</span>
+                  <svg
+                    className="w-5 h-5"
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                    <polyline points="12 5 19 12 12 19" />
+                  </svg>
+                </div>
+              </div>
+            </NavLink>
+
+            {/* Website Feedback Card */}
+            <NavLink
+              to="/feedback/website"
+              className="group"
+            >
+              <div className="bg-[#FCE6BC] h-full flex flex-col p-12 rounded-none shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-2">
+                {/* Icon */}
+                <div className="mb-8 flex justify-center">
+                  <div className="w-20 h-20 flex items-center justify-center bg-white rounded-none border-2 border-[#1C1B19] group-hover:bg-[#1C1B19] transition-colors duration-300">
+                    <svg
+                      className="w-10 h-10 text-[#1C1B19] group-hover:text-[#FCE6BC] transition-colors duration-300"
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
+                      <circle cx="12" cy="12" r="10" />
+                      <line x1="2" y1="12" x2="22" y2="12" />
+                      <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+                    </svg>
+                  </div>
+                </div>
+
+                {/* Content */}
+                <h3 className="text-3xl font-hind font-bold mb-4 text-[#1C1B19]">
+                  Website Feedback
+                </h3>
+                <p className="text-lg leading-relaxed mb-8 text-gray-700 flex-grow">
+                  Tell us about your experience browsing our website. Your input helps us make it better for everyone.
+                </p>
+
+                {/* Button */}
+                <div className="flex items-center gap-3 text-[#1C1B19] font-hind font-semibold group-hover:gap-5 transition-all duration-300">
+                  <span>Give Feedback</span>
+                  <svg
+                    className="w-5 h-5"
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                    <polyline points="12 5 19 12 12 19" />
+                  </svg>
+                </div>
+              </div>
+            </NavLink>
+          </div>
+
+          {/* Footer Info */}
+          <div className="text-center border-t border-gray-600 pt-12">
+            <p className="text-lg text-gray-300 mb-8">
+              Your feedback is confidential and helps us continuously improve our services.
+            </p>
+            <div className="flex flex-col sm:flex-row justify-center items-center gap-6 text-sm text-gray-400">
+              <div className="flex items-center gap-2">
+                <svg
+                  className="w-5 h-5 text-[#EFBF04]"
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                >
+                  <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z" />
+                </svg>
+                <span>ISO Standards Compliant</span>
+              </div>
+              <div className="w-1 h-1 bg-gray-600 rounded-full hidden sm:block" />
+              <div className="flex items-center gap-2">
+                <svg
+                  className="w-5 h-5 text-[#EFBF04]"
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                >
+                  <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z" />
+                </svg>
+                <span>Privacy Protected</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <ScrollButton
+          pt="0"
+          title="Footer"
+          targetId="feedback"
+          direction="right"
+          textColor="text-gray-300"
+          hoverTextColor="hover:text-gray-600"
         />
       </section>
     </div>

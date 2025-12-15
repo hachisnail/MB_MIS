@@ -4,8 +4,8 @@ const NoticeStep = ({ onNext }) => {
     const navigate = useNavigate();
 
     return (
-        <div className="w-[85rem] h-[46rem] flex flex-col items-center justify-between">
-            <div className="w-full h-[40rem] flex flex-col justify-center px-20 shadow-md rounded-lg shadow-gray-500 gap-y-15">
+        <div className="w-[85rem] h-[50rem] flex flex-col items-center justify-between">
+            <div className="w-full h-[45rem] flex flex-col justify-center px-20 shadow-md rounded-lg shadow-gray-500 gap-y-15">
                 <div className="w-full h-fit flex flex-col">
                     <span className="text-8xl font-light font-hina">FEEDBACK</span>
                 </div>

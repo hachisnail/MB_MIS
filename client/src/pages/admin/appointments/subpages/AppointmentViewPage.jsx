@@ -527,12 +527,7 @@ export const AppointmentViewPage = ({
         </h1>
         <div className="flex items-center gap-x-3">
           <div className="text-2xl text-gray-600 font-medium">{modalData.dateSent || "N/A"}</div>
-          <button
-            onClick={() => navigate(`/admin/feedback/appointment/${modalData.appointmentId}`)}
-            className="px-4 py-2 bg-white border rounded text-sm"
-          >
-            View Feedbacks
-          </button>
+
         </div>
       </div>
 

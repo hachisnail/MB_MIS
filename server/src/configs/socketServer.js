@@ -11,9 +11,9 @@ export function initializeSocket(server, corsOrigins) {
   const ALLOWED_ORIGINS = Array.isArray(corsOrigins)
     ? corsOrigins
     : String(corsOrigins || "")
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean);
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
 
   io = new SocketIOServer(server, {
     path: "/socket.io",
@@ -327,7 +327,7 @@ export function initializeSocket(server, corsOrigins) {
     if (stale) {
       try {
         holder.disconnect(true);
-      } catch {}
+      } catch { }
       browserLocks.set(key, { socketId: socket.id, lastSeen: now });
       return true;
     }
@@ -355,7 +355,7 @@ export function initializeSocket(server, corsOrigins) {
 
       removeAllPresenceForSocket(s);
       if (!silent) s.emit("forceLogout", { reason });
-    } catch {}
+    } catch { }
   }
 
   function _forceLogoutUser(
@@ -444,45 +444,45 @@ export function initializeSocket(server, corsOrigins) {
     });
 
     socket.on("clientSystemNote", async (payload = {}) => {
-  try {
-    // only verified guests (you already set guestId on join)
-    if (socket.userId !== "guest" || !socket.guestId) {
-      console.warn("[clientSystemNote] blocked: not a verified guest");
-      return;
-    }
+      try {
+        // only verified guests (you already set guestId on join)
+        if (socket.userId !== "guest" || !socket.guestId) {
+          console.warn("[clientSystemNote] blocked: not a verified guest");
+          return;
+        }
 
-    const { room, text = "", meta = null } = payload;
-    if (!room || !text.trim()) return;
+        const { room, text = "", meta = null } = payload;
+        if (!room || !text.trim()) return;
 
-    // must be the donor's own conversation room
-    const conversationId = room.replace("conversation:", "");
+        // must be the donor's own conversation room
+        const conversationId = room.replace("conversation:", "");
 
-    // persist as a SYSTEM message (no sender ids -> system)
-    const saved = await ConversationController.createMessage({
-      conversationId,
-      senderUserId: null,
-      senderGuestId: null,
-      text: text.trim(),
-      type: "system",
-      meta: { source: "guest_form", guestId: socket.guestId, ...(meta || {}) },
+        // persist as a SYSTEM message (no sender ids -> system)
+        const saved = await ConversationController.createMessage({
+          conversationId,
+          senderUserId: null,
+          senderGuestId: null,
+          text: text.trim(),
+          type: "system",
+          meta: { source: "guest_form", guestId: socket.guestId, ...(meta || {}) },
+        });
+
+        // normalized emitter (as in your previous helper)
+        const out = {
+          id: saved.message_id,
+          conversationId: saved.conversation_id,
+          text: saved.message,
+          sender: { userId: null, guestId: null },
+          type: "system",
+          status: saved.status || "sent",
+          createdAt: saved.created_at,
+        };
+
+        io.to(room).emit("message", out);
+      } catch (err) {
+        console.error("[Socket] clientSystemNote error:", err);
+      }
     });
-
-    // normalized emitter (as in your previous helper)
-    const out = {
-      id: saved.message_id,
-      conversationId: saved.conversation_id,
-      text: saved.message,
-      sender: { userId: null, guestId: null },
-      type: "system",
-      status: saved.status || "sent",
-      createdAt: saved.created_at,
-    };
-
-    io.to(room).emit("message", out);
-  } catch (err) {
-    console.error("[Socket] clientSystemNote error:", err);
-  }
-});
 
 
     socket.on("leaveRoom", (room) => {
@@ -505,61 +505,61 @@ export function initializeSocket(server, corsOrigins) {
     //   socket.to(room).emit("message", message);
     // });
 
-socket.on("message", async (payload) => {
-  if (socket.userId === "guest" && !socket.guestId) {
-    console.warn("Blocked guest message without OTP verification");
-    return;
-  }
-  try {
-    const { room } = payload;
-    const conversationId = room.replace("conversation:", "");
+    socket.on("message", async (payload) => {
+      if (socket.userId === "guest" && !socket.guestId) {
+        console.warn("Blocked guest message without OTP verification");
+        return;
+      }
+      try {
+        const { room } = payload;
+        const conversationId = room.replace("conversation:", "");
 
-    // 🔑 Normalize text regardless of shape
-    const text =
-      typeof payload.message === "object" && payload.message?.text
-        ? payload.message.text
-        : payload.text || "";
+        // 🔑 Normalize text regardless of shape
+        const text =
+          typeof payload.message === "object" && payload.message?.text
+            ? payload.message.text
+            : payload.text || "";
 
-    if (!text.trim()) return; // ignore empty
+        if (!text.trim()) return; // ignore empty
 
-    // persist to DB
-    const saved = await ConversationController.createMessage({
-      conversationId,
-      senderUserId: socket.userId !== "guest" ? socket.userId : null,
-      senderGuestId: socket.userId === "guest" ? socket.guestId : null,
-      text,
-      type: "user", // <— NEW (safe if model doesn’t have column)
+        // persist to DB
+        const saved = await ConversationController.createMessage({
+          conversationId,
+          senderUserId: socket.userId !== "guest" ? socket.userId : null,
+          senderGuestId: socket.userId === "guest" ? socket.guestId : null,
+          text,
+          type: "user", // <— NEW (safe if model doesn’t have column)
+        });
+
+        io.to(room).emit("message", normalizeOut(saved, { type: "user" }));
+      } catch (err) {
+        console.error("[Socket] message persistence error:", err);
+        socket.emit("message:error", { room: payload.room, error: "Failed to persist message" });
+      }
     });
 
-    io.to(room).emit("message", normalizeOut(saved, { type: "user" }));
-  } catch (err) {
-    console.error("[Socket] message persistence error:", err);
-    socket.emit("message:error", { room: payload.room, error: "Failed to persist message" });
-  }
-});
+    // ✅ NEW: allow admins to push system messages over the socket
+    socket.on("systemMessage", async (payload = {}) => {
+      try {
+        if (!isAdmin) return; // only admins
+        const { room, text = "", meta = null } = payload;
+        if (!room || !text.trim()) return;
 
-// ✅ NEW: allow admins to push system messages over the socket
-socket.on("systemMessage", async (payload = {}) => {
-  try {
-    if (!isAdmin) return; // only admins
-    const { room, text = "", meta = null } = payload;
-    if (!room || !text.trim()) return;
+        const conversationId = room.replace("conversation:", "");
+        const saved = await ConversationController.createMessage({
+          conversationId,
+          senderUserId: null,
+          senderGuestId: null,
+          text: text.trim(),
+          type: "system",
+          meta: meta ?? null,
+        });
 
-    const conversationId = room.replace("conversation:", "");
-    const saved = await ConversationController.createMessage({
-      conversationId,
-      senderUserId: null,
-      senderGuestId: null,
-      text: text.trim(),
-      type: "system",
-      meta: meta ?? null,
+        io.to(room).emit("message", normalizeOut(saved, { type: "system" }));
+      } catch (err) {
+        console.error("[Socket] systemMessage error:", err);
+      }
     });
-
-    io.to(room).emit("message", normalizeOut(saved, { type: "system" }));
-  } catch (err) {
-    console.error("[Socket] systemMessage error:", err);
-  }
-});
 
     socket.on("pingCheck", () => {
       markSeen(socket);
@@ -623,41 +623,41 @@ socket.on("systemMessage", async (payload = {}) => {
     broadcastPresenceCounts();
   });
   io.sendSystemMessage = async (conversationId, text, { meta = null, persist = true } = {}) => {
-  try {
-    const room = `conversation:${conversationId}`;
-    let out;
+    try {
+      const room = `conversation:${conversationId}`;
+      let out;
 
-    if (persist) {
-      const saved = await ConversationController.createMessage({
-        conversationId,
-        senderUserId: null,
-        senderGuestId: null,
-        text: String(text || "").trim(),
-        type: "system",
-        meta,
-      });
-      out = normalizeOut(saved, { type: "system" });
-    } else {
-      // ephemeral system notice (not persisted)
-      out = {
-        id: `sys-${Date.now()}`,
-        conversationId,
-        text: String(text || "").trim(),
-        sender: { userId: null, guestId: null },
-        type: "system",
-        status: "sent",
-        createdAt: new Date().toISOString(),
-      };
+      if (persist) {
+        const saved = await ConversationController.createMessage({
+          conversationId,
+          senderUserId: null,
+          senderGuestId: null,
+          text: String(text || "").trim(),
+          type: "system",
+          meta,
+        });
+        out = normalizeOut(saved, { type: "system" });
+      } else {
+        // ephemeral system notice (not persisted)
+        out = {
+          id: `sys-${Date.now()}`,
+          conversationId,
+          text: String(text || "").trim(),
+          sender: { userId: null, guestId: null },
+          type: "system",
+          status: "sent",
+          createdAt: new Date().toISOString(),
+        };
+      }
+
+      if (!out.text) return;
+      io.to(room).emit("message", out);
+      return out;
+    } catch (e) {
+      console.error("[io.sendSystemMessage] error", e);
+      return null;
     }
-
-    if (!out.text) return;
-    io.to(room).emit("message", out);
-    return out;
-  } catch (e) {
-    console.error("[io.sendSystemMessage] error", e);
-    return null;
-  }
-};
+  };
 
 
   setInterval(() => {

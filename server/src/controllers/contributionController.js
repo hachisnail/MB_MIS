@@ -241,7 +241,7 @@ export const createContribution = async (req, res) => {
       const userId = req.session.user.id;
       const username = req.session.user.username || 'Admin';
       const contributorName = isAnonymous ? "Anonymous Donor" : `${firstName} ${lastName}`;
-      
+
       await createLog(
         'create',
         'CONTRIBUTION',
@@ -412,7 +412,7 @@ export const updateContributionStatus = async (req, res) => {
 
     const timelineUpdates = {};
     const now = new Date();
-    if (status === "pending")  timelineUpdates.under_review_at = now;
+    if (status === "pending") timelineUpdates.under_review_at = now;
     if (status === "approved") timelineUpdates.approved_at = now;
     if (status === "rejected") timelineUpdates.under_review_at = now;
     if (status === "completed") timelineUpdates.completed_at = now;
@@ -500,7 +500,7 @@ export const updateContributionStatus = async (req, res) => {
       interactionLink = `${baseClientUrl}/acquisition/inquiry/${encodeURIComponent(token)}`;
     }
 
-let emailHtml = `
+    let emailHtml = `
   <div style="font-family: 'Hina Mincho', 'Times New Roman', serif; background-color: #ffffff; color: #333; padding: 40px 0;">
     <div style="max-width: 640px; margin: 0 auto; background-color: #ffffff; border: 1px solid #E8C26A; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
 
@@ -518,25 +518,22 @@ let emailHtml = `
         <p style="font-size: 16px; line-height: 1.7;">
           Your <b style="color: #3E2F1C;">${typeWord}</b> request for the artifact 
           <b style="color: #C19A3D;">"${artifactName}"</b> has been 
-          <b style="text-transform: capitalize; color: ${
-            status === "approved" ? "#3E8E41" : status === "rejected" ? "#D9534F" : "#C19A3D"
-          };">${status}</b>.
+          <b style="text-transform: capitalize; color: ${status === "approved" ? "#3E8E41" : status === "rejected" ? "#D9534F" : "#C19A3D"
+      };">${status}</b>.
         </p>
 
-        ${
-          responseMessage
-            ? `
+        ${responseMessage
+        ? `
               <p style="font-weight: bold; margin-top: 20px; color: #3E2F1C;">Message from our team:</p>
               <blockquote style="border-left: 4px solid #E8C26A; margin: 10px 0; padding-left: 15px; color: #5C4C2E; font-style: italic; background-color: #FFF9E8; border-radius: 6px;">
                 ${responseMessage}
               </blockquote>
             `
-            : ""
-        }
+        : ""
+      }
 
-        ${
-          interactionLink
-            ? `
+        ${interactionLink
+        ? `
               <div style="margin: 30px 0; text-align: center;">
                 <a href="${interactionLink}" target="_blank" rel="noreferrer"
                   style="display: inline-block; background-color: #C19A3D; color: #ffffff; text-decoration: none; 
@@ -548,8 +545,8 @@ let emailHtml = `
                 </p>
               </div>
             `
-            : ""
-        }
+        : ""
+      }
 
         <p style="margin-top: 25px; line-height: 1.6; color: #555;">
           We sincerely appreciate your contribution to the preservation and celebration of our cultural heritage.
@@ -1234,5 +1231,44 @@ export const closeContributionSession = async (req, res) => {
   } catch (err) {
     console.error("closeContributionSession error:", err);
     return res.status(500).json({ message: "Server error closing session" });
+  }
+};
+
+// Save donor's MOA response data
+export const saveMoaResponse = async (req, res) => {
+  try {
+    const { contribution_id, accept_moa, satisfied_moa, reason, name, title, loanStart, loanEnd } = req.body;
+
+    if (!contribution_id) {
+      return res.status(400).json({ message: "Contribution ID required" });
+    }
+
+    // Find or create the contribution
+    const contribution = await Contributions.findByPk(contribution_id);
+    if (!contribution) {
+      return res.status(404).json({ message: "Contribution not found" });
+    }
+
+    // Store the MOA response in the contribution record
+    // You may need to add these columns to the Contributions table if they don't exist
+    await Contributions.update(
+      {
+        donor_moa_response: JSON.stringify({
+          accept_moa,
+          satisfied_moa,
+          reason,
+          name,
+          title,
+          loanStart,
+          loanEnd,
+        }),
+      },
+      { where: { contribution_id } }
+    );
+
+    return res.json({ ok: true, message: "MOA response saved" });
+  } catch (err) {
+    console.error("saveMoaResponse error:", err);
+    return res.status(500).json({ message: "Server error saving MOA response" });
   }
 };

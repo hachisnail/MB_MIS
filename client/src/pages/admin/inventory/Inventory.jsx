@@ -14,6 +14,14 @@ import InventortyList from "./components/Inventorylist";
 const BASE_URL = import.meta.env.VITE_API_BASE_URL;         // e.g. http://localhost:5000/api
 const SERVER_ORIGIN = BASE_URL?.replace(/\/api$/, "");       // e.g. http://localhost:5000
 
+const EXPORT_FILTERS = [
+  { value: "", label: "All Items (Current Filters)" },
+  { value: "on display", label: "Only On Display" },
+  { value: "in storage", label: "Only In Storage" },
+  { value: "in maintenance", label: "Only In Maintenance" },
+  // NOTE: You can add more status values if needed
+];
+
 const Inventory = () => {
   const location = useLocation();
   const initialFilter = location.state?.filter || "artifacts";
@@ -22,6 +30,14 @@ const Inventory = () => {
   const [artifactFilter, setArtifactFilter] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedDate, setSelectedDate] = useState(null);
+
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+
+  // NEW: Export Date Range State
+    const [exportStartDate, setExportStartDate] = useState("");
+    const [exportEndDate, setExportEndDate] = useState("");
+
+  const [exportStatusFilter, setExportStatusFilter] = useState(EXPORT_FILTERS[0].value);
 
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
@@ -112,17 +128,32 @@ const Inventory = () => {
     showToast(date ? `Filtering data for ${date.toLocaleDateString()}` : "Showing all dates", "info");
   }, [showToast]);
 
-  // --- NEW: Export to Excel handler ---
+  // --- Export to Excel handler ---
   const exportExcel = useCallback(async () => {
     try {
       setLoading(true);
 
-      // mirror current UI filters in query params
-      const params = new URLSearchParams();
-      if (searchQuery.trim()) params.set("q", searchQuery.trim());
-      if (selectedDate) params.set("date", selectedDate.toISOString().split("T")[0]);
-      if (activeTab) params.set("tab", activeTab);
-      if (artifactFilter === "displayed") params.set("onlyDisplayed", "1");
+const params = new URLSearchParams();
+            
+            // 1. Determine if we are keeping the current UI filters
+            const isDefaultExport = exportStatusFilter === EXPORT_FILTERS[0].value;
+            const hasDateRange = exportStartDate || exportEndDate;
+
+            if (isDefaultExport && !hasDateRange) {
+                // Scenario 1: Default export (mirrors the table content)
+                if (searchQuery.trim()) params.set("q", searchQuery.trim());
+                if (selectedDate) params.set("date", selectedDate.toISOString().split("T")[0]);
+                if (activeTab) params.set("tab", activeTab);
+                if (artifactFilter === "displayed") params.set("onlyDisplayed", "1");
+            } else if (!isDefaultExport) {
+                // Scenario 2: Status-specific export (overrides table content tabs/onlyDisplayed)
+                params.set("exportStatus", exportStatusFilter);
+            }
+            // Note: If (isDefaultExport && hasDateRange) is true, we use *only* the date range.
+
+            // 2. Add NEW Date Range Filters (always included if present)
+            if (exportStartDate.trim()) params.set("exportStartDate", exportStartDate.trim());
+            if (exportEndDate.trim()) params.set("exportEndDate", exportEndDate.trim());
 
       const url = `${SERVER_ORIGIN}/api/auth/inventory/export?${params.toString()}`;
 
@@ -161,8 +192,7 @@ const Inventory = () => {
     } finally {
       setLoading(false);
     }
-  }, [searchQuery, selectedDate, activeTab, artifactFilter, showToast]);
-
+}, [searchQuery, selectedDate, activeTab, artifactFilter, exportStatusFilter, exportStartDate, exportEndDate, showToast]);
   // headers
   const artifactsHeaders = [
     { label: "Title", width: "1fr" },
@@ -209,6 +239,19 @@ const Inventory = () => {
       return false;
     }
   };
+
+  // Date comparison utility function for the preview logic
+    const isInRange = (dateString, start, end) => {
+        if (!dateString) return true;
+        const itemDate = new Date(dateString).getTime();
+        const startDate = start ? new Date(start).setHours(0, 0, 0, 0) : null;
+        const endDate = end ? new Date(end).setHours(23, 59, 59, 999) : null;
+        
+        const isAfterStart = !startDate || itemDate >= startDate;
+        const isBeforeEnd = !endDate || itemDate <= endDate;
+        
+        return isAfterStart && isBeforeEnd;
+    };
 
   const filtered = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -271,8 +314,181 @@ const Inventory = () => {
     ];
   }, [rows]);
 
+// --- NEW: Export Modal Component ---
+    const ExportModal = ({ isOpen, onClose, allRows, activeTab, artifactFilter, searchQuery, selectedDate }) => {
+        if (!isOpen) return null;
+
+        // 1. Calculate the list that will be exported (for preview)
+        const exportListPreview = useMemo(() => {
+            let list = allRows.slice();
+            const q = searchQuery.trim().toLowerCase();
+            
+            // Flags for current filter settings
+            const isDefaultExport = exportStatusFilter === EXPORT_FILTERS[0].value;
+            const hasDateRange = exportStartDate || exportEndDate;
+
+            // Apply all UI filters IF it is a default export AND no date range is set.
+            // This ensures the preview matches the table if the user hasn't touched the modal filters.
+            if (isDefaultExport && !hasDateRange) {
+                
+                // Match Search Query
+                list = list.filter((r) => 
+                    !q || (r.title && r.title.toLowerCase().includes(q)) || 
+                    (r.collection_number && String(r.collection_number).toLowerCase().includes(q)) || 
+                    (r.provenance && r.provenance.toLowerCase().includes(q)) || 
+                    (r.current_location && r.current_location.toLowerCase().includes(q))
+                );
+
+                // Match Single Date Filter
+                if (selectedDate) {
+                    list = list.filter((r) => {
+                        const dd = r.acquisition_date || r.metadata_updated_at || r.updated_at || r.created_at;
+                        return dd && sameDay(dd, selectedDate);
+                    });
+                }
+                
+                // Match 'Only Displayed' UI Filter
+                if (artifactFilter === "displayed") {
+                    list = list.filter((r) => (r.display_status || "").toLowerCase().includes("display"));
+                }
+                
+                // Apply the UI Tab filter
+                if (activeTab === "acquired") list = list.filter((r) => r.contribution_type !== "lending");
+                else if (activeTab === "borrowing") list = list.filter((r) => r.contribution_type === "lending");
+            }
+            
+            // 2. Apply the Export Status filter (Overrides tab/onlyDisplayed if set)
+            if (!isDefaultExport) {
+                const needle = exportStatusFilter.toLowerCase();
+                list = list.filter((r) => (r.display_status || "").toLowerCase().includes(needle));
+            }
+            
+            // 3. Apply NEW Date Range Filter (Always applied if set, regardless of other context)
+            if (exportStartDate || exportEndDate) {
+                list = list.filter((r) => {
+                    // Use the best acquisition date column for filtering
+                    const dateToCheck = r.acquisition_date || r.metadata_updated_at || r.updated_at || r.created_at;
+                    return isInRange(dateToCheck, exportStartDate, exportEndDate);
+                });
+            }
+
+            return list;
+        }, [allRows, activeTab, artifactFilter, searchQuery, selectedDate, exportStatusFilter, exportStartDate, exportEndDate]);
+
+        // 4. Calculate Final Totals
+        const totalCount = exportListPreview.length;
+        const acquiredCount = exportListPreview.filter((r) => r.contribution_type !== "lending").length;
+        const borrowingCount = exportListPreview.filter((r) => r.contribution_type === "lending").length;
+
+
+        // Basic full-screen overlay for the modal
+        return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+                <div className="bg-white p-6 rounded-xl shadow-2xl min-w-[35rem] max-w-lg">
+                    
+                    {/* Modal Header */}
+                    <div className="flex justify-between items-center border-b pb-3 mb-4">
+                        <h3 className="text-2xl font-bold">Export Inventory to Excel</h3>
+                        <button onClick={onClose} className="text-gray-500 hover:text-gray-800 text-3xl leading-none">
+                            &times;
+                        </button>
+                    </div>
+
+                    <p className="mb-4 text-sm text-gray-600">
+                        Choose filters below to scope your export. By default, "All Items (Current Filters)" mirrors the visible table data.
+                    </p>
+                    
+                    {/* Status Filter */}
+                    <div className="mb-5">
+                        <label className="text-lg font-semibold text-gray-800 block mb-2">1. Filter by Status</label>
+                        <select
+                            className="w-full h-10 px-3 rounded-lg border border-gray-400 text-base font-medium cursor-pointer"
+                            value={exportStatusFilter}
+                            onChange={(e) => setExportStatusFilter(e.target.value)}
+                            disabled={loading}
+                        >
+                            {EXPORT_FILTERS.map((f) => (
+                                <option key={f.value} value={f.value}>
+                                    {f.label}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+
+                    {/* Date Range Filter */}
+                    <div className="mb-6">
+                        <label className="text-lg font-semibold text-gray-800 block mb-2">2. Filter by Acquisition/Update Date Range</label>
+                        <div className="flex space-x-4">
+                            <input
+                                type="date"
+                                className="w-1/2 h-10 px-3 rounded-lg border border-gray-400 text-base"
+                                placeholder="Start Date"
+                                value={exportStartDate}
+                                onChange={(e) => setExportStartDate(e.target.value)}
+                                disabled={loading}
+                            />
+                            <input
+                                type="date"
+                                className="w-1/2 h-10 px-3 rounded-lg border border-gray-400 text-base"
+                                placeholder="End Date"
+                                value={exportEndDate}
+                                onChange={(e) => setExportEndDate(e.target.value)}
+                                disabled={loading}
+                            />
+                        </div>
+                    </div>
+
+                    {/* Export Preview / Totals Section */}
+                    <div className="p-4 bg-black text-white rounded-lg mb-6">
+                        <h4 className="text-xl font-bold mb-3 border-b border-gray-600 pb-2">Export Report Preview</h4>
+                        <div className="grid grid-cols-2 gap-y-2 font-medium">
+                            <span className="text-gray-300">Total Items in Export:</span>
+                            <span className="text-right text-3xl font-extrabold">{totalCount}</span>
+                            
+                            <span className="text-gray-400 mt-2">Acquired/Donated:</span>
+                            <span className="text-right mt-2">{acquiredCount}</span>
+
+                            <span className="text-gray-400">Borrowed/Lending:</span>
+                            <span className="text-right">{borrowingCount}</span>
+                        </div>
+                    </div>
+
+                    {/* Modal Footer: Buttons (lower right) */}
+                    <div className="flex justify-end pt-3">
+                        <button
+                            onClick={onClose}
+                            className="h-10 px-4 rounded-lg text-lg font-semibold mr-3 border border-gray-400 text-gray-800 hover:bg-gray-100"
+                            disabled={loading}
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={exportExcel}
+                            disabled={loading || totalCount === 0}
+                            className={`h-10 px-4 rounded-lg text-lg font-semibold 
+                                ${loading || totalCount === 0 ? "opacity-60 cursor-not-allowed bg-gray-600" : "cursor-pointer bg-blue-600 hover:bg-blue-700 text-white"}`}
+                        >
+                            {loading ? "Exporting..." : "⬇️ Export to Excel"}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
   return (
     <>
+ {/* Render the Modal */}
+            <ExportModal 
+                isOpen={isExportModalOpen} 
+                onClose={() => setIsExportModalOpen(false)} 
+                allRows={rows} // Pass the full fetched data
+                activeTab={activeTab}
+                artifactFilter={artifactFilter}
+                searchQuery={searchQuery}
+                selectedDate={selectedDate}
+            />
+
       <div className="w-full h-full items-center flex flex-col overflow-scroll gap-y-10">
         {/* summary */}
         <div className="w-fit flex-wrap flex gap-7 items-center justify-center">
@@ -322,19 +538,21 @@ const Inventory = () => {
               />
             </div>
 
-            {/* Export button */}
-            <div className="ml-auto">
-              <button
-                onClick={exportExcel}
-                disabled={loading}
-                className={`h-full px-4 rounded-lg border-1 text-xl font-semibold 
-                  ${loading ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}
-                  bg-black text-white border-black`}
-                title="Export current view to Excel"
-              >
-                {loading ? "Exporting..." : "Export to Excel"}
-              </button>
-            </div>
+
+
+{/* Export button (now opens the modal) */}
+                        <div className="ml-auto">
+                            <button
+                                onClick={() => setIsExportModalOpen(true)} // Open modal instead of exporting
+                                disabled={loading}
+                                className={`h-full px-4 rounded-lg border-1 text-xl font-semibold 
+                                    ${loading ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}
+                                    bg-black text-white border-black`}
+                                title="Open export options"
+                            >
+                                Export
+                            </button>
+                        </div>
           </div>
 
           {/* table */}

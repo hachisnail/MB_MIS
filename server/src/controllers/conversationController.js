@@ -4,13 +4,13 @@ import Message from "../models/messageModel.js";
 
 export default {
   async getById(id) {
-  try {
-    return await Conversation.findByPk(id);
-  } catch (err) {
-    console.error("[ConversationController] getById:", err);
-    return null;
-  }
-},
+    try {
+      return await Conversation.findByPk(id);
+    } catch (err) {
+      console.error("[ConversationController] getById:", err);
+      return null;
+    }
+  },
 
 
   async getMessages(req, res) {
@@ -28,11 +28,11 @@ export default {
   },
 
   async createMessage({ conversationId, senderUserId, senderGuestId, text }) {
-      console.log("[createMessage] conversationId=", conversationId, {
-    senderUserId,
-    senderGuestId,
-    text,
-  });
+    console.log("[createMessage] conversationId=", conversationId, {
+      senderUserId,
+      senderGuestId,
+      text,
+    });
     // ✅ Create message only, not conversation
     return await Message.create({
       conversation_id: conversationId,
@@ -42,19 +42,19 @@ export default {
     });
   },
   async createMessage({ conversationId, senderUserId, senderGuestId, text, type = "user", meta = null }) {
-  console.log("[createMessage] conversationId=", conversationId, {
-    senderUserId, senderGuestId, text, type
-  });
-  return await Message.create({
-    conversation_id: conversationId,
-    sender_user_id: senderUserId || null,
-    sender_guest_id: senderGuestId || null,
-    message: text,
-    // The following are optional – Sequelize will ignore if model lacks these fields:
-    type,         // e.g., "user" | "system"
-    meta: meta ? JSON.stringify(meta) : null,
-  });
-},
+    console.log("[createMessage] conversationId=", conversationId, {
+      senderUserId, senderGuestId, text, type
+    });
+    return await Message.create({
+      conversation_id: conversationId,
+      sender_user_id: senderUserId || null,
+      sender_guest_id: senderGuestId || null,
+      message: text,
+      // The following are optional – Sequelize will ignore if model lacks these fields:
+      type,         // e.g., "user" | "system"
+      meta: meta ? JSON.stringify(meta) : null,
+    });
+  },
 
 
   async getOrCreateConversation(req, res) {

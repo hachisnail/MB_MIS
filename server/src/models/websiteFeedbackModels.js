@@ -101,6 +101,11 @@ const WebsiteFeedback = mainDb.define('WebsiteFeedback', {
     type: DataTypes.DATE,
     allowNull: true
   },
+  admin_notes: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    comment: 'Admin notes or responses to the feedback'
+  },
   created_at: {
     type: DataTypes.DATE,
     allowNull: false,

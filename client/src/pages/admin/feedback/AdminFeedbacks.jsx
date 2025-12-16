@@ -1,10 +1,11 @@
 import React, { useEffect, useState, useMemo, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import axiosClient from "@/lib/axiosClient";
 import TimelineDatePicker from "@/features/TimelineDatePicker";
 import Toast from "@/features/Toast";
 import { TableHeaderContainer, SearchBar, CardDropdownPicker } from "@/features/Utilities";
 import FeedbackListRow from "./FeedbackListRow";
-import FeedbackDetailPanel from "./FeedbackDetailPanel";
+import FeedbackDetailPanelInfo from "./FeedbackDetailPanelInfo";
 import ListRenderer from "@/components/tables/ListRenderer";
 import useToast from "@/components/commons";
 import { formatDateForDisplay } from "@/components/commons";
@@ -38,6 +39,8 @@ const HEADERS = [
 ];
 
 export default function AdminFeedbacks() {
+    const navigate = useNavigate();
+
     // State
     const [allFeedbacks, setAllFeedbacks] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -52,9 +55,12 @@ export default function AdminFeedbacks() {
     // Side panel state
     const [isPreview, setIsPreview] = useState(false);
     const [activeFeedback, setActiveFeedback] = useState(null);
-    const [status, setStatus] = useState("");
-    const [adminNotes, setAdminNotes] = useState("");
-    const [actionLoading, setActionLoading] = useState(false);
+
+    // Export modal state
+    const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+    const [exportStartDate, setExportStartDate] = useState("");
+    const [exportEndDate, setExportEndDate] = useState("");
+    const [exportStatusFilter, setExportStatusFilter] = useState("all");
 
     const { showToast } = useToast();
 
@@ -104,48 +110,6 @@ export default function AdminFeedbacks() {
         fetchAllFeedbacks();
     }, [fetchAllFeedbacks]);
 
-    // Initialize action state when activeFeedback changes
-    useEffect(() => {
-        if (activeFeedback) {
-            const statusOptions = ["SUBMITTED", "REVIEWED", "RESPONDED", "RESOLVED"];
-            const normalizedStatus = statusOptions.includes(activeFeedback.feedback_status)
-                ? activeFeedback.feedback_status
-                : "SUBMITTED";
-            setStatus(normalizedStatus);
-            setAdminNotes(activeFeedback.admin_notes || "");
-        }
-    }, [activeFeedback]);
-
-    // Handle save action
-    const handleSave = useCallback(async () => {
-        try {
-            setActionLoading(true);
-
-            // Determine the correct endpoint based on feedback type
-            const feedbackType = detectFeedbackType(activeFeedback);
-            const endpoint = feedbackType === FEEDBACK_TYPES.WEBSITE
-                ? `/feedback/website/status/${activeFeedback.id}`
-                : `/feedback/appointment/status/${activeFeedback.id}`;
-
-            await axiosClient.put(endpoint, {
-                status,
-                admin_notes: adminNotes,
-            });
-            showToast("Feedback status updated", "success");
-            fetchAllFeedbacks();
-            setIsPreview(false);
-            setActiveFeedback(null);
-        } catch (err) {
-            console.error("Error updating feedback status", err);
-            showToast(
-                err.response?.data?.message || "Failed to update status",
-                "error"
-            );
-        } finally {
-            setActionLoading(false);
-        }
-    }, [activeFeedback, status, adminNotes, showToast, fetchAllFeedbacks]);
-
     // Handle date change
     const handleDateChange = useCallback(
         (date) => {
@@ -161,6 +125,72 @@ export default function AdminFeedbacks() {
         },
         [showToast]
     );
+
+    // Export to Excel handler
+    const exportExcel = useCallback(async () => {
+        try {
+            setLoading(true);
+
+            const params = new URLSearchParams();
+
+            // 1. Determine if we are keeping the current UI filters
+            const isDefaultExport = exportStatusFilter === "all";
+            const hasDateRange = exportStartDate || exportEndDate;
+
+            if (isDefaultExport && !hasDateRange) {
+                // Scenario 1: Default export (mirrors the table content)
+                if (searchQuery.trim()) params.set("q", searchQuery.trim());
+                if (selectedDate) params.set("date", selectedDate.toISOString().split("T")[0]);
+                if (feedbackTypeFilter !== "all") params.set("feedbackType", feedbackTypeFilter);
+                if (statusFilter !== "all") params.set("status", statusFilter);
+            } else if (!isDefaultExport) {
+                // Scenario 2: Export-specific filter (overrides table content)
+                params.set("exportStatusFilter", exportStatusFilter);
+            }
+            // Note: If (isDefaultExport && hasDateRange) is true, we use *only* the date range.
+
+            // 2. Add NEW Date Range Filters (always included if present)
+            if (exportStartDate.trim()) params.set("exportStartDate", exportStartDate.trim());
+            if (exportEndDate.trim()) params.set("exportEndDate", exportEndDate.trim());
+
+            const url = `/feedback/export?${params.toString()}`;
+
+            const resp = await axiosClient.get(url, {
+                responseType: "blob",
+                headers: { Accept: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" },
+                validateStatus: () => true,
+            });
+
+            if (resp.status !== 200) {
+                try {
+                    const text = await resp.data.text();
+                    throw new Error(text || `Export failed (${resp.status})`);
+                } catch {
+                    throw new Error(`Export failed (${resp.status})`);
+                }
+            }
+
+            const blob = new Blob([resp.data], {
+                type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            });
+            const link = document.createElement("a");
+            const href = URL.createObjectURL(blob);
+            link.href = href;
+            link.download = `feedback_${new Date().toISOString().slice(0, 10)}.xlsx`;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            URL.revokeObjectURL(href);
+
+            showToast("Feedback exported successfully.", "success");
+            setIsExportModalOpen(false);
+        } catch (e) {
+            console.error("[AdminFeedbacks] export error:", e);
+            showToast("Export failed. Please try again.", "error");
+        } finally {
+            setLoading(false);
+        }
+    }, [feedbackTypeFilter, statusFilter, searchQuery, selectedDate, exportStatusFilter, exportStartDate, exportEndDate, showToast]);
 
     // Summary statistics
     const stats = useMemo(() => {
@@ -281,8 +311,111 @@ export default function AdminFeedbacks() {
         return sorted;
     }, [filteredFeedbacks, sortBy, sortDir]);
 
+    // Export Modal Component
+    const ExportModal = ({ isOpen, onClose }) => {
+        if (!isOpen) return null;
+
+        const totalCount = sortedFeedbacks.length;
+        const appointmentCount = sortedFeedbacks.filter((f) => f.feedback_type === "appointment").length;
+        const websiteCount = sortedFeedbacks.filter((f) => f.feedback_type === "website").length;
+
+        return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+                <div className="bg-white p-6 rounded-xl shadow-2xl min-w-[35rem] max-w-lg">
+
+                    {/* Modal Header */}
+                    <div className="flex justify-between items-center border-b pb-3 mb-4">
+                        <h3 className="text-2xl font-bold">Export Feedback to Excel</h3>
+                        <button onClick={onClose} className="text-gray-500 hover:text-gray-800 text-3xl leading-none">
+                            &times;
+                        </button>
+                    </div>
+
+                    <p className="mb-4 text-sm text-gray-600">
+                        Choose filters below to scope your export. Your current filters are applied by default.
+                    </p>
+
+                    {/* Feedback Type Filter */}
+                    <div className="mb-5">
+                        <label className="text-lg font-semibold text-gray-800 block mb-2">1. Filter by Feedback Type</label>
+                        <select
+                            className="w-full h-10 px-3 rounded-lg border border-gray-400 text-base font-medium cursor-pointer"
+                            value={exportStatusFilter}
+                            onChange={(e) => setExportStatusFilter(e.target.value)}
+                            disabled={loading}
+                        >
+                            <option value="all">All Feedback Types</option>
+                            <option value="appointment">Appointment Only</option>
+                            <option value="website">Website Only</option>
+                        </select>
+                    </div>
+
+                    {/* Date Range Filter */}
+                    <div className="mb-6">
+                        <label className="text-lg font-semibold text-gray-800 block mb-2">2. Filter by Submitted Date Range</label>
+                        <div className="flex space-x-4">
+                            <input
+                                type="date"
+                                className="w-1/2 h-10 px-3 rounded-lg border border-gray-400 text-base"
+                                placeholder="Start Date"
+                                value={exportStartDate}
+                                onChange={(e) => setExportStartDate(e.target.value)}
+                                disabled={loading}
+                            />
+                            <input
+                                type="date"
+                                className="w-1/2 h-10 px-3 rounded-lg border border-gray-400 text-base"
+                                placeholder="End Date"
+                                value={exportEndDate}
+                                onChange={(e) => setExportEndDate(e.target.value)}
+                                disabled={loading}
+                            />
+                        </div>
+                    </div>
+
+                    {/* Export Preview / Totals Section */}
+                    <div className="p-4 bg-black text-white rounded-lg mb-6">
+                        <h4 className="text-xl font-bold mb-3 border-b border-gray-600 pb-2">Export Report Preview</h4>
+                        <div className="grid grid-cols-2 gap-y-2 font-medium">
+                            <span className="text-gray-300">Total Feedbacks in Export:</span>
+                            <span className="text-right text-3xl font-extrabold">{totalCount}</span>
+
+                            <span className="text-gray-400 mt-2">Appointment Feedback:</span>
+                            <span className="text-right mt-2">{appointmentCount}</span>
+
+                            <span className="text-gray-400">Website Feedback:</span>
+                            <span className="text-right">{websiteCount}</span>
+                        </div>
+                    </div>
+
+                    {/* Modal Footer: Buttons (lower right) */}
+                    <div className="flex justify-end pt-3">
+                        <button
+                            onClick={onClose}
+                            className="h-10 px-4 rounded-lg text-lg font-semibold mr-3 border border-gray-400 text-gray-800 hover:bg-gray-100"
+                            disabled={loading}
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={exportExcel}
+                            disabled={loading || totalCount === 0}
+                            className={`h-10 px-4 rounded-lg text-lg font-semibold 
+                                ${loading || totalCount === 0 ? "opacity-60 cursor-not-allowed bg-gray-600" : "cursor-pointer bg-blue-600 hover:bg-blue-700 text-white"}`}
+                        >
+                            {loading ? "Exporting..." : "⬇️ Export to Excel"}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
     return (
         <>
+            {/* Export Modal */}
+            <ExportModal isOpen={isExportModalOpen} onClose={() => setIsExportModalOpen(false)} />
+
             <div className="w-full h-full flex gap-2 overflow-hidden">
                 {/* Main Content Area */}
                 <div className="flex-1 h-full flex flex-col overflow-hidden">
@@ -373,6 +506,20 @@ export default function AdminFeedbacks() {
                                     { value: "type|asc", label: "Feedback Type (A-Z)" },
                                 ]}
                             />
+
+                            {/* Export Button */}
+                            <div className="ml-auto">
+                                <button
+                                    onClick={() => setIsExportModalOpen(true)}
+                                    disabled={loading}
+                                    className={`h-full px-6 py-2 rounded-lg border-1 text-2xl font-semibold
+                                        ${loading ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}
+                                        bg-black text-white border-black hover:bg-gray-900`}
+                                    title="Export feedbacks to Excel"
+                                >
+                                    Export
+                                </button>
+                            </div>
                         </div>
 
                         {/* Table */}
@@ -462,60 +609,20 @@ export default function AdminFeedbacks() {
                         </div>
 
                         <div className="w-full flex-1 px-6 py-6 overflow-y-auto">
-                            <FeedbackDetailPanel
-                                feedback={activeFeedback}
-                                showActions={false}
-                            />
+                            <FeedbackDetailPanelInfo feedback={activeFeedback} />
                         </div>
 
-                        {/* Sticky Actions */}
+                        {/* Open Button - Sticky */}
                         <div className="flex-shrink-0 px-6 py-4 border-t border-gray-200 bg-white">
-                            <div className="space-y-3">
-                                <div>
-                                    <label className="text-xs font-semibold text-gray-600 uppercase block mb-2">Status</label>
-                                    <select
-                                        value={status}
-                                        onChange={(e) => setStatus(e.target.value)}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded text-sm font-medium text-gray-900"
-                                    >
-                                        {["SUBMITTED", "REVIEWED", "RESPONDED", "RESOLVED"].map((s) => (
-                                            <option key={s} value={s}>
-                                                {s}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-
-                                <div>
-                                    <label className="text-xs font-semibold text-gray-600 uppercase block mb-2">Admin Notes</label>
-                                    <textarea
-                                        value={adminNotes}
-                                        onChange={(e) => setAdminNotes(e.target.value)}
-                                        placeholder="Add response or notes..."
-                                        className="w-full px-3 py-2 border border-gray-300 rounded text-sm resize-none"
-                                        rows={4}
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="pt-4 flex gap-2">
-                                <button
-                                    onClick={() => {
-                                        setIsPreview(false);
-                                        setActiveFeedback(null);
-                                    }}
-                                    className="flex-1 px-4 py-2 bg-gray-500 text-white font-semibold rounded hover:bg-gray-600"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    onClick={handleSave}
-                                    disabled={actionLoading}
-                                    className="flex-1 px-4 py-2 bg-blue-600 text-white font-semibold rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                    {actionLoading ? "Saving..." : "Save Changes"}
-                                </button>
-                            </div>
+                            <button
+                                onClick={() => {
+                                    const encoded = btoa(`${activeFeedback.id} ${activeFeedback.feedback_type} ${activeFeedback.visitor_name || ''}`);
+                                    navigate(`/admin/feedback/view/${encoded}`);
+                                }}
+                                className="w-full px-4 py-3 bg-blue-600 text-white rounded font-medium hover:bg-blue-700 transition-colors"
+                            >
+                                Open Full Details
+                            </button>
                         </div>
                     </div>
                 )}

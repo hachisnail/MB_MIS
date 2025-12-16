@@ -95,6 +95,7 @@ import AdminScan from "./pages/admin/AdminScan";
 
 // feedback
 import AdminFeedbacks from "./pages/admin/feedback/AdminFeedbacks";
+import FeedbackViewPage from "./pages/admin/feedback/FeedbackViewPage";
 import Feedbacks from "./pages/admin/feedback/Feedbacks";
 
 import FilePreviewer from "@/features/FilePreviewer";
@@ -315,6 +316,7 @@ const Router = () => {
                 />
 
                 <Route path="feedback" element={<AdminFeedbacks />} />
+                <Route path="feedback/view/:encoded" element={<FeedbackViewPage />} />
                 <Route path="feedback/appointment/:appointmentId" element={<Feedbacks />} />
               </>
             )}

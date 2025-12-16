@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import axiosClient from "@/lib/axiosClient";
 import useToast from "@/components/commons";
+import EmailDraftBox from "./EmailDraftBox";
 import {
     FEEDBACK_TYPES,
     getDimensions,
@@ -26,6 +27,7 @@ function StarDisplay({ rating }) {
 
 export default function FeedbackDetailPanel({ feedback, onClose, onSave }) {
     const [loading, setLoading] = useState(false);
+    const [emailLoading, setEmailLoading] = useState(false);
     const [status, setStatus] = useState("");
     const [adminNotes, setAdminNotes] = useState("");
     const { showToast } = useToast();
@@ -67,6 +69,31 @@ export default function FeedbackDetailPanel({ feedback, onClose, onSave }) {
             );
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleSendEmail = async (emailData) => {
+        try {
+            setEmailLoading(true);
+
+            // Call feedback email endpoint
+            await axiosClient.post(
+                `/feedback/appointment/${feedback.id}/send-email`,
+                emailData
+            );
+
+            showToast("Email sent successfully and logged!", "success");
+
+            // Refresh feedback to show updated status and notes
+            onSave && onSave();
+        } catch (err) {
+            console.error("Error sending email:", err);
+            showToast(
+                err.response?.data?.message || "Failed to send email",
+                "error"
+            );
+        } finally {
+            setEmailLoading(false);
         }
     };
 
@@ -165,7 +192,65 @@ export default function FeedbackDetailPanel({ feedback, onClose, onSave }) {
 
             <div className="border-t border-gray-200 pt-4"></div>
 
+            {/* Status & Admin Notes Section */}
+            <div>
+                <h3 className="text-sm font-bold text-gray-900 mb-3 uppercase">Status & Notes</h3>
+                <div className="space-y-3">
+                    <div>
+                        <label className="block text-xs font-semibold text-gray-500 uppercase mb-2">Current Status</label>
+                        <select
+                            value={status}
+                            onChange={(e) => setStatus(e.target.value)}
+                            className={`w-full px-3 py-2 rounded text-sm font-medium ${statusColors[status] || "bg-gray-100"}`}
+                        >
+                            {statusOptions.map((opt) => (
+                                <option key={opt} value={opt}>
+                                    {opt}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
 
+                    <div>
+                        <label className="block text-xs font-semibold text-gray-500 uppercase mb-2">Admin Notes</label>
+                        <textarea
+                            value={adminNotes}
+                            onChange={(e) => setAdminNotes(e.target.value)}
+                            rows={4}
+                            className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500"
+                            placeholder="Internal notes about this feedback..."
+                        />
+                    </div>
+                </div>
+            </div>
+
+            {/* Email Draft Box - Only show if feedback has email */}
+            {feedback.visitor_email && (
+                <>
+                    <EmailDraftBox
+                        feedback={feedback}
+                        onSendEmail={handleSendEmail}
+                        isLoading={emailLoading}
+                    />
+                </>
+            )}
+
+            {/* Action Buttons */}
+            <div className="border-t pt-4 flex gap-3 justify-end">
+                <button
+                    onClick={onClose}
+                    className="px-4 py-2 border border-gray-300 rounded text-gray-700 hover:bg-gray-50"
+                >
+                    Close
+                </button>
+                <button
+                    onClick={handleSave}
+                    disabled={loading}
+                    className="px-4 py-2 bg-amber-600 text-white rounded hover:bg-amber-700 disabled:opacity-50 font-medium"
+                >
+                    {loading ? "Saving..." : "Save Changes"}
+                </button>
+            </div>
         </div>
     );
 }

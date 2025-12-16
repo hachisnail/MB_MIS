@@ -1,6 +1,8 @@
 import WebsiteFeedback from '../models/websiteFeedbackModels.js';
 import { mainDb } from '../configs/databases.js';
 import { createLog } from '../services/logService.js';
+import { sendEmail } from '../services/emailTransporter.js';
+import { generateFeedbackResponseEmail } from '../utils/emailTemplates.js';
 
 /**
  * Submit website feedback
@@ -51,14 +53,36 @@ export const submitWebsiteFeedback = async (feedbackData) => {
       submitted_at: new Date()
     }, { transaction });
 
+    // Send confirmation email if visitor has email
+    if (visitor_email) {
+      try {
+        const confirmationEmailHtml = generateFeedbackResponseEmail({
+          visitorName: visitor_name || 'Valued Visitor',
+          message: '',
+          appointmentDetails: null,
+          status: 'SUBMITTED'
+        });
+
+        await sendEmail({
+          from: '"Museo Bulawan" <museobulawanmis@gmail.com>',
+          to: visitor_email,
+          subject: `Feedback Received - Museo Bulawan`,
+          html: confirmationEmailHtml
+        });
+      } catch (confirmationEmailError) {
+        console.error('Error sending confirmation email:', confirmationEmailError);
+        // Don't fail the main operation if confirmation email fails
+      }
+    }
+
     // Log the submission
     await createLog(
       'SUBMIT',
       'WebsiteFeedback',
-      newFeedback.id,
-      `Website feedback submitted`,
+      'Website feedback submitted',
+      1, // System user
       null,
-      { visitor_email, visitor_phone },
+      { feedback_id: newFeedback.id, visitor_email, visitor_phone },
       {
         feedback_id: newFeedback.id,
         visitor_email: visitor_email,
@@ -185,6 +209,7 @@ export const getWebsiteFeedbackDetail = async (feedbackId) => {
       recommendation_likelihood: feedback.recommendation_likelihood,
       comments: feedback.comments,
       feedback_status: feedback.feedback_status,
+      admin_notes: feedback.admin_notes,
       submitted_at: feedback.submitted_at,
       reviewed_at: feedback.reviewed_at
     };
@@ -197,7 +222,7 @@ export const getWebsiteFeedbackDetail = async (feedbackId) => {
 /**
  * Update website feedback status (admin)
  */
-export const updateWebsiteFeedbackStatus = async (feedbackId, status) => {
+export const updateWebsiteFeedbackStatus = async (feedbackId, status, adminNotes = null, userId = 1) => {
   try {
     const feedback = await WebsiteFeedback.findByPk(feedbackId);
 
@@ -205,21 +230,49 @@ export const updateWebsiteFeedbackStatus = async (feedbackId, status) => {
       throw new Error('Feedback not found');
     }
 
+    const previousStatus = feedback.feedback_status;
     feedback.feedback_status = status;
+    if (adminNotes !== null && adminNotes !== undefined) {
+      feedback.admin_notes = adminNotes;
+    }
     feedback.reviewed_at = new Date();
     await feedback.save();
+
+    // Send automatic status update email if visitor has email
+    if (feedback.visitor_email && status !== 'SUBMITTED') {
+      try {
+        const statusEmailHtml = generateFeedbackResponseEmail({
+          visitorName: feedback.visitor_name || 'Valued Visitor',
+          message: '',
+          appointmentDetails: null,
+          status: status
+        });
+
+        await sendEmail({
+          from: '"Museo Bulawan" <museobulawanmis@gmail.com>',
+          to: feedback.visitor_email,
+          subject: `Website Feedback Status Update - Museo Bulawan`,
+          html: statusEmailHtml
+        });
+      } catch (statusEmailError) {
+        console.error('Error sending status update email:', statusEmailError);
+        // Don't fail the main operation if status email fails
+      }
+    }
 
     // Log the status update
     await createLog(
       'UPDATE',
       'WebsiteFeedback',
-      feedbackId,
       `Website feedback status updated to ${status}`,
-      null,
-      {},
+      userId,
+      { feedback_status: previousStatus },
+      { feedback_status: status },
       {
         feedback_id: feedbackId,
-        new_status: status
+        previous_status: previousStatus,
+        new_status: status,
+        admin_notes: adminNotes
       }
     );
 
@@ -230,6 +283,84 @@ export const updateWebsiteFeedbackStatus = async (feedbackId, status) => {
     };
   } catch (err) {
     console.error('Error updating feedback status:', err);
+    throw err;
+  }
+};
+
+/**
+ * Send email response to website feedback visitor
+ * Generates HTML email using template, sends via sendEmail service, logs draft to admin_notes
+ */
+export const sendWebsiteFeedbackEmail = async (feedbackId, emailData, userId = 1) => {
+  try {
+    const { message, subject = 'Response from Museo Bulawan', status = 'RESPONDED' } = emailData;
+
+    // Fetch feedback record
+    const feedback = await WebsiteFeedback.findByPk(feedbackId);
+
+    if (!feedback) {
+      throw new Error('Feedback not found');
+    }
+
+    // Ensure visitor has email
+    const recipientEmail = feedback.visitor_email;
+    if (!recipientEmail) {
+      throw new Error('Visitor email not available');
+    }
+
+    // Generate HTML email
+    const emailHtml = generateFeedbackResponseEmail({
+      visitorName: feedback.visitor_name || 'Valued Visitor',
+      message,
+      appointmentDetails: null,
+      status: status
+    });
+
+    // Send email via service
+    const emailResult = await sendEmail({
+      from: '"Museo Bulawan" <museobulawanmis@gmail.com>',
+      to: recipientEmail,
+      subject: subject,
+      html: emailHtml
+    });
+
+    if (!emailResult.success) {
+      throw new Error(`Email send failed: ${emailResult.error}`);
+    }
+
+    // Update feedback with admin_notes and the provided status
+    const emailLogEntry = `[${new Date().toLocaleString()}] Email sent by admin\nSubject: ${subject}\n\nMessage:\n${message}`;
+
+    await feedback.update({
+      admin_notes: emailLogEntry,
+      feedback_status: status,
+      reviewed_at: new Date()
+    });
+
+    // Create audit log
+    await createLog(
+      'UPDATE',
+      'WebsiteFeedback',
+      `Email response sent to ${feedback.visitor_name || 'Visitor'} (${recipientEmail})`,
+      userId,
+      { status: feedback.feedback_status, admin_notes: feedback.admin_notes },
+      { status: 'RESPONDED', admin_notes: emailLogEntry },
+      {
+        feedback_id: feedbackId,
+        recipient_email: recipientEmail,
+        subject: subject,
+        email_sent: true
+      }
+    );
+
+    return {
+      success: true,
+      message: 'Email sent successfully',
+      feedback_id: feedbackId,
+      recipient_email: recipientEmail
+    };
+  } catch (err) {
+    console.error('Error sending website feedback email:', err);
     throw err;
   }
 };

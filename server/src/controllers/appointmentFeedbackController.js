@@ -3,6 +3,8 @@ import Appointment from '../models/appointmentModels.js';
 import Visitor from '../models/visitorModels.js';
 import { mainDb } from '../configs/databases.js';
 import { createLog } from '../services/logService.js';
+import { sendEmail } from '../services/emailTransporter.js';
+import { generateFeedbackResponseEmail } from '../utils/emailTemplates.js';
 
 /**
         population_count: feedback.Appointment.population_count
@@ -19,7 +21,7 @@ import { createLog } from '../services/logService.js';
  */
 export const submitAppointmentFeedback = async (feedbackData) => {
   const transaction = await mainDb.transaction();
-  
+
   try {
     const {
       appointment_id,
@@ -65,14 +67,36 @@ export const submitAppointmentFeedback = async (feedbackData) => {
       submitted_at: new Date()
     }, { transaction });
 
+    // Send confirmation email if visitor has email
+    if (visitor_email) {
+      try {
+        const confirmationEmailHtml = generateFeedbackResponseEmail({
+          visitorName: visitor_name || 'Valued Visitor',
+          message: '',
+          appointmentDetails: null,
+          status: 'SUBMITTED'
+        });
+
+        await sendEmail({
+          from: '"Museo Bulawan" <museobulawanmis@gmail.com>',
+          to: visitor_email,
+          subject: `Feedback Received - Museo Bulawan`,
+          html: confirmationEmailHtml
+        });
+      } catch (confirmationEmailError) {
+        console.error('Error sending confirmation email:', confirmationEmailError);
+        // Don't fail the main operation if confirmation email fails
+      }
+    }
+
     // Log the submission
     await createLog(
       'SUBMIT',
       'AppointmentFeedback',
-      newFeedback.id,
       `Feedback submitted for appointment ${appointment_id || 'walk-in'}`,
+      1, // System user
       null,
-      { visitor_email, visitor_phone },
+      { feedback_id: newFeedback.id, appointment_id: appointment_id },
       {
         feedback_id: newFeedback.id,
         appointment_id: appointment_id,
@@ -183,6 +207,7 @@ export const getFeedbackDetail = async (feedbackId) => {
         'service_quality',
         'comments',
         'feedback_status',
+        'admin_notes',
         'submitted_at',
         'reviewed_at',
         'created_at',
@@ -261,10 +286,10 @@ export const submitWalkInFeedback = async (feedbackData) => {
     await createLog(
       'SUBMIT',
       'AppointmentFeedback',
-      feedback.id,
       'Walk-in feedback submitted',
+      1, // System user
       null,
-      { visitor_email, visitor_phone },
+      { feedback_id: feedback.id },
       {
         feedback_id: feedback.id,
         walk_in: true,
@@ -455,17 +480,30 @@ export const getAllFeedbacks = async (options = {}) => {
 /**
  * Update feedback status (admin)
  */
-export const updateFeedbackStatus = async (feedbackId, newStatus, adminNotes = null) => {
+export const updateFeedbackStatus = async (feedbackId, newStatus, adminNotes = null, userId = 1) => {
   try {
-    const feedback = await AppointmentFeedback.findByPk(feedbackId);
+    const feedback = await AppointmentFeedback.findByPk(feedbackId, {
+      include: [
+        {
+          model: Appointment,
+          attributes: ['appointment_id', 'purpose_of_visit', 'preferred_date', 'start_time', 'end_time', 'population_count'],
+          required: false
+        }
+      ]
+    });
 
     if (!feedback) {
       throw new Error('Feedback not found');
     }
 
+    const previousStatus = feedback.feedback_status;
     const updateData = {
       feedback_status: newStatus
     };
+
+    if (adminNotes !== null && adminNotes !== undefined) {
+      updateData.admin_notes = adminNotes;
+    }
 
     if (newStatus === 'COMPLETED' && !feedback.reviewed_at) {
       updateData.reviewed_at = new Date();
@@ -473,17 +511,67 @@ export const updateFeedbackStatus = async (feedbackId, newStatus, adminNotes = n
 
     await feedback.update(updateData);
 
+    // Send automatic status update email if visitor has email and status changed (except SUBMITTED)
+    if (feedback.visitor_email && newStatus !== 'SUBMITTED') {
+      try {
+        // Prepare appointment details if linked
+        let appointmentDetails = null;
+        if (feedback.Appointment) {
+          const start_time = feedback.Appointment.start_time;
+          const end_time = feedback.Appointment.end_time;
+          const formatTime = (time) => {
+            if (!time) return '';
+            if (time.includes(':')) {
+              const [hours, minutes] = time.split(':');
+              const hour = parseInt(hours);
+              const ampm = hour >= 12 ? 'PM' : 'AM';
+              const displayHour = hour > 12 ? hour - 12 : (hour === 0 ? 12 : hour);
+              return `${displayHour}:${minutes} ${ampm}`;
+            }
+            return time;
+          };
+          const preferredTime = (start_time && end_time)
+            ? `${formatTime(start_time)} - ${formatTime(end_time)}`
+            : 'Flexible';
+
+          appointmentDetails = {
+            preferredDate: feedback.Appointment.preferred_date || 'N/A',
+            preferredTime,
+            purpose: feedback.Appointment.purpose_of_visit || 'N/A',
+            populationCount: feedback.Appointment.population_count || 'N/A'
+          };
+        }
+
+        const statusEmailHtml = generateFeedbackResponseEmail({
+          visitorName: feedback.visitor_name || 'Valued Visitor',
+          message: '',
+          appointmentDetails,
+          status: newStatus
+        });
+
+        await sendEmail({
+          from: '"Museo Bulawan" <museobulawanmis@gmail.com>',
+          to: feedback.visitor_email,
+          subject: `Appointment Feedback Status Update - Museo Bulawan`,
+          html: statusEmailHtml
+        });
+      } catch (statusEmailError) {
+        console.error('Error sending status update email:', statusEmailError);
+        // Don't fail the main operation if status email fails
+      }
+    }
+
     // Log the status update
     await createLog(
       'UPDATE',
       'AppointmentFeedback',
-      feedbackId,
-      `Status updated from ${feedback.feedback_status} to ${newStatus}`,
-      { status: feedback.feedback_status },
+      `Status updated from ${previousStatus} to ${newStatus}`,
+      userId,
+      { status: previousStatus },
       { status: newStatus },
       {
         feedback_id: feedbackId,
-        previous_status: feedback.feedback_status,
+        previous_status: previousStatus,
         new_status: newStatus,
         admin_notes: adminNotes
       }
@@ -492,6 +580,120 @@ export const updateFeedbackStatus = async (feedbackId, newStatus, adminNotes = n
     return feedback;
   } catch (err) {
     console.error('Error updating feedback status:', err);
+    throw err;
+  }
+};
+
+/**
+ * Send email response to feedback visitor
+ * Generates HTML email using template, sends via sendEmail service, logs draft to admin_notes
+ */
+export const sendFeedbackEmail = async (feedbackId, emailData, userId = 1) => {
+  try {
+    const { message, subject = 'Response from Museo Bulawan', status = 'RESPONDED' } = emailData;
+
+    // Fetch feedback record
+    const feedback = await AppointmentFeedback.findByPk(feedbackId, {
+      include: [
+        {
+          model: Appointment,
+          attributes: ['appointment_id', 'purpose_of_visit', 'preferred_date', 'start_time', 'end_time', 'population_count'],
+          required: false
+        }
+      ]
+    });
+
+    if (!feedback) {
+      throw new Error('Feedback not found');
+    }
+
+    // Ensure visitor has email
+    const recipientEmail = feedback.visitor_email;
+    if (!recipientEmail) {
+      throw new Error('Visitor email not available');
+    }
+
+    // Prepare appointment details if linked
+    let appointmentDetails = null;
+    if (feedback.Appointment) {
+      const start_time = feedback.Appointment.start_time;
+      const end_time = feedback.Appointment.end_time;
+      const formatTime = (time) => {
+        if (!time) return '';
+        if (time.includes(':')) {
+          const [hours, minutes] = time.split(':');
+          const hour = parseInt(hours);
+          const ampm = hour >= 12 ? 'PM' : 'AM';
+          const displayHour = hour > 12 ? hour - 12 : (hour === 0 ? 12 : hour);
+          return `${displayHour}:${minutes} ${ampm}`;
+        }
+        return time;
+      };
+      const preferredTime = (start_time && end_time) 
+        ? `${formatTime(start_time)} - ${formatTime(end_time)}`
+        : 'Flexible';
+
+      appointmentDetails = {
+        preferredDate: feedback.Appointment.preferred_date || 'N/A',
+        preferredTime,
+        purpose: feedback.Appointment.purpose_of_visit || 'N/A',
+        populationCount: feedback.Appointment.population_count || 'N/A'
+      };
+    }
+
+    // Generate HTML email
+    const emailHtml = generateFeedbackResponseEmail({
+      visitorName: feedback.visitor_name,
+      message,
+      appointmentDetails,
+      status: status
+    });
+
+    // Send email via service
+    const emailResult = await sendEmail({
+      from: '"Museo Bulawan" <museobulawanmis@gmail.com>',
+      to: recipientEmail,
+      subject: subject,
+      html: emailHtml
+    });
+
+    if (!emailResult.success) {
+      throw new Error(`Email send failed: ${emailResult.error}`);
+    }
+
+    // Update feedback with admin_notes and the provided status
+    const emailLogEntry = `[${new Date().toLocaleString()}] Email sent by admin\nSubject: ${subject}\n\nMessage:\n${message}`;
+
+    await feedback.update({
+      admin_notes: emailLogEntry,
+      feedback_status: status,
+      reviewed_at: new Date()
+    });
+
+    // Create audit log
+    await createLog(
+      'UPDATE',
+      'AppointmentFeedback',
+      `Email response sent to ${feedback.visitor_name} (${recipientEmail})`,
+      userId,
+      { status: feedback.feedback_status, admin_notes: feedback.admin_notes },
+      { status: 'RESPONDED', admin_notes: emailLogEntry },
+      {
+        feedback_id: feedbackId,
+        recipient_email: recipientEmail,
+        subject: subject,
+        email_sent: true
+      }
+    );
+
+    return {
+      success: true,
+      message: 'Email sent successfully',
+      feedback_id: feedbackId,
+      recipient_email: recipientEmail
+    };
+  } catch (err) {
+    console.error('Error sending feedback email:', err);
     throw err;
   }
 };

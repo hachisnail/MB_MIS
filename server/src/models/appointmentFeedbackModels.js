@@ -99,9 +99,10 @@ const AppointmentFeedback = mainDb.define('AppointmentFeedback', {
     allowNull: true
   },
   feedback_status: {
-    type: DataTypes.ENUM('PENDING', 'SUBMITTED', 'COMPLETED', 'RESPONDED', 'RESOLVED'),
+    type: DataTypes.ENUM('SUBMITTED', 'REVIEWED', 'RESPONDED', 'RESOLVED'),
     allowNull: false,
-    defaultValue: 'PENDING'
+    defaultValue: 'SUBMITTED',
+    comment: 'SUBMITTED → REVIEWED → RESPONDED → RESOLVED'
   },
   submitted_at: {
     type: DataTypes.DATE,
@@ -110,6 +111,11 @@ const AppointmentFeedback = mainDb.define('AppointmentFeedback', {
   reviewed_at: {
     type: DataTypes.DATE,
     allowNull: true
+  },
+  admin_notes: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    comment: 'Admin notes or responses to the feedback'
   },
   created_at: {
     type: DataTypes.DATE,
